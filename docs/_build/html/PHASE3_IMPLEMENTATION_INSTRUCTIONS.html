@@ -1,0 +1,960 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 3: Environment &amp; Backtest Integration - 実装指示書 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Phase 3: Environment &amp; Backtest Integration - 実装指示書</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/PHASE3_IMPLEMENTATION_INSTRUCTIONS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="phase-3-environment-backtest-integration">
+<h1>Phase 3: Environment &amp; Backtest Integration - 実装指示書<a class="headerlink" href="#phase-3-environment-backtest-integration" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>Feature Schema Management Reformの<strong>Phase 3</strong>として、Environment統合とBacktest対応を実装してください。</p>
+<p>Phase 1-2で実装済みの<code class="docutils literal notranslate"><span class="pre">FeatureSchemaManager</span></code>を活用し、モデルごとの特徴量スキーマに基づいて環境を動的に構築できるようにします。これにより、バックテスト時の次元不一致エラーを完全に解消します。</p>
+</section>
+<section id="id2">
+<h2>背景<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>現在の問題<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># v381モデル（110特徴量）のバックテスト</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># 環境は68特徴量を生成</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/ppo_reward_v381.zip&quot;</span><span class="p">)</span>  <span class="c1"># 110特徴量を期待</span>
+
+<span class="c1"># 実行</span>
+<span class="n">action</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+<span class="c1"># ❌ エラー: ValueError: Unexpected observation shape (68,) for Box environment, </span>
+<span class="c1">#            please use (110,) for the observation shape.</span>
+</pre></div>
+</div>
+</section>
+<section id="phase-1-2">
+<h3>Phase 1-2で実装済み<a class="headerlink" href="#phase-1-2" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>FeatureSchemaManager</strong> (<code class="docutils literal notranslate"><span class="pre">ztb/training/core/feature_schema_manager.py</span></code>)</p>
+<ul class="simple">
+<li><p>モデルごとのスキーマ保存・読み込み</p></li>
+<li><p>互換性チェック</p></li>
+<li><p>メタデータ管理</p></li>
+</ul>
+</li>
+<li><p><strong>UnifiedTrainer統合</strong> (<code class="docutils literal notranslate"><span class="pre">ztb/training/core/unified_trainer.py</span></code>)</p>
+<ul class="simple">
+<li><p>訓練時の自動スキーマ保存</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">_save_model_schema()</span></code>メソッド実装</p></li>
+</ul>
+</li>
+<li><p><strong>ディレクトリ構造</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/
+├── ppo_reward_v381_revised_profit_focused.zip
+├── ppo_reward_v384_curated_60.zip
+└── schemas/
+    ├── ppo_reward_v381_revised_profit_focused/
+    │   ├── metadata.json
+    │   ├── features_schema.json
+    │   └── scaler.npz
+    └── ppo_reward_v384_curated_60/
+        ├── metadata.json
+        ├── features_schema.json
+        └── scaler.npz
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="phase-3">
+<h2>Phase 3の目標<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>実装すべき機能<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>スキーマベースの環境作成</strong> ⭐ 最優先</p></li>
+<li><p><strong>バックテストの自動スキーマ対応</strong></p></li>
+<li><p><strong>live_trade/paper_tradeの対応</strong></p></li>
+<li><p><strong>既存モデルのスキーマ移行ツール</strong></p></li>
+</ol>
+</section>
+</section>
+<section id="id5">
+<h2>実装タスク<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="task-1">
+<h3>Task 1: スキーマベースの環境作成関数<a class="headerlink" href="#task-1" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/schema_env_factory.py</span></code> (新規作成)</p>
+<p><strong>実装内容</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Schema-based Environment Factory</span>
+
+<span class="sd">スキーマ情報からEnvironmentを動的に構築します。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_env_from_schema</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    モデルのスキーマ情報から環境を作成</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        model_name: モデル名（例: &quot;ppo_reward_v384_curated_60&quot;）</span>
+<span class="sd">        df: 市場データ</span>
+<span class="sd">        config: 環境設定（Noneの場合はデフォルト）</span>
+<span class="sd">        models_dir: モデルディレクトリ</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        HeavyTradingEnv: スキーマに基づいた環境</span>
+<span class="sd">        </span>
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError: スキーマが見つからない場合</span>
+<span class="sd">        ValueError: データに必要な特徴量がない場合</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># スキーマ読み込み</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
+    <span class="n">scaler</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_scaler</span><span class="p">()</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating environment from schema: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Expected features: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Feature names: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">... (showing first 5)&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># データに必要な特徴量があるか確認</span>
+    <span class="n">missing_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">missing_features</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Dataset is missing required features: </span><span class="si">{</span><span class="n">missing_features</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Dataset has: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Model expects: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features&quot;</span>
+        <span class="p">)</span>
+    
+    <span class="c1"># 設定を構築</span>
+    <span class="n">env_config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
+    
+    <span class="c1"># スキーマ情報を設定に追加</span>
+    <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+        <span class="s2">&quot;feature_names&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
+        <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="p">,</span>
+        <span class="s2">&quot;schema_hash&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="p">,</span>
+        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span>
+    <span class="p">})</span>
+    
+    <span class="c1"># スケーラー情報を追加</span>
+    <span class="k">if</span> <span class="n">scaler</span><span class="p">:</span>
+        <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s2">&quot;scaler_mean&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;scaler_std&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">],</span>
+        <span class="p">})</span>
+    
+    <span class="c1"># 訓練設定から環境パラメータを抽出（可能な範囲で）</span>
+    <span class="n">training_config</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">training_config</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;reward_scaling&quot;</span><span class="p">,</span> <span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">training_config</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">env_config</span><span class="p">:</span>
+            <span class="n">env_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    
+    <span class="c1"># 環境作成</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">env_config</span><span class="p">)</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Environment created with </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">env</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_env_from_model_path</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    モデルファイルパスから環境を作成</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        model_path: モデルファイルパス（例: &quot;models/ppo_reward_v384_curated_60.zip&quot;）</span>
+<span class="sd">        df: 市場データ</span>
+<span class="sd">        config: 環境設定</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        HeavyTradingEnv: スキーマに基づいた環境</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># モデル名を抽出</span>
+    <span class="n">model_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+    
+    <span class="c1"># models/ディレクトリを特定</span>
+    <span class="n">model_path_obj</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;models&quot;</span><span class="p">:</span>
+        <span class="n">models_dir</span> <span class="o">=</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">models_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>テスト</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># テストコード (tests/test_schema_env_factory.py)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.schema_env_factory</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">create_env_from_schema</span><span class="p">,</span>
+    <span class="n">create_env_from_model_path</span>
+<span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_create_env_from_schema</span><span class="p">():</span>
+    <span class="c1"># モックデータ作成</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span>
+        <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span>
+        <span class="c1"># ... 68特徴量</span>
+    <span class="p">})</span>
+    
+    <span class="c1"># 環境作成</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span>
+        <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># 検証</span>
+    <span class="k">assert</span> <span class="n">env</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="k">assert</span> <span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">68</span>  <span class="c1"># v384は68特徴量</span>
+</pre></div>
+</div>
+</section>
+<section id="task-2-heavytradingenv">
+<h3>Task 2: HeavyTradingEnvの拡張<a class="headerlink" href="#task-2-heavytradingenv" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py</span></code></p>
+<p><strong>修正内容</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>スキーマ情報の受け入れ</strong>:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># 既存のコード...</span>
+        
+        <span class="c1"># スキーマ情報の取得（オプショナル）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schema_hash</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_hash&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_names&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using schema-defined features: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># 既存のコード...</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p><strong>スケーラーの動的設定</strong>:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_setup_scaler</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;スケーラーのセットアップ&quot;&quot;&quot;</span>
+    <span class="c1"># スキーマからのスケーラー情報があれば使用</span>
+    <span class="k">if</span> <span class="s2">&quot;scaler_mean&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="ow">and</span> <span class="s2">&quot;scaler_std&quot;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scaler</span> <span class="o">=</span> <span class="n">NormalizationStats</span><span class="p">(</span>
+            <span class="n">feature_names</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
+            <span class="n">mean</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;scaler_mean&quot;</span><span class="p">],</span>
+            <span class="n">std</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;scaler_std&quot;</span><span class="p">],</span>
+            <span class="n">n_samples</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Using scaler from schema&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># 従来通りデータから計算</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_scaler</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="task-3">
+<h3>Task 3: バックテストスクリプトの改修<a class="headerlink" href="#task-3" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">backtest_with_schema.py</span></code> (新規作成)</p>
+<p><strong>実装内容</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Schema-aware Backtest Script</span>
+
+<span class="sd">モデルのスキーマ情報を自動検出してバックテストを実行します。</span>
+<span class="sd">v381（110特徴量）とv384（68特徴量）の両方に対応。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_csv_data_optimized</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.schema_env_factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_env_from_model_path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">run_backtest_with_schema</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">episodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    スキーマを考慮したバックテスト</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        model_path: モデルファイルパス</span>
+<span class="sd">        data_path: データファイルパス</span>
+<span class="sd">        episodes: エピソード数</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        バックテスト結果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Schema-aware Backtest&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model: </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># データ読み込み</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data_optimized</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># スキーマベースで環境作成（自動的に特徴量数を調整）</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created with </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># モデル読み込み</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Model loaded successfully&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span>
+    
+    <span class="c1"># バックテスト実行</span>
+    <span class="n">all_rewards</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_pnls</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">action_counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+    
+    <span class="k">for</span> <span class="n">ep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">episodes</span><span class="p">):</span>
+        <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">truncated</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">ep_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">ep_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="mi">0</span>
+        
+        <span class="k">while</span> <span class="ow">not</span> <span class="p">(</span><span class="n">done</span> <span class="ow">or</span> <span class="n">truncated</span><span class="p">)</span> <span class="ow">and</span> <span class="n">steps</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            
+            <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            
+            <span class="n">ep_reward</span> <span class="o">+=</span> <span class="n">reward</span>
+            <span class="n">ep_pnl</span> <span class="o">+=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pnl&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            
+            <span class="c1"># Count actions</span>
+            <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;BUY&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="n">steps</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="n">all_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep_reward</span><span class="p">)</span>
+        <span class="n">all_pnls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep_pnl</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="n">ep</span><span class="o">+</span><span class="mi">1</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">: Reward=</span><span class="si">{</span><span class="n">ep_reward</span><span class="si">:</span><span class="s2">7.2f</span><span class="si">}</span><span class="s2">, &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;PnL=</span><span class="si">{</span><span class="n">ep_pnl</span><span class="si">:</span><span class="s2">10,.0f</span><span class="si">}</span><span class="s2"> JPY, Steps=</span><span class="si">{</span><span class="n">steps</span><span class="si">:</span><span class="s2">4d</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    
+    <span class="c1"># 結果サマリー</span>
+    <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">action_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+        <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">,</span>
+        <span class="s2">&quot;episodes&quot;</span><span class="p">:</span> <span class="n">episodes</span><span class="p">,</span>
+        <span class="s2">&quot;avg_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+        <span class="s2">&quot;avg_pnl&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)),</span>
+        <span class="s2">&quot;total_pnl&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)),</span>
+        <span class="s2">&quot;action_distribution&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">k</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;count&quot;</span><span class="p">:</span> <span class="n">v</span><span class="p">,</span> <span class="s2">&quot;pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">v</span><span class="o">/</span><span class="n">total_actions</span><span class="o">*</span><span class="mi">100</span> <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)}</span>
+            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">action_counts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Backtest Results&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average Reward: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;avg_reward&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Average PnL: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;avg_pnl&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> JPY&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total PnL: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;total_pnl&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> JPY&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action Distribution:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">action</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;action_distribution&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;pct&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">results</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Schema-aware Backtest&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Model path (.zip)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--data&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Data path (.csv)&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--episodes&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of episodes&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output JSON file&quot;</span><span class="p">)</span>
+    
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">run_backtest_with_schema</span><span class="p">(</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="n">data_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">episodes</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">episodes</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># 結果保存</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="mi">0</span>
+        
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backtest failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># v381（110特徴量）のバックテスト</span>
+python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--model<span class="w"> </span>models/ppo_reward_v381_revised_profit_focused.zip<span class="w"> </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span>--episodes<span class="w"> </span><span class="m">20</span>
+
+<span class="c1"># v384（68特徴量）のバックテスト</span>
+python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--model<span class="w"> </span>models/ppo_reward_v384_curated_60.zip<span class="w"> </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span>--episodes<span class="w"> </span><span class="m">20</span>
+
+<span class="c1"># 両方とも次元不一致エラーなしで実行できる！</span>
+</pre></div>
+</div>
+</section>
+<section id="task-4">
+<h3>Task 4: 既存モデルのスキーマ移行<a class="headerlink" href="#task-4" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/migrate_legacy_schemas.py</span></code> (新規作成)</p>
+<p><strong>実装内容</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Legacy Schema Migration Tool</span>
+
+<span class="sd">既存のモデルのスキーマ情報を新しい管理システムに移行します。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span><span class="p">,</span> <span class="n">migrate_legacy_schema</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<span class="c1"># 既存モデルの設定情報（手動で定義）</span>
+<span class="n">KNOWN_MODELS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;ppo_reward_v381_revised_profit_focused&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="mi">110</span><span class="p">,</span>
+        <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;curated_features_list&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># 全特徴量</span>
+            <span class="s2">&quot;enable_feature_filtering&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>  <span class="c1"># 推定</span>
+            <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">0.003</span><span class="p">,</span>
+            <span class="s2">&quot;vf_coef&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+            <span class="s2">&quot;target_kl&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="mi">68</span><span class="p">,</span>
+        <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;curated_features_list&quot;</span><span class="p">:</span> <span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;enable_feature_filtering&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;feature_filter_mode&quot;</span><span class="p">:</span> <span class="s2">&quot;whitelist&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">,</span>
+            <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">0.003</span><span class="p">,</span>
+            <span class="s2">&quot;vf_coef&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+            <span class="s2">&quot;target_kl&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;単一モデルのスキーマを移行&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Migrating schema for: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># スキーマがすでに存在するか確認</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">existing</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Schema already exists for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Features: </span><span class="si">{</span><span class="n">existing</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Use --force to overwrite&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+        <span class="k">pass</span>  <span class="c1"># スキーマが存在しない（正常）</span>
+    
+    <span class="c1"># レガシースキーマを移行</span>
+    <span class="n">legacy_schema_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/features_schema.json&quot;</span><span class="p">)</span>
+    <span class="n">legacy_scaler_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/scaler.npz&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">legacy_schema_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Legacy schema not found: </span><span class="si">{</span><span class="n">legacy_schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    
+    <span class="c1"># 既知の設定を取得</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">KNOWN_MODELS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{})</span>
+    
+    <span class="c1"># 移行実行</span>
+    <span class="n">migrate_legacy_schema</span><span class="p">(</span>
+        <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
+        <span class="n">legacy_schema_path</span><span class="o">=</span><span class="n">legacy_schema_path</span><span class="p">,</span>
+        <span class="n">legacy_scaler_path</span><span class="o">=</span><span class="n">legacy_scaler_path</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="n">config</span>
+    <span class="p">)</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Migration completed for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate_all_models</span><span class="p">(</span><span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;すべての既知モデルを移行&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Migrating all known models&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+    
+    <span class="n">success_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">model_name</span> <span class="ow">in</span> <span class="n">KNOWN_MODELS</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">migrate_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">force</span><span class="p">):</span>
+            <span class="n">success_count</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Successfully migrated </span><span class="si">{</span><span class="n">success_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">KNOWN_MODELS</span><span class="p">)</span><span class="si">}</span><span class="s2"> models&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+    
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Migrate legacy schemas&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Specific model to migrate&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--all&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Migrate all known models&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--force&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Overwrite existing schemas&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--list&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;List all available schemas&quot;</span><span class="p">)</span>
+    
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list</span><span class="p">:</span>
+        <span class="c1"># 利用可能なスキーマをリスト</span>
+        <span class="n">FeatureSchemaManager</span><span class="o">.</span><span class="n">print_schema_summary</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">0</span>
+    
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">all</span><span class="p">:</span>
+        <span class="n">migrate_all_models</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">force</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+        <span class="n">migrate_model</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">force</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">parser</span><span class="o">.</span><span class="n">print_help</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    
+    <span class="k">return</span> <span class="mi">0</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+</div>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># すべての既知モデルを移行</span>
+python<span class="w"> </span>scripts/migrate_legacy_schemas.py<span class="w"> </span>--all
+
+<span class="c1"># 特定モデルのみ移行</span>
+python<span class="w"> </span>scripts/migrate_legacy_schemas.py<span class="w"> </span>--model<span class="w"> </span>ppo_reward_v381_revised_profit_focused
+
+<span class="c1"># 既存スキーマを上書き</span>
+python<span class="w"> </span>scripts/migrate_legacy_schemas.py<span class="w"> </span>--all<span class="w"> </span>--force
+
+<span class="c1"># スキーマ一覧表示</span>
+python<span class="w"> </span>scripts/migrate_legacy_schemas.py<span class="w"> </span>--list
+</pre></div>
+</div>
+</section>
+<section id="task-5-live-trade-paper-trade">
+<h3>Task 5: live_trade/paper_tradeの対応<a class="headerlink" href="#task-5-live-trade-paper-trade" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code></p>
+<p><strong>修正箇所</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 既存のモデル読み込み部分を修正</span>
+<span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="c1"># モデル読み込み</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    
+    <span class="c1"># スキーマベースで環境作成（追加）</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.schema_env_factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_env_from_model_path</span>
+    
+    <span class="c1"># リアルタイムデータ取得</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_latest_data</span><span class="p">()</span>
+    
+    <span class="c1"># スキーマベースで環境作成</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span>
+        <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+        <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+    <span class="p">)</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id6">
+<h2>テスト計画<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="id7">
+<h3>単体テスト<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># FeatureSchemaManager (すでに実装済み)</span>
+pytest<span class="w"> </span>tests/test_feature_schema_manager.py
+
+<span class="c1"># Schema Environment Factory (新規)</span>
+pytest<span class="w"> </span>tests/test_schema_env_factory.py
+
+<span class="c1"># HeavyTradingEnv拡張 (新規)</span>
+pytest<span class="w"> </span>tests/test_environment_schema_integration.py
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3>統合テスト<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># v381バックテスト（110特徴量）</span>
+python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model<span class="w"> </span>models/ppo_reward_v381_revised_profit_focused.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--episodes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>results_v381.json
+
+<span class="c1"># v384バックテスト（68特徴量）</span>
+python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model<span class="w"> </span>models/ppo_reward_v384_curated_60.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--episodes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>results_v384.json
+
+<span class="c1"># 両方とも成功することを確認</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>回帰テスト<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 既存の訓練が動作することを確認</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_test.json
+
+<span class="c1"># スキーマが自動保存されることを確認</span>
+ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id10">
+<h2>成功基準<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>必須要件<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <code class="docutils literal notranslate"><span class="pre">create_env_from_schema()</span></code>関数が動作</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> v381モデル（110特徴量）のバックテストが成功</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> v384モデル（68特徴量）のバックテストが成功</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 次元不一致エラーが発生しない</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 既存の訓練フローが正常動作</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>追加要件<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> レガシースキーマ移行ツールが動作</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> live_trade/paper_tradeが対応</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 全テストがパス</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ドキュメント更新</p></li>
+</ul>
+</section>
+</section>
+<section id="id13">
+<h2>注意事項<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>既存コードの互換性<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p><strong>重要</strong>: 既存の訓練・推論フローを壊さないこと</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 従来のコード（引き続き動作すべき）</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># 新しいコード（追加オプション）</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id15">
+<h3>エラーハンドリング<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>スキーマが見つからない場合: 明確なエラーメッセージ</p></li>
+<li><p>データに特徴量が不足している場合: 詳細なログ</p></li>
+<li><p>レガシーモデル（スキーマなし）: フォールバック動作</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>パフォーマンス<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>スキーマ読み込みはキャッシュ</p></li>
+<li><p>環境作成時の追加オーバーヘッドを最小化</p></li>
+<li><p>バックテスト速度に影響を与えない</p></li>
+</ul>
+</section>
+</section>
+<section id="id17">
+<h2>実装順序（推奨）<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Day 1</strong>: Task 1（スキーマベース環境作成）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">schema_env_factory.py</span></code>実装</p></li>
+<li><p>単体テスト作成</p></li>
+</ul>
+</li>
+<li><p><strong>Day 2</strong>: Task 2（HeavyTradingEnv拡張）</p>
+<ul class="simple">
+<li><p>スキーマ情報の受け入れ</p></li>
+<li><p>スケーラー動的設定</p></li>
+</ul>
+</li>
+<li><p><strong>Day 3</strong>: Task 3（バックテスト改修）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">backtest_with_schema.py</span></code>実装</p></li>
+<li><p>v381/v384でテスト</p></li>
+</ul>
+</li>
+<li><p><strong>Day 4</strong>: Task 4（スキーマ移行）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">migrate_legacy_schemas.py</span></code>実装</p></li>
+<li><p>既存モデル移行</p></li>
+</ul>
+</li>
+<li><p><strong>Day 5</strong>: Task 5 &amp; 統合テスト</p>
+<ul class="simple">
+<li><p>live_trade対応</p></li>
+<li><p>全体テスト</p></li>
+<li><p>ドキュメント更新</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id18">
+<h2>参考資料<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>既存コード<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>FeatureSchemaManager</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/feature_schema_manager.py</span></code></p></li>
+<li><p><strong>UnifiedTrainer</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/unified_trainer.py</span></code></p></li>
+<li><p><strong>HeavyTradingEnv</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py</span></code></p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>ドキュメント<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Phase 1-2実装サマリー</strong>: <code class="docutils literal notranslate"><span class="pre">docs/FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.md</span></code></p></li>
+<li><p><strong>改修計画書</strong>: <code class="docutils literal notranslate"><span class="pre">docs/FEATURE_SCHEMA_MANAGEMENT_REFORM.md</span></code></p></li>
+<li><p><strong>検証状況</strong>: <code class="docutils literal notranslate"><span class="pre">docs/V381_V384_VERIFICATION_STATUS.md</span></code></p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>スキーマ例<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="c1">// models/schemas/ppo_reward_v384_curated_60/metadata.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;model_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;num_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">68</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_names&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;volume&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="w"> </span><span class="err">...</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;schema_hash&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;f7be18533fa61876&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-10-10T16:26:20&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;training_config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;curated_features_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;enable_feature_filtering&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;feature_filter_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;whitelist&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50000</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;curated_features_spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_filtering_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_filter_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;whitelist&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id22">
+<h2>完了報告<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<p>実装完了時に以下を含めて報告してください:</p>
+<ol class="arabic simple">
+<li><p><strong>実装したファイル一覧</strong></p></li>
+<li><p><strong>テスト結果</strong>（すべてパスしたか）</p></li>
+<li><p><strong>バックテスト結果</strong>（v381とv384の両方）</p></li>
+<li><p><strong>既知の問題・制限事項</strong></p></li>
+<li><p><strong>次のフェーズ（Phase 4）への引き継ぎ事項</strong></p></li>
+</ol>
+</section>
+<section id="id23">
+<h2>質問・問題が発生した場合<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<p>以下の情報を添えて報告してください:</p>
+<ol class="arabic simple">
+<li><p>エラーメッセージ全文</p></li>
+<li><p>実行したコマンド</p></li>
+<li><p>期待した動作</p></li>
+<li><p>実際の動作</p></li>
+<li><p>関連するログ</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>作成日</strong>: 2025-10-10<br />
+<strong>対象フェーズ</strong>: Phase 3 (Environment &amp; Backtest Integration)<br />
+<strong>前提</strong>: Phase 1-2完了（FeatureSchemaManager + UnifiedTrainer統合）<br />
+<strong>目標</strong>: バックテスト時の次元不一致エラーを完全解消</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

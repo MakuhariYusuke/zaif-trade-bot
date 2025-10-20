@@ -1,0 +1,406 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.multimodal.config &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../multimodal.html">ztb.multimodal</a></li>
+      <li class="breadcrumb-item active">ztb.multimodal.config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.multimodal.config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;設定管理モジュール</span>
+
+<span class="sd">マルチモーダル学習モジュールの設定を管理するクラスを提供。</span>
+<span class="sd">YAMLファイルからの設定読み込みと検証を行う。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<div class="viewcode-block" id="DataConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.DataConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;データ収集設定&quot;&quot;&quot;</span>
+    <span class="n">symbols</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;USDJPY&quot;</span><span class="p">,</span> <span class="s2">&quot;EURUSD&quot;</span><span class="p">,</span> <span class="s2">&quot;GBPUSD&quot;</span><span class="p">])</span>
+    <span class="n">timeframe</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1m&quot;</span>
+    <span class="n">lookback_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;newsapi&quot;</span><span class="p">,</span> <span class="s2">&quot;alphavantage&quot;</span><span class="p">])</span>
+    <span class="n">keywords</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;forex&quot;</span><span class="p">,</span> <span class="s2">&quot;currency&quot;</span><span class="p">,</span> <span class="s2">&quot;economic&quot;</span><span class="p">])</span>
+    <span class="n">sentiment_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">indicators</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;GDP&quot;</span><span class="p">,</span> <span class="s2">&quot;CPI&quot;</span><span class="p">,</span> <span class="s2">&quot;UNEMPLOYMENT&quot;</span><span class="p">])</span>
+    <span class="n">countries</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;US&quot;</span><span class="p">,</span> <span class="s2">&quot;JP&quot;</span><span class="p">,</span> <span class="s2">&quot;EU&quot;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="FeaturesConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.FeaturesConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeaturesConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量エンジニアリング設定&quot;&quot;&quot;</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;distilbert-base-uncased-finetuned-sst-2-english&quot;</span>
+    <span class="n">max_length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span>
+    <span class="n">embedding_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span>
+    <span class="n">normalization</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;standard&quot;</span>
+    <span class="n">outlier_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">attention_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">fusion_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="ModelConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.ModelConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;モデルアーキテクチャ設定&quot;&quot;&quot;</span>
+    <span class="n">price_encoder_hidden_dims</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">])</span>
+    <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">text_encoder_model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bert-base-uncased&quot;</span>
+    <span class="n">fine_tune</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">economic_encoder_hidden_dims</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">32</span><span class="p">])</span>
+    <span class="n">attention_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span>
+    <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span>
+    <span class="n">actor_hidden_dims</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mi">256</span><span class="p">,</span> <span class="mi">128</span><span class="p">])</span>
+    <span class="n">critic_hidden_dims</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mi">256</span><span class="p">,</span> <span class="mi">128</span><span class="p">])</span>
+    <span class="n">gamma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.99</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.005</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span></div>
+
+
+<div class="viewcode-block" id="TrainingConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.TrainingConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;トレーニング設定&quot;&quot;&quot;</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3e-4</span>
+    <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">optimizer_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;adam&quot;</span>
+    <span class="n">weight_decay</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span>
+    <span class="n">reconstruction_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">kl_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">cross_modal_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">min_delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span></div>
+
+
+<div class="viewcode-block" id="EvaluationConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.EvaluationConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvaluationConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;評価設定&quot;&quot;&quot;</span>
+    <span class="n">metrics</span><span class="p">:</span> <span class="nb">list</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="s2">&quot;win_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;profit_factor&quot;</span><span class="p">])</span>
+    <span class="n">test_split</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">cross_validation_folds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">attention_maps</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">feature_importance</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="HardwareConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.HardwareConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HardwareConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ハードウェア設定&quot;&quot;&quot;</span>
+    <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span>
+    <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span>
+    <span class="n">pin_memory</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="APIConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.APIConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">APIConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;API設定&quot;&quot;&quot;</span>
+    <span class="n">newsapi_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">alphavantage_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">fred_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="MultimodalConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.MultimodalConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultimodalConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;マルチモーダル学習モジュールのメイン設定クラス&quot;&quot;&quot;</span>
+
+    <span class="c1"># バージョン情報</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
+
+    <span class="c1"># サブ設定</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">DataConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">DataConfig</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">:</span> <span class="n">FeaturesConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FeaturesConfig</span><span class="p">)</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">ModelConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ModelConfig</span><span class="p">)</span>
+    <span class="n">training</span><span class="p">:</span> <span class="n">TrainingConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">TrainingConfig</span><span class="p">)</span>
+    <span class="n">evaluation</span><span class="p">:</span> <span class="n">EvaluationConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">EvaluationConfig</span><span class="p">)</span>
+    <span class="n">hardware</span><span class="p">:</span> <span class="n">HardwareConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">HardwareConfig</span><span class="p">)</span>
+    <span class="n">api</span><span class="p">:</span> <span class="n">APIConfig</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">APIConfig</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MultimodalConfig.from_yaml">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.MultimodalConfig.from_yaml">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_yaml</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">yaml_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;MultimodalConfig&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        YAMLファイルから設定を読み込む</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            yaml_path: YAMLファイルのパス</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            MultimodalConfigインスタンス</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">yaml_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">yaml_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">yaml_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;設定ファイルが見つかりません: </span><span class="si">{</span><span class="n">yaml_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">yaml_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">config_dict</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="c1"># 環境変数の展開</span>
+        <span class="n">config_dict</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_expand_env_vars</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_from_dict</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MultimodalConfig.from_dict">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.MultimodalConfig.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;MultimodalConfig&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;辞書から設定を作成&quot;&quot;&quot;</span>
+        <span class="n">config_dict</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_expand_env_vars</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_from_dict</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span></div>
+
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;MultimodalConfig&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;辞書から設定オブジェクトを作成&quot;&quot;&quot;</span>
+        <span class="c1"># 各サブ設定を作成</span>
+        <span class="n">data_config</span> <span class="o">=</span> <span class="n">DataConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">features_config</span> <span class="o">=</span> <span class="n">FeaturesConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;features&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">model_config</span> <span class="o">=</span> <span class="n">ModelConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">training_config</span> <span class="o">=</span> <span class="n">TrainingConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;training&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">evaluation_config</span> <span class="o">=</span> <span class="n">EvaluationConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;evaluation&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">hardware_config</span> <span class="o">=</span> <span class="n">HardwareConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hardware&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+        <span class="n">api_config</span> <span class="o">=</span> <span class="n">APIConfig</span><span class="p">(</span><span class="o">**</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;api&#39;</span><span class="p">,</span> <span class="p">{}))</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">version</span><span class="o">=</span><span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;version&#39;</span><span class="p">,</span> <span class="s1">&#39;1.0.0&#39;</span><span class="p">),</span>
+            <span class="n">data</span><span class="o">=</span><span class="n">data_config</span><span class="p">,</span>
+            <span class="n">features</span><span class="o">=</span><span class="n">features_config</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">model_config</span><span class="p">,</span>
+            <span class="n">training</span><span class="o">=</span><span class="n">training_config</span><span class="p">,</span>
+            <span class="n">evaluation</span><span class="o">=</span><span class="n">evaluation_config</span><span class="p">,</span>
+            <span class="n">hardware</span><span class="o">=</span><span class="n">hardware_config</span><span class="p">,</span>
+            <span class="n">api</span><span class="o">=</span><span class="n">api_config</span>
+        <span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_expand_env_vars</span><span class="p">(</span><span class="n">config_dict</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;設定内の環境変数を展開&quot;&quot;&quot;</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">expand_value</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;${&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">value</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;}&#39;</span><span class="p">):</span>
+                <span class="n">env_var</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="n">env_var</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">expand_value</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="k">return</span> <span class="p">[</span><span class="n">expand_value</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">value</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">value</span>
+
+        <span class="k">return</span> <span class="n">expand_value</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+<div class="viewcode-block" id="MultimodalConfig.to_dict">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.MultimodalConfig.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;設定を辞書に変換&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;version&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+            <span class="s1">&#39;data&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;symbols&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">symbols</span><span class="p">,</span>
+                <span class="s1">&#39;timeframe&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">timeframe</span><span class="p">,</span>
+                <span class="s1">&#39;lookback_days&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">lookback_days</span><span class="p">,</span>
+                <span class="s1">&#39;sources&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sources</span><span class="p">,</span>
+                <span class="s1">&#39;keywords&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">keywords</span><span class="p">,</span>
+                <span class="s1">&#39;sentiment_threshold&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">sentiment_threshold</span><span class="p">,</span>
+                <span class="s1">&#39;indicators&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">indicators</span><span class="p">,</span>
+                <span class="s1">&#39;countries&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">countries</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;model_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">model_name</span><span class="p">,</span>
+                <span class="s1">&#39;max_length&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">max_length</span><span class="p">,</span>
+                <span class="s1">&#39;embedding_dim&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">embedding_dim</span><span class="p">,</span>
+                <span class="s1">&#39;normalization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">normalization</span><span class="p">,</span>
+                <span class="s1">&#39;outlier_threshold&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">outlier_threshold</span><span class="p">,</span>
+                <span class="s1">&#39;attention_heads&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">attention_heads</span><span class="p">,</span>
+                <span class="s1">&#39;fusion_layers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">fusion_layers</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;model&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;price_encoder_hidden_dims&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">price_encoder_hidden_dims</span><span class="p">,</span>
+                <span class="s1">&#39;dropout&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">dropout</span><span class="p">,</span>
+                <span class="s1">&#39;text_encoder_model_name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">text_encoder_model_name</span><span class="p">,</span>
+                <span class="s1">&#39;fine_tune&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fine_tune</span><span class="p">,</span>
+                <span class="s1">&#39;economic_encoder_hidden_dims&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">economic_encoder_hidden_dims</span><span class="p">,</span>
+                <span class="s1">&#39;attention_dim&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">attention_dim</span><span class="p">,</span>
+                <span class="s1">&#39;num_heads&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">num_heads</span><span class="p">,</span>
+                <span class="s1">&#39;actor_hidden_dims&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">actor_hidden_dims</span><span class="p">,</span>
+                <span class="s1">&#39;critic_hidden_dims&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">critic_hidden_dims</span><span class="p">,</span>
+                <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">gamma</span><span class="p">,</span>
+                <span class="s1">&#39;tau&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">tau</span><span class="p">,</span>
+                <span class="s1">&#39;alpha&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">alpha</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;training&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span>
+                <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span>
+                <span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">epochs</span><span class="p">,</span>
+                <span class="s1">&#39;optimizer_type&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">optimizer_type</span><span class="p">,</span>
+                <span class="s1">&#39;weight_decay&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">weight_decay</span><span class="p">,</span>
+                <span class="s1">&#39;reconstruction_weight&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">reconstruction_weight</span><span class="p">,</span>
+                <span class="s1">&#39;kl_weight&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">kl_weight</span><span class="p">,</span>
+                <span class="s1">&#39;cross_modal_weight&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">cross_modal_weight</span><span class="p">,</span>
+                <span class="s1">&#39;patience&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">patience</span><span class="p">,</span>
+                <span class="s1">&#39;min_delta&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training</span><span class="o">.</span><span class="n">min_delta</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;evaluation&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;metrics&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">metrics</span><span class="p">,</span>
+                <span class="s1">&#39;test_split&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">test_split</span><span class="p">,</span>
+                <span class="s1">&#39;cross_validation_folds&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">cross_validation_folds</span><span class="p">,</span>
+                <span class="s1">&#39;attention_maps&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">attention_maps</span><span class="p">,</span>
+                <span class="s1">&#39;feature_importance&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation</span><span class="o">.</span><span class="n">feature_importance</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;hardware&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;device&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="s1">&#39;num_workers&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">num_workers</span><span class="p">,</span>
+                <span class="s1">&#39;pin_memory&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">pin_memory</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;api&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;newsapi_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">newsapi_key</span><span class="p">,</span>
+                <span class="s1">&#39;alphavantage_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">alphavantage_key</span><span class="p">,</span>
+                <span class="s1">&#39;fred_key&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">fred_key</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="MultimodalConfig.save_yaml">
+<a class="viewcode-back" href="../../../api/generated/ztb.multimodal.config.html#ztb.multimodal.config.MultimodalConfig.save_yaml">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_yaml</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">yaml_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;設定をYAMLファイルに保存&quot;&quot;&quot;</span>
+        <span class="n">config_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">yaml_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config_dict</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">allow_unicode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1282 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaif Trade Bot Runbook &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Zaif Trade Bot Operations" href="ops.html" />
+    <link rel="prev" title="運用手順マニュアル" href="operations_manual.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="reference/index.html">Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CONFIGURATION_GUIDE.html">統一設定管理ガイド (Unified Configuration Management Guide)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations_manual.html">運用手順マニュアル</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Zaif Trade Bot Runbook</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">概要</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">🚀 実験開始・停止手順</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">実験開始</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">再現性ポリシー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">実験停止</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">📊 監視方法</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#prometheus-metrics">Prometheus Metrics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#grafana-dashboard">Grafana Dashboard</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#discord">Discord通知</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">🔧 トラブルシューティング</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#api">API障害時</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">メモリ不足</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#nan">NaN発生時</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">ドリフト検出</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">🔄 チェックポイント復旧手順</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id11">自動復旧</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id12">手動復旧</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">🛑 緊急停止（サーキットブレーカー）</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id14">自動停止条件</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">手動緊急停止</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">復旧前の確認事項</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">📈 パフォーマンス最適化</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id18">メモリ使用量削減</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#cpu">CPU使用量最適化</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#i-o">ディスクI/O削減</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id19">🔍 ログ分析</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id20">主要ログファイル</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id21">ログ分析コマンド</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">📞 サポート</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id23">緊急連絡先</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id24">エスカレーション</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#go-no-go-checklist">✅ Go/No-Go Checklist</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id25">事前チェックリスト</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id30">自動評価スクリプト</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id32">移行手順</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id33">📊 データ保持ポリシー</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id34">ログ保持期間</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id35">バックアップ保持</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id36">データ削除手順</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id37">アーカイブストレージ</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id38">コンプライアンス</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id39">📢 通知・清掃・インデックス化</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id40">アラート通知</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#tensorboard">TensorBoard スクレイピング</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id41">アーティファクト清掃</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id42">セッションインデックス</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id43">進捗推定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id44">エラー収集</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id45">アーティファクトバンドル</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id46">監視プロセス一括起動</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id47">ディスク容量・I/O 健康監視</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id48">反復実行ランチャ</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id49">アーティファクト整合性チェッカー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id50">運用スクリプト統合ラッパー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id51">ステータススナップショット集約</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id52">設定ドリフト検出</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#jsonl">JSONLログ区切り圧縮</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id53">ヘルスチェック</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id54">会場APIヘルスチェック</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id55">保持ポリシー</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id56">アーティファクトクリーンアップ</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id57">薄いラッパースクリプト</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id58">トレーニング開始ラッパー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id59">監視開始ラッパー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id60">ステータスチェックラッパー</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id61">アーティファクトクリーンアップラッパー</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id62">型安全と例外方針</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id63">型安全強化</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id64">例外処理方針</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id65">常駐ランナーの名称統一</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id66">サービスランナーの統一</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id67">サービス設定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id68">移行時の注意</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#pr-core-26">🔒 注文送信の安全性 (PR-Core-26)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id69">概要</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id70">安全機能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id71">使用方法</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id72">テスト</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id73">設定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id74">トラブルシューティング</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ops.html">Zaif Trade Bot Operations</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="reference/index.html">Reference</a></li>
+      <li class="breadcrumb-item active">Zaif Trade Bot Runbook</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/runbook.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="zaif-trade-bot-runbook">
+<h1>Zaif Trade Bot Runbook<a class="headerlink" href="#zaif-trade-bot-runbook" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>このドキュメントは、Zaif Trade Botの運用、監視、トラブルシューティングの手順をまとめたものです。</p>
+</section>
+<section id="id2">
+<h2>🚀 実験開始・停止手順<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>実験開始<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>環境準備</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 依存関係のインストール</span>
+npm<span class="w"> </span>install
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt<span class="w"> </span>-r<span class="w"> </span>requirements-dev.txt
+
+<span class="c1"># 設定ファイルの準備</span>
+cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+<span class="c1"># .envファイルを編集してAPIキーなどを設定</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>事前チェック</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># コード品質チェック</span>
+npm<span class="w"> </span>run<span class="w"> </span>pre-commit
+
+<span class="c1"># ユニットテスト実行</span>
+npm<span class="w"> </span>run<span class="w"> </span>test:unit
+
+<span class="c1"># 型チェック</span>
+npm<span class="w"> </span>run<span class="w"> </span>type-check
+npm<span class="w"> </span>run<span class="w"> </span>type-check:py
+</pre></div>
+</div>
+</li>
+<li><p><strong>1M Training 開始 (Makeターゲット使用)</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Correlation ID生成</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CORR</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>-u<span class="w"> </span>+%Y%m%dT%H%M%SZ<span class="k">)</span>
+
+<span class="c1"># トレーニング開始</span>
+make<span class="w"> </span>1m-start<span class="w"> </span><span class="nv">CORR</span><span class="o">=</span><span class="nv">$CORR</span>
+
+<span class="c1"># 別ターミナルで監視</span>
+make<span class="w"> </span>1m-watch<span class="w"> </span><span class="nv">CORR</span><span class="o">=</span><span class="nv">$CORR</span>
+
+<span class="c1"># トレーニング完了後、アーティファクト生成</span>
+make<span class="w"> </span>1m-rollup<span class="w"> </span><span class="nv">CORR</span><span class="o">=</span><span class="nv">$CORR</span>
+
+<span class="c1"># 停止が必要な場合</span>
+make<span class="w"> </span>1m-stop
+</pre></div>
+</div>
+</li>
+<li><p><strong>Paper Trading 開始</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定確認</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">EXCHANGE</span><span class="o">=</span>paper
+<span class="nb">export</span><span class="w"> </span><span class="nv">DRY_RUN</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TEST_MODE</span><span class="o">=</span><span class="m">1</span>
+
+<span class="c1"># シナリオ実行</span>
+npm<span class="w"> </span>run<span class="w"> </span>mock:scenario
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id4">
+<h3>再現性ポリシー<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>トレーニングの再現性を確保するため、以下のポリシーを遵守してください：</p>
+<ol class="arabic">
+<li><p><strong>Seed管理</strong>: すべての実験で固定seedを使用</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 同一seedで再現可能な実行</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.run_1m<span class="w"> </span>--correlation-id<span class="w"> </span>test_001<span class="w"> </span>--seed<span class="w"> </span><span class="m">42</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>環境一貫性</strong>: 同一のPythonバージョン、ライブラリバージョンを使用</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 環境確認</span>
+python<span class="w"> </span>--version
+pip<span class="w"> </span>freeze<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">&quot;(torch|numpy|stable-baselines3)&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>決定論的動作</strong>: PyTorchの決定論的アルゴリズムを有効化</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">torch.backends.cudnn.deterministic</span> <span class="pre">=</span> <span class="pre">True</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">torch.backends.cudnn.benchmark</span> <span class="pre">=</span> <span class="pre">False</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Seed由来の派生</strong>: 同一ベースseedから派生seedを生成</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.seed_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_seed_manager</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">get_seed_manager</span><span class="p">()</span>
+<span class="n">manager</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">env_seed</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">fork_seed</span><span class="p">(</span><span class="s2">&quot;environment&quot;</span><span class="p">)</span>
+<span class="n">eval_seed</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">fork_seed</span><span class="p">(</span><span class="s2">&quot;evaluation&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>結果検証</strong>: 同一seedでの複数実行でreward系列が一致することを確認</p></li>
+<li><p><strong>Live Trading 移行</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定変更</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">EXCHANGE</span><span class="o">=</span>zaif
+<span class="nb">export</span><span class="w"> </span><span class="nv">DRY_RUN</span><span class="o">=</span><span class="m">0</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TEST_MODE</span><span class="o">=</span><span class="m">0</span>
+
+<span class="c1"># 本番開始（慎重に！）</span>
+npm<span class="w"> </span>run<span class="w"> </span>trade:live
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id5">
+<h3>実験停止<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>Graceful Shutdown</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># SIGTERM送信</span>
+pkill<span class="w"> </span>-TERM<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;trade-live&quot;</span>
+
+<span class="c1"># または直接停止</span>
+npm<span class="w"> </span>run<span class="w"> </span>trade:live:dry<span class="w">  </span><span class="c1"># DRY_RUNモードで安全停止</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Kill Switch による緊急停止</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Kill switch ファイル作成（デフォルト: /tmp/ztb.stop）</span>
+touch<span class="w"> </span>/tmp/ztb.stop
+
+<span class="c1"># または環境変数で強制停止</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ZTB_KILL</span><span class="o">=</span><span class="m">1</span>
+
+<span class="c1"># またはHTTPエンドポイント（実装されている場合）</span>
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/kill
+</pre></div>
+</div>
+</li>
+<li><p><strong>強制停止（緊急時）</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># SIGKILL送信</span>
+pkill<span class="w"> </span>-KILL<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;trade-live&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>インシデント対応手順</strong></p>
+<ul class="simple">
+<li><p>Kill switch が作動したら、まず原因をログで確認</p></li>
+<li><p>設定されたトリガー（損失率、レイテンシ、エラーレート）をチェック</p></li>
+<li><p>問題解決後、kill switch をリセット: <code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">/tmp/ztb.stop</span></code></p></li>
+<li><p>再開前にリスクプロファイルを conservative に変更</p></li>
+</ul>
+</li>
+<li><p><strong>クリーンアップ</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># テンポラリファイル削除</span>
+npm<span class="w"> </span>run<span class="w"> </span>clean:tmp
+
+<span class="c1"># ログ保存</span>
+cp<span class="w"> </span>logs/<span class="w"> </span>logs_backup_<span class="k">$(</span>date<span class="w"> </span>+%Y%m%d_%H%M%S<span class="k">)</span><span class="w"> </span>-r
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="id6">
+<h2>📊 監視方法<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="prometheus-metrics">
+<h3>Prometheus Metrics<a class="headerlink" href="#prometheus-metrics" title="Link to this heading"></a></h3>
+<p>主要なメトリクス：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_data_drift_score</span></code>: データドリフト検出スコア</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_model_performance_drift</span></code>: モデル性能ドリフト</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_quality_gates_passed_total</span></code>: 品質ゲート合格数</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_active_jobs</span></code>: 実行中のジョブ数</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_portfolio_balance</span></code>: ポートフォリオ残高</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb_portfolio_pnl</span></code>: ポートフォリオP&amp;L</p></li>
+</ul>
+</section>
+<section id="grafana-dashboard">
+<h3>Grafana Dashboard<a class="headerlink" href="#grafana-dashboard" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>アクセス</strong>: <code class="docutils literal notranslate"><span class="pre">http://localhost:3000</span></code></p></li>
+<li><p><strong>主要パネル</strong>:</p>
+<ul class="simple">
+<li><p>Portfolio Performance</p></li>
+<li><p>Data Quality Metrics</p></li>
+<li><p>System Health</p></li>
+<li><p>Drift Detection</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="discord">
+<h3>Discord通知<a class="headerlink" href="#discord" title="Link to this heading"></a></h3>
+<p>以下のイベントで通知：</p>
+<ul class="simple">
+<li><p>✅ <strong>成功通知</strong>: 取引実行、チェックポイント保存</p></li>
+<li><p>⚠️ <strong>警告</strong>: ドリフト検出、スリッページ超過</p></li>
+<li><p>🚫 <strong>エラー</strong>: API障害、品質ゲート失敗</p></li>
+<li><p>🔴 <strong>緊急</strong>: サーキットブレーカー発動</p></li>
+</ul>
+</section>
+</section>
+<section id="id7">
+<h2>🔧 トラブルシューティング<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="api">
+<h3>API障害時<a class="headerlink" href="#api" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>: API接続エラー、レートリミット超過</p>
+<p><strong>対応手順</strong>:</p>
+<ol class="arabic">
+<li><p><strong>ログ確認</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tail<span class="w"> </span>-f<span class="w"> </span>logs/trade-bot.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>error
+</pre></div>
+</div>
+</li>
+<li><p><strong>Watchdog状態確認</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Bridge接続状態確認</span>
+curl<span class="w"> </span>http://localhost:8000/metrics<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ztb_bridge
+</pre></div>
+</div>
+</li>
+<li><p><strong>APIエンドポイントテスト</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Zaif API疎通確認</span>
+npm<span class="w"> </span>run<span class="w"> </span>test:zaif
+</pre></div>
+</div>
+</li>
+<li><p><strong>自動復旧待機</strong></p>
+<ul class="simple">
+<li><p>Watchdogが自動的に再接続を試行（最大5回）</p></li>
+<li><p>10分ごとに再試行</p></li>
+</ul>
+</li>
+<li><p><strong>手動介入（復旧しない場合）</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># プロセス再起動</span>
+npm<span class="w"> </span>run<span class="w"> </span>trade:live:dry<span class="w">  </span><span class="c1"># 安全モードで再起動</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id8">
+<h3>メモリ不足<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>: OOM Killer発動、メモリ使用率95%以上</p>
+<p><strong>対応手順</strong>:</p>
+<ol class="arabic">
+<li><p><strong>メモリ使用状況確認</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># プロセスメモリ確認</span>
+ps<span class="w"> </span>aux<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>trade-live<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1
+
+<span class="c1"># システムメモリ確認</span>
+free<span class="w"> </span>-h
+</pre></div>
+</div>
+</li>
+<li><p><strong>設定調整</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># バッチサイズ削減</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ML_BATCH_SIZE</span><span class="o">=</span><span class="m">32</span><span class="w">  </span><span class="c1"># デフォルト64から削減</span>
+
+<span class="c1"># ワーカー数削減</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ML_MAX_WORKERS</span><span class="o">=</span><span class="m">2</span><span class="w">  </span><span class="c1"># デフォルト4から削減</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>プロセス再起動</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>npm<span class="w"> </span>run<span class="w"> </span>trade:live:dry
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="nan">
+<h3>NaN発生時<a class="headerlink" href="#nan" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>: 特徴量計算でNaN、無限大値</p>
+<p><strong>対応手順</strong>:</p>
+<ol class="arabic">
+<li><p><strong>NaN検出</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 特徴量ログ確認</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/features.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-i<span class="w"> </span>nan
+</pre></div>
+</div>
+</li>
+<li><p><strong>データ品質チェック</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 欠損値確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import pandas as pd</span>
+<span class="s2">df = pd.read_csv(&#39;data/price_data.csv&#39;)</span>
+<span class="s2">print(&#39;NaN counts:&#39;, df.isna().sum().sum())</span>
+<span class="s2">print(&#39;Inf counts:&#39;, (df == float(&#39;inf&#39;)).sum().sum())</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>特徴量再計算</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># キャッシュクリア</span>
+rm<span class="w"> </span>-rf<span class="w"> </span>__pycache__/<span class="w"> </span>ztb/features/__pycache__/
+
+<span class="c1"># 強制再計算</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">FEATURE_CACHE_ENABLED</span><span class="o">=</span><span class="m">0</span>
+npm<span class="w"> </span>run<span class="w"> </span>trade:live:dry
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id9">
+<h3>ドリフト検出<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>: データドリフト警告、モデル性能低下</p>
+<p><strong>対応手順</strong>:</p>
+<ol class="arabic">
+<li><p><strong>ドリフト分析</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ドリフトレポート生成</span>
+python<span class="w"> </span>python/drift_analysis.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>ベースライン更新</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 新しい基準値で更新</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">from ztb.utils.drift import DriftMonitor</span>
+<span class="s2">monitor = DriftMonitor()</span>
+<span class="s2"># 現在のデータを基準値に設定</span>
+<span class="s2">monitor.update_baseline(current_features_df, current_pnl)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>モデル再訓練</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># MLパイプライン実行</span>
+npm<span class="w"> </span>run<span class="w"> </span>ml:search
+npm<span class="w"> </span>run<span class="w"> </span>ml:export
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="id10">
+<h2>🔄 チェックポイント復旧手順<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>自動復旧<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<p>システムは自動的に以下のチェックポイントを保存：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">checkpoints/model_checkpoint.pkl</span></code>: モデル状態</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code>: 取引状態</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">positions.json</span></code>: ポジション状態</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>手動復旧<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>プロセス状態確認</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 実行中プロセス確認</span>
+ps<span class="w"> </span>aux<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>trade-live
+</pre></div>
+</div>
+</li>
+<li><p><strong>チェックポイント確認</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 最新チェックポイント確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>checkpoints/<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-5
+</pre></div>
+</div>
+</li>
+<li><p><strong>状態復元</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定ファイル確認</span>
+cat<span class="w"> </span>trade-state.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>.phase
+
+<span class="c1"># ポジション確認</span>
+cat<span class="w"> </span>positions.json<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span><span class="s1">&#39;.positions | length&#39;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>部分復旧</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 特定の状態のみ復旧</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">RESTORE_FROM_CHECKPOINT</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CHECKPOINT_PATH</span><span class="o">=</span>checkpoints/model_checkpoint.pkl
+npm<span class="w"> </span>run<span class="w"> </span>trade:live:dry
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="id13">
+<h2>🛑 緊急停止（サーキットブレーカー）<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>自動停止条件<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>日次損失</strong>: 2%超過</p></li>
+<li><p><strong>最大ドローダウン</strong>: 5%超過</p></li>
+<li><p><strong>連続損失</strong>: 5回連続</p></li>
+<li><p><strong>価格変動</strong>: ±10%（1分以内）</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>手動緊急停止<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>即時停止</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全プロセス強制終了</span>
+pkill<span class="w"> </span>-9<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;trade-live&quot;</span>
+pkill<span class="w"> </span>-9<span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;node.*trade&quot;</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>ポジション決済</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 手動決済（必要な場合）</span>
+npm<span class="w"> </span>run<span class="w"> </span>balance<span class="w">  </span><span class="c1"># 残高確認</span>
+<span class="c1"># 必要に応じて手動決済</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>システム隔離</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># APIキー無効化</span>
+<span class="nb">unset</span><span class="w"> </span>ZAIF_API_KEY
+<span class="nb">unset</span><span class="w"> </span>ZAIF_API_SECRET
+
+<span class="c1"># 設定ファイルバックアップ</span>
+cp<span class="w"> </span>.env<span class="w"> </span>.env.emergency_backup
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="id16">
+<h3>復旧前の確認事項<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> API接続正常性</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 残高確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ポジション状態確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ログ分析（エラー原因特定）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 設定ファイル検証</p></li>
+</ul>
+</section>
+</section>
+<section id="id17">
+<h2>📈 パフォーマンス最適化<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>メモリ使用量削減<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定調整</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ML_BATCH_SIZE</span><span class="o">=</span><span class="m">16</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">FEATURE_CACHE_SIZE</span><span class="o">=</span><span class="m">1000</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MAX_POSITIONS</span><span class="o">=</span><span class="m">3</span>
+</pre></div>
+</div>
+</section>
+<section id="cpu">
+<h3>CPU使用量最適化<a class="headerlink" href="#cpu" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 並列処理調整</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">ML_MAX_WORKERS</span><span class="o">=</span><span class="m">2</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">OPENBLAS_NUM_THREADS</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MKL_NUM_THREADS</span><span class="o">=</span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+<section id="i-o">
+<h3>ディスクI/O削減<a class="headerlink" href="#i-o" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ログレベル調整</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">LOG_LEVEL</span><span class="o">=</span>WARNING<span class="w">  </span><span class="c1"># DEBUGからWARNINGに</span>
+
+<span class="c1"># キャッシュ有効化</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">FEATURE_CACHE_ENABLED</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PRICE_CACHE_ENABLED</span><span class="o">=</span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id19">
+<h2>🔍 ログ分析<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<section id="id20">
+<h3>主要ログファイル<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">logs/trade-bot.log</span></code>: メイン取引ログ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logs/features.log</span></code>: 特徴量計算ログ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logs/errors.log</span></code>: エラーログ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logs/metrics.log</span></code>: メトリクスログ</p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>ログ分析コマンド<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># エラー集計</span>
+grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;ERROR&quot;</span><span class="w"> </span>logs/*.log
+
+<span class="c1"># 取引成功率</span>
+grep<span class="w"> </span><span class="s2">&quot;order executed&quot;</span><span class="w"> </span>logs/trade-bot.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>wc<span class="w"> </span>-l
+
+<span class="c1"># パフォーマンス統計</span>
+grep<span class="w"> </span><span class="s2">&quot;PnL:&quot;</span><span class="w"> </span>logs/trade-bot.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-10
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id22">
+<h2>📞 サポート<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>緊急連絡先<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Discord</strong>: 自動通知チャンネル</p></li>
+<li><p><strong>ログ</strong>: 詳細は <code class="docutils literal notranslate"><span class="pre">logs/</span></code> ディレクトリ</p></li>
+<li><p><strong>メトリクス</strong>: <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/metrics</span></code></p></li>
+</ul>
+</section>
+<section id="id24">
+<h3>エスカレーション<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Level 1</strong>: 自動復旧（Watchdog）</p></li>
+<li><p><strong>Level 2</strong>: 手動再起動（オペレーター）</p></li>
+<li><p><strong>Level 3</strong>: コード修正（開発者）</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="go-no-go-checklist">
+<h2>✅ Go/No-Go Checklist<a class="headerlink" href="#go-no-go-checklist" title="Link to this heading"></a></h2>
+<section id="id25">
+<h3>事前チェックリスト<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<p>本番移行前に以下の項目をすべて確認してください：</p>
+<section id="id26">
+<h4>🔧 システム準備<a class="headerlink" href="#id26" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>CI/CD パイプライン</strong>: すべてのテストが通過 (<code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">test:unit</span> <span class="pre">&amp;&amp;</span> <span class="pre">npm</span> <span class="pre">run</span> <span class="pre">test:int-fast</span></code>)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>依存関係</strong>: すべての依存パッケージがインストール済み</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>設定ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">.env</span></code> ファイルが正しく設定（APIキー、シークレット）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>データ品質</strong>: 価格データが最新で欠損なし</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>ネットワーク</strong>: APIエンドポイントへの接続確認</p></li>
+</ul>
+</section>
+<section id="id27">
+<h4>📊 パフォーマンス基準<a class="headerlink" href="#id27" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>メモリ使用量</strong>: &lt; 500MB（ピーク時）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>CPU使用率</strong>: &lt; 80%（平均）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>レスポンスタイム</strong>: API呼び出し &lt; 2秒</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>エラー率</strong>: &lt; 1%（直近1時間）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>スリッページ</strong>: 平均 &lt; 0.5%</p></li>
+</ul>
+</section>
+<section id="id28">
+<h4>💰 リスク管理<a class="headerlink" href="#id28" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>テスト取引</strong>: Paper trading で最低10回成功</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>損失制限</strong>: Kill switch が正しく設定（日次損失2%）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>ポジション制限</strong>: 最大ポジション数 = 3</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>ドローダウン</strong>: 最大許容5%</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>バックテスト</strong>: 過去データで安定したパフォーマンス</p></li>
+</ul>
+</section>
+<section id="id29">
+<h4>🔍 品質ゲート<a class="headerlink" href="#id29" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>コードカバレッジ</strong>: &gt; 80%</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>型チェック</strong>: mypy エラーなし</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>セキュリティ</strong>: detect-secrets クリア</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>ドリフト検出</strong>: データ/モデルドリフトなし</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <strong>ログ</strong>: 構造化ログが正しく出力</p></li>
+</ul>
+</section>
+</section>
+<section id="id30">
+<h3>自動評価スクリプト<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<p>Go/No-Go 判定を自動化するために以下のスクリプトを使用：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 自動チェック実行</span>
+python<span class="w"> </span>scripts/go_nogo_check.py
+
+<span class="c1"># 詳細レポート生成</span>
+python<span class="w"> </span>scripts/go_nogo_check.py<span class="w"> </span>--report
+</pre></div>
+</div>
+<section id="id31">
+<h4>判定基準<a class="headerlink" href="#id31" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>GO</strong>: すべてのチェックが✅</p></li>
+<li><p><strong>NO-GO</strong>: 1つ以上のチェックが❌</p></li>
+<li><p><strong>CONDITIONAL</strong>: 警告あり、判断が必要</p></li>
+</ul>
+</section>
+</section>
+<section id="id32">
+<h3>移行手順<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>GO判定後</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定変更</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">EXCHANGE</span><span class="o">=</span>zaif
+<span class="nb">export</span><span class="w"> </span><span class="nv">DRY_RUN</span><span class="o">=</span><span class="m">0</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TEST_MODE</span><span class="o">=</span><span class="m">0</span>
+
+<span class="c1"># 本番開始</span>
+npm<span class="w"> </span>run<span class="w"> </span>trade:live
+</pre></div>
+</div>
+</li>
+<li><p><strong>監視開始</strong>:</p>
+<ul class="simple">
+<li><p>Grafanaダッシュボード監視</p></li>
+<li><p>Discord通知確認</p></li>
+<li><p>ログ監視継続</p></li>
+</ul>
+</li>
+<li><p><strong>ロールバック準備</strong>:</p>
+<ul class="simple">
+<li><p>Kill switch を即時使用可能に</p></li>
+<li><p>バックアップ設定確認</p></li>
+<li><p>緊急連絡先確認</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id33">
+<h2>📊 データ保持ポリシー<a class="headerlink" href="#id33" title="Link to this heading"></a></h2>
+<section id="id34">
+<h3>ログ保持期間<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>取引ログ</strong>: 90日間保持（コンプライアンス要件）</p></li>
+<li><p><strong>システムログ</strong>: 30日間保持</p></li>
+<li><p><strong>デバッグログ</strong>: 7日間保持</p></li>
+<li><p><strong>監査ログ</strong>: 1年間保持</p></li>
+</ul>
+</section>
+<section id="id35">
+<h3>バックアップ保持<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>デイリーバックアップ</strong>: 30日間保持</p></li>
+<li><p><strong>ウィークリーバックアップ</strong>: 12週間保持</p></li>
+<li><p><strong>マンスリーバックアップ</strong>: 12ヶ月保持</p></li>
+<li><p><strong>年次バックアップ</strong>: 7年間保持</p></li>
+</ul>
+</section>
+<section id="id36">
+<h3>データ削除手順<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 古いログの削除</span>
+find<span class="w"> </span>logs/<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.log&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+30<span class="w"> </span>-delete
+
+<span class="c1"># 古いバックアップの削除</span>
+find<span class="w"> </span>backups/<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;daily_*&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+30<span class="w"> </span>-delete
+find<span class="w"> </span>backups/<span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;weekly_*&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+90<span class="w"> </span>-delete
+</pre></div>
+</div>
+</section>
+<section id="id37">
+<h3>アーカイブストレージ<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>長期保存が必要なデータは圧縮してアーカイブ</p></li>
+<li><p>アーカイブは暗号化して保存</p></li>
+<li><p>アクセスログを保持して監査対応</p></li>
+</ul>
+</section>
+<section id="id38">
+<h3>コンプライアンス<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>金融取引関連データは法定保持期間に従う</p></li>
+<li><p>個人情報はGDPR等に従い適切に処理</p></li>
+<li><p>データ削除時には完全消去を実施</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>最終更新</strong>: 2025-01-27
+<strong>バージョン</strong>: 2.3.0</p>
+</section>
+</section>
+<section id="id39">
+<h2>📢 通知・清掃・インデックス化<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
+<section id="id40">
+<h3>アラート通知<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/alert_notifier.py</span></code> で監視ログからWARN/FAILをWebhook送信</p></li>
+<li><p>環境変数 <code class="docutils literal notranslate"><span class="pre">ZTB_ALERT_WEBHOOK</span></code> でSlack/Discord等連携</p></li>
+</ul>
+</section>
+<section id="tensorboard">
+<h3>TensorBoard スクレイピング<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/tb_scrape.py</span></code> でスカラー値をCSV出力・metrics.json統合</p></li>
+<li><p>TensorBoard未インストール時はスキップ</p></li>
+</ul>
+</section>
+<section id="id41">
+<h3>アーティファクト清掃<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/artifacts_janitor.py</span></code> で古い実行削除・ログローテーション</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> で安全確認</p></li>
+</ul>
+</section>
+<section id="id42">
+<h3>セッションインデックス<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/index_sessions.py</span></code> で全セッションのインデックス生成</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">artifacts/index.json</span></code> にステータス・最新ステップ等記録</p></li>
+</ul>
+</section>
+<section id="id43">
+<h3>進捗推定<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/progress_eta.py</span></code> でmetrics.json/logsからsteps/sec推定・ETA算出</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">summary.json</span></code> に進捗情報追記（存在時のみ）</p></li>
+</ul>
+</section>
+<section id="id44">
+<h3>エラー収集<a class="headerlink" href="#id44" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/collect_last_errors.py</span></code> でlogs/*.logとwatch_log.jsonlから最新ERROR/FAIL抽出</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">artifacts/&lt;ID&gt;/reports/last_errors.txt</span></code> 生成</p></li>
+</ul>
+</section>
+<section id="id45">
+<h3>アーティファクトバンドル<a class="headerlink" href="#id45" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/bundle_artifacts.py</span></code> でartifacts/<ID>/をZIP化・SHA256ハッシュ生成</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--exclude-logs</span></code> でログ除外オプション</p></li>
+</ul>
+</section>
+<section id="id46">
+<h3>監視プロセス一括起動<a class="headerlink" href="#id46" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/launch_monitoring.py</span></code> でwatch/tb_scrape/alert_notifierをサブプロセス管理</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> でコマンド表示、<code class="docutils literal notranslate"><span class="pre">--execute</span></code> で実行、Ctrl+Cで全子プロセス終了</p></li>
+</ul>
+</section>
+<section id="id47">
+<h3>ディスク容量・I/O 健康監視<a class="headerlink" href="#id47" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/disk_health.py</span></code> で空き容量・inode使用率・I/Oレイテンシをチェック</p></li>
+<li><p>閾値超過でJSONアラートをstdoutとops_alerts.jsonlに出力</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--check-io</span></code> でI/Oテスト実行</p></li>
+</ul>
+</section>
+<section id="id48">
+<h3>反復実行ランチャ<a class="headerlink" href="#id48" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/cronish.py</span></code> でジッター付き定期コマンド実行</p></li>
+<li><p>ztb.stopファイルで停止、<code class="docutils literal notranslate"><span class="pre">--fail-fast</span></code> で初回失敗時exit</p></li>
+</ul>
+</section>
+<section id="id49">
+<h3>アーティファクト整合性チェッカー<a class="headerlink" href="#id49" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/validate_artifacts.py</span></code> でセッション成果物の検証</p></li>
+<li><p>schema/artifacts_expectations.json で期待値定義、<code class="docutils literal notranslate"><span class="pre">--strict</span></code> で厳格チェック</p></li>
+</ul>
+</section>
+<section id="id50">
+<h3>運用スクリプト統合ラッパー<a class="headerlink" href="#id50" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/ops.py</span></code> で既存スクリプトを統一インターフェースで実行</p></li>
+<li><p>サブコマンド: eta/bundle/errors/health/cronish/validate/launch</p></li>
+<li><p>各スクリプトの引数を透過的に渡す</p></li>
+</ul>
+</section>
+<section id="id51">
+<h3>ステータススナップショット集約<a class="headerlink" href="#id51" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/status_snapshot.py</span></code> で複数ソースからステータス情報を集約・Markdownレポート生成</p></li>
+<li><p>index.json/gates.json/tb_summary.json/disk_health.json/last_errors.json を統合</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--correlation-id</span></code> で特定セッション指定、<code class="docutils literal notranslate"><span class="pre">--output</span></code> でレポートファイル指定</p></li>
+</ul>
+</section>
+<section id="id52">
+<h3>設定ドリフト検出<a class="headerlink" href="#id52" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/config_diff.py</span></code> で2つのeffective-config JSONを比較</p></li>
+<li><p>キー欠落/値差分をhuman-readable形式で表示</p></li>
+<li><p>重大キー差分（model/policy/learning_rate等）でexit code 3、それ以外差分で2</p></li>
+</ul>
+</section>
+<section id="jsonl">
+<h3>JSONLログ区切り圧縮<a class="headerlink" href="#jsonl" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/compact_jsonl.py</span></code> でwatch_log.jsonl等をtimestampの日付ごとにYYYY-MM-DD.jsonl.gzに分割</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--apply</span></code> で実行、元ファイル.backup退避、<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>（デフォルト）で対象一覧表示</p></li>
+</ul>
+</section>
+</section>
+<section id="id53">
+<h2>ヘルスチェック<a class="headerlink" href="#id53" title="Link to this heading"></a></h2>
+<section id="id54">
+<h3>会場APIヘルスチェック<a class="headerlink" href="#id54" title="Link to this heading"></a></h3>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/check_venue_health.py</span></code> でCoincheck公開APIの接続性・レイテンシ・レート制限余裕を計測</p></li>
+<li><p>オフライン環境ではgraceful degrade（exit 0 / SKIP表示）、接続時はJSONレポート出力</p></li>
+<li><p>使用例:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># BTC/JPYのヘルスチェック（5秒タイムアウト）</span>
+python<span class="w"> </span>scripts/check_venue_health.py<span class="w"> </span>--venue<span class="w"> </span>coincheck<span class="w"> </span>--symbol<span class="w"> </span>BTC_JPY<span class="w"> </span>--timeout<span class="w"> </span><span class="m">5</span>
+</pre></div>
+</div>
+</li>
+<li><p>出力例:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;venue&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;coincheck&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;symbol&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1640995200.123</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;connectivity&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;internet&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;rest_api&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;websocket&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;latency&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;rest_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">145.67</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ws_connect_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">234.56</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;rate_limits&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;remaining&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">299</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;reset_time&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1640995200</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p>ステータス: <code class="docutils literal notranslate"><span class="pre">healthy</span></code> (全API正常), <code class="docutils literal notranslate"><span class="pre">degraded</span></code> (一部異常), <code class="docutils literal notranslate"><span class="pre">unhealthy</span></code> (全API異常), <code class="docutils literal notranslate"><span class="pre">offline</span></code> (インターネット未接続)</p></li>
+<li><p>exit code: 0 (healthy/offline), 1 (degraded), 2 (unhealthy)</p></li>
+</ul>
+</section>
+</section>
+<section id="id55">
+<h2>保持ポリシー<a class="headerlink" href="#id55" title="Link to this heading"></a></h2>
+<section id="id56">
+<h3>アーティファクトクリーンアップ<a class="headerlink" href="#id56" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/retention_policy.py</span></code> で保持日数・世代数・サイズ上限に基づく削除候補を提案/適用</p></li>
+<li><p>デフォルトは提案のみ（–dry-run）、–apply で実削除実行</p></li>
+<li><p>パラメータ: –keep-days 14（日数）、–keep-best 3（best候補数）、–max-size-gb 50（総サイズ上限GB）</p></li>
+<li><p>best.marker付きセッションは保護、サイズ超過時は古いものから削除</p></li>
+</ul>
+</section>
+</section>
+<section id="id57">
+<h2>薄いラッパースクリプト<a class="headerlink" href="#id57" title="Link to this heading"></a></h2>
+<section id="id58">
+<h3>トレーニング開始ラッパー<a class="headerlink" href="#id58" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/training_start.py</span></code> でトレーニングセッションを開始</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--correlation-id</span></code> でID指定（未指定時は自動生成）、<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> でコマンド表示のみ</p></li>
+</ul>
+</section>
+<section id="id59">
+<h3>監視開始ラッパー<a class="headerlink" href="#id59" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/monitoring_start.py</span></code> で監視プロセスを開始</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--correlation-id</span></code> でセッション指定、<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> でコマンド表示のみ</p></li>
+</ul>
+</section>
+<section id="id60">
+<h3>ステータスチェックラッパー<a class="headerlink" href="#id60" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/status_check.py</span></code> でシステムステータスをチェック</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--correlation-id</span></code> でセッション指定、<code class="docutils literal notranslate"><span class="pre">--output</span></code> でレポートファイル指定</p></li>
+</ul>
+</section>
+<section id="id61">
+<h3>アーティファクトクリーンアップラッパー<a class="headerlink" href="#id61" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/cleanup_artifacts.py</span></code> で古いアーティファクトをクリーンアップ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--days</span></code> で保持日数指定（デフォルト30日）、<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code> でプレビュー</p></li>
+</ul>
+</section>
+</section>
+<section id="id62">
+<h2>型安全と例外方針<a class="headerlink" href="#id62" title="Link to this heading"></a></h2>
+<section id="id63">
+<h3>型安全強化<a class="headerlink" href="#id63" title="Link to this heading"></a></h3>
+<p>Zaif Trade Botでは、Pythonの型システムを活用してコードの信頼性を向上させています：</p>
+<ul class="simple">
+<li><p><strong>mypy strictモード</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/**</span></code> 配下の全モジュールでstrictモードを有効化</p></li>
+<li><p><strong>型アノテーション</strong>: すべての関数とメソッドに適切な型アノテーションを付与</p></li>
+<li><p><strong>TypedDict/Protocol</strong>: 複雑なデータ構造にはTypedDict、インターフェースにはProtocolを使用</p></li>
+<li><p><strong>Decimal使用</strong>: 金額・サイズ計算ではDecimalクラスを使用し、浮動小数点誤差を回避</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 例: 型安全な関数定義</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypedDict</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TradeConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+    <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">amount</span><span class="p">:</span> <span class="n">Decimal</span>
+    <span class="n">price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Decimal</span><span class="p">]</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_order_size</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">TradeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Decimal</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;注文サイズを計算（型安全）&quot;&quot;&quot;</span>
+    <span class="n">base_amount</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;amount&#39;</span><span class="p">]</span>
+    <span class="c1"># Decimal演算で精度を保証</span>
+    <span class="k">return</span> <span class="n">base_amount</span> <span class="o">*</span> <span class="n">Decimal</span><span class="p">(</span><span class="s1">&#39;0.01&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id64">
+<h3>例外処理方針<a class="headerlink" href="#id64" title="Link to this heading"></a></h3>
+<p>bare <code class="docutils literal notranslate"><span class="pre">except:</span></code> 句の使用を禁止し、構造化された例外処理を実装：</p>
+<ul class="simple">
+<li><p><strong>禁止</strong>: <code class="docutils literal notranslate"><span class="pre">except:</span></code> （何でもキャッチ）</p></li>
+<li><p><strong>推奨</strong>: <code class="docutils literal notranslate"><span class="pre">except</span> <span class="pre">Exception</span> <span class="pre">as</span> <span class="pre">e:</span></code> （具体的な例外クラス）</p></li>
+<li><p><strong>統一例外クラス</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/utils/errors.py</span></code> のクラスを使用</p></li>
+<li><p><strong>構造化ログ</strong>: エラー発生時に <code class="docutils literal notranslate"><span class="pre">err_type</span></code>, <code class="docutils literal notranslate"><span class="pre">err_msg</span></code>, <code class="docutils literal notranslate"><span class="pre">correlation_id</span></code>, <code class="docutils literal notranslate"><span class="pre">component</span></code> をログ出力</p></li>
+</ul>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 例: 適切な例外処理</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">NetworkError</span><span class="p">,</span> <span class="n">DatabaseError</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_market_data</span><span class="p">(</span><span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># API呼び出し</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">api_call</span><span class="p">(</span><span class="n">symbol</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">RequestException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># ドメイン固有のエラーに変換</span>
+        <span class="k">raise</span> <span class="n">NetworkError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Failed to fetch </span><span class="si">{</span><span class="n">symbol</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;symbol&#39;</span><span class="p">:</span> <span class="n">symbol</span><span class="p">,</span> <span class="s1">&#39;original_error&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="c1"># 予期せぬエラーもログ出力</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="s2">&quot;Unexpected error in fetch_market_data&quot;</span><span class="p">,</span>
+            <span class="n">extra</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;err_type&#39;</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="s1">&#39;err_msg&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                <span class="s1">&#39;correlation_id&#39;</span><span class="p">:</span> <span class="n">get_correlation_id</span><span class="p">(),</span>
+                <span class="s1">&#39;component&#39;</span><span class="p">:</span> <span class="s1">&#39;market_data&#39;</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">raise</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id65">
+<h2>常駐ランナーの名称統一<a class="headerlink" href="#id65" title="Link to this heading"></a></h2>
+<section id="id66">
+<h3>サービスランナーの統一<a class="headerlink" href="#id66" title="Link to this heading"></a></h3>
+<p>24/7取引サービスのランナーを <code class="docutils literal notranslate"><span class="pre">service_runner.py</span></code> に統一：</p>
+<ul class="simple">
+<li><p><strong>正規モジュール</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/live/service_runner.py</span></code></p></li>
+<li><p><strong>後方互換</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/scripts/trading_service.py</span></code> （非推奨警告付き）</p></li>
+<li><p><strong>設定ファイル</strong>: systemd/Windowsサービス設定を更新</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 新しい方法（推奨）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.live.service_runner<span class="w"> </span>--config<span class="w"> </span>config/production.yaml
+
+<span class="c1"># 古い方法（非推奨、警告表示）</span>
+python<span class="w"> </span>ztb/scripts/trading_service.py<span class="w"> </span>--config<span class="w"> </span>config/production.yaml
+</pre></div>
+</div>
+</section>
+<section id="id67">
+<h3>サービス設定<a class="headerlink" href="#id67" title="Link to this heading"></a></h3>
+<p><strong>Linux (systemd)</strong>:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Service]</span>
+<span class="na">ExecStart</span><span class="o">=</span><span class="s">/opt/zaif-trade-bot/venv/bin/python -m ztb.live.service_runner --config /opt/zaif-trade-bot/config/production.yaml</span>
+</pre></div>
+</div>
+<p><strong>Windows (バッチファイル)</strong>:</p>
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>python -m ztb.live.service_runner --config config\production.yaml
+</pre></div>
+</div>
+</section>
+<section id="id68">
+<h3>移行時の注意<a class="headerlink" href="#id68" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>既存の <code class="docutils literal notranslate"><span class="pre">trading_service.py</span></code> 参照は自動的に <code class="docutils literal notranslate"><span class="pre">service_runner.py</span></code> にリダイレクト</p></li>
+<li><p>非推奨警告が表示されるため、徐々に新しい名前への移行を推奨</p></li>
+<li><p>Makeターゲット（<code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">1m-start/1m-watch/...</span></code>）は自動的に正規モジュールを使用</p></li>
+</ul>
+</section>
+</section>
+<section id="pr-core-26">
+<h2>🔒 注文送信の安全性 (PR-Core-26)<a class="headerlink" href="#pr-core-26" title="Link to this heading"></a></h2>
+<section id="id69">
+<h3>概要<a class="headerlink" href="#id69" title="Link to this heading"></a></h3>
+<p>注文送信時に発生する可能性のあるエッジケース（精度誤差、競合送信、重複注文）を防ぐための包括的な安全機構を実装。</p>
+</section>
+<section id="id70">
+<h3>安全機能<a class="headerlink" href="#id70" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>シンボル正規化</strong>: 取引所固有のシンボル表記（BTC/JPY, BTC_JPY 等）を統一</p></li>
+<li><p><strong>精度量子化</strong>: 価格/数量を取引所の最小ティック/ステップサイズに丸め</p></li>
+<li><p><strong>最小注文額検証</strong>: 取引所固有の最小注文額を満たすかチェック</p></li>
+<li><p><strong>冪等性トークン</strong>: 同一注文の重複送信を防ぐためのクライアントID管理</p></li>
+<li><p><strong>自動ID生成</strong>: クライアントID未指定時はUUIDv4を自動生成</p></li>
+</ul>
+</section>
+<section id="id71">
+<h3>使用方法<a class="headerlink" href="#id71" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.live.order_submission</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderPreparer</span>
+
+<span class="n">preparer</span> <span class="o">=</span> <span class="n">OrderPreparer</span><span class="p">()</span>
+<span class="n">order</span> <span class="o">=</span> <span class="n">preparer</span><span class="o">.</span><span class="n">prepare_order</span><span class="p">(</span>
+    <span class="n">venue</span><span class="o">=</span><span class="s1">&#39;coincheck&#39;</span><span class="p">,</span>
+    <span class="n">symbol</span><span class="o">=</span><span class="s1">&#39;BTC/JPY&#39;</span><span class="p">,</span>
+    <span class="n">side</span><span class="o">=</span><span class="s1">&#39;BUY&#39;</span><span class="p">,</span>
+    <span class="n">quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s1">&#39;0.1&#39;</span><span class="p">),</span>
+    <span class="n">price</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s1">&#39;5000000&#39;</span><span class="p">),</span>
+    <span class="n">client_order_id</span><span class="o">=</span><span class="s1">&#39;optional-custom-id&#39;</span>  <span class="c1"># 省略時は自動生成</span>
+<span class="p">)</span>
+
+<span class="c1"># order は PreparedOrder オブジェクト</span>
+<span class="c1"># - venue: 正規化された取引所名</span>
+<span class="c1"># - normalized_symbol: 正規化されたシンボル (BTC_JPY)</span>
+<span class="c1"># - side: BUY/SELL</span>
+<span class="c1"># - quantity: 量子化された数量</span>
+<span class="c1"># - price: 量子化された価格 (Noneで成行)</span>
+<span class="c1"># - client_order_id: 冪等性トークン</span>
+</pre></div>
+</div>
+</section>
+<section id="id72">
+<h3>テスト<a class="headerlink" href="#id72" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ユニットテスト実行</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>ztb/tests/unit/live/test_order_submission.py<span class="w"> </span>-v
+
+<span class="c1"># 並行性テストを含む</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>ztb/tests/unit/live/test_order_submission.py::TestOrderPreparerConcurrency<span class="w"> </span>-v
+</pre></div>
+</div>
+</section>
+<section id="id73">
+<h3>設定<a class="headerlink" href="#id73" title="Link to this heading"></a></h3>
+<p>精度ポリシーは <code class="docutils literal notranslate"><span class="pre">ztb/live/precision_policy.py</span></code> で取引所ごとに定義。デフォルト値:</p>
+<ul class="simple">
+<li><p>価格ティック: 0.01 (JPYペア)</p></li>
+<li><p>数量ステップ: 0.0001 (BTC)</p></li>
+<li><p>最小数量: 未設定 (取引所依存)</p></li>
+</ul>
+</section>
+<section id="id74">
+<h3>トラブルシューティング<a class="headerlink" href="#id74" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ValidationError</strong>: 無効なvenue/symbol/数量/価格</p></li>
+<li><p><strong>IdempotencyError</strong>: 同一client_order_idの重複注文</p></li>
+<li><p><strong>精度警告</strong>: 量子化により価格/数量が変更された場合のログ出力</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="operations_manual.html" class="btn btn-neutral float-left" title="運用手順マニュアル" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ops.html" class="btn btn-neutral float-right" title="Zaif Trade Bot Operations" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

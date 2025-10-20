@@ -1,0 +1,607 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.experiments.parallel_rl_runner &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.experiments.parallel_rl_runner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.experiments.parallel_rl_runner</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Parallel execution script for reinforcement learning experiments</span>
+<span class="sd">Runs generalization and aggressive strategies in parallel</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="c1"># Local module imports</span>
+<span class="c1"># current_dir: ztb/experiments の親ディレクトリ (ztb)</span>
+<span class="n">current_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span>
+<span class="c1"># project_root: プロジェクトのルートディレクトリ (zaif-trade-bot)</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">current_dir</span><span class="o">.</span><span class="n">parent</span>  <span class="c1"># Go up one more level to project root</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_operation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.parallel_experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceMonitor</span>
+
+
+<div class="viewcode-block" id="ParallelRLExperimentRunner">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.parallel_rl_runner.ParallelRLExperimentRunner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParallelRLExperimentRunner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parallel runner for reinforcement learning experiments&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;parallel_rl_experiments&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span> <span class="o">=</span> <span class="n">ResourceMonitor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;results/parallel_runs&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Experiment configurations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">experiments</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;run100k_generalization&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;generalization&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+                <span class="s2">&quot;timeout_seconds&quot;</span><span class="p">:</span> <span class="mi">21600</span><span class="p">,</span>  <span class="c1"># 6 hours</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;run100k_aggressive&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;strategy&quot;</span><span class="p">:</span> <span class="s2">&quot;aggressive&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;steps&quot;</span><span class="p">:</span> <span class="mi">100000</span><span class="p">,</span>
+                <span class="s2">&quot;timeout_seconds&quot;</span><span class="p">:</span> <span class="mi">21600</span><span class="p">,</span>  <span class="c1"># 6 hours</span>
+            <span class="p">},</span>
+        <span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">processes</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ParallelRLExperimentRunner.run_parallel_experiments">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.parallel_rl_runner.ParallelRLExperimentRunner.run_parallel_experiments">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_parallel_experiments</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run experiments in parallel&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">safe_operation</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
+            <span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_run_parallel_experiments_impl</span><span class="p">(),</span>
+            <span class="s2">&quot;run_parallel_experiments&quot;</span><span class="p">,</span>
+            <span class="kc">None</span><span class="p">,</span>  <span class="c1"># Return None on failure</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_parallel_experiments_impl</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Implementation of running parallel experiments.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">total_timeout</span> <span class="o">=</span> <span class="mi">8</span> <span class="o">*</span> <span class="mi">3600</span>  <span class="c1"># 8 hours total timeout</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_experiment_start</span><span class="p">(</span>
+            <span class="s2">&quot;parallel_rl_experiments&quot;</span><span class="p">,</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;experiments&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiments</span><span class="p">,</span>
+                <span class="s2">&quot;parallel_execution&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;total_timeout_seconds&quot;</span><span class="p">:</span> <span class="n">total_timeout</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Start resource monitoring</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">log_resources</span><span class="p">(</span><span class="s2">&quot;parallel_rl_start&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Start experiments in parallel</span>
+            <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+                <span class="n">futures</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">exp_config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiments</span><span class="p">:</span>
+                    <span class="n">future</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_run_single_experiment</span><span class="p">,</span> <span class="n">exp_config</span><span class="p">)</span>
+                    <span class="n">futures</span><span class="p">[</span><span class="n">future</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp_config</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+
+                <span class="c1"># Monitor progress with timeout</span>
+                <span class="n">completed_experiments</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">start_parallel_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">as_completed</span><span class="p">(</span>
+                        <span class="n">futures</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">300</span>
+                    <span class="p">):</span>  <span class="c1"># 5 minute timeout</span>
+                        <span class="n">exp_name</span> <span class="o">=</span> <span class="n">futures</span><span class="p">[</span><span class="n">future</span><span class="p">]</span>
+
+                        <span class="c1"># Check overall timeout</span>
+                        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_parallel_time</span>
+                        <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="n">total_timeout</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Overall timeout reached after </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s. Terminating remaining experiments.&quot;</span>
+                            <span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">_terminate_all_processes</span><span class="p">()</span>
+                            <span class="k">break</span>
+
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">result</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span>
+                                <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span>
+                            <span class="p">)</span>  <span class="c1"># 10 second timeout for result</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">exp_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+                            <span class="n">completed_experiments</span> <span class="o">+=</span> <span class="mi">1</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_experiment_end</span><span class="p">(</span>
+                                <span class="p">{</span>
+                                    <span class="s2">&quot;experiment_name&quot;</span><span class="p">:</span> <span class="n">exp_name</span><span class="p">,</span>
+                                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;completed&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;result&quot;</span><span class="p">:</span> <span class="n">result</span><span class="p">,</span>
+                                <span class="p">}</span>
+                            <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                            <span class="c1"># 致命的なエラーの場合は強制終了</span>
+                            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
+                                <span class="n">e</span><span class="p">,</span> <span class="p">(</span><span class="ne">KeyboardInterrupt</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">,</span> <span class="ne">MemoryError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)</span>
+                            <span class="p">):</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Fatal error in experiment </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">. Terminating all processes.&quot;</span>
+                                <span class="p">)</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">_terminate_all_processes</span><span class="p">()</span>
+                                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+                            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span>
+                                <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Experiment: </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">exp_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                            <span class="p">}</span>
+                            <span class="n">completed_experiments</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">except</span> <span class="ne">TimeoutError</span><span class="p">:</span>
+                    <span class="c1"># Experiments are taking too long, terminate them</span>
+                    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_parallel_time</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Experiments timed out after 5 minutes of no progress (elapsed: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s). Terminating all processes.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_terminate_all_processes</span><span class="p">()</span>
+                    <span class="c1"># Mark remaining experiments as timed out</span>
+                    <span class="k">for</span> <span class="n">exp_name</span> <span class="ow">in</span> <span class="n">futures</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">exp_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">exp_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;timeout&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Timeout after </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">,</span>
+                            <span class="p">}</span>
+
+            <span class="c1"># Generate summary report</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_generate_summary_report</span><span class="p">()</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># Clean up any remaining processes</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_terminate_all_processes</span><span class="p">()</span>
+
+            <span class="c1"># Stop resource monitoring</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">log_resources</span><span class="p">(</span><span class="s2">&quot;parallel_rl_end&quot;</span><span class="p">)</span>
+
+            <span class="n">total_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_experiment_end</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;parallel_execution&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">&quot;total_time_seconds&quot;</span><span class="p">:</span> <span class="n">total_time</span><span class="p">,</span>
+                    <span class="s2">&quot;experiments_completed&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">r</span>
+                            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;timeout&quot;</span><span class="p">]</span>
+                        <span class="p">]</span>
+                    <span class="p">),</span>
+                    <span class="s2">&quot;experiments_failed&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="n">r</span>
+                            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                            <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;timeout&quot;</span><span class="p">]</span>
+                        <span class="p">]</span>
+                    <span class="p">),</span>
+                    <span class="s2">&quot;timeout_reached&quot;</span><span class="p">:</span> <span class="n">total_time</span> <span class="o">&gt;</span> <span class="n">total_timeout</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_single_experiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exp_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run a single experiment&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>  <span class="c1"># Add this to bind sys in local scope</span>
+
+        <span class="n">exp_name</span> <span class="o">=</span> <span class="n">exp_config</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">exp_config</span><span class="p">[</span><span class="s2">&quot;strategy&quot;</span><span class="p">]</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="n">exp_config</span><span class="p">[</span><span class="s2">&quot;steps&quot;</span><span class="p">]</span>
+        <span class="n">timeout_seconds</span> <span class="o">=</span> <span class="n">exp_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timeout_seconds&quot;</span><span class="p">,</span> <span class="mi">21600</span><span class="p">)</span>  <span class="c1"># Default 6 hours</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Starting experiment: </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2"> (strategy: </span><span class="si">{</span><span class="n">strategy</span><span class="si">}</span><span class="s2">, timeout: </span><span class="si">{</span><span class="n">timeout_seconds</span><span class="si">}</span><span class="s2">s)&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Prepare command</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">executable</span><span class="p">,</span>
+            <span class="s2">&quot;ztb/experiments/ml_reinforcement_1k.py&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--strategy&quot;</span><span class="p">,</span>
+            <span class="n">strategy</span><span class="p">,</span>
+            <span class="s2">&quot;--steps&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">steps</span><span class="p">),</span>
+            <span class="s2">&quot;--name&quot;</span><span class="p">,</span>
+            <span class="n">exp_name</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Log file for this experiment</span>
+        <span class="n">log_file</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.log&quot;</span>
+        <span class="p">)</span>
+        <span class="c1"># Log file for this experiment</span>
+        <span class="n">log_file</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.log&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">process</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Ensure process is defined for exception handling</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Start process</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">process</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span>
+                    <span class="n">cmd</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">f</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">STDOUT</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="p">[</span><span class="n">exp_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">process</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Process already finished (likely failed to start)</span>
+                <span class="n">return_code</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span>
+                <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Process failed to start or exited immediately with code </span><span class="si">{</span><span class="n">return_code</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">error_msg</span><span class="p">,</span> <span class="n">exp_name</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">,</span>
+                    <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="n">return_code</span><span class="p">,</span>
+                    <span class="s2">&quot;log_file&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">log_file</span><span class="p">),</span>
+                <span class="p">}</span>
+
+            <span class="c1"># Wait for completion with progress monitoring and timeout</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">last_progress_time</span> <span class="o">=</span> <span class="n">start_time</span>
+
+            <span class="k">while</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">elapsed</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="n">start_time</span>
+
+                <span class="c1"># Check timeout</span>
+                <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="n">timeout_seconds</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Experiment </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2"> timed out after </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s. Terminating process.&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># Give it 5 seconds to terminate gracefully</span>
+                    <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">process</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>  <span class="c1"># Force kill if still running</span>
+                    <span class="k">return</span> <span class="p">{</span>
+                        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;timeout&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Timeout after </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">,</span>
+                        <span class="s2">&quot;execution_time_seconds&quot;</span><span class="p">:</span> <span class="n">elapsed</span><span class="p">,</span>
+                        <span class="s2">&quot;log_file&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">log_file</span><span class="p">),</span>
+                    <span class="p">}</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Check every 10 seconds</span>
+
+                <span class="c1"># Log progress every 5 minutes</span>
+                <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="n">last_progress_time</span> <span class="o">&gt;</span> <span class="mi">300</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: Still running (elapsed: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s)&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">last_progress_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+                    <span class="c1"># Log progress (read last few lines of log file)</span>
+                    <span class="k">if</span> <span class="n">log_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                                <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+                                <span class="k">if</span> <span class="n">lines</span><span class="p">:</span>
+                                    <span class="n">last_line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                                    <span class="k">if</span> <span class="s2">&quot;Step&quot;</span> <span class="ow">in</span> <span class="n">last_line</span> <span class="ow">and</span> <span class="s2">&quot;/&quot;</span> <span class="ow">in</span> <span class="n">last_line</span><span class="p">:</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">last_line</span><span class="si">}</span><span class="s2">&quot;</span>
+                                        <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                            <span class="k">pass</span>
+
+            <span class="c1"># Get return code</span>
+            <span class="n">return_code</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">returncode</span>
+
+            <span class="c1"># Read final results from log file</span>
+            <span class="n">final_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_extract_metrics_from_log</span><span class="p">(</span><span class="n">log_file</span><span class="p">)</span>
+
+            <span class="n">execution_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span> <span class="k">if</span> <span class="n">return_code</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;return_code&quot;</span><span class="p">:</span> <span class="n">return_code</span><span class="p">,</span>
+                <span class="s2">&quot;log_file&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">log_file</span><span class="p">),</span>
+                <span class="s2">&quot;execution_time_seconds&quot;</span><span class="p">:</span> <span class="n">execution_time</span><span class="p">,</span>
+                <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">final_metrics</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Experiment </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2"> completed with status: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># 致命的なエラーの場合は強制終了</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="p">(</span><span class="ne">KeyboardInterrupt</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">,</span> <span class="ne">MemoryError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Fatal error in experiment </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">. Terminating process.&quot;</span>
+                <span class="p">)</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Failed to run experiment </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span><span class="n">error_msg</span><span class="p">,</span> <span class="n">exp_name</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">error_msg</span><span class="p">,</span> <span class="s2">&quot;log_file&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">log_file</span><span class="p">)}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_metrics_from_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">log_file</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extract metrics from experiment log file&quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">log_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+                <span class="c1"># Look for metrics in the log</span>
+                <span class="n">lines</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">&quot;avg_reward:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="c1"># Extract reward info</span>
+                        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;avg_reward:&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                                    <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                                <span class="p">)</span>
+                            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                                <span class="k">pass</span>
+                    <span class="k">elif</span> <span class="s2">&quot;sharpe_ratio&quot;</span> <span class="ow">in</span> <span class="n">line</span> <span class="ow">and</span> <span class="s2">&quot;metrics:&quot;</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+                        <span class="c1"># sharpe_ratio extraction not implemented</span>
+                        <span class="c1"># TODO: Implement sharpe_ratio extraction if log format is known</span>
+                        <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 未実装</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Failed to extract metrics from </span><span class="si">{</span><span class="n">log_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">metrics</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_summary_report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate summary report of all experiments&quot;&quot;&quot;</span>
+        <span class="n">summary_file</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log_dir</span>
+            <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;parallel_summary_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;execution_summary&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;start_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="s2">&quot;end_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="s2">&quot;total_time_seconds&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">,</span>
+                <span class="s2">&quot;experiments_run&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiments</span><span class="p">),</span>
+                <span class="s2">&quot;experiments_completed&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;success&quot;</span><span class="p">]</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;experiments_failed&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                    <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span><span class="p">]</span>
+                <span class="p">),</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;resource_usage&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;peak_cpu_percent&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">peak_cpu_percent</span><span class="p">,</span>
+                <span class="s2">&quot;peak_memory_mb&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">peak_memory_mb</span><span class="p">,</span>
+                <span class="s2">&quot;avg_cpu_percent&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">avg_cpu_percent</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;experiment_results&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="s2">&quot;performance_comparison&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare_strategies</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">summary_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">summary</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Parallel execution summary saved to: </span><span class="si">{</span><span class="n">summary_file</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Print summary to console</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;PARALLEL RL EXPERIMENTS SUMMARY&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Total execution time: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;execution_summary&#39;</span><span class="p">][</span><span class="s1">&#39;total_time_seconds&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> seconds&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Experiments completed: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;execution_summary&#39;</span><span class="p">][</span><span class="s1">&#39;experiments_completed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Experiments failed: </span><span class="si">{</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;execution_summary&#39;</span><span class="p">][</span><span class="s1">&#39;experiments_failed&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Resource Usage:&quot;</span><span class="p">)</span>
+        <span class="n">resource_usage</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;resource_usage&quot;</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Peak CPU: </span><span class="si">{</span><span class="n">resource_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;peak_cpu_percent&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Peak Memory: </span><span class="si">{</span><span class="n">resource_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Average CPU: </span><span class="si">{</span><span class="n">resource_usage</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;avg_cpu_percent&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Strategy Comparison:&quot;</span><span class="p">)</span>
+        <span class="n">comparison</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;performance_comparison&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">metrics</span> <span class="ow">in</span> <span class="n">comparison</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">strategy</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Status: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;unknown&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Avg Reward: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;avg_reward&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Execution Time: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;execution_time&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compare_strategies</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compare performance between strategies&quot;&quot;&quot;</span>
+        <span class="n">comparison</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">exp_name</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s2">&quot;generalization&quot;</span> <span class="ow">in</span> <span class="n">exp_name</span><span class="p">:</span>
+                <span class="n">strategy</span> <span class="o">=</span> <span class="s2">&quot;generalization&quot;</span>
+            <span class="k">elif</span> <span class="s2">&quot;aggressive&quot;</span> <span class="ow">in</span> <span class="n">exp_name</span><span class="p">:</span>
+                <span class="n">strategy</span> <span class="o">=</span> <span class="s2">&quot;aggressive&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">comparison</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">),</span>
+                <span class="s2">&quot;execution_time&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;avg_reward&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                <span class="s2">&quot;log_file&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;log_file&quot;</span><span class="p">),</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">comparison</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_terminate_all_processes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Terminate all running experiment processes&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">exp_name</span><span class="p">,</span> <span class="n">process</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">processes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">process</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">enqueue_notification</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Terminating process for </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">process</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="c1"># プロセス終了時のエラーは、既にプロセスが終了している場合や、権限の問題などで発生することがあります。</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger_manager</span><span class="o">.</span><span class="n">log_error</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Error terminating process </span><span class="si">{</span><span class="n">exp_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exp_name</span>
+                <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.parallel_rl_runner.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main entry point&quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting parallel reinforcement learning experiments...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Experiments: generalization (100k steps), aggressive (100k steps)&quot;</span><span class="p">)</span>
+
+    <span class="n">runner</span> <span class="o">=</span> <span class="n">ParallelRLExperimentRunner</span><span class="p">()</span>
+    <span class="n">runner</span><span class="o">.</span><span class="n">run_parallel_experiments</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Parallel execution completed!&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

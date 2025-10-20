@@ -1,0 +1,311 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🎯 重大発見：訓練時vs推論時の乖離の原因判明 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🎯 重大発見：訓練時vs推論時の乖離の原因判明</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/planning/DETERMINISTIC_MODE_INVESTIGATION.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="vs">
+<h1>🎯 重大発見：訓練時vs推論時の乖離の原因判明<a class="headerlink" href="#vs" title="Link to this heading"></a></h1>
+<section id="stochastic-vs-deterministic">
+<h2>📊 Stochastic vs Deterministic推論テスト結果<a class="headerlink" href="#stochastic-vs-deterministic" title="Link to this heading"></a></h2>
+<section id="deterministic-mode-deterministic-true">
+<h3>Deterministic Mode (deterministic=True)<a class="headerlink" href="#deterministic-mode-deterministic-true" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Total steps: 597
+HOLD:   587 ( 98.3%)  ← quick_backtestと同じHOLD偏重！
+BUY:      0 (  0.0%)
+SELL:    10 (  1.7%)
+</pre></div>
+</div>
+</section>
+<section id="stochastic-mode-deterministic-false">
+<h3>Stochastic Mode (deterministic=False)<a class="headerlink" href="#stochastic-mode-deterministic-false" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Total steps: 523
+HOLD:   267 ( 51.1%)  ← 訓練時（53%）と同じバランス！
+BUY:    128 ( 24.5%)
+SELL:   128 ( 24.5%)
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id1">
+<h2>🔴 原因特定<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="deterministic">
+<h3><strong>Deterministicモードが原因でした！</strong><a class="headerlink" href="#deterministic" title="Link to this heading"></a></h3>
+<p>quick_backtest.py、check_action_distribution.pyでは：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>この<code class="docutils literal notranslate"><span class="pre">deterministic=True</span></code>により：</p>
+<ol class="arabic simple">
+<li><p><strong>確率分布から最大値のアクションのみ選択</strong></p></li>
+<li><p><strong>Explorationが完全に無効化</strong></p></li>
+<li><p><strong>HOLDの確率がわずかに高いと、常にHOLDを選択</strong></p></li>
+</ol>
+</section>
+<section id="id2">
+<h3>訓練時との違い<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p><strong>訓練時（PPO rollout）</strong>:</p>
+<ul class="simple">
+<li><p>Stochasticサンプリング</p></li>
+<li><p>Entropy bonusでexplorationを促進</p></li>
+<li><p>Target Entropy Controller（H*=0.769）が多様性を維持</p></li>
+<li><p>結果: HOLD 53%, BUY 28%, SELL 19%</p></li>
+</ul>
+<p><strong>推論時（deterministic=True）</strong>:</p>
+<ul class="simple">
+<li><p>最大確率アクションのみ</p></li>
+<li><p>Explorationなし</p></li>
+<li><p>わずかな確率差で決定</p></li>
+<li><p>結果: HOLD 98.3%</p></li>
+</ul>
+</section>
+</section>
+<section id="id3">
+<h2>🎯 解決策<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="option-1-stochastic">
+<h3>Option 1: Stochastic推論を使用<a class="headerlink" href="#option-1-stochastic" title="Link to this heading"></a></h3>
+<p>バックテストで<code class="docutils literal notranslate"><span class="pre">deterministic=False</span></code>を使用：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>メリット</strong>:</p>
+<ul class="simple">
+<li><p>訓練時と同じアクション分布</p></li>
+<li><p>多様な取引パターン</p></li>
+</ul>
+<p><strong>デメリット</strong>:</p>
+<ul class="simple">
+<li><p>ランダム性により再現性が低い</p></li>
+<li><p>実運用では一貫性が必要</p></li>
+</ul>
+</section>
+<section id="option-2-policy">
+<h3>Option 2: Policy改善（推奨）<a class="headerlink" href="#option-2-policy" title="Link to this heading"></a></h3>
+<p><strong>問題の本質</strong>: Deterministicモードで98% HOLDになるのは、Policyが適切に学習できていない証拠</p>
+<p><strong>改善方向</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Value Function改善</strong>:</p>
+<ul class="simple">
+<li><p>explained_variance: 0.0 → 0.5以上を目指す</p></li>
+<li><p>より良い状態価値推定</p></li>
+</ul>
+</li>
+<li><p><strong>Reward Shaping強化</strong>:</p>
+<ul class="simple">
+<li><p>HOLDペナルティ増加</p></li>
+<li><p>成功取引のボーナス増加</p></li>
+<li><p>多様性ボーナス強化</p></li>
+</ul>
+</li>
+<li><p><strong>Training改善</strong>:</p>
+<ul class="simple">
+<li><p>長期訓練（1M timesteps）</p></li>
+<li><p>適切なlearning rate（現在0.0003、設定は0.007503）</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id4">
+<h2>📊 比較表<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>訓練時</p></th>
+<th class="head"><p>Deterministic推論</p></th>
+<th class="head"><p>Stochastic推論</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>HOLD</p></td>
+<td><p>53%</p></td>
+<td><p>98.3%</p></td>
+<td><p>51.1%</p></td>
+</tr>
+<tr class="row-odd"><td><p>BUY</p></td>
+<td><p>28%</p></td>
+<td><p>0.0%</p></td>
+<td><p>24.5%</p></td>
+</tr>
+<tr class="row-even"><td><p>SELL</p></td>
+<td><p>19%</p></td>
+<td><p>1.7%</p></td>
+<td><p>24.5%</p></td>
+</tr>
+<tr class="row-odd"><td><p>一貫性</p></td>
+<td><p>-</p></td>
+<td><p>高い</p></td>
+<td><p>低い</p></td>
+</tr>
+<tr class="row-even"><td><p>実用性</p></td>
+<td><p>-</p></td>
+<td><p>低い（HOLD偏重）</p></td>
+<td><p>中程度</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h2>🎯 次のステップ<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>短期（検証）<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ Stochastic推論テスト完了</p></li>
+<li><p>quick_backtest.pyをstochasticモードで再評価</p></li>
+<li><p>収益性を確認</p></li>
+</ol>
+</section>
+<section id="id7">
+<h3>中期（改善）<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>ハイパーパラメータ適用バグ修正</p></li>
+<li><p>v393訓練（learning_rate 0.007503等）</p></li>
+<li><p>Reward設定調整（HOLD penalty強化）</p></li>
+</ol>
+</section>
+<section id="id8">
+<h3>長期（根本解決）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>1M timesteps訓練</p></li>
+<li><p>Value Function改善</p></li>
+<li><p>Deterministicモードでも良好なパフォーマンス</p></li>
+</ol>
+</section>
+</section>
+<section id="id9">
+<h2>📝 結論<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<p><strong>v392自体は成功</strong>:</p>
+<ul class="simple">
+<li><p>✅ random_startバグ修正済み</p></li>
+<li><p>✅ 訓練はバランス良好（HOLD 53%）</p></li>
+<li><p>✅ Stochastic推論でも同様の分布</p></li>
+</ul>
+<p><strong>問題はDeterministicモード</strong>:</p>
+<ul class="simple">
+<li><p>❌ 確率のわずかな差で常にHOLD選択</p></li>
+<li><p>❌ Explorationなしで多様性ゼロ</p></li>
+</ul>
+<p><strong>実運用の方向性</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Stochastic推論</strong> + <strong>閾値ベース意思決定</strong></p></li>
+<li><p><strong>Policy改善訓練</strong>でDeterministicモードでも良好な分布を実現</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

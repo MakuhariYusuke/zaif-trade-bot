@@ -1,0 +1,341 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.config.schema &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.config.schema</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.config.schema</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Configuration schemas using Pydantic for type safety and validation.</span>
+
+<span class="sd">This module defines the configuration models for various components of the trading system.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">ConfigDict</span><span class="p">,</span> <span class="n">Field</span>
+
+
+<div class="viewcode-block" id="TrainingConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.TrainingConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for training parameters.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">1000000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Total training timesteps&quot;</span>
+    <span class="p">)</span>
+    <span class="n">n_envs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of parallel environments&quot;</span><span class="p">)</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Random seed&quot;</span><span class="p">)</span>
+    <span class="n">eval_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Evaluation interval in steps&quot;</span>
+    <span class="p">)</span>
+    <span class="n">log_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Logging interval in steps&quot;</span><span class="p">)</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">3e-4</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Learning rate&quot;</span><span class="p">)</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Batch size for training&quot;</span><span class="p">)</span>
+    <span class="n">n_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of epochs per update&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="CheckpointConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.CheckpointConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CheckpointConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for checkpoint management.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">async_save</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Enable asynchronous checkpoint saving&quot;</span>
+    <span class="p">)</span>
+    <span class="n">compress</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;zstd&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Compression algorithm (none, zstd, lz4)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">max_pending</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum pending checkpoints&quot;</span><span class="p">)</span>
+    <span class="n">retention</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of checkpoints to retain&quot;</span><span class="p">)</span>
+    <span class="n">interval_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Checkpoint interval in steps&quot;</span>
+    <span class="p">)</span>
+    <span class="n">light_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Use light checkpoint mode&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="StreamingConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.StreamingConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StreamingConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for data streaming.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Enable streaming mode&quot;</span><span class="p">)</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Streaming batch size&quot;</span><span class="p">)</span>
+    <span class="n">buffer_policy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;drop_oldest&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Buffer overflow policy&quot;</span>
+    <span class="p">)</span>
+    <span class="n">prefetch_factor</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Prefetch factor for streaming&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EvalConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.EvalConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EvalConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for evaluation parameters.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">dsr_trials</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of DSR trials&quot;</span><span class="p">)</span>
+    <span class="n">bootstrap_resamples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Number of bootstrap resamples&quot;</span>
+    <span class="p">)</span>
+    <span class="n">bootstrap_block</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bootstrap block size&quot;</span>
+    <span class="p">)</span>
+    <span class="n">bootstrap_overlap</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Bootstrap overlap&quot;</span>
+    <span class="p">)</span>
+    <span class="n">eval_freq</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">50000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Evaluation frequency in steps&quot;</span><span class="p">)</span>
+    <span class="n">benchmark_strategies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;sma&quot;</span><span class="p">,</span> <span class="s2">&quot;buy_hold&quot;</span><span class="p">],</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Benchmark strategies&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="VenuePrecisionConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.VenuePrecisionConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">VenuePrecisionConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for venue-specific precision policies.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">price_tick</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Minimum price increment&quot;</span><span class="p">)</span>
+    <span class="n">quantity_step</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.0001</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Minimum quantity increment&quot;</span>
+    <span class="p">)</span>
+    <span class="n">min_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Minimum order quantity&quot;</span>
+    <span class="p">)</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum order quantity&quot;</span>
+    <span class="p">)</span>
+    <span class="n">min_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Minimum order price&quot;</span><span class="p">)</span>
+    <span class="n">max_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum order price&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RiskProfileConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.RiskProfileConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RiskProfileConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for risk management profiles.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Profile name&quot;</span><span class="p">)</span>
+    <span class="n">max_position_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum position size as fraction of portfolio&quot;</span>
+    <span class="p">)</span>
+    <span class="n">max_daily_loss</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum daily loss as fraction of portfolio&quot;</span>
+    <span class="p">)</span>
+    <span class="n">stop_loss_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Stop loss percentage&quot;</span><span class="p">)</span>
+    <span class="n">take_profit_pct</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Take profit percentage&quot;</span><span class="p">)</span>
+    <span class="n">max_open_positions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum number of open positions&quot;</span>
+    <span class="p">)</span>
+    <span class="n">risk_per_trade</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Risk per trade as fraction of portfolio&quot;</span>
+    <span class="p">)</span>
+    <span class="n">max_leverage</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum leverage&quot;</span><span class="p">)</span>
+    <span class="n">cooldown_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Cooldown period in seconds after loss&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="GlobalConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.config.html#ztb.config.schema.GlobalConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GlobalConfig</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Global configuration container.&quot;&quot;&quot;</span>
+
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">extra</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">)</span>
+
+    <span class="n">training</span><span class="p">:</span> <span class="n">TrainingConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">TrainingConfig</span><span class="p">)</span>
+    <span class="n">checkpoint</span><span class="p">:</span> <span class="n">CheckpointConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">CheckpointConfig</span><span class="p">)</span>
+    <span class="n">streaming</span><span class="p">:</span> <span class="n">StreamingConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">StreamingConfig</span><span class="p">)</span>
+    <span class="n">evaluation</span><span class="p">:</span> <span class="n">EvalConfig</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">EvalConfig</span><span class="p">)</span>
+
+    <span class="c1"># Additional global settings</span>
+    <span class="n">experiment_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Experiment name&quot;</span><span class="p">)</span>
+    <span class="n">log_level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Logging level&quot;</span><span class="p">)</span>
+    <span class="n">output_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;artifacts&quot;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Output directory&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Venue precision policies</span>
+    <span class="n">venue_precision</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">VenuePrecisionConfig</span><span class="p">]]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Venue-specific precision policies&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Risk profile presets</span>
+    <span class="n">risk_profiles</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RiskProfileConfig</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;conservative&quot;</span><span class="p">:</span> <span class="n">RiskProfileConfig</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;conservative&quot;</span><span class="p">,</span>
+                <span class="n">max_position_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                <span class="n">max_daily_loss</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">stop_loss_pct</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+                <span class="n">take_profit_pct</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">max_open_positions</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                <span class="n">risk_per_trade</span><span class="o">=</span><span class="mf">0.005</span><span class="p">,</span>
+                <span class="n">max_leverage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">cooldown_period</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;moderate&quot;</span><span class="p">:</span> <span class="n">RiskProfileConfig</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;moderate&quot;</span><span class="p">,</span>
+                <span class="n">max_position_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">max_daily_loss</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                <span class="n">stop_loss_pct</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">take_profit_pct</span><span class="o">=</span><span class="mf">0.04</span><span class="p">,</span>
+                <span class="n">max_open_positions</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                <span class="n">risk_per_trade</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+                <span class="n">max_leverage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">cooldown_period</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;aggressive&quot;</span><span class="p">:</span> <span class="n">RiskProfileConfig</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;aggressive&quot;</span><span class="p">,</span>
+                <span class="n">max_position_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">max_daily_loss</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">stop_loss_pct</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                <span class="n">take_profit_pct</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">max_open_positions</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                <span class="n">risk_per_trade</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">max_leverage</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+                <span class="n">cooldown_period</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Risk profile presets for different trading strategies&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1"># Convenience exports</span>
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;TrainingConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;CheckpointConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;StreamingConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;EvalConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;VenuePrecisionConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;RiskProfileConfig&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;GlobalConfig&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

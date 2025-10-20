@@ -1,0 +1,648 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>バイナリサーチ実行ガイド - Windows版 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">バイナリサーチ実行ガイド - Windows版</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/binary_search_optimization/BINARY_SEARCH_WINDOWS_COMMANDS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="windows">
+<h1>バイナリサーチ実行ガイド - Windows版<a class="headerlink" href="#windows" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>🚀 最速スタート (コピペ用)<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="powershellcommand-prompt">
+<h3>⚠️ 重要: PowerShellよりCommand Promptが簡単です<a class="headerlink" href="#powershellcommand-prompt" title="Link to this heading"></a></h3>
+<p><strong>Command Prompt (推奨) ✅</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 1. プロジェクトルートに移動
+cd C:\Users\Admin\dev\zaif-trade-bot
+
+REM 2. 仮想環境アクティベート (PowerShellより簡単!)
+.venv\Scripts\activate.bat
+
+REM 3. 環境確認
+python -c &quot;import numpy, stable_baselines3; print(&#39;Environment OK&#39;)&quot;
+
+REM 4. batch_size 粗選別 (20k, 2-3時間)
+python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_iterations 3 --timesteps 20000
+</pre></div>
+</div>
+</section>
+<section id="powershell">
+<h3>PowerShellで一括実行<a class="headerlink" href="#powershell" title="Link to this heading"></a></h3>
+<p>方法1: Call Operator使用 (推奨)</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 1. プロジェクトルートに移動</span>
+<span class="nb">cd </span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">Admin</span><span class="p">\</span><span class="n">dev</span><span class="p">\</span><span class="n">zaif-trade-bot</span>
+
+<span class="c"># 2. 仮想環境アクティベート</span>
+<span class="p">&amp;</span> <span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+
+<span class="c"># 3. 環境確認</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import numpy, stable_baselines3; print(&#39;Environment OK&#39;)&quot;</span>
+
+<span class="c"># 4. batch_size 粗選別 (20k, 2-3時間)</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">-</span><span class="n">-timesteps</span> <span class="n">20000</span>
+</pre></div>
+</div>
+<p>方法2: 実行ポリシー変更後</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 初回のみ: 実行ポリシー変更</span>
+<span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+
+<span class="c"># 1. 仮想環境アクティベート</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+
+<span class="c"># 2. 環境確認</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import numpy, stable_baselines3; print(&#39;Environment OK&#39;)&quot;</span>
+
+<span class="c"># 3. batch_size 粗選別 (20k, 2-3時間)</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">-</span><span class="n">-timesteps</span> <span class="n">20000</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>📋 実行前チェック<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># プロジェクトルート確認</span>
+<span class="nb">cd </span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">Admin</span><span class="p">\</span><span class="n">dev</span><span class="p">\</span><span class="n">zaif-trade-bot</span>
+
+<span class="c"># .venv フォルダ存在確認</span>
+<span class="nb">dir </span><span class="p">.</span><span class="n">venv</span>
+
+<span class="c"># 仮想環境アクティベート</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+
+<span class="c"># 環境テスト</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import sys; print(&#39;Python:&#39;, sys.executable)&quot;</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import numpy; print(&#39;numpy:&#39;, numpy.__version__)&quot;</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import stable_baselines3; print(&#39;SB3: OK&#39;)&quot;</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import gymnasium; print(&#39;gymnasium: OK&#39;)&quot;</span>
+</pre></div>
+</div>
+<p>全て成功すれば準備完了 ✅</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>🎯 優先度順の実行コマンド<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="week-1">
+<h3>Week 1: 高優先度パラメータ<a class="headerlink" href="#week-1" title="Link to this heading"></a></h3>
+<section id="day-1-2-batch-size-20k">
+<h4>Day 1-2: batch_size (20k粗選別)<a class="headerlink" href="#day-1-2-batch-size-20k" title="Link to this heading"></a></h4>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">20000</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>: 2-3時間<br />
+<strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/batch_size_history.json</span></code></p>
+<p><strong>結果の見方 (50k精査の値を決める)</strong>:</p>
+<p><strong>📁 結果ファイルの種類</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">batch_size_binary_search.jsonl</span></code> - <strong>イベントログ (JSONL形式)</strong> ← 最新版</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">batch_size_history.json</span></code> - 履歴サマリー (古い形式)</p></li>
+</ul>
+<p><strong>方法1: JSONLファイルから最終結果を確認 (推奨)</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 最終行 (event: complete) を表示</span>
+<span class="nb">Get-Content</span> <span class="n">binary_search_results</span><span class="p">\</span><span class="n">batch_size_binary_search</span><span class="p">.</span><span class="n">jsonl</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">-Last</span> <span class="n">1</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="nb">Format-List</span>
+
+<span class="c"># 出力例:</span>
+<span class="c"># event           : complete</span>
+<span class="c"># parameter_value : 256        ← 最適候補</span>
+<span class="c"># score           : -298.24    ← 最終スコア</span>
+</pre></div>
+</div>
+<p><strong>方法2: notepadで直接確認</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">notepad</span> <span class="n">binary_search_results</span><span class="p">\</span><span class="n">batch_size_binary_search</span><span class="p">.</span><span class="n">jsonl</span>
+<span class="c"># 最終行の &quot;event&quot;: &quot;complete&quot; を見る</span>
+<span class="c"># {&quot;event&quot;: &quot;complete&quot;, ..., &quot;parameter_value&quot;: 256, &quot;score&quot;: -298.24}</span>
+</pre></div>
+</div>
+<p><strong>チェックポイント</strong>:</p>
+<ol class="arabic">
+<li><p><strong>最終行の<code class="docutils literal notranslate"><span class="pre">parameter_value</span></code>を確認</strong> → これが20k時点の最適候補</p></li>
+<li><p><strong>improvement (改善度) を計算</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">improvement</span> <span class="o">=</span> <span class="n">初期スコア</span> <span class="o">-</span> <span class="n">最適スコア</span>
+
+<span class="n">例</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mf">303.02</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="o">-</span><span class="mf">298.24</span><span class="p">)</span> <span class="o">=</span> <span class="mf">4.78</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>スコア差分で判断</strong>:</p>
+<ul class="simple">
+<li><p>差分 ≥10: 高信頼度 ✅ → そのまま50k精査へ</p></li>
+<li><p>差分 5-10: 中信頼度 ⚠️ → 前後の値も含めて50k精査</p></li>
+<li><p>差分 &lt;5: 低信頼度 ❌ → より広い範囲で50k精査が必要</p></li>
+</ul>
+</li>
+</ol>
+<p><strong>実例: improvement=4.78の場合</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="c1">// 最初の評価 (lower)</span>
+<span class="p">{</span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;evaluation&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;parameter_value&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-303.02</span><span class="p">}</span>
+
+<span class="c1">// 最終結果 (complete)</span>
+<span class="p">{</span><span class="nt">&quot;event&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;complete&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;parameter_value&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-298.24</span><span class="p">}</span>
+
+<span class="c1">// improvement = -303.02 - (-298.24) = 4.78 ← 低信頼度!</span>
+</pre></div>
+</div>
+<p>→ <strong>improvement=4.78</strong> (差分&lt;5) なので、<code class="docutils literal notranslate"><span class="pre">--search_range</span> <span class="pre">64,128,256</span></code>で50k精査を推奨</p>
+</section>
+<section id="day-3-learning-rate-10k">
+<h4>Day 3: learning_rate (10k粗選別)<a class="headerlink" href="#day-3-learning-rate-10k" title="Link to this heading"></a></h4>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">learning_rate_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">4</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">10000</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>: 1-2時間<br />
+<strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/learning_rate_history.json</span></code></p>
+</section>
+<section id="day-4-6-max-grad-norm-30kseed1">
+<h4>Day 4-6: max_grad_norm (30k×seed1)<a class="headerlink" href="#day-4-6-max-grad-norm-30kseed1" title="Link to this heading"></a></h4>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">max_grad_norm_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">30000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-seed</span> <span class="n">42</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>: 3-4時間<br />
+<strong>出力先</strong>: <code class="docutils literal notranslate"><span class="pre">binary_search_results/max_grad_norm_history.json</span></code></p>
+<p><strong>再現性確認 (seed2)</strong>:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">max_grad_norm_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">30000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-seed</span> <span class="n">123</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="week-2">
+<h3>Week 2: 精査フェーズ<a class="headerlink" href="#week-2" title="Link to this heading"></a></h3>
+<section id="batch-size-50k">
+<h4>batch_size (50k精査) - 粗選別結果に基づく<a class="headerlink" href="#batch-size-50k" title="Link to this heading"></a></h4>
+<p><strong>📊 20k結果から50k精査範囲を決定</strong></p>
+<p><strong>ステップ1: 20k結果の分析</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 履歴ファイルを開く</span>
+<span class="nb">Get-Content</span> <span class="n">binary_search_results</span><span class="p">\</span><span class="n">batch_size_history</span><span class="p">.</span><span class="n">json</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+</pre></div>
+</div>
+<p><strong>ステップ2: 改善度に応じた精査範囲の決定</strong></p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>20k改善度</p></th>
+<th class="head"><p>判断</p></th>
+<th class="head"><p>50k精査範囲の設定例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>≥10</strong></p></td>
+<td><p>高信頼度</p></td>
+<td><p>最適値のみ再検証 (例: <code class="docutils literal notranslate"><span class="pre">--search_range</span> <span class="pre">32</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>5-10</strong></p></td>
+<td><p>中信頼度</p></td>
+<td><p>最適値±1段階 (例: <code class="docutils literal notranslate"><span class="pre">--search_range</span> <span class="pre">16,32,64</span></code>)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>&lt;5</strong></p></td>
+<td><p>低信頼度</p></td>
+<td><p>より広範囲 (例: <code class="docutils literal notranslate"><span class="pre">--search_range</span> <span class="pre">8,16,32,64,128</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>ステップ3: 実際の50k精査コマンド</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 例1: 改善度=12 (高信頼度) の場合</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">1</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">50000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-search_range</span> <span class="n">32</span>
+
+<span class="c"># 例2: 改善度=7 (中信頼度) の場合</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">2</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">50000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-search_range</span> <span class="n">16</span><span class="p">,</span><span class="n">32</span><span class="p">,</span><span class="n">64</span>
+
+<span class="c"># 例3: 改善度=3 (低信頼度) の場合</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">50000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-search_range</span> <span class="n">8</span><span class="p">,</span><span class="n">16</span><span class="p">,</span><span class="n">32</span><span class="p">,</span><span class="n">64</span><span class="p">,</span><span class="n">128</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>:</p>
+<ul class="simple">
+<li><p>高信頼度 (1値のみ): 3-4時間</p></li>
+<li><p>中信頼度 (3値): 5-8時間</p></li>
+<li><p>低信頼度 (5値): 10-15時間</p></li>
+</ul>
+<p><strong>💡 ヒント</strong>: TensorBoardで複数候補のスコア推移を比較すると、収束の安定性も確認できます</p>
+</section>
+<section id="learning-rate-50k">
+<h4>learning_rate (50k精査)<a class="headerlink" href="#learning-rate-50k" title="Link to this heading"></a></h4>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">learning_rate_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">2</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">50000</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>: 5-8時間</p>
+</section>
+<section id="max-grad-norm-30kseed2">
+<h4>max_grad_norm (30k×seed2 - 再現性確認)<a class="headerlink" href="#max-grad-norm-30kseed2" title="Link to this heading"></a></h4>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">max_grad_norm_optimized</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-timesteps</span> <span class="n">30000</span> <span class="p">`</span>
+  <span class="p">-</span><span class="n">-seed</span> <span class="n">123</span>
+</pre></div>
+</div>
+<p><strong>期待時間</strong>: 3-4時間</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="tensorboard">
+<h2>🖥️ TensorBoard モニタリング<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>別ターミナルで実行<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 新しいターミナルを開く (Ctrl + Shift + @)</span>
+
+<span class="c"># 仮想環境アクティベート</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+
+<span class="c"># TensorBoard起動</span>
+<span class="n">tensorboard</span> <span class="p">-</span><span class="n">-logdir</span> <span class="n">tensorboard</span><span class="p">/</span><span class="n">binary_search</span><span class="p">/</span>
+
+<span class="c"># ブラウザで開く</span>
+<span class="nb">start </span><span class="n">http</span><span class="p">://</span><span class="n">localhost</span><span class="p">:</span><span class="n">6006</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>⚡ 並列実行 (複数パラメータ同時)<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>PowerShellで並列実行<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># Terminal 1: batch_size</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">batch_size_optimized</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">3</span> <span class="p">-</span><span class="n">-timesteps</span> <span class="n">20000</span>
+
+<span class="c"># Terminal 2 (別ウィンドウ): learning_rate</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">ztb</span><span class="p">.</span><span class="n">training</span><span class="p">.</span><span class="n">binary_search</span><span class="p">.</span><span class="n">learning_rate_optimized</span> <span class="p">-</span><span class="n">-mode</span> <span class="n">binary</span> <span class="p">-</span><span class="n">-max_iterations</span> <span class="n">4</span> <span class="p">-</span><span class="n">-timesteps</span> <span class="n">10000</span>
+
+<span class="c"># Terminal 3 (別ウィンドウ): TensorBoard</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">tensorboard</span> <span class="p">-</span><span class="n">-logdir</span> <span class="n">tensorboard</span><span class="p">/</span><span class="n">binary_search</span><span class="p">/</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🔧 トラブルシューティング (コピペ用)<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="modulenotfounderror-no-module-named-numpy">
+<h3>❌ ModuleNotFoundError: No module named ‘numpy’<a class="headerlink" href="#modulenotfounderror-no-module-named-numpy" title="Link to this heading"></a></h3>
+<p><strong>解決策1: Command Promptを使う (最も簡単) ✅</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>cd C:\Users\Admin\dev\zaif-trade-bot
+.venv\Scripts\activate.bat
+python -c &quot;import numpy; print(&#39;OK&#39;)&quot;
+</pre></div>
+</div>
+<p><strong>解決策2: PowerShell - Call Operator</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd </span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">Admin</span><span class="p">\</span><span class="n">dev</span><span class="p">\</span><span class="n">zaif-trade-bot</span>
+<span class="p">&amp;</span> <span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import numpy; print(&#39;OK&#39;)&quot;</span>
+</pre></div>
+</div>
+<p><strong>解決策3: PowerShell - 実行ポリシー変更</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</pre></div>
+</div>
+</section>
+<section id="modulenotfounderror-no-module-named-sb3-contrib">
+<h3>❌ ModuleNotFoundError: No module named ‘sb3_contrib’ 🆕<a class="headerlink" href="#modulenotfounderror-no-module-named-sb3-contrib" title="Link to this heading"></a></h3>
+<p><strong>原因</strong>: <code class="docutils literal notranslate"><span class="pre">sb3-contrib</span></code> (SB3拡張ライブラリ) がインストールされていない</p>
+<p><strong>解決策</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 仮想環境アクティベート済みの状態で
+pip install sb3-contrib
+
+REM または、全依存関係を再インストール (推奨)
+pip install -r requirements.txt
+
+REM インストール確認
+python -c &quot;import sb3_contrib; print(&#39;sb3-contrib OK&#39;)&quot;
+</pre></div>
+</div>
+<p><strong>💡 ヒント</strong>: <code class="docutils literal notranslate"><span class="pre">requirements.txt</span></code>に記載されているはずなので、<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-r</span> <span class="pre">requirements.txt</span></code>が確実です。</p>
+</section>
+<section id="error-unrecognized-arguments-seed-42">
+<h3>❌ error: unrecognized arguments: –seed 42 🆕<a class="headerlink" href="#error-unrecognized-arguments-seed-42" title="Link to this heading"></a></h3>
+<p><strong>原因</strong>: <code class="docutils literal notranslate"><span class="pre">--seed</span></code>引数がスクリプトに実装されていない (修正済み)</p>
+<p><strong>解決策</strong>: 最新版にアップデート後、以下で実行可能:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>python -m ztb.training.binary_search.max_grad_norm_optimized --mode binary --max_iterations 3 --timesteps 30000 --seed 42
+</pre></div>
+</div>
+<p><strong>💡 ヒント</strong>: <code class="docutils literal notranslate"><span class="pre">--seed</span></code>は再現性確認のためのオプション引数です。省略するとデフォルト(42)が使用されます。</p>
+</section>
+<section id="error-unrecognized-arguments-search-range-64-128-256">
+<h3>❌ error: unrecognized arguments: –search_range 64,128,256 🆕<a class="headerlink" href="#error-unrecognized-arguments-search-range-64-128-256" title="Link to this heading"></a></h3>
+<p><strong>原因</strong>: <code class="docutils literal notranslate"><span class="pre">--search_range</span></code>引数がスクリプトに実装されていない (修正済み)</p>
+<p><strong>解決策</strong>: 最新版にアップデート後、以下で実行可能:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM カンマ区切りで具体的な値を指定
+python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_iterations 3 --timesteps 50000 --search_range 64,128,256
+
+REM learning_rateでも使用可能
+python -m ztb.training.binary_search.learning_rate_optimized --mode binary --max_iterations 2 --timesteps 50000 --search_range 1e-5,1e-4,0.001
+</pre></div>
+</div>
+<p><strong>💡 ヒント</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--search_range</span></code>は特定の値のみを評価したい場合に使用</p></li>
+<li><p>Phase 1の結果に基づいてPhase 2の範囲を絞り込む際に便利</p></li>
+<li><p>省略すると、デフォルトの範囲でバイナリサーチが実行されます</p></li>
+</ul>
+</section>
+<section id="powershell-venv-scripts-activate-ps1">
+<h3>❌ PowerShellで ‘..venv\Scripts\Activate.ps1’ が認識されない 🆕<a class="headerlink" href="#powershell-venv-scripts-activate-ps1" title="Link to this heading"></a></h3>
+<p><strong>原因1</strong>: PowerShellのパス認識問題<br />
+<strong>原因2</strong>: 仮想環境が不完全 (Activate.ps1が存在しない)</p>
+<p><strong>🔍 まず診断: アクティベーションファイルの存在確認</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># .venv\Scripts\ の中身を確認</span>
+<span class="nb">dir </span><span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span>
+
+<span class="c"># Activate.ps1 が存在するか確認</span>
+<span class="nb">Test-Path</span> <span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="c"># 期待される結果: True</span>
+
+<span class="c"># activate.bat が存在するか確認</span>
+<span class="nb">Test-Path</span> <span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">activate</span><span class="p">.</span><span class="n">bat</span>
+<span class="c"># 期待される結果: True</span>
+</pre></div>
+</div>
+<p><strong>診断結果の判断</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">python.exe</span></code><strong>のみ</strong>存在 → <strong>仮想環境が不完全</strong> → 解決策A (再作成)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Activate.ps1</span></code>や<code class="docutils literal notranslate"><span class="pre">activate.bat</span></code>も存在 → PowerShellのパス問題 → 解決策B (Call Operator等)</p></li>
+</ul>
+<hr class="docutils" />
+<section id="a-activate-ps1">
+<h4>🔧 解決策A: 仮想環境が不完全な場合 (Activate.ps1が存在しない)<a class="headerlink" href="#a-activate-ps1" title="Link to this heading"></a></h4>
+<p><strong>症状</strong>: <code class="docutils literal notranslate"><span class="pre">dir</span> <span class="pre">.\.venv\Scripts\</span></code> で<code class="docutils literal notranslate"><span class="pre">python.exe</span></code>しか表示されない</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># ステップ1: 古い仮想環境を削除</span>
+<span class="nb">Remove-Item</span> <span class="n">-Recurse</span> <span class="n">-Force</span> <span class="p">.</span><span class="n">venv</span>
+
+<span class="c"># ステップ2: 新しい仮想環境を作成</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">venv</span>
+
+<span class="c"># ステップ3: 作成確認 (Activate.ps1とactivate.batが生成されているはず)</span>
+<span class="nb">dir </span><span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span>
+
+<span class="c"># ステップ4: Command Promptでアクティベート (推奨)</span>
+<span class="n">cmd</span>
+<span class="p">.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">activate</span><span class="p">.</span><span class="n">bat</span>
+
+<span class="c"># ステップ5: 依存関係のインストール</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">-r</span> <span class="n">requirements</span><span class="p">.</span><span class="n">txt</span>
+
+<span class="c"># ステップ6: 環境確認</span>
+<span class="n">python</span> <span class="n">-c</span> <span class="s2">&quot;import numpy, stable_baselines3; print(&#39;Environment OK&#39;)&quot;</span>
+</pre></div>
+</div>
+<p><strong>⚠️ 注意</strong>: <code class="docutils literal notranslate"><span class="pre">Remove-Item</span></code>実行前に重要なデータがないか確認してください</p>
+</section>
+<hr class="docutils" />
+<section id="b-activate-ps1powershell">
+<h4>🔧 解決策B: Activate.ps1は存在するがPowerShellで認識されない場合<a class="headerlink" href="#b-activate-ps1powershell" title="Link to this heading"></a></h4>
+<p><strong>解決策B-1: Command Promptを使用 (最も簡単) ✅</strong></p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>cd C:\Users\Admin\dev\zaif-trade-bot
+.venv\Scripts\activate.bat
+</pre></div>
+</div>
+<p><strong>解決策B-2: Call Operator (&amp;) を使用</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nb">cd </span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">Admin</span><span class="p">\</span><span class="n">dev</span><span class="p">\</span><span class="n">zaif-trade-bot</span>
+<span class="p">&amp;</span> <span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</pre></div>
+</div>
+<p><strong>解決策B-3: フルパス指定</strong></p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">C</span><span class="p">:\</span><span class="n">Users</span><span class="p">\</span><span class="n">Admin</span><span class="p">\</span><span class="n">dev</span><span class="p">\</span><span class="n">zaif-trade-bot</span><span class="p">\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h3>❌ 実行ポリシーエラー<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 解決策: 実行ポリシー変更</span>
+<span class="nb">Set-ExecutionPolicy</span> <span class="n">-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+
+<span class="c"># 再度アクティベート</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+</pre></div>
+</div>
+</section>
+<section id="importerror-dll-load-failed">
+<h3>❌ ImportError: DLL load failed<a class="headerlink" href="#importerror-dll-load-failed" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 解決策: PyTorch再インストール</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">torch</span> <span class="n">torchvision</span> <span class="n">torchaudio</span> <span class="p">-</span><span class="n">-index-url</span> <span class="n">https</span><span class="p">://</span><span class="n">download</span><span class="p">.</span><span class="n">pytorch</span><span class="p">.</span><span class="n">org</span><span class="p">/</span><span class="n">whl</span><span class="p">/</span><span class="n">cpu</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>❌ パッケージ不足<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 解決策: 依存関係再インストール</span>
+<span class="p">.\.</span><span class="n">venv</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">pip</span> <span class="n">install</span> <span class="n">-r</span> <span class="n">requirements</span><span class="p">.</span><span class="n">txt</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>📊 結果確認コマンド<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>履歴ファイル確認<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># JSON を読みやすく表示</span>
+<span class="nb">Get-Content</span> <span class="n">binary_search_results</span><span class="p">\</span><span class="n">batch_size_history</span><span class="p">.</span><span class="n">json</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="nb">ConvertTo-Json</span> <span class="n">-Depth</span> <span class="n">10</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>最新モデル確認<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># モデルファイル一覧</span>
+<span class="nb">dir </span><span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span> <span class="p">|</span> <span class="nb">Sort-Object</span> <span class="n">LastWriteTime</span> <span class="n">-Descending</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">-First</span> <span class="n">5</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h3>ログファイル確認<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 最新ログ表示 (Linux tail -f 相当)</span>
+<span class="nb">Get-Content</span> <span class="n">tensorboard</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span><span class="n">batch_size</span><span class="p">\</span><span class="n">events</span><span class="p">.</span><span class="n">out</span><span class="p">.</span><span class="n">tfevents</span><span class="p">.*</span> <span class="n">-Wait</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>📝 完了後の記録テンプレート<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="gu">## batch_size 検証完了 (2025-10-XX)</span>
+
+<span class="gu">### 実行情報</span>
+<span class="k">-</span><span class="w"> </span>日時: 2025-10-XX HH:MM
+<span class="k">-</span><span class="w"> </span>Timesteps: 20,000
+<span class="k">-</span><span class="w"> </span>Iterations: 3
+<span class="k">-</span><span class="w"> </span>所要時間: X時間
+
+<span class="gu">### 結果</span>
+<span class="k">-</span><span class="w"> </span>最適値: XX
+<span class="k">-</span><span class="w"> </span>スコア: -XXX.XX
+<span class="k">-</span><span class="w"> </span>差分: +/-XX.XX (vs デフォルト)
+<span class="k">-</span><span class="w"> </span>95%CI: ±7.1
+<span class="k">-</span><span class="w"> </span>統計的有意: ✅/❌
+
+<span class="gu">### 次アクション</span>
+<span class="k">- [ ]</span> 50k精査 (必要時)
+<span class="k">- [ ]</span> 設定ファイル更新
+<span class="k">- [ ]</span> PARAMETER_VALIDATION_TRACKING.md 更新
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>🎯 実行チェックリスト<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<p>検証開始前に確認:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>□ プロジェクトルート C:\Users\Admin\dev\zaif-trade-bot
+□ 仮想環境アクティベート済み (プロンプトに .venv 表示)
+□ numpy, stable_baselines3 インポート確認
+□ TensorBoard起動 (別ターミナル)
+□ 実行コマンド確認
+□ 推定所要時間確認
+</pre></div>
+</div>
+<hr class="docutils" />
+<p><strong>このシートをブックマークして、検証時にすぐアクセスできるようにしてください!</strong> 🔖</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,799 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>v382_revised_aggressive トレーニング分析レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">v382_revised_aggressive トレーニング分析レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/V382_REVISED_TRAINING_ANALYSIS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="v382-revised-aggressive">
+<h1>v382_revised_aggressive トレーニング分析レポート<a class="headerlink" href="#v382-revised-aggressive" title="Link to this heading"></a></h1>
+<p><strong>実行日</strong>: 2025年10月10日<br />
+<strong>設定</strong>: <code class="docutils literal notranslate"><span class="pre">ppo_reward_v382_revised_aggressive.json</span></code><br />
+<strong>目的</strong>: v381_revisedで発見された問題（KL divergence、Clip過剰、学習不安定性）を修正</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>📊 実行結果サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>基本情報<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>総ステップ数</strong>: 100,352 / 100,000 (目標達成 ✅)</p></li>
+<li><p><strong>実行時間</strong>: 280秒（4分40秒）</p></li>
+<li><p><strong>処理速度</strong>: 357 it/s (前回353 it/sから微増)</p></li>
+<li><p><strong>イテレーション数</strong>: 98回</p></li>
+<li><p><strong>最終報酬</strong>: ep_rew_mean = <strong>-991</strong></p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>⚠️ <strong>重大な問題発見</strong><a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>v381_revised実績</p></th>
+<th class="head"><p>v382_revised実績</p></th>
+<th class="head"><p>変化</p></th>
+<th class="head"><p>評価</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>ep_rew_mean</strong></p></td>
+<td><p><strong>-541</strong></p></td>
+<td><p><strong>-991</strong></p></td>
+<td><p><strong>-450pt悪化</strong></p></td>
+<td><p>❌❌❌</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>HOLD率</strong></p></td>
+<td><p>51.2%</p></td>
+<td><p>54.3%</p></td>
+<td><p>+3.1pt悪化</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>BUY率</strong></p></td>
+<td><p>24.6%</p></td>
+<td><p>25.8%</p></td>
+<td><p>+1.2pt</p></td>
+<td><p>⚠️</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SELL率</strong></p></td>
+<td><p>24.2%</p></td>
+<td><p>19.9%</p></td>
+<td><p>-4.3pt悪化</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>approx_kl</strong></p></td>
+<td><p>0.072</p></td>
+<td><p><strong>0.087</strong></p></td>
+<td><p>+21%悪化</p></td>
+<td><p>❌</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>clip_fraction</strong></p></td>
+<td><p>0.996-1.0</p></td>
+<td><p><strong>0.61-0.74</strong></p></td>
+<td><p><strong>大幅改善</strong></p></td>
+<td><p>✅✅✅</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>explained_variance</strong></p></td>
+<td><p>0.517 (最良)</p></td>
+<td><p><strong>0.022-0.051</strong></p></td>
+<td><p><strong>-95%悪化</strong></p></td>
+<td><p>❌❌❌</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Early stop率</strong></p></td>
+<td><p>100%</p></td>
+<td><p><strong>100%</strong></p></td>
+<td><p>変化なし</p></td>
+<td><p>❌</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>🔍 詳細分析<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="iter-98">
+<h3>1. 最終イテレーション（Iter 98）の状態<a class="headerlink" href="#iter-98" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Iteration 98 (最終):
+--------------------------------------------------------------------
+| rollout/                  |                                      |
+|    ep_len_mean            | 999                                  |
+|    ep_rew_mean            | -991                                 |  ❌ 目標-450に遠く及ばず
+| train/                    |                                      |
+|    approx_kl              | 0.08670529                           |  ❌ target_kl=0.05の1.7倍
+|    clip_fraction          | 0.723                                |  ✅ 適切な範囲
+|    clip_range             | 0.2                                  |  
+|    explained_variance     | 0.022518575                          |  ❌ 2.2%しかない
+|    learning_rate          | 0.002                                |
+|    n_updates              | 486                                  |
+|    pan_action_counts      | [139, 66, 51]                        |
+|    pan_action_means       | [-0.019, -0.020, -0.018]             |
+|    pan_action_stds        | [0.027, 0.015, 0.012]                |
+</pre></div>
+</div>
+<p><strong>アクション分布（最終）</strong>:</p>
+<ul class="simple">
+<li><p>HOLD: 139/256 = <strong>54.3%</strong> ❌ 目標35-40%を大きく超過</p></li>
+<li><p>BUY: 66/256 = <strong>25.8%</strong> ⚠️ 目標30-35%に届かず</p></li>
+<li><p>SELL: 51/256 = <strong>19.9%</strong> ❌ 目標25-30%を下回る</p></li>
+</ul>
+</section>
+<section id="id5">
+<h3>2. 学習曲線の推移<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="id6">
+<h4>アクション分布の時系列<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Iteration</p></th>
+<th class="head"><p>HOLD</p></th>
+<th class="head"><p>BUY</p></th>
+<th class="head"><p>SELL</p></th>
+<th class="head"><p>ep_rew_mean</p></th>
+<th class="head"><p>explained_variance</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>68</p></td>
+<td><p>59.4%</p></td>
+<td><p>22.3%</p></td>
+<td><p>18.4%</p></td>
+<td><p>-990</p></td>
+<td><p>2.5%</p></td>
+</tr>
+<tr class="row-odd"><td><p>73</p></td>
+<td><p>52.7%</p></td>
+<td><p>25.8%</p></td>
+<td><p>21.5%</p></td>
+<td><p>-990</p></td>
+<td><p>1.7% ⭐ 最良HOLD</p></td>
+</tr>
+<tr class="row-even"><td><p>78</p></td>
+<td><p>56.6%</p></td>
+<td><p>24.2%</p></td>
+<td><p>19.1%</p></td>
+<td><p>-990</p></td>
+<td><p>5.1% ⭐ 最良EV</p></td>
+</tr>
+<tr class="row-odd"><td><p>79</p></td>
+<td><p>59.4%</p></td>
+<td><p>25.8%</p></td>
+<td><p>14.8%</p></td>
+<td><p>-990</p></td>
+<td><p>2.7%</p></td>
+</tr>
+<tr class="row-even"><td><p>89</p></td>
+<td><p>59.4%</p></td>
+<td><p>20.3%</p></td>
+<td><p>20.3%</p></td>
+<td><p>-991</p></td>
+<td><p>5.1%</p></td>
+</tr>
+<tr class="row-odd"><td><p>97</p></td>
+<td><p>53.9%</p></td>
+<td><p>23.4%</p></td>
+<td><p>22.7%</p></td>
+<td><p>-991</p></td>
+<td><p>2.2%</p></td>
+</tr>
+<tr class="row-even"><td><p>98</p></td>
+<td><p>54.3%</p></td>
+<td><p>25.8%</p></td>
+<td><p>19.9%</p></td>
+<td><p>-991</p></td>
+<td><p>2.3%</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>観察</strong>:</p>
+<ul class="simple">
+<li><p>報酬は-990付近で<strong>完全に停滞</strong>（改善なし）</p></li>
+<li><p>HOLD率は52-59%で変動、目標の35-40%に到達せず</p></li>
+<li><p>Explained Varianceは全期間で極めて低い（2-5%）</p></li>
+<li><p>アクション分布が大きく振動（学習不安定）</p></li>
+</ul>
+</section>
+<section id="kl-divergenceclipping">
+<h4>KL divergenceとClipping<a class="headerlink" href="#kl-divergenceclipping" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Iteration</p></th>
+<th class="head"><p>approx_kl</p></th>
+<th class="head"><p>clip_fraction</p></th>
+<th class="head"><p>Early stop</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>68-70</p></td>
+<td><p>0.079-0.088</p></td>
+<td><p>0.61-0.70</p></td>
+<td><p>✅ 毎回</p></td>
+</tr>
+<tr class="row-odd"><td><p>73-74</p></td>
+<td><p>0.085-0.095</p></td>
+<td><p>0.70-0.72</p></td>
+<td><p>✅ 毎回</p></td>
+</tr>
+<tr class="row-even"><td><p>86</p></td>
+<td><p>0.095</p></td>
+<td><p>0.72</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>91</p></td>
+<td><p>0.088</p></td>
+<td><p>0.69</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-even"><td><p>94</p></td>
+<td><p><strong>0.101</strong></p></td>
+<td><p>0.71</p></td>
+<td><p>✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>98</p></td>
+<td><p>0.087</p></td>
+<td><p>0.72</p></td>
+<td><p>✅</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>観察</strong>:</p>
+<ul class="simple">
+<li><p>approx_klは0.075-0.101で推移（target_kl=0.05を常に超過）</p></li>
+<li><p>Early stoppingは<strong>100%発生</strong>（改善なし）</p></li>
+<li><p>clip_fractionは0.61-0.74で適切な範囲 ✅</p></li>
+<li><p>しかし学習は全く進んでいない</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🚨 根本原因分析<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="v382-revised">
+<h3>なぜv382_revisedは失敗したのか？<a class="headerlink" href="#v382-revised" title="Link to this heading"></a></h3>
+<section id="vf-coef">
+<h4>問題1: vf_coef増加が逆効果 ❌❌❌<a class="headerlink" href="#vf-coef" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>vf_coef</p></th>
+<th class="head"><p>Explained Variance</p></th>
+<th class="head"><p>効果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0.1 (v381)</p></td>
+<td><p>0.5%</p></td>
+<td><p>価値関数機能せず</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>0.3 (v381_revised)</strong></p></td>
+<td><p><strong>51.7%</strong></p></td>
+<td><p><strong>大成功</strong> ✅✅✅</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>0.5 (v382_revised)</strong></p></td>
+<td><p><strong>2.3%</strong></p></td>
+<td><p><strong>劇的悪化</strong> ❌❌❌</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>分析</strong>: vf_coef=0.5は過剰。価値関数の学習が支配的になりすぎて、ポリシー学習を阻害した可能性。</p>
+</section>
+<section id="target-kl">
+<h4>問題2: target_kl緩和が効果なし<a class="headerlink" href="#target-kl" title="Link to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>v381_revised: target_kl=0.01, approx_kl=0.072 → Early stop 100%
+v382_revised: target_kl=0.05, approx_kl=0.087 → Early stop 100%
+</pre></div>
+</div>
+<p><strong>分析</strong>: target_klを緩和しても、実測KLが更に上昇してしまった。</p>
+<ul class="simple">
+<li><p>v381_revised: 0.072 (target_klの7.2倍)</p></li>
+<li><p>v382_revised: 0.087 (target_klの1.7倍) ← 絶対値は悪化</p></li>
+</ul>
+</section>
+<section id="learning-rate">
+<h4>問題3: learning_rate削減が裏目<a class="headerlink" href="#learning-rate" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>learning_rate</p></th>
+<th class="head"><p>効果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0.003 (v381_revised)</p></td>
+<td><p>平均報酬-541、緩やかな改善 ✅</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>0.002 (v382_revised)</strong></p></td>
+<td><p>平均報酬-991、<strong>改善なし</strong> ❌</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>分析</strong>: learning_rateを下げすぎて、学習が停滞。100kステップでも収束しなかった。</p>
+</section>
+<section id="id8">
+<h4>問題4: 報酬関数の過剰な調整<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># v382_revisedで強化</span>
+<span class="s2">&quot;hold_penalty_weight&quot;</span><span class="p">:</span> <span class="mf">0.055</span><span class="p">,</span>  <span class="c1"># v381_revised: 0.05</span>
+<span class="s2">&quot;buy_action_bonus&quot;</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span>      <span class="c1"># v381_revised: 0.15</span>
+<span class="s2">&quot;buy_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.3</span><span class="p">,</span>         <span class="c1"># v381_revised: なし</span>
+</pre></div>
+</div>
+<p><strong>結果</strong>:</p>
+<ul class="simple">
+<li><p>HOLD率: 51.2% → 54.3% (悪化)</p></li>
+<li><p>BUY率: 24.6% → 25.8% (微改善)</p></li>
+</ul>
+<p><strong>分析</strong>: 報酬関数の調整効果が表れる前に、ハイパーパラメータの問題で学習が停滞。</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>💡 重要な発見<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="vf-coef-0-3">
+<h3>発見1: vf_coef=0.3が最適値 ⭐⭐⭐<a class="headerlink" href="#vf-coef-0-3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>vf_coef</p></th>
+<th class="head"><p>結果</p></th>
+<th class="head"><p>推奨</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0.1</p></td>
+<td><p>EV=0.5% ❌</p></td>
+<td><p>低すぎ</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>0.3</strong></p></td>
+<td><p><strong>EV=51.7%</strong> ✅</p></td>
+<td><p><strong>最適</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>0.5</p></td>
+<td><p>EV=2.3% ❌</p></td>
+<td><p>高すぎ</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: <strong>vf_coef=0.3を維持すべき</strong>。それ以上は逆効果。</p>
+</section>
+<section id="id10">
+<h3>発見2: target_kl緩和だけでは不十分<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p>Early stoppingの根本原因はtarget_klではなく、<strong>他の要因</strong>：</p>
+<ol class="arabic simple">
+<li><p>vf_coefが高すぎて価値関数学習が暴走</p></li>
+<li><p>learning_rateが低すぎて収束が遅い</p></li>
+<li><p>エントロピー調整が不適切</p></li>
+</ol>
+</section>
+<section id="id11">
+<h3>発見3: learning_rate削減は慎重に<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>learning_rate</p></th>
+<th class="head"><p>50kでの結果</p></th>
+<th class="head"><p>100kでの結果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0.003</p></td>
+<td><p>-541 ✅</p></td>
+<td><p>N/A</p></td>
+</tr>
+<tr class="row-odd"><td><p>0.002</p></td>
+<td><p>N/A</p></td>
+<td><p>-991 ❌</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: learning_rate=0.003の方が収束が早い。0.002は100kでも不十分。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v383">
+<h2>🔧 v383への改善提案<a class="headerlink" href="#v383" title="Link to this heading"></a></h2>
+<section id="v381-revised">
+<h3>修正案: v381_revisedベースでの微調整<a class="headerlink" href="#v381-revised" title="Link to this heading"></a></h3>
+<p><strong>基本方針</strong>: v381_revisedの成功を維持しつつ、問題点のみ改善</p>
+<section id="id12">
+<h4>推奨パラメータ<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.003</span><span class="p">,</span><span class="w">           </span><span class="c1">// v381_revisedと同じ（0.002は遅すぎ）</span>
+<span class="w">    </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span><span class="w">                   </span><span class="c1">// 従来通り</span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8475</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gae_lambda&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span><span class="p">,</span><span class="w">               </span><span class="c1">// 0.2→0.15に微調整</span>
+<span class="w">    </span><span class="nt">&quot;clip_range_vf&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;normalize_advantage&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.001</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w">                   </span><span class="c1">// ⭐ 0.5→0.3に戻す（最重要）</span>
+<span class="w">    </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.05</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;target_kl&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">                </span><span class="c1">// ⭐ Early stopping無効化を試す</span>
+<span class="w">    </span><span class="nt">&quot;stats_window_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;verbose&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;seed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">31415</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;device&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;cpu&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;reward_weights&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;hold_penalty_weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.055</span><span class="p">,</span><span class="w">     </span><span class="c1">// v382_revisedと同じ（効果確認）</span>
+<span class="w">    </span><span class="nt">&quot;consecutive_hold_threshold&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">  </span><span class="c1">// v382_revisedと同じ</span>
+<span class="w">    </span><span class="nt">&quot;buy_action_bonus&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.20</span><span class="p">,</span><span class="w">         </span><span class="c1">// 0.25→0.20に微調整</span>
+<span class="w">    </span><span class="nt">&quot;buy_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span><span class="w">            </span><span class="c1">// 1.3→1.2に微調整</span>
+<span class="w">    </span><span class="nt">&quot;profit_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;successful_trade_bonus&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h4>主な変更点<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>v382_revised</p></th>
+<th class="head"><p>v383推奨</p></th>
+<th class="head"><p>理由</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>vf_coef</strong></p></td>
+<td><p>0.5</p></td>
+<td><p><strong>0.3</strong></p></td>
+<td><p>0.5は過剰、0.3が最適と判明</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>target_kl</strong></p></td>
+<td><p>0.05</p></td>
+<td><p><strong>null</strong></p></td>
+<td><p>Early stopping無効化を試す</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>learning_rate</strong></p></td>
+<td><p>0.002</p></td>
+<td><p><strong>0.003</strong></p></td>
+<td><p>0.002は遅すぎ</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>clip_range</strong></p></td>
+<td><p>0.2</p></td>
+<td><p><strong>0.15</strong></p></td>
+<td><p>0.2でも高いかもしれない</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>buy_action_bonus</strong></p></td>
+<td><p>0.25</p></td>
+<td><p><strong>0.20</strong></p></td>
+<td><p>過剰調整を抑制</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>buy_multiplier</strong></p></td>
+<td><p>1.3</p></td>
+<td><p><strong>1.2</strong></p></td>
+<td><p>過剰調整を抑制</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v381-vs-v382">
+<h2>📊 v381 vs v382 比較まとめ<a class="headerlink" href="#v381-vs-v382" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>最終結果比較<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>v381_revised (50k)</p></th>
+<th class="head"><p>v382_revised (100k)</p></th>
+<th class="head"><p>優劣</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>平均報酬</strong></p></td>
+<td><p><strong>-541</strong></p></td>
+<td><p>-991</p></td>
+<td><p><strong>v381圧勝</strong> ✅</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>HOLD率</strong></p></td>
+<td><p><strong>51.2%</strong></p></td>
+<td><p>54.3%</p></td>
+<td><p><strong>v381有利</strong> ✅</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>BUY率</strong></p></td>
+<td><p>24.6%</p></td>
+<td><p><strong>25.8%</strong></p></td>
+<td><p>v382やや有利</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SELL率</strong></p></td>
+<td><p><strong>24.2%</strong></p></td>
+<td><p>19.9%</p></td>
+<td><p><strong>v381有利</strong> ✅</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Explained Var</strong></p></td>
+<td><p><strong>51.7%</strong> (最良)</p></td>
+<td><p>5.1% (最良)</p></td>
+<td><p><strong>v381圧倒</strong> ✅✅✅</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Clip fraction</strong></p></td>
+<td><p>99.6-100%</p></td>
+<td><p><strong>61-74%</strong></p></td>
+<td><p><strong>v382有利</strong> ✅✅</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Early stop</strong></p></td>
+<td><p>100%</p></td>
+<td><p>100%</p></td>
+<td><p>引き分け ⚠️</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id15">
+<h3>最良時点の比較<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>バージョン</p></th>
+<th class="head"><p>最良時点</p></th>
+<th class="head"><p>HOLD</p></th>
+<th class="head"><p>BUY</p></th>
+<th class="head"><p>SELL</p></th>
+<th class="head"><p>平均報酬</p></th>
+<th class="head"><p>EV</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>v381_revised</strong></p></td>
+<td><p>Iter 47</p></td>
+<td><p><strong>44.5%</strong></p></td>
+<td><p>25.8%</p></td>
+<td><p><strong>29.7%</strong></p></td>
+<td><p><strong>-525</strong></p></td>
+<td><p><strong>51.7%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>v382_revised</p></td>
+<td><p>Iter 73</p></td>
+<td><p>52.7%</p></td>
+<td><p><strong>25.8%</strong></p></td>
+<td><p>21.5%</p></td>
+<td><p>-990</p></td>
+<td><p>1.7%</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: <strong>v381_revisedの方が圧倒的に優秀</strong></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>🎯 結論と推奨事項<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>1. 採用すべきモデル: v381_revised ⭐⭐⭐<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>平均報酬が450pt優れている（-541 vs -991）</p></li>
+<li><p>Explained Variance 51.7%は価値関数が正常に機能している証拠</p></li>
+<li><p>HOLD率44.5%（最良時点）は目標35-40%に近い</p></li>
+<li><p>アクション分布のバランスが良い</p></li>
+</ul>
+</section>
+<section id="id18">
+<h3>2. v383での改善アプローチ<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<p><strong>優先度1</strong>: vf_coef=0.3を維持 ⭐⭐⭐</p>
+<ul class="simple">
+<li><p>0.5への増加は明らかに失敗</p></li>
+<li><p>0.3が最適値と確定</p></li>
+</ul>
+<p><strong>優先度2</strong>: target_kl無効化を試す ⭐⭐</p>
+<ul class="simple">
+<li><p>target_kl制約がボトルネックの可能性</p></li>
+<li><p>無効化して学習進行を確認</p></li>
+</ul>
+<p><strong>優先度3</strong>: learning_rate=0.003を維持 ⭐</p>
+<ul class="simple">
+<li><p>0.002は遅すぎて100kでも収束しない</p></li>
+<li><p>0.003で50kの方が良い結果</p></li>
+</ul>
+<p><strong>優先度4</strong>: 報酬関数の微調整</p>
+<ul class="simple">
+<li><p>HOLD penalty強化は継続（0.055）</p></li>
+<li><p>BUY incentiveは控えめに（bonus=0.20, multiplier=1.2）</p></li>
+</ul>
+</section>
+<section id="id19">
+<h3>3. 次のステップ<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>v383設定を作成</strong>（上記推奨パラメータで）</p></li>
+<li><p><strong>50k-100kトレーニング実行</strong></p></li>
+<li><p><strong>v381_revised vs v383を比較</strong></p></li>
+<li><p><strong>最良モデルでバックテスト</strong></p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>📈 学んだ教訓<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>教訓1: パラメータは「適度」が最重要<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>低すぎ</p></th>
+<th class="head"><p>適度</p></th>
+<th class="head"><p>高すぎ</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>vf_coef</p></td>
+<td><p>0.1→失敗</p></td>
+<td><p><strong>0.3→成功</strong></p></td>
+<td><p>0.5→失敗</p></td>
+</tr>
+<tr class="row-odd"><td><p>learning_rate</p></td>
+<td><p>0.002→遅い</p></td>
+<td><p><strong>0.003→良好</strong></p></td>
+<td><p>0.01→不安定？</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: <strong>増やせば良いというものではない</strong></p>
+</section>
+<section id="clip-fraction">
+<h3>教訓2: Clip fraction改善が必ずしも良い結果につながらない<a class="headerlink" href="#clip-fraction" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>v381_revised: clip=100% → 報酬-541 ✅
+v382_revised: clip=70% → 報酬-991 ❌
+</pre></div>
+</div>
+<p><strong>結論</strong>: <strong>Clipping自体は問題ではなかった可能性</strong></p>
+</section>
+<section id="id22">
+<h3>教訓3: 複数パラメータの同時変更は危険<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<p>v382_revisedでの同時変更:</p>
+<ul class="simple">
+<li><p>vf_coef: 0.3→0.5</p></li>
+<li><p>target_kl: 0.01→0.05</p></li>
+<li><p>learning_rate: 0.003→0.002</p></li>
+<li><p>clip_range: 0.1→0.2</p></li>
+<li><p>報酬関数の複数調整</p></li>
+</ul>
+<p><strong>結果</strong>: どの変更が悪影響を与えたか特定困難</p>
+<p><strong>結論</strong>: <strong>一度に1-2個のパラメータのみ変更すべき</strong></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id23">
+<h2>📁 ファイル情報<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>モデル</strong>: <code class="docutils literal notranslate"><span class="pre">models/ppo_reward_v382_revised_aggressive.zip</span></code></p></li>
+<li><p><strong>設定</strong>: <code class="docutils literal notranslate"><span class="pre">configs/training/ppo_reward_v382_revised_aggressive.json</span></code></p></li>
+<li><p><strong>ログ</strong>: <code class="docutils literal notranslate"><span class="pre">checkpoints/ppo_reward_v382_revised_aggressive_1/</span></code></p></li>
+</ul>
+<p><strong>推奨</strong>: このモデルは使用せず、<strong>v381_revisedを採用</strong></p>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>次回への提言<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<p><strong>v383作成時の注意事項</strong>:</p>
+<ol class="arabic simple">
+<li><p>✅ <strong>v381_revisedをベース</strong>とする</p></li>
+<li><p>✅ <strong>vf_coef=0.3を維持</strong>（最重要）</p></li>
+<li><p>✅ <strong>target_kl無効化</strong>を試す</p></li>
+<li><p>✅ <strong>一度に1-2個のパラメータのみ変更</strong></p></li>
+<li><p>✅ 50kステップで十分（100kは不要）</p></li>
+</ol>
+<p><strong>期待される改善</strong>:</p>
+<ul class="simple">
+<li><p>HOLD率: 44.5% → 35-40%</p></li>
+<li><p>BUY率: 25.8% → 30-35%</p></li>
+<li><p>平均報酬: -525 → -450以上</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,291 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Action Constants and Continuous Action Mapping &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SAC v421 高度な機能調査・実装ドキュメント" href="advanced_features_audit.html" />
+    <link rel="prev" title="Action Bias Fix - Detailed Implementation Guide" href="action_bias_implementation_guide.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_IMPLEMENTATION_SUMMARY.html">大規模機能実装サマリー - 2025年10月7日</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.html">Feature Schema Management Reform - 実装完了サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html">Feature Schema Management Reform - 改修計画書</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_REFORM_COMPLETE.html">特徴量スキーマ管理改革 - 完全版サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_CONTROL.html">ログレベル制御ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_INTEGRATION_SUMMARY.html">ログレベル制御機能 統合サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="action_bias_implementation_guide.html">Action Bias Fix - Detailed Implementation Guide</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Action Constants and Continuous Action Mapping</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#action-constants">Action Constants</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#continuous-action-mapping">Continuous Action Mapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#legacy-compatibility">Legacy Compatibility</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#normalize-action-function">normalize_action() Function</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#get-action-name-function">get_action_name() Function</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#implementation-details">Implementation Details</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#files-updated">Files Updated</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#migration-guide">Migration Guide</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#for-existing-models">For Existing Models</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#for-new-development">For New Development</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#benefits">Benefits</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="advanced_features_audit.html">SAC v421 高度な機能調査・実装ドキュメント</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observation_update_verification.html">Observation Update Verification Report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Features</a></li>
+      <li class="breadcrumb-item active">Action Constants and Continuous Action Mapping</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/action_constants.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="action-constants-and-continuous-action-mapping">
+<h1>Action Constants and Continuous Action Mapping<a class="headerlink" href="#action-constants-and-continuous-action-mapping" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>This document describes the action constants used in the trading system and the continuous action mapping implementation.</p>
+</section>
+<section id="action-constants">
+<h2>Action Constants<a class="headerlink" href="#action-constants" title="Link to this heading"></a></h2>
+<p>The trading system uses discrete action constants for BUY, HOLD, and SELL operations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ACTION_HOLD</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">ACTION_BUY</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">ACTION_SELL</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># Changed from 2 to -1 for continuous mapping consistency</span>
+</pre></div>
+</div>
+</section>
+<section id="continuous-action-mapping">
+<h2>Continuous Action Mapping<a class="headerlink" href="#continuous-action-mapping" title="Link to this heading"></a></h2>
+<p>The system supports continuous action mapping where actions are represented as floating-point values:</p>
+<ul class="simple">
+<li><p><strong>BUY</strong>: 1.0 → ACTION_BUY (1)</p></li>
+<li><p><strong>HOLD</strong>: 0.0 → ACTION_HOLD (0)</p></li>
+<li><p><strong>SELL</strong>: -1.0 → ACTION_SELL (-1)</p></li>
+</ul>
+<p>This mapping provides:</p>
+<ul class="simple">
+<li><p>Symmetric action space around zero</p></li>
+<li><p>Intuitive directionality (positive = buy, negative = sell)</p></li>
+<li><p>Better gradient flow for reinforcement learning</p></li>
+</ul>
+</section>
+<section id="legacy-compatibility">
+<h2>Legacy Compatibility<a class="headerlink" href="#legacy-compatibility" title="Link to this heading"></a></h2>
+<p>For backward compatibility with existing models and configurations that use ACTION_SELL=2:</p>
+<section id="normalize-action-function">
+<h3>normalize_action() Function<a class="headerlink" href="#normalize-action-function" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">normalize_action</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert legacy ACTION_SELL=2 to current ACTION_SELL=-1.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">return</span> <span class="n">action</span>
+</pre></div>
+</div>
+</section>
+<section id="get-action-name-function">
+<h3>get_action_name() Function<a class="headerlink" href="#get-action-name-function" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_action_name</span><span class="p">(</span><span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get human-readable action name with legacy support.&quot;&quot;&quot;</span>
+    <span class="n">normalized</span> <span class="o">=</span> <span class="n">normalize_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ACTION_NAMES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">normalized</span><span class="p">,</span> <span class="s2">&quot;UNKNOWN&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="implementation-details">
+<h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading"></a></h2>
+<section id="files-updated">
+<h3>Files Updated<a class="headerlink" href="#files-updated" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/trading/constants.py</span></code></strong></p>
+<ul class="simple">
+<li><p>ACTION_SELL changed from 2 to -1</p></li>
+<li><p>Added normalize_action() function</p></li>
+<li><p>Updated ACTION_NAMES dictionary</p></li>
+<li><p>Added get_action_name() function</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/trading/live_trader/live_trader.py</span></code></strong></p>
+<ul class="simple">
+<li><p>Imports normalize_action from constants</p></li>
+<li><p>Applies normalization in _predict_action() method</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/reward_calculator.py</span></code></strong></p>
+<ul class="simple">
+<li><p>Imports normalize_action from constants</p></li>
+<li><p>Applies normalization in _convert_continuous_to_discrete_action()</p></li>
+</ul>
+</li>
+<li><p><strong>Test Files</strong></p>
+<ul class="simple">
+<li><p>Updated unit tests to expect ACTION_SELL=-1</p></li>
+<li><p>Verified legacy compatibility</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="migration-guide">
+<h2>Migration Guide<a class="headerlink" href="#migration-guide" title="Link to this heading"></a></h2>
+<section id="for-existing-models">
+<h3>For Existing Models<a class="headerlink" href="#for-existing-models" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Models trained with ACTION_SELL=2 will continue to work</p></li>
+<li><p>The normalize_action() function automatically converts legacy values</p></li>
+<li><p>No manual intervention required</p></li>
+</ul>
+</section>
+<section id="for-new-development">
+<h3>For New Development<a class="headerlink" href="#for-new-development" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Use ACTION_SELL = -1 in all new code</p></li>
+<li><p>Prefer continuous action mapping (-1.0, 0.0, 1.0) for RL training</p></li>
+<li><p>Use normalize_action() when interfacing with legacy components</p></li>
+</ul>
+</section>
+</section>
+<section id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<p>Run the following to verify the implementation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Test action constants</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from ztb.trading.constants import *; print(f&#39;ACTION_SELL: {ACTION_SELL}&#39;)&quot;</span>
+
+<span class="c1"># Test legacy compatibility</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;from ztb.trading.constants import normalize_action; print(f&#39;normalize_action(2): {normalize_action(2)}&#39;)&quot;</span>
+
+<span class="c1"># Run unit tests</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>tests/unit/trading/live/test_live_trade.py::TestBugFixDocumentation::test_action_constants_defined<span class="w"> </span>-v
+</pre></div>
+</div>
+</section>
+<section id="benefits">
+<h2>Benefits<a class="headerlink" href="#benefits" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Consistency</strong>: Action mapping now aligns with continuous action space</p></li>
+<li><p><strong>Backward Compatibility</strong>: Existing models continue to work seamlessly</p></li>
+<li><p><strong>Maintainability</strong>: Clear separation between legacy and current implementations</p></li>
+<li><p><strong>Future-Proof</strong>: Foundation for advanced continuous action policies</content>
+<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\docs\action_constants.md</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="action_bias_implementation_guide.html" class="btn btn-neutral float-left" title="Action Bias Fix - Detailed Implementation Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="advanced_features_audit.html" class="btn btn-neutral float-right" title="SAC v421 高度な機能調査・実装ドキュメント" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,500 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.unit.test_reporting &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.unit.test_reporting</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.unit.test_reporting</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Weekly report generation tests for comprehensive feature evaluation reporting.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.file_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_json_load</span>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestWeeklyReportGeneration</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test weekly report generation functionality&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.temp_dir">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.temp_dir">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">temp_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create temporary directory for test outputs&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">tmpdir</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.mock_evaluator">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.mock_evaluator">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mock_evaluator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create mock ComprehensiveFeatureReEvaluator&quot;&quot;&quot;</span>
+        <span class="n">evaluator</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+
+        <span class="c1"># Mock evaluation results</span>
+        <span class="n">evaluator</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;verified&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;computation_time_ms&quot;</span><span class="p">:</span> <span class="mf">150.5</span><span class="p">,</span>
+            <span class="s2">&quot;baseline_sharpe&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+            <span class="s2">&quot;best_delta_sharpe&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span>
+            <span class="s2">&quot;total_features_tested&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+            <span class="s2">&quot;successful_features&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+            <span class="s2">&quot;failed_features&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">evaluator</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_weekly_report_contains_unverified_section">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_weekly_report_contains_unverified_section">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_weekly_report_contains_unverified_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">,</span> <span class="n">_mock_evaluator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that weekly report contains unverified features section&quot;&quot;&quot;</span>
+        <span class="n">report_path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="s2">&quot;weekly_report.md&quot;</span>
+
+        <span class="c1"># Mock unverified features data</span>
+        <span class="n">unverified_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;TestFeature1&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;unverified&quot;</span><span class="p">,</span> <span class="s2">&quot;last_evaluated&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01&quot;</span><span class="p">},</span>
+            <span class="s2">&quot;TestFeature2&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span> <span class="s2">&quot;last_evaluated&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-02&quot;</span><span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.path_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_project_root</span>
+
+        <span class="n">reports_path</span> <span class="o">=</span> <span class="n">get_project_root</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;reports&quot;</span> <span class="o">/</span> <span class="s2">&quot;generate_weekly_report.py&quot;</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">spec_from_file_location</span><span class="p">(</span>
+            <span class="s2">&quot;generate_weekly_report&quot;</span><span class="p">,</span> <span class="n">reports_path</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;Could not load generate_weekly_report module&quot;</span><span class="p">)</span>
+        <span class="n">generate_weekly_report</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">module_from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">spec</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">exec_module</span><span class="p">(</span><span class="n">generate_weekly_report</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s2">&quot;generate_weekly_report&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">generate_weekly_report</span>
+
+        <span class="k">with</span> <span class="p">(</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span><span class="n">generate_weekly_report</span><span class="p">,</span> <span class="s2">&quot;load_ablation_results&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_load</span><span class="p">,</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span>
+                <span class="n">generate_weekly_report</span><span class="p">,</span> <span class="s2">&quot;load_evaluation_config&quot;</span>
+            <span class="p">)</span> <span class="k">as</span> <span class="n">mock_config</span><span class="p">,</span>
+            <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;builtins.open&quot;</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_open</span><span class="p">,</span>
+            <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;json.dump&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_json_dump</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="c1"># Mock the data loading</span>
+            <span class="n">mock_load</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;ablation_results&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;FeatureA&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;delta_sharpe&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;ci95&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">]}},</span>
+                    <span class="s2">&quot;FeatureB&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;delta_sharpe&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.02</span><span class="p">,</span> <span class="s2">&quot;ci95&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">]}</span>
+                    <span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+            <span class="n">mock_config</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;thresholds&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;re_evaluate&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">}</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Mock file operations</span>
+            <span class="n">mock_file</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+            <span class="n">mock_open</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="fm">__enter__</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_file</span>
+
+            <span class="c1"># Import and run the main function</span>
+            <span class="c1"># This would normally be called with arguments, but we&#39;ll mock the necessary parts</span>
+
+            <span class="c1"># Check that file was written</span>
+            <span class="k">assert</span> <span class="n">mock_open</span><span class="o">.</span><span class="n">called</span>
+
+            <span class="c1"># Check that unverified section would be included</span>
+            <span class="c1"># (In real implementation, this would check the actual content)</span>
+            <span class="k">assert</span> <span class="kc">True</span>  <span class="c1"># Placeholder - actual implementation would verify content</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_unverified_features_json_generation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_unverified_features_json_generation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_unverified_features_json_generation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that unverified_features.json is generated correctly&quot;&quot;&quot;</span>
+        <span class="n">json_path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="s2">&quot;unverified_features.json&quot;</span>
+
+        <span class="c1"># Mock data</span>
+        <span class="n">unverified_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;FeatureA&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;unverified&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;last_evaluation&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01T00:00:00&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;insufficient_data&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;sample_size&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">},</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;FeatureB&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;last_evaluation&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-02T00:00:00&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;being_evaluated&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;sample_size&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">},</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Write JSON file</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">unverified_data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Verify file exists and has correct content</span>
+        <span class="k">assert</span> <span class="n">json_path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+
+        <span class="n">loaded_data</span> <span class="o">=</span> <span class="n">safe_json_load</span><span class="p">(</span><span class="n">json_path</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">loaded_data</span> <span class="o">==</span> <span class="n">unverified_data</span>
+        <span class="k">assert</span> <span class="s2">&quot;FeatureA&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+        <span class="k">assert</span> <span class="s2">&quot;FeatureB&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+        <span class="k">assert</span> <span class="n">loaded_data</span><span class="p">[</span><span class="s2">&quot;FeatureA&quot;</span><span class="p">][</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;unverified&quot;</span>
+        <span class="k">assert</span> <span class="n">loaded_data</span><span class="p">[</span><span class="s2">&quot;FeatureB&quot;</span><span class="p">][</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;pending&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_markdown_table_formatting">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_markdown_table_formatting">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_markdown_table_formatting</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that markdown tables are properly formatted&quot;&quot;&quot;</span>
+        <span class="c1"># Test data</span>
+        <span class="n">features_data</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureA&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;verified&quot;</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">:</span> <span class="mf">0.45</span><span class="p">,</span> <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureB&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">:</span> <span class="mf">0.25</span><span class="p">,</span> <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureC&quot;</span><span class="p">,</span> <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;unverified&quot;</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span> <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Generate markdown table</span>
+        <span class="n">table_lines</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;| Feature | Status | Sharpe | Samples |&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;|---------|--------|--------|---------|&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">features_data</span><span class="p">:</span>
+            <span class="n">table_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">feature</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">feature</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">feature</span><span class="p">[</span><span class="s1">&#39;sharpe&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">feature</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> |&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">table</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">table_lines</span><span class="p">)</span>
+
+        <span class="c1"># Verify table structure</span>
+        <span class="k">assert</span> <span class="n">table</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;| Feature | Status | Sharpe | Samples |&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;|---------|--------|--------|---------|&quot;</span> <span class="ow">in</span> <span class="n">table</span>
+        <span class="k">assert</span> <span class="s2">&quot;| FeatureA | verified | 0.45 | 150 |&quot;</span> <span class="ow">in</span> <span class="n">table</span>
+        <span class="k">assert</span> <span class="s2">&quot;| FeatureB | pending | 0.25 | 80 |&quot;</span> <span class="ow">in</span> <span class="n">table</span>
+        <span class="k">assert</span> <span class="s2">&quot;| FeatureC | unverified | 0.15 | 30 |&quot;</span> <span class="ow">in</span> <span class="n">table</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_report_section_headers">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_report_section_headers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_report_section_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that report contains all required section headers&quot;&quot;&quot;</span>
+        <span class="n">required_sections</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;# Weekly Feature Evaluation Report&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;## Summary&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;## Verified Features&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;## Unverified Features&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;## Failed Features&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;## Recommendations&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Mock report content</span>
+        <span class="n">mock_report</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span>
+
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">- Total evaluations: 10</span>
+<span class="s2">- Success rate: 80%</span>
+
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">| Feature | Sharpe | Samples |</span>
+<span class="s2">|---------|--------|---------|</span>
+<span class="s2">| FeatureA | 0.45 | 150 |</span>
+
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">| Feature | Status | Reason |</span>
+<span class="s2">|---------|--------|--------|</span>
+<span class="s2">| FeatureB | pending | insufficient_data |</span>
+
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">| Feature | Error |</span>
+<span class="s2">|---------|-------|</span>
+<span class="s2">| FeatureC | computation_error |</span>
+
+<span class="si">{</span><span class="n">required_sections</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span>
+<span class="s2">- Review unverified features</span>
+<span class="s2">- Investigate failed features</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">required_sections</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">mock_report</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Missing section: </span><span class="si">{</span><span class="n">section</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_json_attachment_structure">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_json_attachment_structure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_json_attachment_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that JSON attachments have correct structure&quot;&quot;&quot;</span>
+        <span class="n">json_path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="s2">&quot;feature_details.json&quot;</span>
+
+        <span class="c1"># Create structured JSON data</span>
+        <span class="n">feature_details</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;generated_at&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01T00:00:00&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;evaluation_period&quot;</span><span class="p">:</span> <span class="s2">&quot;2023-12-25 to 2024-01-01&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;total_features&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;verified_features&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;FeatureA&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.45</span><span class="p">,</span>
+                    <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.58</span><span class="p">,</span>
+                    <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.12</span><span class="p">,</span>
+                    <span class="s2">&quot;sample_size&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span>
+                    <span class="s2">&quot;computation_time_ms&quot;</span><span class="p">:</span> <span class="mf">145.2</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;unverified_features&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;FeatureB&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="s2">&quot;insufficient_samples&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;current_samples&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span>
+                    <span class="s2">&quot;required_samples&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+                    <span class="s2">&quot;last_evaluation&quot;</span><span class="p">:</span> <span class="s2">&quot;2024-01-01T00:00:00&quot;</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;performance_summary&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;avg_sharpe_improvement&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span>
+                <span class="s2">&quot;total_computation_time&quot;</span><span class="p">:</span> <span class="mf">2150.5</span><span class="p">,</span>
+                <span class="s2">&quot;success_rate&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">feature_details</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Verify structure</span>
+        <span class="n">loaded_data</span> <span class="o">=</span> <span class="n">safe_json_load</span><span class="p">(</span><span class="n">json_path</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+        <span class="k">assert</span> <span class="s2">&quot;verified_features&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+        <span class="k">assert</span> <span class="s2">&quot;unverified_features&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+        <span class="k">assert</span> <span class="s2">&quot;performance_summary&quot;</span> <span class="ow">in</span> <span class="n">loaded_data</span>
+
+        <span class="c1"># Check metadata</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">loaded_data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="s2">&quot;generated_at&quot;</span> <span class="ow">in</span> <span class="n">metadata</span>
+        <span class="k">assert</span> <span class="s2">&quot;total_features&quot;</span> <span class="ow">in</span> <span class="n">metadata</span>
+        <span class="k">assert</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;total_features&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">15</span>
+
+        <span class="c1"># Check performance summary</span>
+        <span class="n">perf</span> <span class="o">=</span> <span class="n">loaded_data</span><span class="p">[</span><span class="s2">&quot;performance_summary&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="s2">&quot;avg_sharpe_improvement&quot;</span> <span class="ow">in</span> <span class="n">perf</span>
+        <span class="k">assert</span> <span class="s2">&quot;success_rate&quot;</span> <span class="ow">in</span> <span class="n">perf</span>
+        <span class="k">assert</span> <span class="n">perf</span><span class="p">[</span><span class="s2">&quot;success_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.8</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_error_handling_in_report_generation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_error_handling_in_report_generation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_error_handling_in_report_generation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test error handling when report generation fails&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">importlib.util</span>
+
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.path_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_project_root</span>
+
+        <span class="n">reports_path</span> <span class="o">=</span> <span class="n">get_project_root</span><span class="p">()</span> <span class="o">/</span> <span class="s2">&quot;reports&quot;</span> <span class="o">/</span> <span class="s2">&quot;generate_weekly_report.py&quot;</span>
+        <span class="n">spec</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">spec_from_file_location</span><span class="p">(</span>
+            <span class="s2">&quot;generate_weekly_report&quot;</span><span class="p">,</span> <span class="n">reports_path</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">spec</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">spec</span><span class="o">.</span><span class="n">loader</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;Could not load generate_weekly_report module&quot;</span><span class="p">)</span>
+        <span class="n">generate_weekly_report</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">module_from_spec</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+        <span class="n">spec</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">exec_module</span><span class="p">(</span><span class="n">generate_weekly_report</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span>
+            <span class="n">generate_weekly_report</span><span class="p">,</span>
+            <span class="s2">&quot;load_ablation_results&quot;</span><span class="p">,</span>
+            <span class="n">side_effect</span><span class="o">=</span><span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;File not found&quot;</span><span class="p">),</span>
+        <span class="p">):</span>
+            <span class="c1"># Should handle file I/O errors gracefully</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># This would normally try to read a file</span>
+                <span class="c1"># In test, we just ensure no unhandled exceptions</span>
+                <span class="k">assert</span> <span class="kc">True</span>
+            <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+                <span class="c1"># Should handle IOError gracefully</span>
+                <span class="k">assert</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_report_content_validation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_report_content_validation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_report_content_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that report content meets quality standards&quot;&quot;&quot;</span>
+        <span class="c1"># Mock report sections</span>
+        <span class="n">sections</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="s2">&quot;Total features evaluated: 10&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;verified_count&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+            <span class="s2">&quot;unverified_count&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="s2">&quot;failed_count&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="s2">&quot;avg_improvement&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Validate content quality</span>
+        <span class="k">assert</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;verified_count&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;unverified_count&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;failed_count&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;verified_count&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;unverified_count&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;failed_count&quot;</span><span class="p">]</span>
+            <span class="o">==</span> <span class="mi">10</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Check that improvement is reasonable</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="o">-</span><span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">sections</span><span class="p">[</span><span class="s2">&quot;avg_improvement&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">1</span>
+        <span class="p">),</span> <span class="s2">&quot;Sharpe improvement should be reasonable&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestWeeklyReportGeneration.test_json_file_naming_convention">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reporting.TestWeeklyReportGeneration.test_json_file_naming_convention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_json_file_naming_convention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that JSON files follow naming conventions&quot;&quot;&quot;</span>
+        <span class="c1"># Test various JSON file names</span>
+        <span class="n">json_files</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;unverified_features.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;feature_details.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;evaluation_summary.json&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;performance_metrics.json&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">json_files</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">temp_dir</span> <span class="o">/</span> <span class="n">filename</span>
+
+            <span class="c1"># Create empty file</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">touch</span><span class="p">()</span>
+
+            <span class="c1"># Check naming convention</span>
+            <span class="k">assert</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.json&quot;</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> should end with .json&quot;</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="s2">&quot;_&quot;</span> <span class="ow">in</span> <span class="n">filename</span> <span class="ow">or</span> <span class="n">filename</span> <span class="o">==</span> <span class="s2">&quot;feature_details.json&quot;</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;File </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> should use snake_case&quot;</span>
+
+            <span class="c1"># Verify file exists</span>
+            <span class="k">assert</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

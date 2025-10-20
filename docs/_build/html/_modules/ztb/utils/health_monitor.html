@@ -1,0 +1,608 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.utils.health_monitor &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.utils.health_monitor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.utils.health_monitor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Health monitoring utilities for ZTB system.</span>
+
+<span class="sd">Provides comprehensive health checks for system components,</span>
+<span class="sd">performance monitoring, and alerting capabilities.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZTBConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.circuit_breaker</span><span class="w"> </span><span class="kn">import</span> <span class="n">CircuitBreaker</span><span class="p">,</span> <span class="n">CircuitBreakerConfig</span><span class="p">,</span> <span class="n">CircuitState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.memory_monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_memory_monitor</span><span class="p">,</span> <span class="n">MemoryMonitor</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="HealthStatus">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthStatus">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HealthStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health status levels.&quot;&quot;&quot;</span>
+
+    <span class="n">HEALTHY</span> <span class="o">=</span> <span class="s2">&quot;healthy&quot;</span>
+    <span class="n">DEGRADED</span> <span class="o">=</span> <span class="s2">&quot;degraded&quot;</span>
+    <span class="n">UNHEALTHY</span> <span class="o">=</span> <span class="s2">&quot;unhealthy&quot;</span>
+    <span class="n">UNKNOWN</span> <span class="o">=</span> <span class="s2">&quot;unknown&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="HealthCheckResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthCheckResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HealthCheckResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of a health check.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">HealthStatus</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">details</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">duration</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="SystemMetrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.SystemMetrics">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SystemMetrics</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;System performance metrics.&quot;&quot;&quot;</span>
+
+    <span class="n">cpu_percent</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">memory_percent</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">memory_mb</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">disk_usage_percent</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">network_connections</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="HealthChecker">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HealthChecker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health checker for system components.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ZTBConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">ZTBConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">HealthCheckResult</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">CircuitBreaker</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_metrics</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SystemMetrics</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor</span> <span class="o">=</span> <span class="n">MemoryMonitor</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HealthChecker.register_check">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.register_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">register_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">check_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">HealthCheckResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Register a health check function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the health check</span>
+<span class="sd">            check_func: Function that performs the health check</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">check_func</span>
+
+        <span class="c1"># Create circuit breaker for this check</span>
+        <span class="n">cb_config</span> <span class="o">=</span> <span class="n">CircuitBreakerConfig</span><span class="p">(</span>
+            <span class="n">failure_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_FAILURE_THRESHOLD&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="n">recovery_timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_RECOVERY_TIMEOUT&quot;</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">),</span>
+            <span class="n">success_threshold</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_SUCCESS_THRESHOLD&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+            <span class="n">timeout</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_CHECK_TIMEOUT&quot;</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">CircuitBreaker</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">cb_config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.unregister_check">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.unregister_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unregister_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unregister a health check.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.run_check">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.run_check">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_check</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthCheckResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run a specific health check with circuit breaker protection.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            name: Name of the health check to run</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health check result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNKNOWN</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Health check &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; not registered&quot;</span><span class="p">,</span>
+                <span class="n">details</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                <span class="n">duration</span><span class="o">=</span><span class="mf">0.0</span>
+            <span class="p">)</span>
+
+        <span class="n">circuit_breaker</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Check if circuit breaker allows the call</span>
+            <span class="k">if</span> <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">state</span> <span class="o">==</span> <span class="n">CircuitState</span><span class="o">.</span><span class="n">OPEN</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">status</span><span class="o">=</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span><span class="p">,</span>
+                    <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Circuit breaker is OPEN for &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                    <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;circuit_state&quot;</span><span class="p">:</span> <span class="s2">&quot;open&quot;</span><span class="p">},</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                    <span class="n">duration</span><span class="o">=</span><span class="mf">0.0</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Run the health check</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">[</span><span class="n">name</span><span class="p">]()</span>
+            <span class="n">duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+            <span class="c1"># Update circuit breaker</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span><span class="p">:</span>
+                <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">record_success</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">record_failure</span><span class="p">()</span>
+
+            <span class="c1"># Update result with timing</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="n">duration</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Health check &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; failed with exception: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">circuit_breaker</span><span class="o">.</span><span class="n">record_failure</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">status</span><span class="o">=</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Health check failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;exception&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)},</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+                <span class="n">duration</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>  <span class="c1"># Approximate</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.run_all_checks">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.run_all_checks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_all_checks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">HealthCheckResult</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run all registered health checks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary of health check results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">checks</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_check</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.get_overall_health">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.get_overall_health">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_overall_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthStatus</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get overall system health status.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Overall health status</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_all_checks</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNKNOWN</span>
+
+        <span class="c1"># Count statuses</span>
+        <span class="n">status_counts</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">status_counts</span><span class="p">[</span><span class="n">result</span><span class="o">.</span><span class="n">status</span><span class="p">]</span> <span class="o">=</span> <span class="n">status_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="c1"># Determine overall status</span>
+        <span class="k">if</span> <span class="n">status_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span>
+        <span class="k">elif</span> <span class="n">status_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">DEGRADED</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">DEGRADED</span>
+        <span class="k">elif</span> <span class="n">status_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNKNOWN</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.collect_system_metrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.collect_system_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collect_system_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SystemMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Collect current system performance metrics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            System metrics</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cpu_percent</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">memory</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span>
+            <span class="n">disk</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+            <span class="n">network</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">psutil</span><span class="o">.</span><span class="n">net_connections</span><span class="p">())</span>
+
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">SystemMetrics</span><span class="p">(</span>
+                <span class="n">cpu_percent</span><span class="o">=</span><span class="n">cpu_percent</span><span class="p">,</span>
+                <span class="n">memory_percent</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
+                <span class="n">memory_mb</span><span class="o">=</span><span class="n">memory</span><span class="o">.</span><span class="n">used</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">,</span>
+                <span class="n">disk_usage_percent</span><span class="o">=</span><span class="n">disk</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
+                <span class="n">network_connections</span><span class="o">=</span><span class="n">network</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_metrics</span> <span class="o">=</span> <span class="n">metrics</span>
+            <span class="k">return</span> <span class="n">metrics</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to collect system metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Return dummy metrics</span>
+            <span class="k">return</span> <span class="n">SystemMetrics</span><span class="p">(</span>
+                <span class="n">cpu_percent</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">memory_percent</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">memory_mb</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">disk_usage_percent</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">network_connections</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.check_system_health">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.check_system_health">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_system_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthCheckResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check system-level health (CPU, memory, disk).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health check result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_system_metrics</span><span class="p">()</span>
+
+        <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Check CPU usage</span>
+        <span class="n">cpu_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_CPU_THRESHOLD&quot;</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metrics</span><span class="o">.</span><span class="n">cpu_percent</span> <span class="o">&gt;</span> <span class="n">cpu_threshold</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High CPU usage: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">cpu_percent</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check memory usage</span>
+        <span class="n">memory_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_MEMORY_THRESHOLD&quot;</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metrics</span><span class="o">.</span><span class="n">memory_percent</span> <span class="o">&gt;</span> <span class="n">memory_threshold</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High memory usage: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">memory_percent</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check disk usage</span>
+        <span class="n">disk_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s2">&quot;ZTB_HEALTH_DISK_THRESHOLD&quot;</span><span class="p">,</span> <span class="mf">95.0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">metrics</span><span class="o">.</span><span class="n">disk_usage_percent</span> <span class="o">&gt;</span> <span class="n">disk_threshold</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High disk usage: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">disk_usage_percent</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine status</span>
+        <span class="k">if</span> <span class="n">issues</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">DEGRADED</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">issues</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;System health issues: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">issues</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;System operating normally&quot;</span>
+
+        <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;system_health&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;cpu_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">,</span>
+                <span class="s2">&quot;memory_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">memory_percent</span><span class="p">,</span>
+                <span class="s2">&quot;memory_mb&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">memory_mb</span><span class="p">,</span>
+                <span class="s2">&quot;disk_usage_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">disk_usage_percent</span><span class="p">,</span>
+                <span class="s2">&quot;network_connections&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">network_connections</span><span class="p">,</span>
+                <span class="s2">&quot;issues&quot;</span><span class="p">:</span> <span class="n">issues</span>
+            <span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">metrics</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+            <span class="n">duration</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.check_database_connectivity">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.check_database_connectivity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_database_connectivity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthCheckResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check database connectivity (placeholder for actual implementation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health check result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Placeholder - in real implementation, this would test actual DB connection</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Simulate database check</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Simulate network latency</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Database connection healthy&quot;</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;connection_time_ms&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;Database connection failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+
+        <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;database_connectivity&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="n">duration</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.check_external_api_health">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.check_external_api_health">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_external_api_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthCheckResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check external API health (placeholder for actual implementation).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health check result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Placeholder - in real implementation, this would test actual API endpoints</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Simulate API check</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.05</span><span class="p">)</span>  <span class="c1"># Simulate network latency</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;External APIs responding normally&quot;</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;response_time_ms&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;apis_checked&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;exchange_api&quot;</span><span class="p">,</span> <span class="s2">&quot;market_data_api&quot;</span><span class="p">]}</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;External API check failed: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+
+        <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;external_api_health&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="n">details</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="n">duration</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.check_memory_health">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.check_memory_health">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_memory_health</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HealthCheckResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check memory usage health.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health check result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">memory_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor</span><span class="o">.</span><span class="n">get_memory_stats</span><span class="p">()</span>
+
+        <span class="n">issues</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">current_mb</span> <span class="o">=</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;current_mb&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Check memory thresholds</span>
+        <span class="n">critical_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">&quot;ZTB_MEMORY_CRITICAL_THRESHOLD_MB&quot;</span><span class="p">,</span> <span class="mi">2000</span><span class="p">)</span>
+        <span class="n">warning_threshold</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get_int</span><span class="p">(</span><span class="s2">&quot;ZTB_MEMORY_WARNING_THRESHOLD_MB&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">current_mb</span> <span class="o">&gt;</span> <span class="n">critical_threshold</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Critical memory usage: </span><span class="si">{</span><span class="n">current_mb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB &gt; </span><span class="si">{</span><span class="n">critical_threshold</span><span class="si">}</span><span class="s2">MB&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">current_mb</span> <span class="o">&gt;</span> <span class="n">warning_threshold</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;High memory usage: </span><span class="si">{</span><span class="n">current_mb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB &gt; </span><span class="si">{</span><span class="n">warning_threshold</span><span class="si">}</span><span class="s2">MB&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check memory trend</span>
+        <span class="n">trend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor</span><span class="o">.</span><span class="n">get_memory_trend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">trend</span> <span class="o">==</span> <span class="s2">&quot;increasing&quot;</span><span class="p">:</span>
+            <span class="n">issues</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Memory usage is increasing&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Determine status</span>
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;Critical&quot;</span> <span class="ow">in</span> <span class="n">issue</span> <span class="k">for</span> <span class="n">issue</span> <span class="ow">in</span> <span class="n">issues</span><span class="p">):</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">UNHEALTHY</span>
+        <span class="k">elif</span> <span class="n">issues</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">DEGRADED</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">HealthStatus</span><span class="o">.</span><span class="n">HEALTHY</span>
+
+        <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Memory usage normal&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">issues</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;Memory issues: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">issues</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">HealthCheckResult</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;memory_health&quot;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+            <span class="n">details</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;current_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;current_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;average_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;average_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;peak_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;peak_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="n">trend</span><span class="p">,</span>
+                <span class="s2">&quot;issues&quot;</span><span class="p">:</span> <span class="n">issues</span>
+            <span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="n">duration</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.setup_default_checks">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.setup_default_checks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_default_checks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up default health checks.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;system_health&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_system_health</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;memory_health&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_memory_health</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;database_connectivity&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_database_connectivity</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">register_check</span><span class="p">(</span><span class="s2">&quot;external_api_health&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_external_api_health</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="HealthChecker.get_health_summary">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.health_monitor.HealthChecker.get_health_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_health_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get a summary of all health checks and system status.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Health summary dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run_all_checks</span><span class="p">()</span>
+        <span class="n">overall_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_overall_health</span><span class="p">()</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_system_metrics</span><span class="p">()</span>
+        <span class="n">memory_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor</span><span class="o">.</span><span class="n">get_memory_stats</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;overall_status&quot;</span><span class="p">:</span> <span class="n">overall_status</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="s2">&quot;checks&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">message</span><span class="p">,</span>
+                    <span class="s2">&quot;duration&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span>
+                    <span class="s2">&quot;details&quot;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">details</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;system_metrics&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;cpu_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">,</span>
+                <span class="s2">&quot;memory_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">memory_percent</span><span class="p">,</span>
+                <span class="s2">&quot;memory_mb&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">memory_mb</span><span class="p">,</span>
+                <span class="s2">&quot;disk_usage_percent&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">disk_usage_percent</span><span class="p">,</span>
+                <span class="s2">&quot;network_connections&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">network_connections</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;memory_stats&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;current_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;current_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;average_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;average_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;peak_mb&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;peak_mb&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;samples&quot;</span><span class="p">:</span> <span class="n">memory_stats</span><span class="p">[</span><span class="s1">&#39;samples&#39;</span><span class="p">],</span>
+                <span class="s2">&quot;trend&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor</span><span class="o">.</span><span class="n">get_memory_trend</span><span class="p">()</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;circuit_breakers&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">cb</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">value</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">cb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,778 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大規模機能実装サマリー - 2025年10月7日 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ログレベル制御ガイド" href="LOG_LEVEL_CONTROL.html" />
+    <link rel="prev" title="Features" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">大規模機能実装サマリー - 2025年10月7日</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">✅ 実装完了機能一覧</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id3">1. ログレベル制御機能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">2. 設定ファイルテンプレート</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">3. 設定ファイル検証ツール</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">4. 学習進捗監視ツール</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">5. チェックポイント比較ツール</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">6. ローリング評価ツール</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">7. アンサンブル集計ツール</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">8. 包括的学習ガイド</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">📚 新規作成ドキュメント</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">🎯 推奨ワークフロー</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#week-1-100k">Week 1: 100kテスト</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#week-2-1m-3">Week 2: 1M学習（3モデル並列）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#week-3">Week 3: ローリング評価 + アンサンブル集計</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#week-4-2m">Week 4: 2M学習（オプション）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">📊 実装統計</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id14">コード変更</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id15">ドキュメント</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">✅ 検証済み項目</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id17">1. ログレベル制御</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id18">2. 設定ファイル検証</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">3. ツール動作確認</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">🎯 次のアクション</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id21">即座に実行可能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#week-2-3">中期目標（Week 2-3）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#week-4">長期目標（Week 4+）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">💡 ベストプラクティス</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id23">🔧 トラブルシューティング</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id24">✅ まとめ</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id25">実装完了</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id26">ドキュメント完備</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id27">準備完了</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_CONTROL.html">ログレベル制御ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_INTEGRATION_SUMMARY.html">ログレベル制御機能 統合サマリー</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Features</a></li>
+      <li class="breadcrumb-item active">大規模機能実装サマリー - 2025年10月7日</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/FEATURE_IMPLEMENTATION_SUMMARY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>大規模機能実装サマリー - 2025年10月7日<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>セッション</strong>: ログレベル制御 + 包括的学習システム実装<br />
+<strong>所要時間</strong>: 約2-3時間<br />
+<strong>実装機能数</strong>: 8機能 + 5ドキュメント</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>✅ 実装完了機能一覧<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>1. ログレベル制御機能<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code></p>
+<p><strong>変更内容</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--log-level</span></code> 引数追加（DEBUG/INFO/WARNING/ERROR/CRITICAL）</p></li>
+<li><p>デフォルト: INFO（DEBUGログを抑制）</p></li>
+<li><p>ルートロガーも制御し、サードパーティライブラリのログも抑制</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># INFOレベル（推奨）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--log-level<span class="w"> </span>INFO
+
+<span class="c1"># WARNINGレベル（並列実行時）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--log-level<span class="w"> </span>WARNING
+</pre></div>
+</div>
+<p><strong>効果</strong>: 視認性大幅向上、並列実行時の混乱解消</p>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h3>2. 設定ファイルテンプレート<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/train/template.json</span></code> - 100k/1M学習用</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/train/template_2M.json</span></code> - 2M学習用（resume/rolling_eval対応）</p></li>
+</ul>
+<p><strong>特徴</strong>:</p>
+<ul class="simple">
+<li><p>YOUR_SESSION_IDを置換するだけで使用可能</p></li>
+<li><p>全必須パラメータ完備</p></li>
+<li><p>2Mテンプレートはresume機能、rolling_evaluation設定を含む</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># テンプレートをコピー</span>
+cp<span class="w"> </span>configs/train/template.json<span class="w"> </span>configs/train/my_training.json
+
+<span class="c1"># YOUR_SESSION_ID を置換</span>
+<span class="c1"># VSCode検索置換、sed、または手動編集</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h3>3. 設定ファイル検証ツール<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/check_config_consistency.py</span></code>（既存、機能確認済み）</p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>命名規則違反検出（スネークケース以外）</p></li>
+<li><p>必須パラメータ欠落検出</p></li>
+<li><p>型ミスマッチ検出</p></li>
+<li><p>デフォルト値不整合検出</p></li>
+<li><p>構造的問題検出</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全設定ファイルをチェック</span>
+python<span class="w"> </span>scripts/check_config_consistency.py<span class="w"> </span>configs/train/*.json
+
+<span class="c1"># 100kテスト設定のみチェック</span>
+python<span class="w"> </span>scripts/check_config_consistency.py<span class="w"> </span>configs/train/ensemble_*_100k_test.json
+</pre></div>
+</div>
+<p><strong>出力例</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>⚠️  ユニークキー（不整合の可能性）:
+  ensemble_A_100k_test.json: [&#39;enable_progress_bar&#39;, &#39;verbose&#39;]
+  ...
+📊 レポート保存: config_consistency_report.json
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h3>4. 学習進捗監視ツール<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/watch_training.py</span></code></p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>TensorBoardなしでコマンドライン監視</p></li>
+<li><p>リアルタイム更新（カスタマイズ可能な間隔）</p></li>
+<li><p>コンパクトモード</p></li>
+<li><p>カスタムメトリック指定</p></li>
+<li><p>利用可能なメトリック一覧表示</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># デフォルトメトリックで監視（10秒ごと更新）</span>
+python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span>--interval<span class="w"> </span><span class="m">10</span>
+
+<span class="c1"># コンパクトモード（静かに監視）</span>
+python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span>--compact
+
+<span class="c1"># カスタムメトリック</span>
+python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span>--metrics<span class="w"> </span>train/legal_sell_rate<span class="w"> </span>eval/sharpe_proxy
+
+<span class="c1"># 利用可能なメトリック一覧</span>
+python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span>--list
+</pre></div>
+</div>
+<p><strong>出力例</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>====================================================================================================
+⏱️  10:30:45 | Iteration 5
+====================================================================================================
+train/legal_sell_rate              :    0.0850 | step  50000 | 10:30:40
+train/entropy                       :    0.7200 | step  50000 | 10:30:40
+eval/sharpe_proxy                   :    0.5000 | step  50000 | 10:30:40
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h3>5. チェックポイント比較ツール<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/compare_checkpoints.py</span></code></p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>複数チェックポイントの性能を一覧表示</p></li>
+<li><p>Primary metric（デフォルト: eval/sharpe_proxy）でソート</p></li>
+<li><p>Top N表示</p></li>
+<li><p>CSV出力</p></li>
+<li><p>最良モデル特定</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全チェックポイントを比較</span>
+python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test
+
+<span class="c1"># Top 5のみ表示</span>
+python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span>--top<span class="w"> </span><span class="m">5</span>
+
+<span class="c1"># CSV出力</span>
+python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span>--export<span class="w"> </span>results.csv
+
+<span class="c1"># カスタムメトリック</span>
+python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span>--metrics<span class="w"> </span>train/legal_sell_rate<span class="w"> </span>eval/sharpe_proxy
+</pre></div>
+</div>
+<p><strong>出力例</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>========================================================================================================================
+📊 Checkpoint Comparison (sorted by eval/sharpe_proxy)
+========================================================================================================================
+
+Rank  Checkpoint                Step       legal_sell_rate eval/sharpe_proxy entropy      ep_rew_mean
+------------------------------------------------------------------------------------------------------------------------
+⭐    checkpoint_70000          70000            0.0850          0.5200       0.7100        250.50
+2     checkpoint_100000         100000           0.0920          0.5100       0.6800        245.30
+3     checkpoint_60000          60000            0.0800          0.4900       0.7300        230.10
+
+⭐ Best Model: checkpoint_70000 (step 70000)
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h3>6. ローリング評価ツール<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/rolling_evaluation.py</span></code></p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>全チェックポイントを評価データで評価</p></li>
+<li><p>過学習検出（性能悪化を自動検出）</p></li>
+<li><p>Sharpe ratio計算</p></li>
+<li><p>JSON形式で結果保存</p></li>
+<li><p>サマリー表示</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本的な使い方</span>
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># エピソード数指定</span>
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-episodes<span class="w"> </span><span class="m">100</span>
+
+<span class="c1"># 結果を保存</span>
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>eval_results
+</pre></div>
+</div>
+<p><strong>出力例</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>====================================================================================================
+📊 Rolling Evaluation Summary
+====================================================================================================
+
+Checkpoint                Step       Mean Reward            Std        Sharpe
+----------------------------------------------------------------------------------------------------
+⭐ checkpoint_70000       70000          250.50          50.20        4.9900
+   checkpoint_60000       60000          245.30          48.10        5.0978
+   checkpoint_100000      100000         230.10          55.30        4.1612  ← 過学習
+
+⭐ Best Sharpe: checkpoint_70000 (step 70000)
+   Sharpe Ratio: 4.9900
+
+⚠️  Potential overfitting detected:
+   Performance degraded by 8.1% in last 3 checkpoints
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h3>7. アンサンブル集計ツール<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">scripts/ensemble_aggregator.py</span></code></p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>複数モデルの予測を集計</p></li>
+<li><p>3つの集計方法（majority_vote, confidence_weighted, soft_voting）</p></li>
+<li><p>評価データで各モデルのSharpe ratioを計算し、重みを校正</p></li>
+<li><p>アンサンブルモデルの評価</p></li>
+<li><p>JSON形式で結果保存</p></li>
+</ul>
+<p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本的な使い方（confidence-weighted voting）</span>
+python<span class="w"> </span>scripts/ensemble_aggregator.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model-dirs<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_A_1M/checkpoint_1000000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_B_1M/checkpoint_1000000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_C_1M/checkpoint_1000000<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--method<span class="w"> </span>confidence_weighted
+
+<span class="c1"># 重み校正 + 評価</span>
+python<span class="w"> </span>scripts/ensemble_aggregator.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model-dirs<span class="w"> </span>checkpoints/ensemble_*/checkpoint_1000000<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--method<span class="w"> </span>confidence_weighted<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--eval-data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--calibrate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-eval<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>ensemble_results.json
+
+<span class="c1"># Majority vote（多数決）</span>
+python<span class="w"> </span>scripts/ensemble_aggregator.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model-dirs<span class="w"> </span>checkpoints/ensemble_*/checkpoint_1000000<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--method<span class="w"> </span>majority_vote
+</pre></div>
+</div>
+<p><strong>出力例</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>📦 Loading 3 models...
+  ✅ Loaded: ensemble_A_1M
+  ✅ Loaded: ensemble_B_1M
+  ✅ Loaded: ensemble_C_1M
+
+🔧 Calibrating model weights with 50 episodes...
+  Model 1 (ensemble_A_1M): Sharpe = 4.5000
+  Model 2 (ensemble_B_1M): Sharpe = 5.2000
+  Model 3 (ensemble_C_1M): Sharpe = 3.8000
+
+📊 Calibrated weights:
+  Model 1 (ensemble_A_1M): 0.3300
+  Model 2 (ensemble_B_1M): 0.3900  ← 最も性能が良い
+  Model 3 (ensemble_C_1M): 0.2800
+
+📊 Evaluating ensemble with 100 episodes...
+  Episode 10/100 completed
+  ...
+
+✅ Evaluation complete:
+   Mean reward: 275.50 ± 45.30
+   Sharpe ratio: 6.0800
+   Action distribution: BUY=35.00%, HOLD=45.00%, SELL=20.00%
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h3>8. 包括的学習ガイド<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">COMPREHENSIVE_TRAINING_GUIDE.md</span></code></p>
+<p><strong>内容</strong>:</p>
+<ul class="simple">
+<li><p>100k～2M学習の完全ワークフロー</p></li>
+<li><p>全ツールの使用方法と実行例</p></li>
+<li><p>ベストプラクティス</p></li>
+<li><p>トラブルシューティング（5つの主要問題と解決策）</p></li>
+<li><p>推奨ワークフロー（Week 1-4計画）</p></li>
+</ul>
+<p><strong>セクション</strong>:</p>
+<ol class="arabic simple">
+<li><p>概要</p></li>
+<li><p>準備</p></li>
+<li><p>100kテスト（15-30分）</p></li>
+<li><p>1M学習（3-5時間）</p></li>
+<li><p>2M学習（6-10時間）</p></li>
+<li><p>ローリング評価</p></li>
+<li><p>アンサンブル集計</p></li>
+<li><p>ツール一覧</p></li>
+<li><p>トラブルシューティング</p></li>
+<li><p>ベストプラクティス</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>📚 新規作成ドキュメント<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>LOG_LEVEL_CONTROL.md</strong> - ログレベル制御詳細ガイド</p></li>
+<li><p><strong>LOG_LEVEL_INTEGRATION_SUMMARY.md</strong> - ログレベル制御統合サマリー</p></li>
+<li><p><strong>ADDITIONAL_FEATURES_PROPOSAL.md</strong> - 追加機能提案リスト（9機能）</p></li>
+<li><p><strong>QUICKSTART_100K_TEST.md</strong> - 100kテスト実行ガイド（ログレベル制御例追加）</p></li>
+<li><p><strong>COMPREHENSIVE_TRAINING_GUIDE.md</strong> - 包括的学習ガイド（本ドキュメント）</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>🎯 推奨ワークフロー<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="week-1-100k">
+<h3>Week 1: 100kテスト<a class="headerlink" href="#week-1-100k" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 単一モデルテスト（15-20分）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/train/ensemble_B_100k_test.json<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--log-level<span class="w"> </span>INFO
+
+<span class="c1"># 進捗監視（別ターミナル）</span>
+python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--interval<span class="w"> </span><span class="m">10</span>
+
+<span class="c1"># チェックポイント比較</span>
+python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test
+</pre></div>
+</div>
+</section>
+<section id="week-2-1m-3">
+<h3>Week 2: 1M学習（3モデル並列）<a class="headerlink" href="#week-2-1m-3" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 3モデル並列実行（3-5時間）</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_A_1M.json --log-level WARNING&quot;</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_B_1M.json --log-level WARNING&quot;</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_C_1M.json --log-level WARNING&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="week-3">
+<h3>Week 3: ローリング評価 + アンサンブル集計<a class="headerlink" href="#week-3" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ローリング評価（過学習検出）</span>
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_A_1M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-episodes<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>eval_results
+
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_1M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-episodes<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>eval_results
+
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_C_1M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-episodes<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>eval_results
+
+<span class="c1"># 最良チェックポイントでアンサンブル集計</span>
+python<span class="w"> </span>scripts/ensemble_aggregator.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model-dirs<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_A_1M/checkpoint_700000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_B_1M/checkpoint_850000<span class="w"> </span><span class="se">\</span>
+<span class="w">        </span>checkpoints/ensemble_C_1M/checkpoint_950000<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--method<span class="w"> </span>confidence_weighted<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--eval-data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--calibrate<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-eval<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output<span class="w"> </span>ensemble_1M_results.json
+</pre></div>
+</div>
+</section>
+<section id="week-4-2m">
+<h3>Week 4: 2M学習（オプション）<a class="headerlink" href="#week-4-2m" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 2M学習（6-10時間）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/train/my_model_2M.json<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--log-level<span class="w"> </span>WARNING
+
+<span class="c1"># ローリング評価</span>
+python<span class="w"> </span>scripts/rolling_evaluation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/my_model_2M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-episodes<span class="w"> </span><span class="m">100</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>eval_results
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>📊 実装統計<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>コード変更<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>ファイル</p></th>
+<th class="head"><p>種類</p></th>
+<th class="head"><p>行数（概算）</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code></p></td>
+<td><p>修正</p></td>
+<td><p>+20行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">configs/train/template.json</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>50行</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">configs/train/template_2M.json</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>60行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scripts/watch_training.py</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>220行</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scripts/compare_checkpoints.py</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>280行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scripts/rolling_evaluation.py</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>270行</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scripts/ensemble_aggregator.py</span></code></p></td>
+<td><p>新規</p></td>
+<td><p>430行</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>合計</strong>: 約1,330行のコード</p>
+</section>
+<section id="id15">
+<h3>ドキュメント<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>ファイル</p></th>
+<th class="head"><p>行数（概算）</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LOG_LEVEL_CONTROL.md</span></code></p></td>
+<td><p>250行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LOG_LEVEL_INTEGRATION_SUMMARY.md</span></code></p></td>
+<td><p>300行</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ADDITIONAL_FEATURES_PROPOSAL.md</span></code></p></td>
+<td><p>550行</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">QUICKSTART_100K_TEST.md</span></code></p></td>
+<td><p>380行（更新）</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COMPREHENSIVE_TRAINING_GUIDE.md</span></code></p></td>
+<td><p>700行</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>合計</strong>: 約2,180行のドキュメント</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>✅ 検証済み項目<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>1. ログレベル制御<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">--log-level</span></code> 引数のパース確認</p></li>
+<li><p>✅ ヘルプ表示確認</p></li>
+<li><p>✅ デフォルト値（INFO）確認</p></li>
+</ul>
+</section>
+<section id="id18">
+<h3>2. 設定ファイル検証<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">check_config_consistency.py</span></code> 実行確認</p></li>
+<li><p>✅ 不整合検出機能確認</p></li>
+</ul>
+</section>
+<section id="id19">
+<h3>3. ツール動作確認<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">watch_training.py</span></code> - TensorBoard依存（実行時に確認必要）</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">compare_checkpoints.py</span></code> - TensorBoard依存（実行時に確認必要）</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">rolling_evaluation.py</span></code> - 環境依存（実行時に確認必要）</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">ensemble_aggregator.py</span></code> - 環境依存（実行時に確認必要）</p></li>
+</ul>
+<p><strong>注</strong>: 新規ツール（3-7）は、実際の学習完了後にチェックポイント/ログデータで動作確認を推奨</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>🎯 次のアクション<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>即座に実行可能<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>100kテスト実行</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--config<span class="w"> </span>configs/train/ensemble_B_100k_test.json<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--log-level<span class="w"> </span>INFO
+</pre></div>
+</div>
+</li>
+<li><p><strong>学習進捗監視</strong>（100kテスト中に別ターミナルで）:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/watch_training.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--log-dir<span class="w"> </span>logs/ensemble_B_100k_test<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--interval<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>100kテスト完了後</strong>: チェックポイント比較</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/compare_checkpoints.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_B_100k_test
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="week-2-3">
+<h3>中期目標（Week 2-3）<a class="headerlink" href="#week-2-3" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="4">
+<li><p><strong>1M学習</strong> - 3モデル並列実行</p></li>
+<li><p><strong>ローリング評価</strong> - 過学習検出</p></li>
+<li><p><strong>アンサンブル集計</strong> - 最終モデル作成</p></li>
+</ol>
+</section>
+<section id="week-4">
+<h3>長期目標（Week 4+）<a class="headerlink" href="#week-4" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="7">
+<li><p><strong>2M学習</strong> - さらなる性能向上</p></li>
+<li><p><strong>本番デプロイ</strong> - 最終アンサンブルモデル</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>💡 ベストプラクティス<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>段階的検証</strong>: 100k → 1M → 2M（失敗したら次に進まない）</p></li>
+<li><p><strong>並列実行</strong>: 時間短縮のため3モデル並列</p></li>
+<li><p><strong>ログレベル制御</strong>: 並列実行時は <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">WARNING</span></code></p></li>
+<li><p><strong>チェックポイント戦略</strong>: 100k=10k毎、1M=25k毎、2M=50k毎</p></li>
+<li><p><strong>アンサンブル設定</strong>: 多様性確保（ent_coef、seed、SELL倍率を変える）</p></li>
+<li><p><strong>評価データ分離</strong>: 学習80% / 検証20%</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id23">
+<h2>🔧 トラブルシューティング<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<p>詳細は <code class="docutils literal notranslate"><span class="pre">COMPREHENSIVE_TRAINING_GUIDE.md</span></code> 参照。</p>
+<p>主要問題と解決策:</p>
+<ol class="arabic simple">
+<li><p><strong>SELL率低い</strong> → 報酬倍率上げる、Stratified Sampling有効化</p></li>
+<li><p><strong>勾配消失</strong> → Stratified Sampling、報酬倍率調整</p></li>
+<li><p><strong>メモリ不足</strong> → バッチサイズ削減</p></li>
+<li><p><strong>学習停滞</strong> → 学習率調整、entropy係数調整</p></li>
+<li><p><strong>過学習</strong> → ローリング評価で早期検出、早めのチェックポイント採用</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>✅ まとめ<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<section id="id25">
+<h3>実装完了<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ ログレベル制御機能</p></li>
+<li><p>✅ 設定ファイルテンプレート（100k/1M/2M）</p></li>
+<li><p>✅ 設定ファイル検証ツール</p></li>
+<li><p>✅ 学習進捗監視ツール</p></li>
+<li><p>✅ チェックポイント比較ツール</p></li>
+<li><p>✅ ローリング評価ツール</p></li>
+<li><p>✅ アンサンブル集計ツール</p></li>
+<li><p>✅ 包括的学習ガイド</p></li>
+</ol>
+</section>
+<section id="id26">
+<h3>ドキュメント完備<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>LOG_LEVEL_CONTROL.md</p></li>
+<li><p>LOG_LEVEL_INTEGRATION_SUMMARY.md</p></li>
+<li><p>ADDITIONAL_FEATURES_PROPOSAL.md</p></li>
+<li><p>QUICKSTART_100K_TEST.md（更新）</p></li>
+<li><p>COMPREHENSIVE_TRAINING_GUIDE.md</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>準備完了<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<p><strong>全てのツール、テンプレート、ドキュメントが整いました！</strong></p>
+<p><strong>次のステップ</strong>: <code class="docutils literal notranslate"><span class="pre">COMPREHENSIVE_TRAINING_GUIDE.md</span></code> を参照し、100k→1M→2M学習を進めてください。</p>
+<p><strong>最終目標</strong>: 儲かるモデルを見つける！🚀</p>
+<hr class="docutils" />
+<p><strong>実装完了日</strong>: 2025年10月7日<br />
+<strong>実装者</strong>: GitHub Copilot<br />
+<strong>セッション時間</strong>: 約2-3時間</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="Features" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="LOG_LEVEL_CONTROL.html" class="btn btn-neutral float-right" title="ログレベル制御ガイド" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,740 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.live_trader package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.trading.training package" href="ztb.trading.training.html" />
+    <link rel="prev" title="ztb.trading.live.data package" href="ztb.trading.live.data.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.trading.html">ztb.trading package</a></li>
+      <li class="breadcrumb-item active">ztb.trading.live_trader package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.trading.live_trader.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-trading-live-trader-package">
+<h1>ztb.trading.live_trader package<a class="headerlink" href="#ztb-trading-live-trader-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.trading.live_trader.action_prediction">
+<span id="ztb-trading-live-trader-action-prediction-module"></span><h2>ztb.trading.live_trader.action_prediction module<a class="headerlink" href="#module-ztb.trading.live_trader.action_prediction" title="Link to this heading"></a></h2>
+<p>Action prediction implementation for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.action_prediction.ActionPrediction">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.action_prediction.</span></span><span class="sig-name descname"><span class="pre">ActionPrediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="ztb.trading.live_trader.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/action_prediction.html#ActionPrediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.action_prediction.ActionPrediction" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles action prediction using the trained model.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.action_prediction.ActionPrediction.predict_action">
+<span class="sig-name descname"><span class="pre">predict_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/action_prediction.html#ActionPrediction.predict_action"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.action_prediction.ActionPrediction.predict_action" title="Link to this definition"></a></dt>
+<dd><p>Predict trading action using the model.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.config">
+<span id="ztb-trading-live-trader-config-module"></span><h2>ztb.trading.live_trader.config module<a class="headerlink" href="#module-ztb.trading.live_trader.config" title="Link to this heading"></a></h2>
+<p>Configuration classes for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.config.</span></span><span class="sig-name descname"><span class="pre">LiveTradingOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">algorithm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disable_risk_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'INFO'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics_port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_health_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">health_port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8080</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#LiveTradingOptions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Runtime configuration for live trading.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.model_path">
+<span class="sig-name descname"><span class="pre">model_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.model_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.algorithm">
+<span class="sig-name descname"><span class="pre">algorithm</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.algorithm" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.venue">
+<span class="sig-name descname"><span class="pre">venue</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.venue" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.duration_hours">
+<span class="sig-name descname"><span class="pre">duration_hours</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.duration_hours" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.disable_risk_limits">
+<span class="sig-name descname"><span class="pre">disable_risk_limits</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.disable_risk_limits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.dry_run">
+<span class="sig-name descname"><span class="pre">dry_run</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.dry_run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.log_level">
+<span class="sig-name descname"><span class="pre">log_level</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'INFO'</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.log_level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.enable_metrics">
+<span class="sig-name descname"><span class="pre">enable_metrics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.enable_metrics" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.metrics_port">
+<span class="sig-name descname"><span class="pre">metrics_port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8000</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.metrics_port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.enable_health_check">
+<span class="sig-name descname"><span class="pre">enable_health_check</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.enable_health_check" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.health_port">
+<span class="sig-name descname"><span class="pre">health_port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8080</span></em><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.health_port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.LiveTradingOptions.from_cli_args">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_cli_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.trading.live_trader.config.LiveTradingOptions" title="ztb.trading.live_trader.config.LiveTradingOptions"><span class="pre">LiveTradingOptions</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#LiveTradingOptions.from_cli_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.LiveTradingOptions.from_cli_args" title="Link to this definition"></a></dt>
+<dd><p>Create options from parsed CLI arguments and environment toggles.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.MetricsServerHandle">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.config.</span></span><span class="sig-name descname"><span class="pre">MetricsServerHandle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#MetricsServerHandle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.MetricsServerHandle" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handle for metrics server lifecycle.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.MetricsServerHandle.port">
+<span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.MetricsServerHandle.port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.HealthServerHandle">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.config.</span></span><span class="sig-name descname"><span class="pre">HealthServerHandle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">thread</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Thread" title="(in Python v3.14)"><span class="pre">threading.Thread</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#HealthServerHandle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.HealthServerHandle" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handle for health-check HTTP server.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.HealthServerHandle.port">
+<span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.HealthServerHandle.port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.HealthServerHandle.thread">
+<span class="sig-name descname"><span class="pre">thread</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/threading.html#threading.Thread" title="(in Python v3.14)"><span class="pre">threading.Thread</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.config.HealthServerHandle.thread" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.TradingConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.config.</span></span><span class="sig-name descname"><span class="pre">TradingConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ztb_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.TradingConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration manager for trading parameters.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.TradingConfig.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.TradingConfig.get" title="Link to this definition"></a></dt>
+<dd><p>Get configuration value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.TradingConfig.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">updates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.config.TradingConfig.update" title="Link to this definition"></a></dt>
+<dd><p>Update configuration values.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.config.TradingConfig.config">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.trading.live_trader.config.TradingConfig.config" title="Link to this definition"></a></dt>
+<dd><p>Get full configuration dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.feature_computation">
+<span id="ztb-trading-live-trader-feature-computation-module"></span><h2>ztb.trading.live_trader.feature_computation module<a class="headerlink" href="#module-ztb.trading.live_trader.feature_computation" title="Link to this heading"></a></h2>
+<p>Feature computation implementation for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.feature_computation.FeatureComputation">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.feature_computation.</span></span><span class="sig-name descname"><span class="pre">FeatureComputation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="ztb.trading.live_trader.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/feature_computation.html#FeatureComputation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.feature_computation.FeatureComputation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles feature computation for model prediction.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.feature_computation.FeatureComputation.compute_features">
+<span class="sig-name descname"><span class="pre">compute_features</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/feature_computation.html#FeatureComputation.compute_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.feature_computation.FeatureComputation.compute_features" title="Link to this definition"></a></dt>
+<dd><p>Compute features for model prediction using full feature engine when available.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.health_monitoring">
+<span id="ztb-trading-live-trader-health-monitoring-module"></span><h2>ztb.trading.live_trader.health_monitoring module<a class="headerlink" href="#module-ztb.trading.live_trader.health_monitoring" title="Link to this heading"></a></h2>
+<p>Health monitoring implementation for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.health_monitoring.HealthMonitoring">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.health_monitoring.</span></span><span class="sig-name descname"><span class="pre">HealthMonitoring</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="ztb.trading.live_trader.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/health_monitoring.html#HealthMonitoring"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.health_monitoring.HealthMonitoring" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles health status monitoring for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.health_monitoring.HealthMonitoring.get_health_status">
+<span class="sig-name descname"><span class="pre">get_health_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/health_monitoring.html#HealthMonitoring.get_health_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.health_monitoring.HealthMonitoring.get_health_status" title="Link to this definition"></a></dt>
+<dd><p>Get comprehensive health status for monitoring.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.live_trader">
+<span id="ztb-trading-live-trader-live-trader-module"></span><h2>ztb.trading.live_trader.live_trader module<a class="headerlink" href="#module-ztb.trading.live_trader.live_trader" title="Link to this heading"></a></h2>
+<p>Live Trader implementation for BTC/JPY trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.live_trader.LiveTrader">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.live_trader.</span></span><span class="sig-name descname"><span class="pre">LiveTrader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#ztb.trading.live_trader.config.LiveTradingOptions" title="ztb.trading.live_trader.config.LiveTradingOptions"><span class="pre">LiveTradingOptions</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disable_risk_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Live trading bot for BTC/JPY using trained PPO model.</p>
+<p>If COINCHECK_API_KEY and COINCHECK_API_SECRET are not set, the bot runs in demo mode and does not execute real trades.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.live_trader.LiveTrader.run_trading_loop">
+<span class="sig-name descname"><span class="pre">run_trading_loop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.run_trading_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.live_trader.LiveTrader.run_trading_loop" title="Link to this definition"></a></dt>
+<dd><p>Run the main trading loop for live trading.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.live_trader.LiveTrader.get_health_status">
+<span class="sig-name descname"><span class="pre">get_health_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.get_health_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.live_trader.LiveTrader.get_health_status" title="Link to this definition"></a></dt>
+<dd><p>Get comprehensive health status for monitoring.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.live_trader.LiveTrader.get_account_balance">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_account_balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">currency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.get_account_balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.live_trader.LiveTrader.get_account_balance" title="Link to this definition"></a></dt>
+<dd><p>Get account balance from exchange using existing adapter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>currency</strong> – Optional currency filter (e.g., ‘BTC’, ‘JPY’)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict mapping currency to available balance</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">balances</span> <span class="o">=</span> <span class="k">await</span> <span class="n">trader</span><span class="o">.</span><span class="n">get_account_balance</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BTC: </span><span class="si">{</span><span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;BTC&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="si">}</span><span class="s2">, JPY: </span><span class="si">{</span><span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;JPY&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.main">
+<span id="ztb-trading-live-trader-main-module"></span><h2>ztb.trading.live_trader.main module<a class="headerlink" href="#module-ztb.trading.live_trader.main" title="Link to this heading"></a></h2>
+<p>Main entry point for live trading.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.main.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.main.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/main.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.main.main" title="Link to this definition"></a></dt>
+<dd><p>Main entry point for live trading.</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.model_loading">
+<span id="ztb-trading-live-trader-model-loading-module"></span><h2>ztb.trading.live_trader.model_loading module<a class="headerlink" href="#module-ztb.trading.live_trader.model_loading" title="Link to this heading"></a></h2>
+<p>Model loading implementation for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_loading.ModelLoading">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.model_loading.</span></span><span class="sig-name descname"><span class="pre">ModelLoading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="ztb.trading.live_trader.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_loading.html#ModelLoading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_loading.ModelLoading" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles model loading and initialization for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_loading.ModelLoading.load_model">
+<span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#stable_baselines3.ppo.PPO" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">PPO</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskablePPO</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/sac.html#stable_baselines3.sac.SAC" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">SAC</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_loading.html#ModelLoading.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_loading.ModelLoading.load_model" title="Link to this definition"></a></dt>
+<dd><p>Load the trained PPO, MaskablePPO, or SAC model.</p>
+<p>Bug #27 Fix: Now properly loads MaskablePPO models and uses
+ActionMaskProvider for action masking in production.</p>
+<p>Schema Integration: Load schema information for feature validation.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.model_manager">
+<span id="ztb-trading-live-trader-model-manager-module"></span><h2>ztb.trading.live_trader.model_manager module<a class="headerlink" href="#module-ztb.trading.live_trader.model_manager" title="Link to this heading"></a></h2>
+<p>Model management for live trading bot.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.model_manager.</span></span><span class="sig-name descname"><span class="pre">ModelManager</span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manages model loading and type detection.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager.load_model">
+<span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#stable_baselines3.ppo.PPO" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">PPO</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskablePPO</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/sac.html#stable_baselines3.sac.SAC" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">SAC</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager.load_model" title="Link to this definition"></a></dt>
+<dd><p>Load the trained model and detect its type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model_path</strong> – Path to the model file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Loaded model instance</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If model file doesn’t exist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager.load_schema_info">
+<span class="sig-name descname"><span class="pre">load_schema_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.load_schema_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager.load_schema_info" title="Link to this definition"></a></dt>
+<dd><p>Load schema information for feature validation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model_name</strong> – Name of the model</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager.is_maskable_ppo">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_maskable_ppo</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager.is_maskable_ppo" title="Link to this definition"></a></dt>
+<dd><p>Check if model is MaskablePPO.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager.is_sac">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_sac</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager.is_sac" title="Link to this definition"></a></dt>
+<dd><p>Check if model is SAC.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.model_manager.ModelManager.get_model_info">
+<span class="sig-name descname"><span class="pre">get_model_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.get_model_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.model_manager.ModelManager.get_model_info" title="Link to this definition"></a></dt>
+<dd><p>Get model information dictionary.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.trading_loop">
+<span id="ztb-trading-live-trader-trading-loop-module"></span><h2>ztb.trading.live_trader.trading_loop module<a class="headerlink" href="#module-ztb.trading.live_trader.trading_loop" title="Link to this heading"></a></h2>
+<p>Trading loop implementation for live trading.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.trading_loop.TradingLoop">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.trading_loop.</span></span><span class="sig-name descname"><span class="pre">TradingLoop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.live_trader.LiveTrader" title="ztb.trading.live_trader.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/trading_loop.html#TradingLoop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.trading_loop.TradingLoop" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles the main trading loop execution for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.trading_loop.TradingLoop.run_trading_loop">
+<span class="sig-name descname"><span class="pre">run_trading_loop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/trading_loop.html#TradingLoop.run_trading_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.trading_loop.TradingLoop.run_trading_loop" title="Link to this definition"></a></dt>
+<dd><p>Run the main trading loop for live trading.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live_trader.utils">
+<span id="ztb-trading-live-trader-utils-module"></span><h2>ztb.trading.live_trader.utils module<a class="headerlink" href="#module-ztb.trading.live_trader.utils" title="Link to this heading"></a></h2>
+<p>Utility functions for live trading.</p>
+</section>
+<section id="module-ztb.trading.live_trader">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.trading.live_trader" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ActionPrediction">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">ActionPrediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.LiveTrader" title="ztb.trading.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/action_prediction.html#ActionPrediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ActionPrediction" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles action prediction using the trained model.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ActionPrediction.predict_action">
+<span class="sig-name descname"><span class="pre">predict_action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/action_prediction.html#ActionPrediction.predict_action"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ActionPrediction.predict_action" title="Link to this definition"></a></dt>
+<dd><p>Predict trading action using the model.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">LiveTradingOptions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">algorithm</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disable_risk_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'INFO'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_metrics</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metrics_port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_health_check</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">health_port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8080</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#LiveTradingOptions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Runtime configuration for live trading.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.disable_risk_limits">
+<span class="sig-name descname"><span class="pre">disable_risk_limits</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.disable_risk_limits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.dry_run">
+<span class="sig-name descname"><span class="pre">dry_run</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.dry_run" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.duration_hours">
+<span class="sig-name descname"><span class="pre">duration_hours</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.duration_hours" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.enable_health_check">
+<span class="sig-name descname"><span class="pre">enable_health_check</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.enable_health_check" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.enable_metrics">
+<span class="sig-name descname"><span class="pre">enable_metrics</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.enable_metrics" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.from_cli_args">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_cli_args</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/argparse.html#argparse.Namespace" title="(in Python v3.14)"><span class="pre">Namespace</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.trading.live_trader.config.LiveTradingOptions" title="ztb.trading.live_trader.config.LiveTradingOptions"><span class="pre">LiveTradingOptions</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#LiveTradingOptions.from_cli_args"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.from_cli_args" title="Link to this definition"></a></dt>
+<dd><p>Create options from parsed CLI arguments and environment toggles.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.health_port">
+<span class="sig-name descname"><span class="pre">health_port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8080</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.health_port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.log_level">
+<span class="sig-name descname"><span class="pre">log_level</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'INFO'</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.log_level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.metrics_port">
+<span class="sig-name descname"><span class="pre">metrics_port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8000</span></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.metrics_port" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.model_path">
+<span class="sig-name descname"><span class="pre">model_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.model_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.algorithm">
+<span class="sig-name descname"><span class="pre">algorithm</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.algorithm" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTradingOptions.venue">
+<span class="sig-name descname"><span class="pre">venue</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.LiveTradingOptions.venue" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">TradingConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ztb_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.TradingConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Configuration manager for trading parameters.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingConfig.config">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.trading.live_trader.TradingConfig.config" title="Link to this definition"></a></dt>
+<dd><p>Get full configuration dictionary.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingConfig.get">
+<span class="sig-name descname"><span class="pre">get</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig.get"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.TradingConfig.get" title="Link to this definition"></a></dt>
+<dd><p>Get configuration value.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingConfig.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">updates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/config.html#TradingConfig.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.TradingConfig.update" title="Link to this definition"></a></dt>
+<dd><p>Update configuration values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.FeatureComputation">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">FeatureComputation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.LiveTrader" title="ztb.trading.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/feature_computation.html#FeatureComputation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.FeatureComputation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles feature computation for model prediction.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.FeatureComputation.compute_features">
+<span class="sig-name descname"><span class="pre">compute_features</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/feature_computation.html#FeatureComputation.compute_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.FeatureComputation.compute_features" title="Link to this definition"></a></dt>
+<dd><p>Compute features for model prediction using full feature engine when available.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.HealthMonitoring">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">HealthMonitoring</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.LiveTrader" title="ztb.trading.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/health_monitoring.html#HealthMonitoring"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.HealthMonitoring" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles health status monitoring for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.HealthMonitoring.get_health_status">
+<span class="sig-name descname"><span class="pre">get_health_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/health_monitoring.html#HealthMonitoring.get_health_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.HealthMonitoring.get_health_status" title="Link to this definition"></a></dt>
+<dd><p>Get comprehensive health status for monitoring.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTrader">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">LiveTrader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#ztb.trading.live_trader.config.LiveTradingOptions" title="ztb.trading.live_trader.config.LiveTradingOptions"><span class="pre">LiveTradingOptions</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">disable_risk_limits</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_run</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTrader" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Live trading bot for BTC/JPY using trained PPO model.</p>
+<p>If COINCHECK_API_KEY and COINCHECK_API_SECRET are not set, the bot runs in demo mode and does not execute real trades.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTrader.get_account_balance">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_account_balance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">currency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.get_account_balance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTrader.get_account_balance" title="Link to this definition"></a></dt>
+<dd><p>Get account balance from exchange using existing adapter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>currency</strong> – Optional currency filter (e.g., ‘BTC’, ‘JPY’)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict mapping currency to available balance</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">balances</span> <span class="o">=</span> <span class="k">await</span> <span class="n">trader</span><span class="o">.</span><span class="n">get_account_balance</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BTC: </span><span class="si">{</span><span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;BTC&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="si">}</span><span class="s2">, JPY: </span><span class="si">{</span><span class="n">balances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;JPY&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTrader.get_health_status">
+<span class="sig-name descname"><span class="pre">get_health_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.get_health_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTrader.get_health_status" title="Link to this definition"></a></dt>
+<dd><p>Get comprehensive health status for monitoring.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.LiveTrader.run_trading_loop">
+<span class="sig-name descname"><span class="pre">run_trading_loop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/live_trader.html#LiveTrader.run_trading_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.LiveTrader.run_trading_loop" title="Link to this definition"></a></dt>
+<dd><p>Run the main trading loop for live trading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/main.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.main" title="Link to this definition"></a></dt>
+<dd><p>Main entry point for live trading.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelLoading">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">ModelLoading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.LiveTrader" title="ztb.trading.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_loading.html#ModelLoading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelLoading" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles model loading and initialization for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelLoading.load_model">
+<span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#stable_baselines3.ppo.PPO" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">PPO</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskablePPO</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/sac.html#stable_baselines3.sac.SAC" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">SAC</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_loading.html#ModelLoading.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelLoading.load_model" title="Link to this definition"></a></dt>
+<dd><p>Load the trained PPO, MaskablePPO, or SAC model.</p>
+<p>Bug #27 Fix: Now properly loads MaskablePPO models and uses
+ActionMaskProvider for action masking in production.</p>
+<p>Schema Integration: Load schema information for feature validation.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">ModelManager</span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manages model loading and type detection.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager.get_model_info">
+<span class="sig-name descname"><span class="pre">get_model_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.get_model_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelManager.get_model_info" title="Link to this definition"></a></dt>
+<dd><p>Get model information dictionary.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager.is_maskable_ppo">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_maskable_ppo</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.ModelManager.is_maskable_ppo" title="Link to this definition"></a></dt>
+<dd><p>Check if model is MaskablePPO.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager.is_sac">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_sac</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.trading.live_trader.ModelManager.is_sac" title="Link to this definition"></a></dt>
+<dd><p>Check if model is SAC.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager.load_model">
+<span class="sig-name descname"><span class="pre">load_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#stable_baselines3.ppo.PPO" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">PPO</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">MaskablePPO</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/sac.html#stable_baselines3.sac.SAC" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">SAC</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.load_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelManager.load_model" title="Link to this definition"></a></dt>
+<dd><p>Load the trained model and detect its type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model_path</strong> – Path to the model file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Loaded model instance</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If model file doesn’t exist</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.ModelManager.load_schema_info">
+<span class="sig-name descname"><span class="pre">load_schema_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/model_manager.html#ModelManager.load_schema_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.ModelManager.load_schema_info" title="Link to this definition"></a></dt>
+<dd><p>Load schema information for feature validation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>model_name</strong> – Name of the model</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingLoop">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live_trader.</span></span><span class="sig-name descname"><span class="pre">TradingLoop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">live_trader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live_trader.LiveTrader" title="ztb.trading.live_trader.LiveTrader"><span class="pre">LiveTrader</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/trading_loop.html#TradingLoop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.TradingLoop" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Handles the main trading loop execution for live trading.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live_trader.TradingLoop.run_trading_loop">
+<span class="sig-name descname"><span class="pre">run_trading_loop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_hours</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live_trader/trading_loop.html#TradingLoop.run_trading_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live_trader.TradingLoop.run_trading_loop" title="Link to this definition"></a></dt>
+<dd><p>Run the main trading loop for live trading.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.trading.live.data.html" class="btn btn-neutral float-left" title="ztb.trading.live.data package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.trading.training.html" class="btn btn-neutral float-right" title="ztb.trading.training package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

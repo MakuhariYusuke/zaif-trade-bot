@@ -1,0 +1,283 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>最適化パラメータ検証トレーニング - 進捗サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">最適化パラメータ検証トレーニング - 進捗サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/validation/VALIDATION_PROGRESS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>最適化パラメータ検証トレーニング - 進捗サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>🎯 実行中のタスク<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>検証トレーニング（進行中）<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>スクリプト</strong>: <code class="docutils literal notranslate"><span class="pre">run_optimized_validation.py</span></code></p></li>
+<li><p><strong>総ステップ数</strong>: 100,000</p></li>
+<li><p><strong>状態</strong>: 実行中 ⚙️</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>使用パラメータ<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<section id="ppo">
+<h4>PPOハイパーパラメータ（最適化済み）<a class="headerlink" href="#ppo" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">learning_rate</span><span class="p">:</span> <span class="mf">0.009375625</span>  <span class="c1"># デフォルトの18.75倍</span>
+<span class="n">gamma</span><span class="p">:</span> <span class="mf">0.895</span>                <span class="c1"># 短期報酬重視</span>
+<span class="n">n_steps</span><span class="p">:</span> <span class="mi">1408</span>               <span class="c1"># デフォルトより頻繁更新</span>
+<span class="n">batch_size</span><span class="p">:</span> <span class="mi">64</span>              <span class="c1"># デフォルト</span>
+<span class="n">n_epochs</span><span class="p">:</span> <span class="mi">10</span>                <span class="c1"># デフォルト</span>
+<span class="n">ent_coef</span><span class="p">:</span> <span class="mf">0.02575</span>           <span class="c1"># 適度な探索</span>
+</pre></div>
+</div>
+</section>
+<section id="lagrange">
+<h4>Lagrange制約（最適化済み）<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">enable_lagrange</span><span class="p">:</span> <span class="kc">True</span>
+<span class="n">r_target</span><span class="p">:</span> <span class="mf">0.175</span>             <span class="c1"># SELL 17.5% 目標</span>
+<span class="n">tolerance</span><span class="p">:</span> <span class="mf">0.042625</span>         <span class="c1"># ±4.26% 許容</span>
+<span class="n">eta</span><span class="p">:</span> <span class="mf">0.062875</span>               <span class="c1"># dual variable学習率</span>
+<span class="n">lambda_max</span><span class="p">:</span> <span class="mf">3.875</span>           <span class="c1"># 最大ペナルティ</span>
+<span class="n">warmup_steps</span><span class="p">:</span> <span class="mi">3874</span>          <span class="c1"># 先行ウォームアップ</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id5">
+<h3>観測された初期結果<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="id6">
+<h4>ステップ 2,816時点:<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>平均エピソード報酬</strong>: 654</p></li>
+<li><p><strong>Lagrange制約</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">r_sell</span></code>: 0.281 (28.1% SELL)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">r_target</span></code>: 0.175 (17.5% 目標)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">deviation</span></code>: 0.106 (10.6% オーバー)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lambda_dual</span></code>: 0.297 (ペナルティ増加中)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">penalty</span></code>: -0.00852</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id7">
+<h4>ステップ 4,224時点:<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>平均エピソード報酬</strong>: 1,010</p></li>
+<li><p><strong>Lagrange制約</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">r_sell</span></code>: 0.156 (15.6% SELL)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">deviation</span></code>: 0.0187 (1.87% アンダー)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lambda_dual</span></code>: 0.28 (微減)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">constraint_violation</span></code>: 0 (制約満たす)</p></li>
+</ul>
+</li>
+</ul>
+<p>✅ <strong>制約が効いている！</strong> SELL割合が目標に近づいている</p>
+</section>
+<section id="id8">
+<h4>ステップ 5,632時点:<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>平均エピソード報酬</strong>: 1,160</p></li>
+<li><p><strong>Lagrange制約</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">r_sell</span></code>: 0.0312 (3.12% SELL)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">deviation</span></code>: 0.144 (14.4% アンダー)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lambda_dual</span></code>: 0.374 (増加)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">constraint_violation</span></code>: 0.0662</p></li>
+</ul>
+</li>
+</ul>
+<p>⚠️ SELLが少なすぎるため、ペナルティが増加</p>
+</section>
+</section>
+<section id="id9">
+<h3>学習の特徴<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Early Stopping頻発</strong>: KL divergence 0.1到達による早期停止</p>
+<ul class="simple">
+<li><p>→ 学習率が高いため、ポリシー更新が大きい</p></li>
+<li><p>→ 安定性とのトレードオフ</p></li>
+</ul>
+</li>
+<li><p><strong>Action 2 (SELL) サンプル不足警告</strong>:</p>
+<ul class="simple">
+<li><p>一部のロールアウトでSELL行動が0回</p></li>
+<li><p>→ Lagrange制約が調整中</p></li>
+</ul>
+</li>
+<li><p><strong>報酬の急上昇</strong>: -153 → 654 → 1,010 → 1,160</p>
+<ul class="simple">
+<li><p>→ 高い学習率が効いている</p></li>
+<li><p>→ 探索が活発</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id10">
+<h2>📊 予想される最終結果<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>期待できること ✅<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>高速な学習進捗（高learning_rate効果）</p></li>
+<li><p>短期利益重視の戦略（gamma=0.895）</p></li>
+<li><p>Lagrange制約によるSELL割合の制御</p></li>
+<li><p>適度な探索による多様な戦略</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>潜在的な課題 ⚠️<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>学習の不安定性（早期停止多発）</p></li>
+<li><p>SELL行動のサンプル不足</p></li>
+<li><p>高いKL divergence</p></li>
+<li><p>オーバーフィッティングのリスク</p></li>
+</ul>
+</section>
+</section>
+<section id="id13">
+<h2>🔄 次のステップ<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>トレーニング完了待ち</strong> (推定15-20分)</p></li>
+<li><p><strong>バックテスト実行</strong>: 実際の市場データで検証</p></li>
+<li><p><strong>結果分析</strong>:</p>
+<ul class="simple">
+<li><p>報酬の推移</p></li>
+<li><p>Action分布の安定性</p></li>
+<li><p>Lagrange制約の効果</p></li>
+</ul>
+</li>
+<li><p><strong>レポート作成</strong>: 最終的な性能評価</p></li>
+</ol>
+</section>
+<section id="id14">
+<h2>📁 関連ファイル<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>設定: <code class="docutils literal notranslate"><span class="pre">optimized_config_combined.json</span></code></p></li>
+<li><p>トレーニングスクリプト: <code class="docutils literal notranslate"><span class="pre">run_optimized_validation.py</span></code></p></li>
+<li><p>バックテストスクリプト: <code class="docutils literal notranslate"><span class="pre">run_backtest_optimized.py</span></code></p></li>
+<li><p>ログ: <code class="docutils literal notranslate"><span class="pre">optimized_training_log.txt</span></code></p></li>
+<li><p>モデル保存先: <code class="docutils literal notranslate"><span class="pre">./models/optimized_checkpoints/</span></code></p></li>
+<li><p>最終モデル: <code class="docutils literal notranslate"><span class="pre">./models/optimized_final.zip</span></code></p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>最終更新</strong>: 2025年10月7日
+<strong>状態</strong>: トレーニング実行中 ⚙️</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

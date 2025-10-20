@@ -1,0 +1,687 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.algorithms.sac package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.training.binary_search package" href="ztb.training.binary_search.html" />
+    <link rel="prev" title="ztb.training.algorithms.ppo package" href="ztb.training.algorithms.ppo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.training.html">ztb.training package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.training.algorithms.html">ztb.training.algorithms package</a></li>
+      <li class="breadcrumb-item active">ztb.training.algorithms.sac package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.training.algorithms.sac.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-training-algorithms-sac-package">
+<h1>ztb.training.algorithms.sac package<a class="headerlink" href="#ztb-training-algorithms-sac-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.training.algorithms.sac.sac_algorithm">
+<span id="ztb-training-algorithms-sac-sac-algorithm-module"></span><h2>ztb.training.algorithms.sac.sac_algorithm module<a class="headerlink" href="#module-ztb.training.algorithms.sac.sac_algorithm" title="Link to this heading"></a></h2>
+<p>SAC（Soft Actor-Critic）アルゴリズム実装。</p>
+<p>SACは、エントロピー正則化を用いたoff-policyアクター・クリティック手法。
+金融取引において、PPOよりも探索と活用のバランスが優れている可能性がある。</p>
+<p>主な特徴：
+- Off-policy: 過去の経験（Replay Buffer）を効率的に再利用
+- エントロピー正則化: 自動的な探索・活用バランス調整
+- alpha自動調整: target_entropyに基づく適応的なエントロピー係数
+- ソフトアップデート: targetネットワークの安定的な更新</p>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>Haarnoja et al., 2018: “Soft Actor-Critic: Off-Policy Maximum Entropy Deep RL”</p></li>
+<li><p>Haarnoja et al., 2019: “Soft Actor-Critic Algorithms and Applications”</p></li>
+</ul>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.sac_algorithm.</span></span><span class="sig-name descname"><span class="pre">SACAlgorithm</span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.training.algorithms.html#ztb.training.algorithms.base_algorithm.BaseRLAlgorithm" title="ztb.training.algorithms.base_algorithm.BaseRLAlgorithm"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRLAlgorithm</span></code></a></p>
+<p>SAC（Soft Actor-Critic）アルゴリズムのラッパークラス。</p>
+<p>BaseRLAlgorithmインターフェースに準拠し、
+AlgorithmFactoryから使用可能。</p>
+<p>金融取引への適用において、PPOと比較して以下の利点がある：
+- 過去の経験を効率的に再利用（sample efficiency）
+- エントロピー係数の自動調整による適応的な探索
+- 連続行動・離散行動両対応</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgorithmFactory</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">,</span> <span class="n">SACAlgorithm</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.algorithm_name">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">algorithm_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.algorithm_name" title="Link to this definition"></a></dt>
+<dd><p>アルゴリズム名を取得。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>“sac”</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.__repr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.__repr__" title="Link to this definition"></a></dt>
+<dd><p>文字列表現。</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.get_default_config">
+<span class="sig-name descname"><span class="pre">get_default_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.get_default_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.get_default_config" title="Link to this definition"></a></dt>
+<dd><p>SACのデフォルト設定を取得。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>デフォルト設定の辞書</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span>
+<span class="go">0.0003</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.validate_config">
+<span class="sig-name descname"><span class="pre">validate_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.validate_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.validate_config" title="Link to this definition"></a></dt>
+<dd><p>SAC設定の妥当性を検証。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> – 検証する設定辞書</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>設定が妥当ならTrue</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – 必須パラメータが不足している場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="s2">&quot;buffer_size&quot;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.create_model">
+<span class="sig-name descname"><span class="pre">create_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecEnv" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">VecEnv</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensorboard_log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.create_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.create_model" title="Link to this definition"></a></dt>
+<dd><p>SACモデルを作成。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 訓練環境（VecEnv）</p></li>
+<li><p><strong>config</strong> – SAC設定（ハイパーパラメータ等）</p></li>
+<li><p><strong>tensorboard_log</strong> – TensorBoardログディレクトリ（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>作成されたSACモデル</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – 設定が不正な場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">vec_env</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="s2">&quot;./logs&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_timesteps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.train" title="Link to this definition"></a></dt>
+<dd><p>SACモデルを訓練。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – 訓練するSACモデル</p></li>
+<li><p><strong>total_timesteps</strong> – 訓練ステップ数</p></li>
+<li><p><strong>callback</strong> – 訓練中のコールバック（Optional）</p></li>
+<li><p><strong>**kwargs</strong> – その他のlearn()引数</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>訓練済みモデル</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – モデルが初期化されていない場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">trained</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.save" title="Link to this definition"></a></dt>
+<dd><p>モデルを保存。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – 保存するモデル</p></li>
+<li><p><strong>save_path</strong> – 保存先パス</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;models/sac_v395a.zip&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.load">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecEnv" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">VecEnv</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.load" title="Link to this definition"></a></dt>
+<dd><p>モデルを読み込み。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>load_path</strong> – モデルファイルパス</p></li>
+<li><p><strong>env</strong> – 環境（Optional、推論時に必要）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>読み込まれたモデル</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/sac_v395a.zip&quot;</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">vec_env</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.explain_decision">
+<span class="sig-name descname"><span class="pre">explain_decision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.explain_decision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.explain_decision" title="Link to this definition"></a></dt>
+<dd><p>モデルの決定を説明。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>observation</strong> – 観測データ</p></li>
+<li><p><strong>action</strong> – 実行された行動（Optional）</p></li>
+<li><p><strong>context</strong> – 追加の文脈情報（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>説明結果の辞書、またはNone（説明可能性が無効の場合）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.generate_explanation_report">
+<span class="sig-name descname"><span class="pre">generate_explanation_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.generate_explanation_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.sac_algorithm.SACAlgorithm.generate_explanation_report" title="Link to this definition"></a></dt>
+<dd><p>説明レポートを生成。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>observations</strong> – 観測データのバッチ</p></li>
+<li><p><strong>actions</strong> – 対応する行動のバッチ（Optional）</p></li>
+<li><p><strong>output_path</strong> – レポート出力パス（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>レポートファイルのパス、またはNone</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.training.algorithms.sac.test_sac_compression">
+<span id="ztb-training-algorithms-sac-test-sac-compression-module"></span><h2>ztb.training.algorithms.sac.test_sac_compression module<a class="headerlink" href="#module-ztb.training.algorithms.sac.test_sac_compression" title="Link to this heading"></a></h2>
+<p>Integration tests for SAC Algorithm with Model Compression.</p>
+<p>Tests the integration of model compression techniques with the SAC algorithm,
+including configuration validation, model creation, and compression application.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.MockEnv">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.test_sac_compression.</span></span><span class="sig-name descname"><span class="pre">MockEnv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation_space_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#MockEnv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.MockEnv" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Mock environment for testing.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.test_sac_compression.</span></span><span class="sig-name descname"><span class="pre">TestSACCompressionIntegration</span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Integration tests for SAC algorithm with compression.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation">
+<span class="sig-name descname"><span class="pre">test_compression_config_validation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_compression_config_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation" title="Link to this definition"></a></dt>
+<dd><p>Test that compression configuration is properly validated.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_quantization">
+<span class="sig-name descname"><span class="pre">test_compression_config_validation_quantization</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_compression_config_validation_quantization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_quantization" title="Link to this definition"></a></dt>
+<dd><p>Test quantization configuration validation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_pruning">
+<span class="sig-name descname"><span class="pre">test_compression_config_validation_pruning</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_compression_config_validation_pruning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_pruning" title="Link to this definition"></a></dt>
+<dd><p>Test pruning configuration validation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_distillation">
+<span class="sig-name descname"><span class="pre">test_compression_config_validation_distillation</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_compression_config_validation_distillation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_compression_config_validation_distillation" title="Link to this definition"></a></dt>
+<dd><p>Test distillation configuration validation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_with_compression">
+<span class="sig-name descname"><span class="pre">test_create_model_with_compression</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_create_model_with_compression"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_with_compression" title="Link to this definition"></a></dt>
+<dd><p>Test creating SAC model with compression enabled.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_disabled">
+<span class="sig-name descname"><span class="pre">test_create_model_compression_disabled</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_create_model_compression_disabled"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_disabled" title="Link to this definition"></a></dt>
+<dd><p>Test creating SAC model with compression disabled.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_save_path">
+<span class="sig-name descname"><span class="pre">test_create_model_compression_save_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_create_model_compression_save_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_create_model_compression_save_path" title="Link to this definition"></a></dt>
+<dd><p>Test saving compressed model when path is specified.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_quantization_only">
+<span class="sig-name descname"><span class="pre">test_apply_model_compression_quantization_only</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_apply_model_compression_quantization_only"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_quantization_only" title="Link to this definition"></a></dt>
+<dd><p>Test applying quantization compression.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_pruning_only">
+<span class="sig-name descname"><span class="pre">test_apply_model_compression_pruning_only</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_apply_model_compression_pruning_only"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_pruning_only" title="Link to this definition"></a></dt>
+<dd><p>Test applying pruning compression.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_distillation_only">
+<span class="sig-name descname"><span class="pre">test_apply_model_compression_distillation_only</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mock_sac_load</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_apply_model_compression_distillation_only"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_distillation_only" title="Link to this definition"></a></dt>
+<dd><p>Test applying distillation compression.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_multiple_techniques">
+<span class="sig-name descname"><span class="pre">test_apply_model_compression_multiple_techniques</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_apply_model_compression_multiple_techniques"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_multiple_techniques" title="Link to this definition"></a></dt>
+<dd><p>Test applying multiple compression techniques.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_no_techniques">
+<span class="sig-name descname"><span class="pre">test_apply_model_compression_no_techniques</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mock_sac_class</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_apply_model_compression_no_techniques"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_apply_model_compression_no_techniques" title="Link to this definition"></a></dt>
+<dd><p>Test compression with no techniques specified.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_sac_algorithm_compression_manager_initialization">
+<span class="sig-name descname"><span class="pre">test_sac_algorithm_compression_manager_initialization</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/test_sac_compression.html#TestSACCompressionIntegration.test_sac_algorithm_compression_manager_initialization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.test_sac_compression.TestSACCompressionIntegration.test_sac_algorithm_compression_manager_initialization" title="Link to this definition"></a></dt>
+<dd><p>Test that SAC algorithm initializes compression manager as None.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.training.algorithms.sac">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.training.algorithms.sac" title="Link to this heading"></a></h2>
+<p>SAC（Soft Actor-Critic）アルゴリズム実装。</p>
+<p>Off-policyアルゴリズムで、エントロピー正則化により
+探索と活用のバランスを自動調整する。</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.training.algorithms.sac.</span></span><span class="sig-name descname"><span class="pre">SACAlgorithm</span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.training.algorithms.html#ztb.training.algorithms.base_algorithm.BaseRLAlgorithm" title="ztb.training.algorithms.base_algorithm.BaseRLAlgorithm"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseRLAlgorithm</span></code></a></p>
+<p>SAC（Soft Actor-Critic）アルゴリズムのラッパークラス。</p>
+<p>BaseRLAlgorithmインターフェースに準拠し、
+AlgorithmFactoryから使用可能。</p>
+<p>金融取引への適用において、PPOと比較して以下の利点がある：
+- 過去の経験を効率的に再利用（sample efficiency）
+- エントロピー係数の自動調整による適応的な探索
+- 連続行動・離散行動両対応</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.algorithms</span><span class="w"> </span><span class="kn">import</span> <span class="n">AlgorithmFactory</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">,</span> <span class="n">SACAlgorithm</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.__repr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.__repr__" title="Link to this definition"></a></dt>
+<dd><p>文字列表現。</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.algorithm_name">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">algorithm_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.algorithm_name" title="Link to this definition"></a></dt>
+<dd><p>アルゴリズム名を取得。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>“sac”</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.create_model">
+<span class="sig-name descname"><span class="pre">create_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecEnv" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">VecEnv</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tensorboard_log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.create_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.create_model" title="Link to this definition"></a></dt>
+<dd><p>SACモデルを作成。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>env</strong> – 訓練環境（VecEnv）</p></li>
+<li><p><strong>config</strong> – SAC設定（ハイパーパラメータ等）</p></li>
+<li><p><strong>tensorboard_log</strong> – TensorBoardログディレクトリ（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>作成されたSACモデル</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – 設定が不正な場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">vec_env</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="s2">&quot;./logs&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.explain_decision">
+<span class="sig-name descname"><span class="pre">explain_decision</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">action</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.explain_decision"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.explain_decision" title="Link to this definition"></a></dt>
+<dd><p>モデルの決定を説明。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>observation</strong> – 観測データ</p></li>
+<li><p><strong>action</strong> – 実行された行動（Optional）</p></li>
+<li><p><strong>context</strong> – 追加の文脈情報（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>説明結果の辞書、またはNone（説明可能性が無効の場合）</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.generate_explanation_report">
+<span class="sig-name descname"><span class="pre">generate_explanation_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">actions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.generate_explanation_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.generate_explanation_report" title="Link to this definition"></a></dt>
+<dd><p>説明レポートを生成。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>observations</strong> – 観測データのバッチ</p></li>
+<li><p><strong>actions</strong> – 対応する行動のバッチ（Optional）</p></li>
+<li><p><strong>output_path</strong> – レポート出力パス（Optional）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>レポートファイルのパス、またはNone</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.get_default_config">
+<span class="sig-name descname"><span class="pre">get_default_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.get_default_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.get_default_config" title="Link to this definition"></a></dt>
+<dd><p>SACのデフォルト設定を取得。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>デフォルト設定の辞書</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span>
+<span class="go">0.0003</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.load">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecEnv" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">VecEnv</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.load" title="Link to this definition"></a></dt>
+<dd><p>モデルを読み込み。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>load_path</strong> – モデルファイルパス</p></li>
+<li><p><strong>env</strong> – 環境（Optional、推論時に必要）</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>読み込まれたモデル</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/sac_v395a.zip&quot;</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">vec_env</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.save" title="Link to this definition"></a></dt>
+<dd><p>モデルを保存。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – 保存するモデル</p></li>
+<li><p><strong>save_path</strong> – 保存先パス</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;models/sac_v395a.zip&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">total_timesteps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/modules/base.html#stable_baselines3.common.base_class.BaseAlgorithm" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><span class="pre">BaseAlgorithm</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.train" title="Link to this definition"></a></dt>
+<dd><p>SACモデルを訓練。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – 訓練するSACモデル</p></li>
+<li><p><strong>total_timesteps</strong> – 訓練ステップ数</p></li>
+<li><p><strong>callback</strong> – 訓練中のコールバック（Optional）</p></li>
+<li><p><strong>**kwargs</strong> – その他のlearn()引数</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>訓練済みモデル</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – モデルが初期化されていない場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sac</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">model</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">trained</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">total_timesteps</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.training.algorithms.sac.SACAlgorithm.validate_config">
+<span class="sig-name descname"><span class="pre">validate_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/training/algorithms/sac/sac_algorithm.html#SACAlgorithm.validate_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.training.algorithms.sac.SACAlgorithm.validate_config" title="Link to this definition"></a></dt>
+<dd><p>SAC設定の妥当性を検証。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config</strong> – 検証する設定辞書</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>設定が妥当ならTrue</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – 必須パラメータが不足している場合</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="s2">&quot;buffer_size&quot;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.training.algorithms.ppo.html" class="btn btn-neutral float-left" title="ztb.training.algorithms.ppo package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.training.binary_search.html" class="btn btn-neutral float-right" title="ztb.training.binary_search package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

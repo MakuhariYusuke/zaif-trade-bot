@@ -1,0 +1,734 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.unified_trainer.algorithms &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.training.unified_trainer.algorithms</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.unified_trainer.algorithms</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Algorithm-specific training implementations for Unified Trainer.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCallback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Monitor</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.heavy_env.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvironmentConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.memory_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.pretraining</span><span class="w"> </span><span class="kn">import</span> <span class="n">SelfSupervisedTrainer</span> <span class="k">as</span> <span class="n">SSPTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.pretraining.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_config</span> <span class="k">as</span> <span class="n">get_ssp_config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">continuous_to_discrete_action</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="c1"># Import distributed training utilities</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.distributed.distributed_training</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">get_distributed_info</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TrainingProgressCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.TrainingProgressCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingProgressCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Enhanced callback for monitoring training progress and action distribution.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">check_freq</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">system_optimizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_freq</span> <span class="o">=</span> <span class="n">check_freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span> <span class="o">=</span> <span class="n">system_optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">continuous_actions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">discrete_actions</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_log_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="c1"># Record continuous action taken</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;actions&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">actions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">continuous_action</span> <span class="o">=</span> <span class="n">actions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">continuous_action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="n">continuous_action</span> <span class="o">=</span> <span class="n">continuous_action</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">continuous_actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">continuous_action</span><span class="p">)</span>
+
+                <span class="c1"># Convert to discrete action for tracking</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_to_discrete_action</span><span class="p">(</span><span class="n">continuous_action</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">discrete_actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">discrete_action</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Debug: Recorded action </span><span class="si">{</span><span class="n">continuous_action</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">discrete_action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># Debug print</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Debug: Actions not available - actions: </span><span class="si">{</span><span class="n">actions</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Failed to record action: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Record reward</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">,</span> <span class="s1">&#39;rewards&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">reward_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Failed to record reward: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Log progress</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_freq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_progress</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_continuous_to_discrete_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">continuous_action</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">buy_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">sell_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert continuous action (-1 to 1) to discrete action (0=HOLD, 1=BUY, 2=SELL).&quot;&quot;&quot;</span>
+        <span class="c1"># Use the centralized continuous_to_discrete_action function for consistency</span>
+        <span class="k">return</span> <span class="n">continuous_to_discrete_action</span><span class="p">(</span><span class="n">continuous_action</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_log_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Log training progress and action distribution.&quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">elapsed</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+        <span class="n">steps_per_sec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span> <span class="o">/</span> <span class="n">elapsed</span> <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># Always show progress, even if no actions recorded yet</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">:</span>
+            <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">)</span>
+            <span class="c1"># Shift discrete actions to non-negative range for bincount: SELL(-1)-&gt;0, HOLD(0)-&gt;1, BUY(1)-&gt;2</span>
+            <span class="n">shifted_actions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">discrete_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">shifted_actions</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+            <span class="n">action_dist</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;SELL&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span><span class="p">,</span>
+                <span class="s1">&#39;HOLD&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span><span class="p">,</span>
+                <span class="s1">&#39;BUY&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span>
+            <span class="p">}</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;Elapsed: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">s | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;SPS: </span><span class="si">{</span><span class="n">steps_per_sec</span><span class="si">:</span><span class="s2">5.1f</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;HOLD: </span><span class="si">{</span><span class="n">action_dist</span><span class="p">[</span><span class="s1">&#39;HOLD&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;BUY: </span><span class="si">{</span><span class="n">action_dist</span><span class="p">[</span><span class="s1">&#39;BUY&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;SELL: </span><span class="si">{</span><span class="n">action_dist</span><span class="p">[</span><span class="s1">&#39;SELL&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;Rewards: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_history</span><span class="p">)</span><span class="si">}</span><span class="s2"> recorded&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Show progress even when no actions recorded yet</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span><span class="si">:</span><span class="s2">6d</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;Elapsed: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">6.1f</span><span class="si">}</span><span class="s2">s | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;SPS: </span><span class="si">{</span><span class="n">steps_per_sec</span><span class="si">:</span><span class="s2">5.1f</span><span class="si">}</span><span class="s2"> | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;No actions recorded yet | &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;Rewards: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_history</span><span class="p">)</span><span class="si">}</span><span class="s2"> recorded&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Apply system optimizations during training</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span><span class="o">.</span><span class="n">optimize_training_step</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;training_step_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">):</span>
+                    <span class="k">pass</span>  <span class="c1"># System optimization is applied in the context manager</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: System optimization failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="BaseAlgorithmTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.BaseAlgorithmTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseAlgorithmTrainer</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for algorithm-specific trainers.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span> <span class="ow">or</span> <span class="n">get_logger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BaseAlgorithmTrainer.validate_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.BaseAlgorithmTrainer.validate_config">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate configuration for this algorithm.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="BaseAlgorithmTrainer.train">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.BaseAlgorithmTrainer.train">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute training for this algorithm.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="BaseAlgorithmTrainer.get_training_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.BaseAlgorithmTrainer.get_training_stats">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_training_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get training statistics.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SACTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SACTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SACTrainer</span><span class="p">(</span><span class="n">BaseAlgorithmTrainer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SAC algorithm trainer with enhanced UI and monitoring.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">gradient_accumulation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">system_optimizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gradient_accumulation_steps</span> <span class="o">=</span> <span class="n">gradient_accumulation_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span> <span class="o">=</span> <span class="n">system_optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="SACTrainer.validate_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SACTrainer.validate_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate SAC configuration.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Check required SAC hyperparameters</span>
+            <span class="n">sac_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sac_hyperparameters&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;buffer_size&#39;</span><span class="p">,</span> <span class="s1">&#39;learning_starts&#39;</span><span class="p">,</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sac_config</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing SAC hyperparameter: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Check environment config</span>
+            <span class="n">env_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;environment&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">required_env_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">,</span> <span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="s1">&#39;max_position_size&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_env_keys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">env_config</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing environment config: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Check data file</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_path&#39;</span><span class="p">,</span> <span class="s1">&#39;btc_jpy_real_dataset.csv&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">data_path</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data file not found: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SAC configuration validation successful&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC configuration validation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SACTrainer.train">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SACTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute SAC training with enhanced monitoring.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🚀 Starting SAC training...&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Extract configurations</span>
+            <span class="n">sac_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;sac_hyperparameters&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">env_config_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;environment&#39;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">reward_settings</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward_settings&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+            <span class="c1"># Load data</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_path&#39;</span><span class="p">,</span> <span class="s1">&#39;btc_jpy_real_dataset.csv&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 Loading data from </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> data points&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Optimize data types for memory efficiency</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 Optimizing data types for memory efficiency...&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;✅ Data type optimization completed&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Create environment config</span>
+            <span class="n">env_config</span> <span class="o">=</span> <span class="n">EnvironmentConfig</span><span class="p">()</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="n">env_config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">,</span> <span class="mi">200000</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">=</span> <span class="n">env_config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="mf">1e-05</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">max_position_size</span> <span class="o">=</span> <span class="n">env_config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">use_standardized_observations</span> <span class="o">=</span> <span class="n">env_config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;use_standardized_observations&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">curriculum_stage</span> <span class="o">=</span> <span class="n">env_config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;curriculum_stage&#39;</span><span class="p">,</span> <span class="s1">&#39;profit_optimized&#39;</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">use_continuous_actions</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># SAC requires continuous actions</span>
+
+            <span class="c1"># Set reward settings</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">reward_scaling</span> <span class="o">=</span> <span class="n">reward_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward_scale&#39;</span><span class="p">,</span> <span class="mf">500.0</span><span class="p">)</span>
+            <span class="n">env_config</span><span class="o">.</span><span class="n">reward_clip_value</span> <span class="o">=</span> <span class="n">reward_settings</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward_clip_max&#39;</span><span class="p">,</span> <span class="mf">200.0</span><span class="p">)</span>
+
+            <span class="c1"># Create environment</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🏗️  Creating trading environment...&quot;</span><span class="p">)</span>
+            <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">env_config</span><span class="p">)</span>
+            <span class="n">env</span> <span class="o">=</span> <span class="n">Monitor</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+
+            <span class="c1"># Create SAC model</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🤖 Creating SAC model...&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">SAC</span><span class="p">(</span>
+                <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span>
+                <span class="n">env</span><span class="p">,</span>
+                <span class="n">learning_rate</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mf">0.0003</span><span class="p">),</span>
+                <span class="n">buffer_size</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;buffer_size&#39;</span><span class="p">,</span> <span class="mi">20000</span><span class="p">),</span>
+                <span class="n">learning_starts</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_starts&#39;</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+                <span class="n">batch_size</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
+                <span class="n">tau</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;tau&#39;</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">),</span>
+                <span class="n">gamma</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">),</span>
+                <span class="n">train_freq</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;train_freq&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">gradient_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gradient_accumulation_steps</span><span class="p">,</span>  <span class="c1"># Use gradient accumulation</span>
+                <span class="n">ent_coef</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ent_coef&#39;</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">),</span>
+                <span class="n">target_update_interval</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_update_interval&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">target_entropy</span><span class="o">=</span><span class="n">sac_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;target_entropy&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span>  <span class="c1"># We&#39;ll handle logging ourselves</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Training parameters</span>
+            <span class="n">total_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_timesteps&#39;</span><span class="p">,</span> <span class="mi">50000</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🎯 Training for </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Check for distributed training</span>
+            <span class="n">dist_info</span> <span class="o">=</span> <span class="n">get_distributed_info</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">dist_info</span><span class="p">[</span><span class="s1">&#39;is_distributed&#39;</span><span class="p">]:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🔄 Distributed training enabled: rank </span><span class="si">{</span><span class="n">dist_info</span><span class="p">[</span><span class="s1">&#39;rank&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">dist_info</span><span class="p">[</span><span class="s1">&#39;world_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="c1"># Adjust total_timesteps for distributed training (each process handles subset)</span>
+                <span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">total_timesteps</span> <span class="o">//</span> <span class="n">dist_info</span><span class="p">[</span><span class="s1">&#39;world_size&#39;</span><span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adjusted total_timesteps per process: </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Create progress callback</span>
+            <span class="n">callback</span> <span class="o">=</span> <span class="n">TrainingProgressCallback</span><span class="p">(</span><span class="n">check_freq</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">system_optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span><span class="p">)</span>
+
+            <span class="c1"># Start training</span>
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🏃 Training started...&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Use memory efficient processing during training</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">disable</span><span class="p">()</span>  <span class="c1"># Disable automatic GC during training for performance</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span>
+                <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
+                <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
+                <span class="n">progress_bar</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+
+            <span class="n">gc</span><span class="o">.</span><span class="n">enable</span><span class="p">()</span>  <span class="c1"># Re-enable GC after training</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># Force garbage collection</span>
+
+            <span class="c1"># Training completed</span>
+            <span class="n">training_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Training completed in </span><span class="si">{</span><span class="n">training_time</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Save model</span>
+            <span class="n">model_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model_name&#39;</span><span class="p">,</span> <span class="s1">&#39;sac_model&#39;</span><span class="p">)</span>
+            <span class="n">model_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;models/</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">.zip&quot;</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💾 Saving model to </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+
+            <span class="c1"># Collect training statistics</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="n">total_timesteps</span><span class="p">,</span>
+                <span class="s1">&#39;training_time&#39;</span><span class="p">:</span> <span class="n">training_time</span><span class="p">,</span>
+                <span class="s1">&#39;steps_per_second&#39;</span><span class="p">:</span> <span class="n">total_timesteps</span> <span class="o">/</span> <span class="n">training_time</span><span class="p">,</span>
+                <span class="s1">&#39;model_path&#39;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+                <span class="s1">&#39;final_reward&#39;</span><span class="p">:</span> <span class="n">callback</span><span class="o">.</span><span class="n">reward_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">reward_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s1">&#39;action_distribution&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_final_action_distribution</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span>
+            <span class="p">}</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📈 Training stats: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ SAC training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">())</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_final_action_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">TrainingProgressCallback</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate final action distribution from callback data.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">callback</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;HOLD&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;BUY&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;SELL&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+
+        <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">)</span>
+        
+        <span class="c1"># Convert discrete actions to proper indices (SELL: -1 -&gt; 2, HOLD: 0 -&gt; 0, BUY: 1 -&gt; 1)</span>
+        <span class="n">discrete_indices</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">callback</span><span class="o">.</span><span class="n">discrete_actions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>  <span class="c1"># SELL</span>
+                <span class="n">discrete_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># HOLD</span>
+                <span class="n">discrete_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
+                <span class="n">discrete_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">discrete_indices</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Default to HOLD</span>
+        
+        <span class="n">discrete_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">discrete_indices</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;HOLD&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span><span class="p">,</span>
+            <span class="s1">&#39;BUY&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span><span class="p">,</span>
+            <span class="s1">&#39;SELL&#39;</span><span class="p">:</span> <span class="n">discrete_counts</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="SACTrainer.get_training_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SACTrainer.get_training_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_training_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get training statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PPOTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PPOTrainer</span><span class="p">(</span><span class="n">BaseAlgorithmTrainer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;PPO algorithm trainer (placeholder for future implementation).&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">gradient_accumulation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gradient_accumulation_steps</span> <span class="o">=</span> <span class="n">gradient_accumulation_steps</span>
+
+<div class="viewcode-block" id="PPOTrainer.validate_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.validate_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate PPO configuration.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PPO configuration validation not yet implemented&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="PPOTrainer.train">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute PPO training.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PPO training not yet implemented&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="PPOTrainer.get_training_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.PPOTrainer.get_training_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_training_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get training statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SelfSupervisedTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">BaseAlgorithmTrainer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Self-supervised pre-training trainer for financial data.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize self-supervised trainer.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Initialize memory manager for self-supervised training</span>
+        <span class="n">memory_log_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_log_path&#39;</span><span class="p">,</span> <span class="s1">&#39;logs/memory_self_supervised.csv&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="o">=</span> <span class="n">MemoryManager</span><span class="p">(</span>
+            <span class="n">memory_log_path</span><span class="o">=</span><span class="n">memory_log_path</span><span class="p">,</span>
+            <span class="n">memory_logging_enabled</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_logging_enabled&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+            <span class="n">memory_log_interval_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;memory_log_interval&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.validate_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SelfSupervisedTrainer.validate_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate self-supervised pre-training configuration.&quot;&quot;&quot;</span>
+        <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;input_dim&#39;</span><span class="p">,</span> <span class="s1">&#39;device&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required configuration key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Validate data paths if provided</span>
+        <span class="k">if</span> <span class="s1">&#39;train_data_path&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;train_data_path&#39;</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training data file not found: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;train_data_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="s1">&#39;val_data_path&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;val_data_path&#39;</span><span class="p">]):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Validation data file not found: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;val_data_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Self-supervised pre-training configuration validated successfully&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load training and validation data.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">input_dim</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_dim&#39;</span><span class="p">]</span>
+
+            <span class="c1"># Load training data</span>
+            <span class="k">if</span> <span class="s1">&#39;train_data_path&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading training data from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;train_data_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">train_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;train_data_path&#39;</span><span class="p">])</span>
+                <span class="c1"># Convert to tensor format (assuming CSV has time series data)</span>
+                <span class="c1"># This is a simplified example - adjust based on actual data format</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">train_df</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Add batch dimension if needed</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No training data path provided, using synthetic data for demonstration&quot;</span><span class="p">)</span>
+                <span class="c1"># Generate synthetic data for demonstration</span>
+                <span class="n">batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;synthetic_batch_size&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+                <span class="n">seq_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;seq_len&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">)</span>
+
+            <span class="c1"># Load validation data</span>
+            <span class="k">if</span> <span class="s1">&#39;val_data_path&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading validation data from </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;val_data_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">val_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;val_data_path&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">val_df</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Generate synthetic validation data</span>
+                <span class="n">val_batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;synthetic_val_batch_size&#39;</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+                <span class="n">seq_len</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;seq_len&#39;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">val_batch_size</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data loaded - Train: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, Val: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">val_data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.train">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SelfSupervisedTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute self-supervised pre-training.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting self-supervised pre-training&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Log initial memory usage</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;SSP_training_start&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Load data</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_data</span><span class="p">():</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Initialize self-supervised trainer with memory manager</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span> <span class="o">=</span> <span class="n">SSPTrainer</span><span class="p">(</span>
+                <span class="n">input_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;input_dim&#39;</span><span class="p">],</span>
+                <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;device&#39;</span><span class="p">,</span> <span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">),</span>
+                <span class="n">checkpoint_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;checkpoint_dir&#39;</span><span class="p">,</span> <span class="s1">&#39;checkpoints/pretraining&#39;</span><span class="p">),</span>
+                <span class="n">memory_manager</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Get training configuration</span>
+            <span class="n">ssp_config_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;config_type&#39;</span><span class="p">,</span> <span class="s1">&#39;default&#39;</span><span class="p">)</span>
+            <span class="n">ssp_config</span> <span class="o">=</span> <span class="n">get_ssp_config</span><span class="p">(</span><span class="n">ssp_config_type</span><span class="p">)</span>
+
+            <span class="c1"># Override with custom config if provided</span>
+            <span class="k">if</span> <span class="s1">&#39;custom_config&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.multimodal.pretraining.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">update_config</span>
+                <span class="n">ssp_config</span> <span class="o">=</span> <span class="n">update_config</span><span class="p">(</span><span class="n">ssp_config</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;custom_config&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Train all stages</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training with configuration: </span><span class="si">{</span><span class="n">ssp_config_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span><span class="o">.</span><span class="n">train_all_stages</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span><span class="p">,</span> <span class="n">ssp_config</span><span class="p">)</span>
+
+            <span class="c1"># Save final checkpoint</span>
+            <span class="n">checkpoint_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;checkpoint_name&#39;</span><span class="p">,</span> <span class="s1">&#39;final&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">(</span><span class="n">checkpoint_name</span><span class="p">)</span>
+
+            <span class="c1"># Save training history</span>
+            <span class="n">history_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;history_path&#39;</span><span class="p">,</span> <span class="s1">&#39;training_history.json&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span><span class="o">.</span><span class="n">save_training_history</span><span class="p">(</span><span class="n">history_path</span><span class="p">)</span>
+
+            <span class="c1"># Log final memory usage</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;SSP_training_complete&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Memory cleanup</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Self-supervised pre-training completed successfully&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Self-supervised pre-training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.get_training_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.SelfSupervisedTrainer.get_training_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_training_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get training statistics.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;training_history&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span><span class="o">.</span><span class="n">training_history</span><span class="p">,</span>
+            <span class="s1">&#39;encoders_available&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ssp_trainer</span><span class="o">.</span><span class="n">get_pretrained_encoders</span><span class="p">()</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="s1">&#39;data_shapes&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;train&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;val&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span><span class="o">.</span><span class="n">shape</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">val_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_algorithm_trainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.unified_trainer.html#ztb.training.unified_trainer.algorithms.create_algorithm_trainer">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_algorithm_trainer</span><span class="p">(</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> 
+    <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> 
+    <span class="n">logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">logging</span><span class="o">.</span><span class="n">Logger</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">gradient_accumulation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">system_optimizer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseAlgorithmTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Factory function to create algorithm-specific trainer.&quot;&quot;&quot;</span>
+    <span class="n">algorithm</span> <span class="o">=</span> <span class="n">algorithm</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s2">&quot;sac&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SACTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">gradient_accumulation_steps</span><span class="p">,</span> <span class="n">system_optimizer</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s2">&quot;ppo&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">PPOTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="n">gradient_accumulation_steps</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s2">&quot;self_supervised&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SelfSupervisedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">logger</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s2">&quot;multimodal&quot;</span><span class="p">:</span>
+        <span class="c1"># Create multimodal config from unified config</span>
+        <span class="c1"># Temporarily disabled due to circular import issues</span>
+        <span class="c1"># multimodal_config = MultimodalConfig(</span>
+        <span class="c1">#     price_feature_dim=config.get(&#39;price_feature_dim&#39;, 156),</span>
+        <span class="c1">#     text_embedding_dim=config.get(&#39;text_embedding_dim&#39;, 768),</span>
+        <span class="c1">#     economic_feature_dim=config.get(&#39;economic_feature_dim&#39;, 10),</span>
+        <span class="c1">#     action_dim=config.get(&#39;action_dim&#39;, 3),</span>
+        <span class="c1">#     hidden_dim=config.get(&#39;multimodal_hidden_dim&#39;, 256),</span>
+        <span class="c1">#     num_heads=config.get(&#39;multimodal_num_heads&#39;, 8)</span>
+        <span class="c1"># )</span>
+        <span class="c1"># return MultimodalSACTrainer(multimodal_config, config, config.get(&#39;env_config&#39;, {}))</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Multimodal training temporarily disabled due to circular import issues&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">algorithm</span> <span class="o">==</span> <span class="s2">&quot;online_learning&quot;</span><span class="p">:</span>
+        <span class="c1"># Create online learning config from unified config</span>
+        <span class="c1"># Temporarily disabled due to circular import issues</span>
+        <span class="c1"># online_config = OnlineLearningConfig(</span>
+        <span class="c1">#     learning_mode=config.get(&#39;online_learning_mode&#39;, &#39;incremental&#39;),</span>
+        <span class="c1">#     batch_size=config.get(&#39;online_batch_size&#39;, 32),</span>
+        <span class="c1">#     max_memory_samples=config.get(&#39;online_memory_samples&#39;, 10000),</span>
+        <span class="c1">#     adaptation_trigger_threshold=config.get(&#39;online_adaptation_threshold&#39;, 0.1)</span>
+        <span class="c1"># )</span>
+        <span class="c1"># return OnlineLearningSACTrainer(online_config, config, config.get(&#39;env_config&#39;, {}))</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Online learning training temporarily disabled due to circular import issues&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported algorithm: </span><span class="si">{</span><span class="n">algorithm</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

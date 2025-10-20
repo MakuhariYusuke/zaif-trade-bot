@@ -1,0 +1,429 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ハイパーパラメータ最適化 - 実行準備完了レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">ハイパーパラメータ最適化 - 実行準備完了レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/optimization/OPTIMIZATION_READY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>ハイパーパラメータ最適化 - 実行準備完了レポート<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>✅ 準備完了<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>1. 環境セットアップ ✅<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>scikit-optimize インストール完了</p></li>
+<li><p>最適化フレームワーク修正完了（numpy型対応）</p></li>
+<li><p>モックテスト成功</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>2. 作成されたスクリプト<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<section id="scripts-optimization-test-optimization-mock-py">
+<h4>scripts/optimization/test_optimization_mock.py<a class="headerlink" href="#scripts-optimization-test-optimization-mock-py" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>目的</strong>: フレームワークの動作確認</p></li>
+<li><p><strong>実行時間</strong>: 約2秒</p></li>
+<li><p><strong>結果</strong>: ✅ 成功（Random Search + Binary Search）</p></li>
+</ul>
+</section>
+<section id="scripts-optimization-run-sac-optimization-lightweight-py">
+<h4>scripts/optimization/run_sac_optimization_lightweight.py ⭐推奨<a class="headerlink" href="#scripts-optimization-run-sac-optimization-lightweight-py" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>目的</strong>: 実際のSAC訓練でパラメータ最適化</p></li>
+<li><p><strong>設定</strong>:</p>
+<ul>
+<li><p>Random Search: 8試行</p></li>
+<li><p>各試行: 3000ステップ（約10-15分）</p></li>
+<li><p>総所要時間: <strong>約1.5-2時間</strong></p></li>
+</ul>
+</li>
+<li><p><strong>最適化パラメータ</strong>:</p>
+<ul>
+<li><p>learning_rate: 1e-4 ~ 1e-3</p></li>
+<li><p>batch_size: [128, 256, 512]</p></li>
+<li><p>gamma: 0.985 ~ 0.999</p></li>
+<li><p>target_update_interval: 1 ~ 5</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="scripts-optimization-run-sac-optimization-py">
+<h4>scripts/optimization/run_sac_optimization.py（フルバージョン）<a class="headerlink" href="#scripts-optimization-run-sac-optimization-py" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>目的</strong>: より詳細な最適化（Random + Binary Search）</p></li>
+<li><p><strong>設定</strong>:</p>
+<ul>
+<li><p>Random Search: 15試行</p></li>
+<li><p>Binary Search: 10反復</p></li>
+<li><p>各試行: 5000ステップ</p></li>
+<li><p>総所要時間: <strong>約6-8時間</strong></p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>🎯 実行方法<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>オプション1: 軽量版（推奨、約2時間）<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts<span class="se">\o</span>ptimization<span class="se">\r</span>un_sac_optimization_lightweight.py
+</pre></div>
+</div>
+<p><strong>利点</strong>:</p>
+<ul class="simple">
+<li><p>短時間で結果が得られる</p></li>
+<li><p>GPU/CPU負荷が低い</p></li>
+<li><p>v396用の推奨パラメータを生成</p></li>
+</ul>
+<p><strong>出力</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/optimization/results/sac_opt_*/optimization_result.json</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/sac_v396_optimized.json</span></code> ✨</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>オプション2: フルバージョン（約6-8時間）<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts<span class="se">\o</span>ptimization<span class="se">\r</span>un_sac_optimization.py
+</pre></div>
+</div>
+<p><strong>利点</strong>:</p>
+<ul class="simple">
+<li><p>より精緻な最適化</p></li>
+<li><p>Binary Searchで微調整</p></li>
+<li><p>長期訓練データ</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>📊 期待される結果<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="v395i">
+<h3>v395iベースライン<a class="headerlink" href="#v395i" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Critic Loss: <strong>0.0918</strong></p></li>
+<li><p>Actor Loss: -5.61</p></li>
+<li><p>ent_coef: 0.279-0.917</p></li>
+</ul>
+</section>
+<section id="id9">
+<h3>最適化目標<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Critic Loss: <strong>&lt; 0.09</strong>（目標値）</p></li>
+<li><p>改善率: 5-15%</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>モックテスト結果（参考）<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Random</span> <span class="n">Search</span><span class="p">:</span>
+  <span class="n">ベストCritic</span> <span class="n">Loss</span><span class="p">:</span> <span class="mf">0.172473</span>
+  <span class="n">learning_rate</span><span class="p">:</span> <span class="mf">2.65e-04</span>
+  <span class="n">batch_size</span><span class="p">:</span> <span class="mi">256</span>
+  <span class="n">gamma</span><span class="p">:</span> <span class="mf">0.987</span>
+  <span class="n">target_update_interval</span><span class="p">:</span> <span class="mi">3</span>
+
+<span class="n">Binary</span> <span class="n">Search</span><span class="p">:</span>
+  <span class="n">最適Critic</span> <span class="n">Loss</span><span class="p">:</span> <span class="mf">0.146409</span>
+  <span class="n">最適learning_rate</span><span class="p">:</span> <span class="mf">3.14e-04</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🔧 技術詳細<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>修正したフレームワーク<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<section id="ztb-optimization-base-py">
+<h4>ztb/optimization/base.py<a class="headerlink" href="#ztb-optimization-base-py" title="Link to this heading"></a></h4>
+<p><strong>修正内容</strong>:</p>
+<ul class="simple">
+<li><p>numpy.float64 → Python float 自動変換</p></li>
+<li><p>目的関数の戻り値: float → TrialResult 自動変換</p></li>
+<li><p>エラーハンドリング改善</p></li>
+</ul>
+<p><strong>修正箇所</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># numpy型を標準Python型に変換</span>
+<span class="n">clean_params</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;item&#39;</span><span class="p">):</span>  <span class="c1"># numpy型</span>
+        <span class="n">clean_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">clean_params</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="c1"># floatが返された場合、TrialResultを作成</span>
+<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">objective_value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">TrialResult</span><span class="p">(</span>
+        <span class="n">trial_id</span><span class="o">=</span><span class="n">trial_id</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="n">clean_params</span><span class="p">,</span>
+        <span class="n">objective_value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">objective_value</span><span class="p">),</span>
+        <span class="o">...</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id13">
+<h3>最適化アルゴリズム<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<section id="random-search">
+<h4>Random Search<a class="headerlink" href="#random-search" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>戦略</strong>: 全パラメータ空間をランダムサンプリング</p></li>
+<li><p><strong>利点</strong>: 高次元でも効率的、局所最適に陥らない</p></li>
+<li><p><strong>適用</strong>: 初期探索、広範囲サーチ</p></li>
+</ul>
+</section>
+<section id="binary-search-golden-section">
+<h4>Binary Search (Golden Section)<a class="headerlink" href="#binary-search-golden-section" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>戦略</strong>: 黄金分割探索（φ = 1.618…）</p></li>
+<li><p><strong>利点</strong>: O(log n)の効率、単一パラメータで最高精度</p></li>
+<li><p><strong>適用</strong>: learning_rateの微調整</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>📋 実行チェックリスト<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>実行前<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> scikit-optimize インストール</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 最適化フレームワーク動作確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> ベース設定ファイル確認（sac_v395i_complete_fix.json）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> GPU/CPU使用率確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ディスク空き容量確認（結果保存用）</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>実行中<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> プログレスモニタリング</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Critic Loss推移確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> エラー発生時の対応</p></li>
+</ul>
+</section>
+<section id="id17">
+<h3>実行後<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 最適化結果確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> v396設定ファイル検証</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バックアップ作成</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>🚀 次のステップ<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="step-1">
+<h3>Step 1: 最適化実行（このステップ）<a class="headerlink" href="#step-1" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts<span class="se">\o</span>ptimization<span class="se">\r</span>un_sac_optimization_lightweight.py
+</pre></div>
+</div>
+</section>
+<section id="step-2-v396">
+<h3>Step 2: v396訓練<a class="headerlink" href="#step-2-v396" title="Link to this heading"></a></h3>
+<p>最適化で見つかったパラメータで長期訓練：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.train<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\s</span>ac_v396_optimized.json
+</pre></div>
+</div>
+</section>
+<section id="step-3">
+<h3>Step 3: 評価・比較<a class="headerlink" href="#step-3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>TensorBoard分析</p></li>
+<li><p>統計的検定（v395i vs v396）</p></li>
+<li><p>バックテスト評価</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id19">
+<h2>⚠️ 注意事項<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>実行時間</strong>: 軽量版でも約2時間かかります</p></li>
+<li><p><strong>リソース</strong>: GPU使用率が高くなります</p></li>
+<li><p><strong>中断</strong>: Ctrl+Cで安全に中断可能</p></li>
+<li><p><strong>再開</strong>: 現在は再開機能なし（将来実装予定）</p></li>
+<li><p><strong>結果保存</strong>: 各試行の結果は自動保存されます</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>💡 トラブルシューティング<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>エラー: “ベース設定ファイルが見つかりません”<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 利用可能な設定ファイルを確認</span>
+dir<span class="w"> </span>configs<span class="se">\s</span>ac*.json
+</pre></div>
+</div>
+</section>
+<section id="id22">
+<h3>エラー: “タイムアウト（40分超過）”<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>各試行の timesteps を減らす（3000 → 2000）</p></li>
+<li><p>または timeout を増やす</p></li>
+</ul>
+</section>
+<section id="critic-loss">
+<h3>エラー: “Critic Lossを抽出できませんでした”<a class="headerlink" href="#critic-loss" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>訓練スクリプトの出力形式を確認</p></li>
+<li><p>extract_critic_loss() 関数を調整</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id23">
+<h2>📁 ファイル構成<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>scripts/optimization/
+├── test_optimization_mock.py          # モックテスト
+├── run_sac_optimization_lightweight.py # 軽量版（推奨）
+└── run_sac_optimization.py            # フルバージョン
+
+ztb/optimization/
+├── base.py                            # 修正済み（numpy対応）
+├── methods/
+│   ├── random_search.py
+│   ├── binary_search.py
+│   ├── bayesian_optimization.py
+│   └── grid_search.py
+└── results/                           # 結果出力先
+    └── sac_opt_*/                     # タイムスタンプ付き
+        ├── trial_*_config.json
+        ├── trial_*_result.json
+        └── optimization_result.json
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>✅ 準備完了！<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<p>すべての準備が整いました。以下のコマンドで最適化を開始できます：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts<span class="se">\o</span>ptimization<span class="se">\r</span>un_sac_optimization_lightweight.py
+</pre></div>
+</div>
+<p><strong>推定所要時間</strong>: 約1.5-2時間<br />
+<strong>期待される改善</strong>: Critic Loss 5-15%向上</p>
+<p>🚀 <strong>最適化を開始しますか？</strong></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

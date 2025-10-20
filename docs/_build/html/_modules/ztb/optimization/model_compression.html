@@ -1,0 +1,729 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.optimization.model_compression &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.optimization.model_compression</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.optimization.model_compression</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Model Compression Module for SAC v421.</span>
+
+<span class="sd">This module provides comprehensive model compression techniques including:</span>
+<span class="sd">- Quantization (FP32→FP16/INT8, dynamic quantization, mixed precision training)</span>
+<span class="sd">- Pruning (structural pruning, dynamic pruning based on importance)</span>
+<span class="sd">- Knowledge Distillation (teacher-student model training)</span>
+
+<span class="sd">The module is designed to work seamlessly with the existing SAC algorithm</span>
+<span class="sd">and can be integrated into the training pipeline.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.quantization</span><span class="w"> </span><span class="kn">import</span> <span class="n">QuantStub</span><span class="p">,</span> <span class="n">DeQuantStub</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.quantization</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">quant</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.policies</span><span class="w"> </span><span class="kn">import</span> <span class="n">BasePolicy</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="BaseCompressionTechnique">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.BaseCompressionTechnique">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseCompressionTechnique</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for model compression techniques.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BaseCompressionTechnique.compress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.BaseCompressionTechnique.compress">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply compression technique to the model.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="BaseCompressionTechnique.decompress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.BaseCompressionTechnique.decompress">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decompress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reverse compression if needed.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="BaseCompressionTechnique.get_compression_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.BaseCompressionTechnique.get_compression_stats">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_compression_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get compression statistics.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="QuantizationCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.QuantizationCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">QuantizationCompressor</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Quantization-based model compression.</span>
+
+<span class="sd">    Supports:</span>
+<span class="sd">    - Dynamic quantization (FP32→INT8)</span>
+<span class="sd">    - Static quantization with calibration</span>
+<span class="sd">    - Mixed precision training (FP16)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quantization_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize quantization compressor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            quantization_type: Type of quantization (&quot;dynamic&quot;, &quot;static&quot;, &quot;mixed_precision&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">valid_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span> <span class="s2">&quot;static&quot;</span><span class="p">,</span> <span class="s2">&quot;mixed_precision&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">quantization_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_types</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported quantization type: </span><span class="si">{</span><span class="n">quantization_type</span><span class="si">}</span><span class="s2">. Supported types: </span><span class="si">{</span><span class="n">valid_types</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span> <span class="o">=</span> <span class="n">quantization_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="QuantizationCompressor.compress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.QuantizationCompressor.compress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply quantization to the model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: PyTorch model to quantize</span>
+<span class="sd">            **kwargs: Additional arguments for quantization</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Quantized model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model_size</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span> <span class="o">==</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_dynamic_quantization</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span> <span class="o">==</span> <span class="s2">&quot;static&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_static_quantization</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span> <span class="o">==</span> <span class="s2">&quot;mixed_precision&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_mixed_precision</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported quantization type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span><span class="si">}</span><span class="s2">. Supported types: dynamic, static, mixed_precision&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_dynamic_quantization</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply dynamic quantization (FP32→INT8).&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applying dynamic quantization...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Prepare model for quantization</span>
+        <span class="n">quantized_model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">quantize_dynamic</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="p">{</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">GRU</span><span class="p">},</span>  <span class="c1"># Layers to quantize</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">qint8</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_model</span> <span class="o">=</span> <span class="n">quantized_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model_size</span><span class="p">(</span><span class="n">quantized_model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">compression_ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.2f&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Compressed model size is 0, cannot calculate compression ratio&quot;</span><span class="p">)</span>
+            <span class="n">compression_ratio</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+        <span class="k">return</span> <span class="n">quantized_model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_static_quantization</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply static quantization with calibration.&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applying static quantization...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Add quantization stubs</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_add_quantization_stubs</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Set quantization config</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">qconfig</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">get_default_qconfig</span><span class="p">(</span><span class="s1">&#39;fbgemm&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Prepare for quantization</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">prepare</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Calibrate with data if provided</span>
+        <span class="k">if</span> <span class="n">calibration_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_calibrate_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">)</span>
+
+        <span class="c1"># Convert to quantized model</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">quantization</span><span class="o">.</span><span class="n">convert</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model_size</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="n">compression_ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.2f&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_mixed_precision</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply mixed precision (FP16).&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applying mixed precision training...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Convert model to half precision</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">half</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">quantized_model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_model_size</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="n">compression_ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.2f&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_quantization_stubs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add quantization and dequantization stubs to model.&quot;&quot;&quot;</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">quant</span> <span class="o">=</span> <span class="n">QuantStub</span><span class="p">()</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">dequant</span> <span class="o">=</span> <span class="n">DeQuantStub</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrate_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">calibration_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calibrate quantized model with sample data.&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Calibrating quantized model...&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>  <span class="c1"># Calibration steps</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">calibration_data</span><span class="p">)</span>
+
+<div class="viewcode-block" id="QuantizationCompressor.decompress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.QuantizationCompressor.decompress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decompress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Dequantize model back to FP32.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;dequant&#39;</span><span class="p">):</span>
+            <span class="c1"># Static quantization case</span>
+            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">dequant</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">quant</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">quant</span><span class="o">.</span><span class="n">input_size</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Dynamic quantization case - convert back to float</span>
+            <span class="k">return</span> <span class="n">model</span><span class="o">.</span><span class="n">float</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="QuantizationCompressor.get_compression_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.QuantizationCompressor.get_compression_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_compression_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get quantization compression statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;technique&quot;</span><span class="p">:</span> <span class="s2">&quot;quantization&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantization_type</span><span class="p">,</span>
+            <span class="s2">&quot;original_size_mb&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span><span class="p">,</span>
+            <span class="s2">&quot;compressed_size_mb&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span><span class="p">,</span>
+            <span class="s2">&quot;compression_ratio&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_model_size</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressed_model_size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_model_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get model size in MB.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">param_size</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+                <span class="n">param_size</span> <span class="o">+=</span> <span class="n">param</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">*</span> <span class="n">param</span><span class="o">.</span><span class="n">element_size</span><span class="p">()</span>
+            <span class="n">buffer_size</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">buffer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">buffers</span><span class="p">():</span>
+                <span class="n">buffer_size</span> <span class="o">+=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">nelement</span><span class="p">()</span> <span class="o">*</span> <span class="n">buffer</span><span class="o">.</span><span class="n">element_size</span><span class="p">()</span>
+            <span class="n">total_size</span> <span class="o">=</span> <span class="n">param_size</span> <span class="o">+</span> <span class="n">buffer_size</span>
+            <span class="k">return</span> <span class="n">total_size</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span> <span class="k">if</span> <span class="n">total_size</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to calculate model size: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mf">0.0</span></div>
+
+
+
+<div class="viewcode-block" id="PruningCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.PruningCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PruningCompressor</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Pruning-based model compression.</span>
+
+<span class="sd">    Supports:</span>
+<span class="sd">    - Structural pruning (channel/filter pruning)</span>
+<span class="sd">    - Dynamic pruning based on importance scores</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pruning_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize pruning compressor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pruning_type: Type of pruning (&quot;l1_unstructured&quot;, &quot;l2_unstructured&quot;, &quot;structured&quot;)</span>
+<span class="sd">            amount: Amount of pruning (0.0 to 1.0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">valid_types</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span> <span class="s2">&quot;l2_unstructured&quot;</span><span class="p">,</span> <span class="s2">&quot;structured&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">pruning_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">valid_types</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported pruning type: </span><span class="si">{</span><span class="n">pruning_type</span><span class="si">}</span><span class="s2">. Supported types: </span><span class="si">{</span><span class="n">valid_types</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;</span> <span class="n">amount</span> <span class="o">&lt;</span> <span class="mf">1.0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pruning amount must be between 0.0 and 1.0, got </span><span class="si">{</span><span class="n">amount</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span> <span class="o">=</span> <span class="n">pruning_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">amount</span> <span class="o">=</span> <span class="n">amount</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pruned_weights</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">original_sparsity</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_sparsity</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="PruningCompressor.compress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.PruningCompressor.compress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply pruning to the model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: PyTorch model to prune</span>
+<span class="sd">            **kwargs: Additional arguments for pruning</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Pruned model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applying </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span><span class="si">}</span><span class="s2"> pruning with amount </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">original_sparsity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sparsity</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span> <span class="o">==</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_l1_unstructured_pruning</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span> <span class="o">==</span> <span class="s2">&quot;l2_unstructured&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_l2_unstructured_pruning</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span> <span class="o">==</span> <span class="s2">&quot;structured&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_apply_structured_pruning</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported pruning type: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span><span class="si">}</span><span class="s2">. Supported types: l1_unstructured, l2_unstructured, structured&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_sparsity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_sparsity</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.1%&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_l1_unstructured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply L1 unstructured pruning.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_modules</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">):</span>
+                <span class="c1"># Calculate L1 norm for each weight</span>
+                <span class="n">weight_l1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">weight_l1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">)),</span> <span class="n">largest</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+                <span class="n">mask</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">*=</span> <span class="n">mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_l2_unstructured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply L2 unstructured pruning.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_modules</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">):</span>
+                <span class="c1"># Calculate L2 norm for each weight</span>
+                <span class="n">weight_l2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">weight_l2</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">)),</span> <span class="n">largest</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+                <span class="n">mask</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">*=</span> <span class="n">mask</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_structured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply structured pruning (channel pruning).&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">named_modules</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">):</span>
+                <span class="c1"># Prune entire neurons/channels</span>
+                <span class="n">weight_l1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># Sum across output dimension</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">topk</span><span class="p">(</span><span class="n">weight_l1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">)),</span> <span class="n">largest</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+                <span class="n">mask</span><span class="p">[:,</span> <span class="n">indices</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="o">.</span><span class="n">data</span> <span class="o">*=</span> <span class="n">mask</span>
+
+<div class="viewcode-block" id="PruningCompressor.decompress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.PruningCompressor.decompress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decompress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Pruning is typically irreversible, return model as-is.&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Pruning decompression not supported - pruning is typically irreversible&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="PruningCompressor.get_compression_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.PruningCompressor.get_compression_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_compression_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get pruning compression statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;technique&quot;</span><span class="p">:</span> <span class="s2">&quot;pruning&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">pruning_type</span><span class="p">,</span>
+            <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>
+            <span class="s2">&quot;original_sparsity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_sparsity</span><span class="p">,</span>
+            <span class="s2">&quot;final_sparsity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_sparsity</span><span class="p">,</span>
+            <span class="s2">&quot;sparsity_increase&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">final_sparsity</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">original_sparsity</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_sparsity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate model sparsity (percentage of zero weights).&quot;&quot;&quot;</span>
+        <span class="n">total_params</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">zero_params</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+            <span class="n">total_params</span> <span class="o">+=</span> <span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+            <span class="n">zero_params</span> <span class="o">+=</span> <span class="p">(</span><span class="n">param</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">zero_params</span> <span class="o">/</span> <span class="n">total_params</span> <span class="k">if</span> <span class="n">total_params</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span></div>
+
+
+
+<div class="viewcode-block" id="KnowledgeDistillationCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.KnowledgeDistillationCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KnowledgeDistillationCompressor</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Knowledge Distillation-based model compression.</span>
+
+<span class="sd">    Trains a smaller student model to mimic a larger teacher model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize knowledge distillation compressor.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            temperature: Temperature for softening logits</span>
+<span class="sd">            alpha: Weight for distillation loss vs ground truth loss</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">teacher_model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student_model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="KnowledgeDistillationCompressor.compress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.KnowledgeDistillationCompressor.compress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply knowledge distillation.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: Student model to train</span>
+<span class="sd">            teacher_model: Pre-trained teacher model</span>
+<span class="sd">            **kwargs: Additional arguments</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Trained student model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">teacher_model</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;teacher_model&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">teacher_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;teacher_model must be provided for knowledge distillation&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applying knowledge distillation...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;.1f&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">teacher_model</span> <span class="o">=</span> <span class="n">teacher_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">student_model</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="c1"># Set teacher to evaluation mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">teacher_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="KnowledgeDistillationCompressor.get_distillation_loss">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.KnowledgeDistillationCompressor.get_distillation_loss">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_distillation_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">student_logits</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">teacher_logits</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                            <span class="n">targets</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">criterion</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate distillation loss.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            student_logits: Logits from student model</span>
+<span class="sd">            teacher_logits: Logits from teacher model</span>
+<span class="sd">            targets: Ground truth targets</span>
+<span class="sd">            criterion: Base criterion for ground truth loss</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Combined distillation loss</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Ground truth loss</span>
+        <span class="n">loss_gt</span> <span class="o">=</span> <span class="n">criterion</span><span class="p">(</span><span class="n">student_logits</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+
+        <span class="c1"># Distillation loss (KL divergence between softened logits)</span>
+        <span class="n">teacher_softened</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">teacher_logits</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">student_softened</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">log_softmax</span><span class="p">(</span><span class="n">student_logits</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">loss_distill</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">KLDivLoss</span><span class="p">(</span><span class="n">reduction</span><span class="o">=</span><span class="s1">&#39;batchmean&#39;</span><span class="p">)(</span><span class="n">student_softened</span><span class="p">,</span> <span class="n">teacher_softened</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Combined loss</span>
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">loss_distill</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">loss_gt</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">total_loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+
+        <span class="k">return</span> <span class="n">total_loss</span></div>
+
+
+<div class="viewcode-block" id="KnowledgeDistillationCompressor.decompress">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.KnowledgeDistillationCompressor.decompress">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">decompress</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Knowledge distillation doesn&#39;t require decompression.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="KnowledgeDistillationCompressor.get_compression_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.KnowledgeDistillationCompressor.get_compression_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_compression_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get distillation compression statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;technique&quot;</span><span class="p">:</span> <span class="s2">&quot;knowledge_distillation&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span>
+            <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
+            <span class="s2">&quot;avg_distillation_loss&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;total_distillation_steps&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distillation_loss_history</span><span class="p">),</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ModelCompressionManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelCompressionManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Manager class for applying multiple compression techniques.</span>
+
+<span class="sd">    Provides a unified interface for compressing SAC models with</span>
+<span class="sd">    quantization, pruning, and knowledge distillation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressors</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="ModelCompressionManager.add_compressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager.add_compressor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_compressor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">compressor</span><span class="p">:</span> <span class="n">BaseCompressionTechnique</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Add a compression technique.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">compressors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">compressor</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added compressor: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelCompressionManager.compress_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager.compress_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compress_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">techniques</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply multiple compression techniques to a model.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: Model to compress</span>
+<span class="sd">            techniques: List of compression technique names to apply</span>
+<span class="sd">            **kwargs: Arguments for compression techniques</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Compressed model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">model</span>
+
+        <span class="k">for</span> <span class="n">technique</span> <span class="ow">in</span> <span class="n">techniques</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">technique</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressors</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compressor </span><span class="si">{</span><span class="n">technique</span><span class="si">}</span><span class="s2"> not found, skipping&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applying compression technique: </span><span class="si">{</span><span class="n">technique</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">compressor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compressors</span><span class="p">[</span><span class="n">technique</span><span class="p">]</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">compressed_model</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">[</span><span class="n">technique</span><span class="p">]</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully applied </span><span class="si">{</span><span class="n">technique</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply </span><span class="si">{</span><span class="n">technique</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="c1"># Continue with other techniques but don&#39;t add to stats</span>
+                <span class="k">continue</span>
+
+        <span class="k">return</span> <span class="n">compressed_model</span></div>
+
+
+<div class="viewcode-block" id="ModelCompressionManager.get_compression_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager.get_compression_report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_compression_report</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get comprehensive compression report.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;compression_stats&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">,</span>
+            <span class="s2">&quot;total_techniques_applied&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">),</span>
+            <span class="s2">&quot;techniques&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="ModelCompressionManager.save_compressed_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager.save_compressed_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_compressed_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save compressed model to file.&quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
+            <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+            <span class="s1">&#39;compression_stats&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">,</span>
+        <span class="p">},</span> <span class="n">path</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compressed model saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ModelCompressionManager.load_compressed_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.ModelCompressionManager.load_compressed_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_compressed_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="n">model_class</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load compressed model from file.&quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="n">model_class</span><span class="p">()</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;model_state_dict&#39;</span><span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">compression_stats</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;compression_stats&#39;</span><span class="p">,</span> <span class="p">{})</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compressed model loaded from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_compression_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.model_compression.create_compression_pipeline">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_compression_pipeline</span><span class="p">(</span><span class="n">techniques_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">ModelCompressionManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create a compression pipeline from configuration.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        techniques_config: Configuration for compression techniques</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Configured ModelCompressionManager</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="n">techniques_config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">technique_type</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;type&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">technique_type</span> <span class="o">==</span> <span class="s1">&#39;quantization&#39;</span><span class="p">:</span>
+            <span class="n">compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">technique_type</span> <span class="o">==</span> <span class="s1">&#39;pruning&#39;</span><span class="p">:</span>
+            <span class="n">compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">technique_type</span> <span class="o">==</span> <span class="s1">&#39;distillation&#39;</span><span class="p">:</span>
+            <span class="n">compressor</span> <span class="o">=</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown compression type: </span><span class="si">{</span><span class="n">technique_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">compressor</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">manager</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

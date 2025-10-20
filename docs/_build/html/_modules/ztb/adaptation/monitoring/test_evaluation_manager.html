@@ -1,0 +1,486 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.monitoring.test_evaluation_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.monitoring.test_evaluation_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.monitoring.test_evaluation_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Test Continuous Evaluation Manager</span>
+<span class="sd">継続的評価マネージャーのテスト</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.evaluation_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousEvaluationManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">EvaluationConfig</span><span class="p">,</span> <span class="n">AlertConfig</span><span class="p">,</span> <span class="n">ContinuousMonitoringConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.evaluation_types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">EvaluationResult</span><span class="p">,</span> <span class="n">MonitoringAlert</span><span class="p">,</span> <span class="n">SystemMetrics</span><span class="p">,</span>
+    <span class="n">EvaluationMetrics</span><span class="p">,</span> <span class="n">AlertType</span><span class="p">,</span> <span class="n">AlertLevel</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceMonitor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.safety</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..concept_drift.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptDriftManager</span>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestContinuousEvaluationManager</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;継続的評価マネージャーのテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストセットアップ&quot;&quot;&quot;</span>
+        <span class="c1"># モックの作成</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_monitor</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_safety_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_drift_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+
+        <span class="c1"># モックの設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_monitor</span><span class="o">.</span><span class="n">get_latest_metrics</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;win_rate&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;win_rate&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.55</span><span class="p">),</span>
+            <span class="s1">&#39;precision&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;precision&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.60</span><span class="p">),</span>
+            <span class="s1">&#39;recall&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;recall&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.50</span><span class="p">),</span>
+            <span class="s1">&#39;f1_score&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;f1_score&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.55</span><span class="p">),</span>
+            <span class="s1">&#39;sharpe_ratio&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;sharpe_ratio&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">1.2</span><span class="p">),</span>
+            <span class="s1">&#39;max_drawdown&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;max_drawdown&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span>
+            <span class="s1">&#39;total_return&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;total_return&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.08</span><span class="p">),</span>
+            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="n">Mock</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.12</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_safety_manager</span><span class="o">.</span><span class="n">get_safety_status</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">(</span>
+            <span class="n">overall_safety_level</span><span class="o">=</span><span class="n">Mock</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;HIGH&quot;</span><span class="p">),</span>
+            <span class="n">active_anomalies</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">recent_checks</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">system_health_score</span><span class="o">=</span><span class="mf">0.85</span>
+        <span class="p">)</span>
+
+        <span class="c1"># マネージャーの作成</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span> <span class="o">=</span> <span class="n">ContinuousEvaluationManager</span><span class="p">(</span>
+            <span class="n">monitor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mock_monitor</span><span class="p">,</span>
+            <span class="n">safety_manager</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mock_safety_manager</span><span class="p">,</span>
+            <span class="n">drift_manager</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mock_drift_manager</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.tearDown">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.tearDown">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストクリーンアップ&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">is_running</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">stop_continuous_evaluation</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">is_running</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">active_alerts</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">system_metrics_history</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_perform_evaluation_success">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_perform_evaluation_success">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_perform_evaluation_success</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;評価実行成功テスト&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">perform_evaluation</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">EvaluationResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">performance_metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">safety_metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">datetime</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">processing_time_seconds</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">overall_score</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">recommendations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_perform_evaluation_with_drift">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_perform_evaluation_with_drift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_perform_evaluation_with_drift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ドリフト検知付き評価テスト&quot;&quot;&quot;</span>
+        <span class="c1"># ドリフト検知のモック設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_drift_manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Mock</span><span class="p">(</span><span class="n">drift_detected</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">severity</span><span class="o">=</span><span class="n">Mock</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span> <span class="n">drift_type</span><span class="o">=</span><span class="n">Mock</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;feature_drift&quot;</span><span class="p">))</span>
+        <span class="p">]</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">perform_evaluation</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_severity</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s2">&quot;drift_detected&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">recommendations</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_evaluate_performance">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_evaluate_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_evaluate_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス評価テスト&quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_evaluate_performance</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">EvaluationMetrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">accuracy</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">max_drawdown</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_evaluate_safety">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_evaluate_safety">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_evaluate_safety</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;安全評価テスト&quot;&quot;&quot;</span>
+        <span class="n">safety_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_evaluate_safety</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">safety_metrics</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;overall_safety_level&#39;</span><span class="p">,</span> <span class="n">safety_metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;active_anomalies&#39;</span><span class="p">,</span> <span class="n">safety_metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;safety_score&#39;</span><span class="p">,</span> <span class="n">safety_metrics</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_calculate_overall_score">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_calculate_overall_score">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_calculate_overall_score</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;総合スコア計算テスト&quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;performance&#39;</span><span class="p">:</span> <span class="n">EvaluationMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.65</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">total_return</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">volatility</span><span class="o">=</span><span class="mf">0.1</span>
+            <span class="p">),</span>
+            <span class="s1">&#39;safety&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;safety_score&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">},</span>
+            <span class="s1">&#39;drift&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;drift_detected&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_calculate_overall_score</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreaterEqual</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="n">score</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_generate_recommendations">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_generate_recommendations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_generate_recommendations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;推奨事項生成テスト&quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;performance&#39;</span><span class="p">:</span> <span class="n">EvaluationMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">total_return</span><span class="o">=-</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">volatility</span><span class="o">=</span><span class="mf">0.2</span>
+            <span class="p">),</span>
+            <span class="s1">&#39;safety&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;active_anomalies&#39;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span> <span class="s1">&#39;safety_score&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
+            <span class="s1">&#39;drift&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;drift_detected&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span> <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">recommendations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">recommendations</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="nb">any</span><span class="p">(</span><span class="s2">&quot;再学習&quot;</span> <span class="ow">in</span> <span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">recommendations</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_alert_generation_performance">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_alert_generation_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_alert_generation_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスアラート生成テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 低精度の評価結果を追加</span>
+        <span class="n">low_perf_result</span> <span class="o">=</span> <span class="n">EvaluationResult</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">performance_metrics</span><span class="o">=</span><span class="n">EvaluationMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">total_return</span><span class="o">=-</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">volatility</span><span class="o">=</span><span class="mf">0.2</span>
+            <span class="p">),</span>
+            <span class="n">overall_score</span><span class="o">=</span><span class="mf">0.4</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">low_perf_result</span><span class="p">)</span>
+
+        <span class="n">alerts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_check_performance_alerts</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">alerts</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">alerts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">alert_type</span><span class="p">,</span> <span class="n">AlertType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">alerts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">alert_level</span><span class="p">,</span> <span class="n">AlertLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_alert_generation_safety">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_alert_generation_safety">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_alert_generation_safety</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;安全アラート生成テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 異常の多い安全ステータスを設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_safety_manager</span><span class="o">.</span><span class="n">get_safety_status</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">(</span>
+            <span class="n">overall_safety_level</span><span class="o">=</span><span class="n">Mock</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="s2">&quot;HIGH&quot;</span><span class="p">),</span>
+            <span class="n">active_anomalies</span><span class="o">=</span><span class="p">[</span><span class="n">Mock</span><span class="p">()]</span> <span class="o">*</span> <span class="mi">6</span><span class="p">,</span>  <span class="c1"># 6つの異常</span>
+            <span class="n">recent_checks</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">system_health_score</span><span class="o">=</span><span class="mf">0.4</span>
+        <span class="p">)</span>
+
+        <span class="n">alerts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_check_safety_alerts</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">alerts</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">alerts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">alert_type</span><span class="p">,</span> <span class="n">AlertType</span><span class="o">.</span><span class="n">SAFETY</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_alert_generation_drift">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_alert_generation_drift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_alert_generation_drift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ドリフトアラート生成テスト&quot;&quot;&quot;</span>
+        <span class="c1"># ドリフト検知結果を設定</span>
+        <span class="n">drift_result</span> <span class="o">=</span> <span class="n">EvaluationResult</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">drift_detected</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">drift_severity</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+            <span class="n">overall_score</span><span class="o">=</span><span class="mf">0.6</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">drift_result</span><span class="p">)</span>
+
+        <span class="n">alerts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_check_drift_alerts</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">alerts</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">alerts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">alert_type</span><span class="p">,</span> <span class="n">AlertType</span><span class="o">.</span><span class="n">DRIFT</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_alert_resolution">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_alert_resolution">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_alert_resolution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アラート解決テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 解決されたアラートを作成</span>
+        <span class="n">resolved_alert</span> <span class="o">=</span> <span class="n">MonitoringAlert</span><span class="p">(</span>
+            <span class="n">alert_id</span><span class="o">=</span><span class="s2">&quot;test_alert&quot;</span><span class="p">,</span>
+            <span class="n">alert_type</span><span class="o">=</span><span class="n">AlertType</span><span class="o">.</span><span class="n">PERFORMANCE</span><span class="p">,</span>
+            <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Test alert&quot;</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
+            <span class="n">details</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;accuracy&quot;</span><span class="p">:</span> <span class="mf">0.35</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 現在のパフォーマンスが改善されていることをシミュレート</span>
+        <span class="n">improved_result</span> <span class="o">=</span> <span class="n">EvaluationResult</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">performance_metrics</span><span class="o">=</span><span class="n">EvaluationMetrics</span><span class="p">(</span>
+                <span class="n">accuracy</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="mf">0.65</span><span class="p">,</span> <span class="n">recall</span><span class="o">=</span><span class="mf">0.55</span><span class="p">,</span> <span class="n">f1_score</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">total_return</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">volatility</span><span class="o">=</span><span class="mf">0.1</span>
+            <span class="p">),</span>
+            <span class="n">overall_score</span><span class="o">=</span><span class="mf">0.8</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">improved_result</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_is_alert_resolved</span><span class="p">(</span><span class="n">resolved_alert</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_collect_system_metrics">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_collect_system_metrics">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;psutil.cpu_percent&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;psutil.virtual_memory&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;psutil.disk_usage&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;psutil.net_connections&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;threading.active_count&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_collect_system_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_threads</span><span class="p">,</span> <span class="n">mock_net</span><span class="p">,</span> <span class="n">mock_disk</span><span class="p">,</span> <span class="n">mock_memory</span><span class="p">,</span> <span class="n">mock_cpu</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;システムメトリクス収集テスト&quot;&quot;&quot;</span>
+        <span class="c1"># モックの設定</span>
+        <span class="n">mock_cpu</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">45.5</span>
+        <span class="n">mock_memory</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">(</span><span class="n">percent</span><span class="o">=</span><span class="mf">67.8</span><span class="p">)</span>
+        <span class="n">mock_disk</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">(</span><span class="n">percent</span><span class="o">=</span><span class="mf">23.4</span><span class="p">)</span>
+        <span class="n">mock_net</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">Mock</span><span class="p">()]</span> <span class="o">*</span> <span class="mi">15</span>
+        <span class="n">mock_threads</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mi">8</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_collect_system_metrics</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">system_metrics_history</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">system_metrics_history</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">SystemMetrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">cpu_usage</span><span class="p">,</span> <span class="mf">45.5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">,</span> <span class="mf">67.8</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">,</span> <span class="mf">23.4</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">network_connections</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">metrics</span><span class="o">.</span><span class="n">active_threads</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_get_evaluation_summary">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_get_evaluation_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_evaluation_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;評価サマリーテスト&quot;&quot;&quot;</span>
+        <span class="c1"># 評価履歴を追加</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">EvaluationResult</span><span class="p">(</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">i</span><span class="p">),</span>
+                <span class="n">overall_score</span><span class="o">=</span><span class="mf">0.7</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span>
+                <span class="n">drift_detected</span><span class="o">=</span><span class="n">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_evaluation_summary</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_evaluations&#39;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;average_score&#39;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;drift_rate&#39;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s1">&#39;total_evaluations&#39;</span><span class="p">],</span> <span class="mi">5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_callback_system">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_callback_system">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_callback_system</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;コールバックシステムテスト&quot;&quot;&quot;</span>
+        <span class="n">alert_callback</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">evaluation_callback</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">add_alert_callback</span><span class="p">(</span><span class="n">alert_callback</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">add_evaluation_callback</span><span class="p">(</span><span class="n">evaluation_callback</span><span class="p">)</span>
+
+        <span class="c1"># アラートをトリガー</span>
+        <span class="n">alert</span> <span class="o">=</span> <span class="n">MonitoringAlert</span><span class="p">(</span>
+            <span class="n">alert_id</span><span class="o">=</span><span class="s2">&quot;test&quot;</span><span class="p">,</span>
+            <span class="n">alert_type</span><span class="o">=</span><span class="n">AlertType</span><span class="o">.</span><span class="n">SYSTEM</span><span class="p">,</span>
+            <span class="n">alert_level</span><span class="o">=</span><span class="n">AlertLevel</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span>
+            <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Test alert&quot;</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_trigger_alert_callbacks</span><span class="p">(</span><span class="n">alert</span><span class="p">)</span>
+
+        <span class="c1"># 評価をトリガー</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">EvaluationResult</span><span class="p">(</span><span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="n">overall_score</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_trigger_evaluation_callbacks</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="n">alert_callback</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="n">alert</span><span class="p">)</span>
+        <span class="n">evaluation_callback</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinuousEvaluationManager.test_continuous_evaluation_start_stop">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.monitoring.html#ztb.adaptation.monitoring.test_evaluation_manager.TestContinuousEvaluationManager.test_continuous_evaluation_start_stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_continuous_evaluation_start_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;継続的評価の開始・停止テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 短い間隔でテストするために設定を変更</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_interval_seconds</span> <span class="o">=</span> <span class="mf">0.1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">alert_check_interval_seconds</span> <span class="o">=</span> <span class="mf">0.1</span>
+
+        <span class="n">success</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">start_continuous_evaluation</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">is_running</span><span class="p">)</span>
+
+        <span class="c1"># 少し待ってから停止</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">stop_continuous_evaluation</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">is_running</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">evaluation_history</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

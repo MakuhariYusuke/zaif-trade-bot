@@ -1,0 +1,691 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.optimization.test_model_compression &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.optimization.test_model_compression</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.optimization.test_model_compression</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Tests for Model Compression Module.</span>
+
+<span class="sd">This module contains comprehensive tests for all compression techniques:</span>
+<span class="sd">- Quantization (dynamic, static, mixed precision)</span>
+<span class="sd">- Pruning (L1/L2 unstructured, structured)</span>
+<span class="sd">- Knowledge Distillation</span>
+<span class="sd">- Integration with SAC models</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.optimization.model_compression</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">QuantizationCompressor</span><span class="p">,</span>
+    <span class="n">PruningCompressor</span><span class="p">,</span>
+    <span class="n">KnowledgeDistillationCompressor</span><span class="p">,</span>
+    <span class="n">ModelCompressionManager</span><span class="p">,</span>
+    <span class="n">create_compression_pipeline</span><span class="p">,</span>
+    <span class="n">BaseCompressionTechnique</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="SimpleTestModel">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.SimpleTestModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimpleTestModel</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple neural network for testing compression techniques.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">output_size</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fc3</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SimpleTestModel.forward">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.SimpleTestModel.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fc1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fc2</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fc3</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestQuantizationCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestQuantizationCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestQuantizationCompressor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for quantization compression.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestQuantizationCompressor.test_dynamic_quantization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestQuantizationCompressor.test_dynamic_quantization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_dynamic_quantization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test dynamic quantization.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;dynamic&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Get original size</span>
+        <span class="n">original_size</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">_get_model_size</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was quantized</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">quantized_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Check compression stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;technique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;quantization&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;dynamic&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;compression_ratio&quot;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mf">0.0</span>  <span class="c1"># Compression ratio should be valid</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;original_size_mb&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># Original size should be calculated</span></div>
+
+
+<div class="viewcode-block" id="TestQuantizationCompressor.test_static_quantization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestQuantizationCompressor.test_static_quantization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_static_quantization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test static quantization with calibration.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;static&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Create dummy calibration data</span>
+        <span class="n">calibration_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">calibration_data</span><span class="o">=</span><span class="n">calibration_data</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was quantized</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">quantized_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Check compression stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;technique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;quantization&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;static&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestQuantizationCompressor.test_mixed_precision">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestQuantizationCompressor.test_mixed_precision">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_mixed_precision</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test mixed precision compression.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;mixed_precision&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was converted to half precision</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="nb">next</span><span class="p">(</span><span class="n">compressed_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">float16</span></div>
+
+
+<div class="viewcode-block" id="TestQuantizationCompressor.test_invalid_quantization_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestQuantizationCompressor.test_invalid_quantization_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_invalid_quantization_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test invalid quantization type raises error.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unsupported quantization type&quot;</span><span class="p">):</span>
+            <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;invalid&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestPruningCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestPruningCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestPruningCompressor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for pruning compression.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestPruningCompressor.test_l1_unstructured_pruning">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestPruningCompressor.test_l1_unstructured_pruning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_l1_unstructured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test L1 unstructured pruning.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">(</span><span class="n">pruning_type</span><span class="o">=</span><span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="c1"># Get original sparsity</span>
+        <span class="n">original_sparsity</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">_calculate_sparsity</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">original_sparsity</span> <span class="o">==</span> <span class="mf">0.0</span>  <span class="c1"># No sparsity initially</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was pruned</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Check sparsity increased</span>
+        <span class="n">final_sparsity</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">_calculate_sparsity</span><span class="p">(</span><span class="n">compressed_model</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">final_sparsity</span> <span class="o">&gt;</span> <span class="n">original_sparsity</span>
+
+        <span class="c1"># Check compression stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;technique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;pruning&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;l1_unstructured&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.5</span></div>
+
+
+<div class="viewcode-block" id="TestPruningCompressor.test_l2_unstructured_pruning">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestPruningCompressor.test_l2_unstructured_pruning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_l2_unstructured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test L2 unstructured pruning.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">(</span><span class="n">pruning_type</span><span class="o">=</span><span class="s2">&quot;l2_unstructured&quot;</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was pruned</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Check compression stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;technique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;pruning&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;l2_unstructured&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.3</span></div>
+
+
+<div class="viewcode-block" id="TestPruningCompressor.test_structured_pruning">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestPruningCompressor.test_structured_pruning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_structured_pruning</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test structured pruning.&quot;&quot;&quot;</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">(</span><span class="n">pruning_type</span><span class="o">=</span><span class="s2">&quot;structured&quot;</span><span class="p">,</span> <span class="n">amount</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># Check that model was pruned</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+
+        <span class="c1"># Check compression stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_compression_stats</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;technique&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;pruning&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;structured&quot;</span>
+        <span class="k">assert</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;amount&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.2</span></div>
+
+
+<div class="viewcode-block" id="TestPruningCompressor.test_invalid_pruning_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestPruningCompressor.test_invalid_pruning_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_invalid_pruning_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test invalid pruning type raises error.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unsupported pruning type&quot;</span><span class="p">):</span>
+            <span class="n">PruningCompressor</span><span class="p">(</span><span class="n">pruning_type</span><span class="o">=</span><span class="s2">&quot;invalid&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestKnowledgeDistillationCompressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestKnowledgeDistillationCompressor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestKnowledgeDistillationCompressor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for knowledge distillation compression.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestKnowledgeDistillationCompressor.test_distillation_initialization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestKnowledgeDistillationCompressor.test_distillation_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_distillation_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test knowledge distillation compressor initialization.&quot;&quot;&quot;</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">temperature</span> <span class="o">==</span> <span class="mf">3.0</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">alpha</span> <span class="o">==</span> <span class="mf">0.7</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">teacher_model</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">student_model</span> <span class="ow">is</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TestKnowledgeDistillationCompressor.test_distillation_compression">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestKnowledgeDistillationCompressor.test_distillation_compression">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_distillation_compression</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test knowledge distillation compression.&quot;&quot;&quot;</span>
+        <span class="n">teacher_model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">student_model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">(</span><span class="n">hidden_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># Smaller student model</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">()</span>
+
+        <span class="c1"># Apply compression</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">student_model</span><span class="p">,</span> <span class="n">teacher_model</span><span class="o">=</span><span class="n">teacher_model</span><span class="p">)</span>
+
+        <span class="c1"># Check that models were set</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">teacher_model</span> <span class="ow">is</span> <span class="n">teacher_model</span>
+        <span class="k">assert</span> <span class="n">compressor</span><span class="o">.</span><span class="n">student_model</span> <span class="ow">is</span> <span class="n">student_model</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="n">student_model</span></div>
+
+
+<div class="viewcode-block" id="TestKnowledgeDistillationCompressor.test_distillation_without_teacher">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestKnowledgeDistillationCompressor.test_distillation_without_teacher">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_distillation_without_teacher</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test distillation fails without teacher model.&quot;&quot;&quot;</span>
+        <span class="n">student_model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;teacher_model must be provided&quot;</span><span class="p">):</span>
+            <span class="n">compressor</span><span class="o">.</span><span class="n">compress</span><span class="p">(</span><span class="n">student_model</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestKnowledgeDistillationCompressor.test_distillation_loss_calculation">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestKnowledgeDistillationCompressor.test_distillation_loss_calculation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_distillation_loss_calculation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test distillation loss calculation.&quot;&quot;&quot;</span>
+        <span class="n">compressor</span> <span class="o">=</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="c1"># Create mock teacher and student models</span>
+        <span class="n">teacher_model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">student_model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+
+        <span class="c1"># Create dummy inputs and targets</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="mi">4</span>
+        <span class="n">input_size</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="n">output_size</span> <span class="o">=</span> <span class="mi">2</span>
+
+        <span class="n">student_logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">)</span>
+        <span class="n">teacher_logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">output_size</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">output_size</span><span class="p">,</span> <span class="p">(</span><span class="n">batch_size</span><span class="p">,))</span>
+
+        <span class="c1"># Create dummy criterion</span>
+        <span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">CrossEntropyLoss</span><span class="p">()</span>
+
+        <span class="c1"># Calculate distillation loss</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">compressor</span><span class="o">.</span><span class="n">get_distillation_loss</span><span class="p">(</span><span class="n">student_logits</span><span class="p">,</span> <span class="n">teacher_logits</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">criterion</span><span class="p">)</span>
+
+        <span class="c1"># Check that loss is reasonable</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loss</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="c1"># Check that distillation loss history was updated</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">compressor</span><span class="o">.</span><span class="n">distillation_loss_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestModelCompressionManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestModelCompressionManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for model compression manager.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_add_compressor">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_add_compressor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_add_compressor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test adding compressors to manager.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+
+        <span class="n">quant_compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">()</span>
+        <span class="n">prune_compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">()</span>
+
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="n">quant_compressor</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;pruning&quot;</span><span class="p">,</span> <span class="n">prune_compressor</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span>
+        <span class="k">assert</span> <span class="s2">&quot;pruning&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_compress_model_single_technique">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_compress_model_single_technique">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_compress_model_single_technique</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test compressing model with single technique.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+        <span class="n">quant_compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;dynamic&quot;</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="n">quant_compressor</span><span class="p">)</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+
+        <span class="c1"># Compress model</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Check that compression was applied</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_compress_model_multiple_techniques">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_compress_model_multiple_techniques">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_compress_model_multiple_techniques</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test compressing model with multiple techniques.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+
+        <span class="n">quant_compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">(</span><span class="n">quantization_type</span><span class="o">=</span><span class="s2">&quot;dynamic&quot;</span><span class="p">)</span>
+        <span class="n">prune_compressor</span> <span class="o">=</span> <span class="n">PruningCompressor</span><span class="p">(</span><span class="n">amount</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Light pruning</span>
+
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="n">quant_compressor</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;pruning&quot;</span><span class="p">,</span> <span class="n">prune_compressor</span><span class="p">)</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+
+        <span class="c1"># Compress model</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="s2">&quot;pruning&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Check that both compressions were applied</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span>
+        <span class="k">assert</span> <span class="s2">&quot;pruning&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_compress_model_invalid_technique">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_compress_model_invalid_technique">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_compress_model_invalid_technique</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test compressing with invalid technique.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+
+        <span class="c1"># Try to compress with non-existent technique</span>
+        <span class="n">compressed_model</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;invalid_technique&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Should still return model but log warning</span>
+        <span class="k">assert</span> <span class="n">compressed_model</span> <span class="ow">is</span> <span class="n">model</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_get_compression_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_get_compression_report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_compression_report</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test getting compression report.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+        <span class="n">quant_compressor</span> <span class="o">=</span> <span class="n">QuantizationCompressor</span><span class="p">()</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">add_compressor</span><span class="p">(</span><span class="s2">&quot;quantization&quot;</span><span class="p">,</span> <span class="n">quant_compressor</span><span class="p">)</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">])</span>
+
+        <span class="n">report</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_compression_report</span><span class="p">()</span>
+
+        <span class="k">assert</span> <span class="s2">&quot;compression_stats&quot;</span> <span class="ow">in</span> <span class="n">report</span>
+        <span class="k">assert</span> <span class="s2">&quot;total_techniques_applied&quot;</span> <span class="ow">in</span> <span class="n">report</span>
+        <span class="k">assert</span> <span class="s2">&quot;techniques&quot;</span> <span class="ow">in</span> <span class="n">report</span>
+        <span class="k">assert</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;total_techniques_applied&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">report</span><span class="p">[</span><span class="s2">&quot;techniques&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_save_compressed_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_save_compressed_model">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;torch.save&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_save_compressed_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_save</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test saving compressed model.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">SimpleTestModel</span><span class="p">()</span>
+            <span class="n">save_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;compressed_model.pth&quot;</span>
+
+            <span class="n">manager</span><span class="o">.</span><span class="n">save_compressed_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
+
+            <span class="c1"># Check that torch.save was called</span>
+            <span class="n">mock_save</span><span class="o">.</span><span class="n">assert_called_once</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestModelCompressionManager.test_load_compressed_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestModelCompressionManager.test_load_compressed_model">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;torch.load&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_load_compressed_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_load</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test loading compressed model.&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">ModelCompressionManager</span><span class="p">()</span>
+
+        <span class="c1"># Mock the loaded checkpoint</span>
+        <span class="n">mock_checkpoint</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;dummy&#39;</span><span class="p">:</span> <span class="s1">&#39;state&#39;</span><span class="p">},</span>
+            <span class="s1">&#39;compression_stats&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;test&#39;</span><span class="p">:</span> <span class="s1">&#39;stats&#39;</span><span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">mock_load</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_checkpoint</span>
+
+        <span class="k">with</span> <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span><span class="n">SimpleTestModel</span><span class="p">,</span> <span class="s1">&#39;load_state_dict&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_load_state</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+                <span class="n">load_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;compressed_model.pth&quot;</span>
+
+                <span class="n">loaded_model</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_compressed_model</span><span class="p">(</span><span class="n">load_path</span><span class="p">,</span> <span class="n">SimpleTestModel</span><span class="p">)</span>
+
+                <span class="c1"># Check that model was created and state dict was loaded</span>
+                <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loaded_model</span><span class="p">,</span> <span class="n">SimpleTestModel</span><span class="p">)</span>
+                <span class="n">mock_load_state</span><span class="o">.</span><span class="n">assert_called_once_with</span><span class="p">(</span><span class="n">mock_checkpoint</span><span class="p">[</span><span class="s1">&#39;model_state_dict&#39;</span><span class="p">])</span>
+
+                <span class="c1"># Check that compression stats were loaded</span>
+                <span class="k">assert</span> <span class="n">manager</span><span class="o">.</span><span class="n">compression_stats</span> <span class="o">==</span> <span class="n">mock_checkpoint</span><span class="p">[</span><span class="s1">&#39;compression_stats&#39;</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestCompressionPipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestCompressionPipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for compression pipeline creation.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestCompressionPipeline.test_create_quantization_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline.test_create_quantization_pipeline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_create_quantization_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating quantization pipeline.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;quantization&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;quantization&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="n">ModelCompressionManager</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compressors</span><span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">],</span> <span class="n">QuantizationCompressor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestCompressionPipeline.test_create_pruning_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline.test_create_pruning_pipeline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_create_pruning_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating pruning pipeline.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pruning&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;pruning&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="mf">0.3</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="n">ModelCompressionManager</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;pruning&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compressors</span><span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">],</span> <span class="n">PruningCompressor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestCompressionPipeline.test_create_distillation_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline.test_create_distillation_pipeline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_create_distillation_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating distillation pipeline.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;distillation&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;distillation&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="mf">2.5</span><span class="p">,</span>
+                <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.6</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="n">ModelCompressionManager</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;distillation&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compressors</span><span class="p">[</span><span class="s2">&quot;distillation&quot;</span><span class="p">],</span> <span class="n">KnowledgeDistillationCompressor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestCompressionPipeline.test_create_mixed_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline.test_create_mixed_pipeline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_create_mixed_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating mixed compression pipeline.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;quantization&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;quantization&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="s2">&quot;dynamic&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;pruning&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;pruning&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="mf">0.2</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="n">ModelCompressionManager</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compressors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span>
+        <span class="k">assert</span> <span class="s2">&quot;pruning&quot;</span> <span class="ow">in</span> <span class="n">manager</span><span class="o">.</span><span class="n">compressors</span></div>
+
+
+<div class="viewcode-block" id="TestCompressionPipeline.test_create_pipeline_invalid_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestCompressionPipeline.test_create_pipeline_invalid_type">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_create_pipeline_invalid_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test creating pipeline with invalid compression type.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;invalid&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;invalid_type&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Should not raise error, just skip invalid types</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager</span><span class="p">,</span> <span class="n">ModelCompressionManager</span><span class="p">)</span>
+        <span class="c1"># Invalid compressor should not be added</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">compressors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestBaseCompressionTechnique">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestBaseCompressionTechnique">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestBaseCompressionTechnique</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for base compression technique.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestBaseCompressionTechnique.test_base_class_is_abstract">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestBaseCompressionTechnique.test_base_class_is_abstract">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_base_class_is_abstract</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that BaseCompressionTechnique cannot be instantiated directly.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Can&#39;t instantiate abstract class&quot;</span><span class="p">):</span>
+            <span class="n">BaseCompressionTechnique</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestBaseCompressionTechnique.test_abstract_methods">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.test_model_compression.TestBaseCompressionTechnique.test_abstract_methods">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_abstract_methods</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that abstract methods are defined.&quot;&quot;&quot;</span>
+        <span class="c1"># This is more of a documentation test - the abstract methods should exist</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">,</span> <span class="s1">&#39;compress&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">,</span> <span class="s1">&#39;decompress&#39;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">BaseCompressionTechnique</span><span class="p">,</span> <span class="s1">&#39;get_compression_stats&#39;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="vm">__file__</span><span class="p">])</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

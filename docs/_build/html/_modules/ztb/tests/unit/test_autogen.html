@@ -1,0 +1,576 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.unit.test_autogen &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.unit.test_autogen</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.unit.test_autogen</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Auto-generated feature tests for AutoFeatureGenerator validation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation.auto_feature_generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoFeatureGenerator</span>
+
+
+<div class="viewcode-block" id="BaseFeatureTest">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseFeatureTest</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base test class with common fixtures and utilities&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="BaseFeatureTest.sample_ohlc_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest.sample_ohlc_data">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_ohlc_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create sample OHLC data for testing&quot;&quot;&quot;</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2020-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+        <span class="c1"># Create realistic price data with trends</span>
+        <span class="n">base_price</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="n">trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>  <span class="c1"># Upward trend</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span> <span class="o">*</span> <span class="mi">2</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">+</span> <span class="n">trend</span> <span class="o">+</span> <span class="n">noise</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">200</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">200</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">,</span>
+                <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">200</span><span class="p">))</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">,</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">200</span><span class="p">),</span>
+            <span class="p">},</span>
+            <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BaseFeatureTest.auto_generator">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest.auto_generator">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">auto_generator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create AutoFeatureGenerator instance&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">AutoFeatureGenerator</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="BaseFeatureTest.mock_logger">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest.mock_logger">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">mock_logger</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create mock logger&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">MagicMock</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="BaseFeatureTest.assert_feature_data_structure">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest.assert_feature_data_structure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assert_feature_data_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assert that feature data has correct structure&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">features</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">data</span><span class="o">.</span><span class="n">empty</span></div>
+
+
+<div class="viewcode-block" id="BaseFeatureTest.assert_feature_names_follow_convention">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.BaseFeatureTest.assert_feature_names_follow_convention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assert_feature_names_follow_convention</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto_&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assert that feature names follow naming convention&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">feature_names</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+                <span class="n">prefix</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature name </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> doesn&#39;t start with </span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ParameterizedFeatureTestMixin">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.ParameterizedFeatureTestMixin">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParameterizedFeatureTestMixin</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mixin for parameterized feature testing&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ParameterizedFeatureTestMixin.assert_feature_data_structure">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.ParameterizedFeatureTestMixin.assert_feature_data_structure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assert_feature_data_structure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="nb">dict</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assert that feature data has correct structure&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">features</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">data</span><span class="o">.</span><span class="n">empty</span></div>
+
+
+<div class="viewcode-block" id="ParameterizedFeatureTestMixin.assert_feature_names_follow_convention">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.ParameterizedFeatureTestMixin.assert_feature_names_follow_convention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">assert_feature_names_follow_convention</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">feature_names</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;auto_&quot;</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Assert that feature names follow naming convention&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">feature_names</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+                <span class="n">prefix</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature name </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> doesn&#39;t start with </span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="ParameterizedFeatureTestMixin.run_parameterized_test">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.ParameterizedFeatureTestMixin.run_parameterized_test">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_parameterized_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">generator_method</span><span class="p">,</span> <span class="n">param_combinations</span><span class="p">,</span> <span class="n">ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run test with multiple parameter combinations&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">param_combinations</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">features</span> <span class="o">=</span> <span class="n">generator_method</span><span class="p">(</span><span class="n">ohlc_data</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assert_feature_data_structure</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+                <span class="c1"># Check that features were generated</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;No features generated for params: </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">&quot;</span>
+
+                <span class="c1"># Check naming convention</span>
+                <span class="n">feature_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assert_feature_names_follow_convention</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test failed for params </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestAutoFeatureGeneration</span><span class="p">(</span><span class="n">BaseFeatureTest</span><span class="p">,</span> <span class="n">ParameterizedFeatureTestMixin</span><span class="p">):</span>
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_ema_cross_feature_generation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_ema_cross_feature_generation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_ema_cross_feature_generation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test EMA cross feature generation&quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span> <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">25</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Should generate features for all combinations</span>
+        <span class="n">expected_features</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;auto_ma_ema_cross_5_20&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;auto_ma_ema_cross_5_25&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;auto_ma_ema_cross_8_20&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;auto_ma_ema_cross_8_25&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">expected_features</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">features</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Missing feature: </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">[</span><span class="n">feature_name</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">[</span><span class="n">feature_name</span><span class="p">])</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_kama_feature_generation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_kama_feature_generation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_kama_feature_generation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test KAMA feature generation&quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_kama_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span>
+            <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>
+            <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">30</span><span class="p">],</span>
+            <span class="n">efficiency_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">30</span><span class="p">],</span>
+        <span class="p">)</span>
+
+        <span class="n">expected_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;auto_ma_kama_10_30_30&quot;</span><span class="p">,</span> <span class="s2">&quot;auto_ma_kama_20_30_30&quot;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">expected_features</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">features</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Missing feature: </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">[</span><span class="n">feature_name</span><span class="p">],</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_feature_naming_convention">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_feature_naming_convention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_feature_naming_convention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that generated features follow naming convention&quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">features</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+                <span class="s2">&quot;auto_&quot;</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2"> doesn&#39;t start with &#39;auto_&#39;&quot;</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2"> has invalid naming structure&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_promotion_criteria_validation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_promotion_criteria_validation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_promotion_criteria_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test promotion criteria validation&quot;&quot;&quot;</span>
+        <span class="c1"># Test good results that should be promoted</span>
+        <span class="n">good_results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;feature_col&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">,</span> <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Mock results that should not be promoted</span>
+        <span class="n">bad_results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;feature_col&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>  <span class="c1"># &lt; 0.3</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>  <span class="c1"># &lt; 0.55</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span>  <span class="c1"># &lt; -0.15</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="k">assert</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">_check_promotion_criteria</span><span class="p">(</span><span class="n">good_results</span><span class="p">)</span> <span class="o">==</span> <span class="kc">True</span>
+        <span class="k">assert</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">_check_promotion_criteria</span><span class="p">(</span><span class="n">bad_results</span><span class="p">)</span> <span class="o">==</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_evaluate_and_promote_workflow">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_evaluate_and_promote_workflow">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_evaluate_and_promote_workflow</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test the complete evaluate and promote workflow&quot;&quot;&quot;</span>
+        <span class="c1"># Generate some features</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span> <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Mock the evaluation process</span>
+        <span class="k">with</span> <span class="p">(</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span><span class="n">auto_generator</span><span class="p">,</span> <span class="s2">&quot;_calculate_basic_metrics&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_metrics</span><span class="p">,</span>
+            <span class="n">patch</span><span class="o">.</span><span class="n">object</span><span class="p">(</span><span class="n">auto_generator</span><span class="p">,</span> <span class="s2">&quot;_check_promotion_criteria&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_promote</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="c1"># Setup mocks</span>
+            <span class="n">mock_metrics</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">,</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="s2">&quot;sample_size&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="n">mock_promote</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="c1"># Run evaluation</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">evaluate_and_promote_features</span><span class="p">(</span>
+                <span class="n">features</span><span class="p">,</span> <span class="n">sample_ohlc_data</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Check result structure</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="s2">&quot;promoted&quot;</span> <span class="ow">in</span> <span class="n">result</span>
+            <span class="k">assert</span> <span class="s2">&quot;temporary&quot;</span> <span class="ow">in</span> <span class="n">result</span>
+            <span class="k">assert</span> <span class="s2">&quot;summary&quot;</span> <span class="ow">in</span> <span class="n">result</span>
+
+            <span class="c1"># Check summary</span>
+            <span class="n">summary</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">]</span>
+            <span class="k">assert</span> <span class="s2">&quot;total_generated&quot;</span> <span class="ow">in</span> <span class="n">summary</span>
+            <span class="k">assert</span> <span class="s2">&quot;promoted_count&quot;</span> <span class="ow">in</span> <span class="n">summary</span>
+            <span class="k">assert</span> <span class="s2">&quot;temporary_count&quot;</span> <span class="ow">in</span> <span class="n">summary</span>
+            <span class="k">assert</span> <span class="s2">&quot;promotion_rate&quot;</span> <span class="ow">in</span> <span class="n">summary</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_parameter_expansion_logic">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_parameter_expansion_logic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_parameter_expansion_logic</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that parameter expansion creates diverse features&quot;&quot;&quot;</span>
+        <span class="c1"># Generate features with limited parameters</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span> <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span> <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">30</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Should have 3 * 3 = 9 features</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">==</span> <span class="mi">9</span>
+
+        <span class="c1"># Check that all combinations are present</span>
+        <span class="n">feature_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">fast</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">slow</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">30</span><span class="p">]:</span>
+                <span class="n">expected_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;auto_ma_ema_cross_</span><span class="si">{</span><span class="n">fast</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">slow</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">assert</span> <span class="n">expected_name</span> <span class="ow">in</span> <span class="n">feature_names</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_feature_data_integrity">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_feature_data_integrity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_feature_data_integrity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that generated feature data maintains integrity&quot;&quot;&quot;</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span> <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">],</span> <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">20</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">feature_data</span> <span class="o">=</span> <span class="n">features</span><span class="p">[</span><span class="s2">&quot;auto_ma_ema_cross_5_20&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Should have same index as input data</span>
+        <span class="n">pd</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_index_equal</span><span class="p">(</span><span class="n">feature_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Should not have NaN values (after initial periods)</span>
+        <span class="n">non_nan_data</span> <span class="o">=</span> <span class="n">feature_data</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">non_nan_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Feature data should have valid values&quot;</span>
+
+        <span class="c1"># Values should be reasonable numeric values (not extreme outliers)</span>
+        <span class="n">unique_values</span> <span class="o">=</span> <span class="n">feature_data</span><span class="o">.</span><span class="n">stack</span><span class="p">()</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+        <span class="n">valid_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">val</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">unique_values</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">val</span><span class="p">)]</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Should have valid numeric values&quot;</span>
+        <span class="c1"># Check that values are within reasonable bounds (not extreme outliers)</span>
+        <span class="k">assert</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="o">-</span><span class="mi">10</span> <span class="o">&lt;=</span> <span class="n">val</span> <span class="o">&lt;=</span> <span class="mi">10</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">valid_values</span>
+        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Values out of reasonable range: </span><span class="si">{</span><span class="n">valid_values</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_promotion_rules_edge_cases">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_promotion_rules_edge_cases">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_promotion_rules_edge_cases</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test promotion rules with edge cases&quot;&quot;&quot;</span>
+        <span class="c1"># Test boundary conditions</span>
+        <span class="n">boundary_cases</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="c1"># Just meets criteria</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.55</span><span class="p">,</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.15</span><span class="p">,</span>
+                <span class="s2">&quot;expected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="c1"># Just below criteria</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.29</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.54</span><span class="p">,</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.16</span><span class="p">,</span>
+                <span class="s2">&quot;expected&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="c1"># Mixed (good sharpe, bad win rate)</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span>
+                <span class="s2">&quot;expected&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="c1"># All criteria met except max_drawdown</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">,</span>
+                <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">,</span>
+                <span class="s2">&quot;expected&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">boundary_cases</span><span class="p">:</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="n">case</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;expected&quot;</span><span class="p">)</span>
+            <span class="c1"># Convert to the format expected by _check_promotion_criteria</span>
+            <span class="n">formatted_case</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;feature_col&quot;</span><span class="p">:</span> <span class="n">case</span><span class="p">}</span>
+            <span class="k">assert</span> <span class="p">(</span>
+                <span class="n">auto_generator</span><span class="o">.</span><span class="n">_check_promotion_criteria</span><span class="p">(</span><span class="n">formatted_case</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Failed for case: </span><span class="si">{</span><span class="n">case</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_auto_generation_error_handling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_auto_generation_error_handling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_auto_generation_error_handling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test error handling in auto generation&quot;&quot;&quot;</span>
+        <span class="c1"># Test with invalid data</span>
+        <span class="n">invalid_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="p">[]})</span>  <span class="c1"># Empty data</span>
+
+        <span class="c1"># Should handle gracefully</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span><span class="n">invalid_data</span><span class="p">)</span>
+
+        <span class="c1"># Should return empty dict or handle error</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+
+        <span class="c1"># Test with insufficient data</span>
+        <span class="n">short_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">101</span><span class="p">],</span>
+                <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">102</span><span class="p">,</span> <span class="mi">103</span><span class="p">],</span>
+                <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">98</span><span class="p">,</span> <span class="mi">99</span><span class="p">],</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">],</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1100</span><span class="p">],</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span><span class="n">short_data</span><span class="p">)</span></div>
+
+        <span class="c1"># Should still work but may have limited features</span>
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_config_parameter_loading">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_config_parameter_loading">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_config_parameter_loading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that AutoFeatureGenerator loads parameters from config file&quot;&quot;&quot;</span>
+        <span class="c1"># Check that params are loaded</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">auto_generator</span><span class="p">,</span> <span class="s2">&quot;params&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="s2">&quot;ema&quot;</span> <span class="ow">in</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">params</span>
+        <span class="k">assert</span> <span class="s2">&quot;kama&quot;</span> <span class="ow">in</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">params</span>
+
+        <span class="c1"># Check EMA parameters</span>
+        <span class="n">ema_params</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;ema&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="s2">&quot;periods&quot;</span> <span class="ow">in</span> <span class="n">ema_params</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ema_params</span><span class="p">[</span><span class="s2">&quot;periods&quot;</span><span class="p">],</span> <span class="nb">list</span><span class="p">)</span>
+
+        <span class="c1"># Check KAMA parameters</span>
+        <span class="n">kama_params</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;kama&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="s2">&quot;fast_periods&quot;</span> <span class="ow">in</span> <span class="n">kama_params</span>
+        <span class="k">assert</span> <span class="s2">&quot;slow_periods&quot;</span> <span class="ow">in</span> <span class="n">kama_params</span>
+        <span class="k">assert</span> <span class="s2">&quot;efficiency_periods&quot;</span> <span class="ow">in</span> <span class="n">kama_params</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_naming_convention_enforcement">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_naming_convention_enforcement">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_naming_convention_enforcement</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that all generated features follow auto_ naming convention&quot;&quot;&quot;</span>
+        <span class="c1"># Generate EMA features</span>
+        <span class="n">ema_features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span>
+
+        <span class="c1"># All feature names should start with &#39;auto_&#39;</span>
+        <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">ema_features</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+                <span class="s2">&quot;auto_&quot;</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature name </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2"> doesn&#39;t start with &#39;auto_&#39;&quot;</span>
+
+        <span class="c1"># Generate KAMA features</span>
+        <span class="n">kama_features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_kama_features</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span>
+
+        <span class="c1"># All feature names should start with &#39;auto_&#39;</span>
+        <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">kama_features</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">assert</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span>
+                <span class="s2">&quot;auto_&quot;</span>
+            <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Feature name </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2"> doesn&#39;t start with &#39;auto_&#39;&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_feature_name_uniqueness">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_feature_name_uniqueness">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_feature_name_uniqueness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that generated feature names are unique&quot;&quot;&quot;</span>
+        <span class="c1"># Generate features</span>
+        <span class="n">ema_features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span>
+        <span class="n">kama_features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_kama_features</span><span class="p">(</span><span class="n">sample_ohlc_data</span><span class="p">)</span>
+
+        <span class="c1"># Combine all feature names</span>
+        <span class="n">all_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ema_features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">kama_features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="c1"># Check uniqueness</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_names</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">all_names</span><span class="p">)),</span> <span class="s2">&quot;Feature names are not unique&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestAutoFeatureGeneration.test_max_combinations_limit">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_autogen.TestAutoFeatureGeneration.test_max_combinations_limit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_max_combinations_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">auto_generator</span><span class="p">,</span> <span class="n">sample_ohlc_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that max_combinations limit is enforced&quot;&quot;&quot;</span>
+        <span class="c1"># Set a very low limit</span>
+        <span class="n">auto_generator</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s2">&quot;max_combinations&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">2</span>
+
+        <span class="c1"># Generate features with many combinations</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">auto_generator</span><span class="o">.</span><span class="n">generate_ema_cross_features</span><span class="p">(</span>
+            <span class="n">sample_ohlc_data</span><span class="p">,</span> <span class="n">fast_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span> <span class="n">slow_periods</span><span class="o">=</span><span class="p">[</span><span class="mi">25</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Should be limited to max_combinations</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Generated </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features, expected &lt;= 2&quot;</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Binary Search Optimizer &amp; Training Pipeline Update — 2025-10-10 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Binary Search Optimizer &amp; Training Pipeline Update — 2025-10-10</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/planning/BINARY_SEARCH_OPTIMIZER_UPDATE.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="binary-search-optimizer-training-pipeline-update-2025-10-10">
+<h1>Binary Search Optimizer &amp; Training Pipeline Update — 2025-10-10<a class="headerlink" href="#binary-search-optimizer-training-pipeline-update-2025-10-10" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/binary_search/base_optimizer.py</span></code> を中心に、ハイパーパラメータ探索の安定性と透明性を向上。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code> などコアトレーナー層へ進捗バー制御やロギング設定を横展開。</p></li>
+<li><p>バイナリサーチの履歴情報を JSONL で永続化し、後追い分析を容易に。</p></li>
+<li><p>トレーディングアクション（HOLD/BUY/SELL）のマジックナンバーを <code class="docutils literal notranslate"><span class="pre">ztb/trading/constants.py</span></code> の定数に統一し、保守性を向上。</p></li>
+</ul>
+</section>
+<section id="id2">
+<h2>変更ハイライト<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>高優先度リファクタ<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>学習環境のクリーンアップを <code class="docutils literal notranslate"><span class="pre">train_model()</span></code> finally ブロックで確実化。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logging</span></code> モジュールを用いた構造化ログに切り替え、既存の <code class="docutils literal notranslate"><span class="pre">print</span></code> ベース出力を排除。</p></li>
+<li><p>進捗バー表示の有効化／無効化を <code class="docutils literal notranslate"><span class="pre">use_progress_bar</span></code> フラグで制御し、CLI からトグル可能に。</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>中期改善<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>TYPE_CHECKING ガード導入で sb3 系依存関係の遅延インポートに対応し、型チェック／実行時双方で安定化。</p></li>
+<li><p>アクション分布やキャッシュキーの整備 (<code class="docutils literal notranslate"><span class="pre">Counter</span></code> → 正規化確率、文字列化キー) により再現実験が容易に。</p></li>
+<li><p>学習履歴を JSONL に追記する <code class="docutils literal notranslate"><span class="pre">_append_history_record()</span></code> を追加し、探索過程を段階的に記録。</p></li>
+</ul>
+</section>
+<section id="id5">
+<h3>付随アップデート<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>バイナリサーチの機能 (<code class="docutils literal notranslate"><span class="pre">_log_binary_search_event</span></code>) で探索ステップを詳細ロギング。</p></li>
+<li><p>CLI 側 (<code class="docutils literal notranslate"><span class="pre">BinarySearchArgumentParser</span></code> / <code class="docutils literal notranslate"><span class="pre">unified_trainer.py</span></code>) に <code class="docutils literal notranslate"><span class="pre">--progress-bar</span></code> ブーリアンオプションを追加。</p></li>
+<li><p>各トレーナー (<code class="docutils literal notranslate"><span class="pre">BaseTrainer</span></code> / <code class="docutils literal notranslate"><span class="pre">PPOTrainer</span></code>) まで <code class="docutils literal notranslate"><span class="pre">progress_bar</span></code> フラグを伝播し、学習ループの挙動を統一。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ACTION_HOLD</span></code>, <code class="docutils literal notranslate"><span class="pre">ACTION_BUY</span></code>, <code class="docutils literal notranslate"><span class="pre">ACTION_SELL</span></code> を <code class="docutils literal notranslate"><span class="pre">TrainingCallback</span></code> のアクション抽出および分布集計に適用し、0/1/2 のマジックナンバーを除去。</p></li>
+</ul>
+</section>
+</section>
+<section id="id6">
+<h2>影響範囲<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>カテゴリ</p></th>
+<th class="head"><p>ファイル</p></th>
+<th class="head"><p>主な内容</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>バイナリサーチ基盤</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/binary_search/base_optimizer.py</span></code></p></td>
+<td><p>進捗バー制御、JSONL ログ、アクション定数化、キャッシュ改善</p></td>
+</tr>
+<tr class="row-odd"><td><p>トレーナーパラメータ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/config/trainer_params.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">progress_bar</span></code> フラグを dataclass に追加</p></td>
+</tr>
+<tr class="row-even"><td><p>ベーストレーナー</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/core/base_trainer.py</span></code></p></td>
+<td><p>フラグ保存と公開プロパティ</p></td>
+</tr>
+<tr class="row-odd"><td><p>PPO トレーナー</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/core/ppo_trainer.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">learn()</span></code> とコールバックに進捗バー設定反映</p></td>
+</tr>
+<tr class="row-even"><td><p>統合 CLI</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code></p></td>
+<td><p>CLI 引数追加・設定ファイル反映</p></td>
+</tr>
+<tr class="row-odd"><td><p>定数モジュール</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/constants.py</span></code></p></td>
+<td><p>アクション定数の集中管理</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h2>利用ガイド<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>進捗バー制御<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 進捗バーを有効化（デフォルト）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs/train/my_run.json<span class="w"> </span>--progress-bar
+
+<span class="c1"># 進捗バーを無効化</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs/train/my_run.json<span class="w"> </span>--no-progress-bar
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>バイナリサーチ履歴<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>生成ファイル: <code class="docutils literal notranslate"><span class="pre">binary_search_results/&lt;parameter&gt;/&lt;session&gt;.jsonl</span></code></p></li>
+<li><p>含まれる情報: iteration、score、action_distribution、elapsed_seconds、timestamp など。</p></li>
+<li><p>ログ: <code class="docutils literal notranslate"><span class="pre">binary_search_events.log</span></code>（既存ロガーとフォーマット統一）</p></li>
+</ul>
+</section>
+</section>
+<section id="id10">
+<h2>テスト結果<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>コマンド</p></th>
+<th class="head"><p>ステータス</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">compileall</span> <span class="pre">ztb/training/binary_search/base_optimizer.py</span> <span class="pre">ztb/training/unified_trainer.py</span> <span class="pre">ztb/training/core</span></code></p></td>
+<td><p>✅ PASS</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">-s</span> <span class="pre">test:unit</span></code></p></td>
+<td><p>✅ PASS</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">-s</span> <span class="pre">test:int-fast</span></code></p></td>
+<td><p>✅ PASS</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id11">
+<h2>フォローアップ案<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>JSONL 履歴の集約スクリプトを整備し、パフォーマンス可視化まで自動化する。</p></li>
+<li><p>進捗バー設定を構成ファイルにも persisted させ、再開時の挙動を完全再現。</p></li>
+<li><p>アクション定数を JS/TS 側でも共有できるよう、クロス言語定義を検討。</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

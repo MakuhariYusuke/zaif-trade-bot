@@ -1,0 +1,555 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🚨 Fourth Review: Additional Critical Bugs Found &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🚨 Fourth Review: Additional Critical Bugs Found</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reviews/FOURTH_REVIEW_RESULTS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="fourth-review-additional-critical-bugs-found">
+<h1>🚨 Fourth Review: Additional Critical Bugs Found<a class="headerlink" href="#fourth-review-additional-critical-bugs-found" title="Link to this heading"></a></h1>
+<section id="summary">
+<h2>📋 Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p>After completing 3 review cycles that found 13 critical bugs, a fourth comprehensive review was conducted. This review focused on searching for any remaining <code class="docutils literal notranslate"><span class="pre">model.predict()</span></code> calls that bypass action masking for MaskablePPO models.</p>
+<p><strong>Result:</strong> Discovered <strong>7 additional critical bugs</strong>, bringing the total to <strong>20 critical bugs</strong> fixed across 4 review cycles.</p>
+</section>
+<hr class="docutils" />
+<section id="new-bugs-fixed-in-fourth-review">
+<h2>🐛 New Bugs Fixed in Fourth Review<a class="headerlink" href="#new-bugs-fixed-in-fourth-review" title="Link to this heading"></a></h2>
+<section id="bug-14-live-trade-py-production-trading-without-action-masks-critical">
+<h3>Bug #14: <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> - Production Trading Without Action Masks (CRITICAL++)<a class="headerlink" href="#bug-14-live-trade-py-production-trading-without-action-masks-critical" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> (Line 1009)
+<strong>Severity:</strong> <strong>CRITICAL - PRODUCTION CODE</strong></p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># WRONG - Production trading without action masks!</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import added</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
+
+<span class="c1"># Prediction fixed</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> This is <strong>EXTREMELY DANGEROUS</strong>:</p>
+<ul class="simple">
+<li><p><strong>Real money trades</strong> were being executed with illegal actions</p></li>
+<li><p>If using MaskablePPO, the bot could attempt impossible trades</p></li>
+<li><p>Could lead to financial losses from invalid trading attempts</p></li>
+<li><p>Production code should have the HIGHEST standard of correctness</p></li>
+</ul>
+<p><strong>Note:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> doesn’t have environment instance, so action masks cannot be properly applied. This is an architectural limitation that needs refactoring.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-15-ztb-evaluation-evaluate-py-main-evaluation-without-action-masks-critical">
+<h3>Bug #15: <code class="docutils literal notranslate"><span class="pre">ztb/evaluation/evaluate.py</span></code> - Main Evaluation Without Action Masks (CRITICAL)<a class="headerlink" href="#bug-15-ztb-evaluation-evaluate-py-main-evaluation-without-action-masks-critical" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/evaluation/evaluate.py</span></code> (Line 271)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action_value</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;deterministic&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action_value</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;deterministic&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> All evaluation results from the main <code class="docutils literal notranslate"><span class="pre">Evaluator</span></code> class were invalid for MaskablePPO models.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-16-ztb-trading-backtest-adapters-py-backtest-without-action-masks-critical">
+<h3>Bug #16: <code class="docutils literal notranslate"><span class="pre">ztb/trading/backtest/adapters.py</span></code> - Backtest Without Action Masks (CRITICAL)<a class="headerlink" href="#bug-16-ztb-trading-backtest-adapters-py-backtest-without-action-masks-critical" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/backtest/adapters.py</span></code> (Line 72)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> All backtest results using <code class="docutils literal notranslate"><span class="pre">ModelBasedAdapter</span></code> were invalid.</p>
+<p><strong>Note:</strong> Backtest adapter doesn’t have environment instance - architectural limitation.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-17-ztb-features-perm-importance-py-feature-importance-without-action-masks-high">
+<h3>Bug #17: <code class="docutils literal notranslate"><span class="pre">ztb/features/perm_importance.py</span></code> - Feature Importance Without Action Masks (HIGH)<a class="headerlink" href="#bug-17-ztb-features-perm-importance-py-feature-importance-without-action-masks-high" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/features/perm_importance.py</span></code> (Line 92)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> Permutation importance analysis results were invalid for MaskablePPO models.</p>
+<p><strong>Note:</strong> VecEnv doesn’t expose underlying env for masks - architectural limitation.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-18-scripts-rolling-evaluation-py-rolling-eval-without-action-masks-critical">
+<h3>Bug #18: <code class="docutils literal notranslate"><span class="pre">scripts/rolling_evaluation.py</span></code> - Rolling Eval Without Action Masks (CRITICAL)<a class="headerlink" href="#bug-18-scripts-rolling-evaluation-py-rolling-eval-without-action-masks-critical" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">scripts/rolling_evaluation.py</span></code> (Line 91)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="n">deterministic</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="n">deterministic</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> Rolling evaluation used for early stopping detection was invalid, potentially causing:</p>
+<ul class="simple">
+<li><p>Premature training termination</p></li>
+<li><p>Missing optimal checkpoints</p></li>
+<li><p>Invalid Sharpe ratio proxy calculations</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="bug-19-scripts-ensemble-aggregator-py-ensemble-evaluation-without-action-masks-critical">
+<h3>Bug #19: <code class="docutils literal notranslate"><span class="pre">scripts/ensemble_aggregator.py</span></code> - Ensemble Evaluation Without Action Masks (CRITICAL)<a class="headerlink" href="#bug-19-scripts-ensemble-aggregator-py-ensemble-evaluation-without-action-masks-critical" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">scripts/ensemble_aggregator.py</span></code> (Line 155)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Fix:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">eval_env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Impact:</strong> Ensemble model confidence calculations and evaluations were invalid.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-20-create-backtest-py-additional-backtest-without-action-masks-medium">
+<h3>Bug #20: <code class="docutils literal notranslate"><span class="pre">create_backtest.py</span></code> - Additional Backtest Without Action Masks (MEDIUM)<a class="headerlink" href="#bug-20-create-backtest-py-additional-backtest-without-action-masks-medium" title="Link to this heading"></a></h3>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">create_backtest.py</span></code> (Line 57)</p>
+<p><strong>Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_states</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Status:</strong> <strong>Not fixed</strong> - File appears to be template/example code, not actively used.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="pattern-analysis">
+<h2>🎯 Pattern Analysis<a class="headerlink" href="#pattern-analysis" title="Link to this heading"></a></h2>
+<section id="the-core-problem-architectural-debt">
+<h3>The Core Problem: Architectural Debt<a class="headerlink" href="#the-core-problem-architectural-debt" title="Link to this heading"></a></h3>
+<p>All 7 new bugs share the same root cause: <strong>Components lack environment instances needed for action masking.</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Component Type          | Needs Env | Has Env | Can Use Masks
+------------------------|-----------|---------|---------------
+live_trade.py          | YES       | NO ❌   | NO ❌
+backtest/adapters.py   | YES       | NO ❌   | NO ❌
+evaluation/evaluate.py | YES       | YES ✅  | YES ✅
+rolling_evaluation.py  | YES       | YES ✅  | YES ✅
+ensemble_aggregator.py | YES       | YES ✅  | YES ✅
+perm_importance.py     | YES       | NO ❌   | NO ❌ (VecEnv)
+</pre></div>
+</div>
+</section>
+<section id="why-this-happened">
+<h3>Why This Happened<a class="headerlink" href="#why-this-happened" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>PPO → MaskablePPO migration was incomplete</strong></p>
+<ul class="simple">
+<li><p>Core training code updated</p></li>
+<li><p>Peripheral tools forgotten</p></li>
+<li><p>No checklist or validation</p></li>
+</ul>
+</li>
+<li><p><strong>Architecture wasn’t designed for action masking</strong></p>
+<ul class="simple">
+<li><p>Many components predict without environment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">predict()</span></code> API doesn’t require env parameter</p></li>
+<li><p>No enforcement at type level</p></li>
+</ul>
+</li>
+<li><p><strong>No integration tests</strong></p>
+<ul class="simple">
+<li><p>Changes not validated across pipeline</p></li>
+<li><p>Each component tested in isolation</p></li>
+<li><p>No end-to-end MaskablePPO validation</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="critical-issues-requiring-refactoring">
+<h2>⚠️ Critical Issues Requiring Refactoring<a class="headerlink" href="#critical-issues-requiring-refactoring" title="Link to this heading"></a></h2>
+<section id="live-trade-py-architecture-urgent">
+<h3>1. <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> Architecture (URGENT)<a class="headerlink" href="#live-trade-py-architecture-urgent" title="Link to this heading"></a></h3>
+<p><strong>Current Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Live trading has no environment instance</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Why This Is Dangerous:</strong></p>
+<ul class="simple">
+<li><p>Production trading without action masks</p></li>
+<li><p>Could attempt illegal trades</p></li>
+<li><p>Financial risk</p></li>
+</ul>
+<p><strong>Required Fix:</strong>
+Create lightweight environment instance for live trading:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LiveTradingEnv</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimal env wrapper for action mask generation in live trading&quot;&quot;&quot;</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">current_position</span><span class="p">,</span> <span class="n">portfolio_value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">current_position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="n">portfolio_value</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_legal_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Implement same logic as HeavyTradingEnv.get_legal_actions()</span>
+        <span class="k">pass</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">action_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_legal_actions</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="backtest-adapter-architecture">
+<h3>2. Backtest Adapter Architecture<a class="headerlink" href="#backtest-adapter-architecture" title="Link to this heading"></a></h3>
+<p><strong>Current Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Backtest has no environment for masks</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Required Fix:</strong>
+Pass environment instance or at least action mask provider:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ModelBasedAdapter</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">,</span> <span class="n">mask_provider</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="o">...</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask_provider</span> <span class="o">=</span> <span class="n">mask_provider</span>  <span class="c1"># Callable: obs -&gt; masks</span>
+</pre></div>
+</div>
+</section>
+<section id="vecenv-in-permutation-importance">
+<h3>3. VecEnv in Permutation Importance<a class="headerlink" href="#vecenv-in-permutation-importance" title="Link to this heading"></a></h3>
+<p><strong>Current Problem:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># VecEnv doesn&#39;t expose underlying env</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">DummyVecEnv</span><span class="p">([</span><span class="k">lambda</span><span class="p">:</span> <span class="n">Monitor</span><span class="p">(</span><span class="n">trading_env</span><span class="p">)])</span>
+<span class="c1"># Can&#39;t access trading_env.action_mask()</span>
+</pre></div>
+</div>
+<p><strong>Required Fix:</strong>
+Custom VecEnv wrapper that exposes action masks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MaskableVecEnv</span><span class="p">(</span><span class="n">DummyVecEnv</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Retrieve masks from all underlying envs</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">env</span><span class="o">.</span><span class="n">action_mask</span><span class="p">()</span> <span class="k">for</span> <span class="n">env</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">envs</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="complete-bug-inventory-20-total">
+<h2>📊 Complete Bug Inventory (20 Total)<a class="headerlink" href="#complete-bug-inventory-20-total" title="Link to this heading"></a></h2>
+<section id="review-cycle-1-external-agent-1">
+<h3>Review Cycle 1 (External Agent #1)<a class="headerlink" href="#review-cycle-1-external-agent-1" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>min_holding_period position close permissions</p></li>
+<li><p>Ensemble missing mask_provider parameter</p></li>
+<li><p>predict_with_masks utility missing</p></li>
+<li><p>Training memory leak</p></li>
+</ol>
+</section>
+<section id="review-cycle-2-external-agent-2">
+<h3>Review Cycle 2 (External Agent #2)<a class="headerlink" href="#review-cycle-2-external-agent-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="5">
+<li><p>EnsemblePredictor ValueError enforcement</p></li>
+<li><p>min_holding_period + allow_reverse interaction</p></li>
+<li><p>Trainer cleanup in finally block</p></li>
+<li><p>Test effectiveness (MaskablePPO mocking)</p></li>
+</ol>
+</section>
+<section id="review-cycle-3-deep-investigation">
+<h3>Review Cycle 3 (Deep Investigation)<a class="headerlink" href="#review-cycle-3-deep-investigation" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="9">
+<li><p>simple_backtest.py missing predict_with_masks</p></li>
+<li><p>debug_model_predictions.py missing predict_with_masks</p></li>
+<li><p>regime_evaluation.py missing predict_with_masks</p></li>
+<li><p>test_paper_trading.py missing predict_with_masks</p></li>
+<li><p><strong>Reward PnL attribution</strong> (trade_pnl vs unrealized_pnl)</p></li>
+</ol>
+</section>
+<section id="review-cycle-4-fourth-review-this-round">
+<h3>Review Cycle 4 (Fourth Review - This Round)<a class="headerlink" href="#review-cycle-4-fourth-review-this-round" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="14">
+<li><p><strong>live_trade.py</strong> missing predict_with_masks (PRODUCTION!)</p></li>
+<li><p>ztb/evaluation/evaluate.py missing predict_with_masks</p></li>
+<li><p>ztb/trading/backtest/adapters.py missing predict_with_masks</p></li>
+<li><p>ztb/features/perm_importance.py missing predict_with_masks</p></li>
+<li><p>scripts/rolling_evaluation.py missing predict_with_masks</p></li>
+<li><p>scripts/ensemble_aggregator.py missing predict_with_masks</p></li>
+<li><p>create_backtest.py missing predict_with_masks (not fixed - unused)</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="testing-status">
+<h2>🧪 Testing Status<a class="headerlink" href="#testing-status" title="Link to this heading"></a></h2>
+<section id="existing-tests-5-5-passing">
+<h3>Existing Tests: 5/5 Passing ✅<a class="headerlink" href="#existing-tests-5-5-passing" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>min_holding_period position close</p></li>
+<li><p>predict_with_masks utility</p></li>
+<li><p>EnsemblePredictor mask_provider requirement</p></li>
+<li><p>min_holding_period + allow_reverse interaction</p></li>
+<li><p>Reward PnL attribution</p></li>
+</ol>
+</section>
+<section id="new-tests-needed">
+<h3>New Tests Needed:<a class="headerlink" href="#new-tests-needed" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>❌ Live trading action mask generation</p></li>
+<li><p>❌ Backtest adapter with MaskablePPO</p></li>
+<li><p>❌ Evaluation pipeline end-to-end with MaskablePPO</p></li>
+<li><p>❌ Rolling evaluation with action masks</p></li>
+<li><p>❌ Ensemble aggregator with action masks</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="files-modified-fourth-review">
+<h2>📝 Files Modified (Fourth Review)<a class="headerlink" href="#files-modified-fourth-review" title="Link to this heading"></a></h2>
+<section id="production-code-critical">
+<h3>Production Code (CRITICAL)<a class="headerlink" href="#production-code-critical" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> - Added predict_with_masks (⚠️ env=None limitation)</p></li>
+</ol>
+</section>
+<section id="evaluation-analysis-tools">
+<h3>Evaluation/Analysis Tools<a class="headerlink" href="#evaluation-analysis-tools" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="2">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">ztb/evaluation/evaluate.py</span></code> - Added predict_with_masks (has env ✅)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">ztb/trading/backtest/adapters.py</span></code> - Added predict_with_masks (⚠️ env=None limitation)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">ztb/features/perm_importance.py</span></code> - Added predict_with_masks (⚠️ VecEnv limitation)</p></li>
+</ol>
+</section>
+<section id="scripts">
+<h3>Scripts<a class="headerlink" href="#scripts" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="5">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">scripts/rolling_evaluation.py</span></code> - Added predict_with_masks (has env ✅)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">scripts/ensemble_aggregator.py</span></code> - Added predict_with_masks (has env ✅)</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">create_backtest.py</span></code> - Not fixed (appears unused)</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="urgent-actions-required">
+<h2>🔥 URGENT Actions Required<a class="headerlink" href="#urgent-actions-required" title="Link to this heading"></a></h2>
+<section id="production-safety-immediate">
+<h3>1. PRODUCTION SAFETY (IMMEDIATE)<a class="headerlink" href="#production-safety-immediate" title="Link to this heading"></a></h3>
+<p><strong>Before any live trading:</strong></p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Refactor <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> to include environment instance</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Add integration test for live trading action mask generation</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Verify all legal action checks work correctly in production</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Add logging to detect illegal action attempts</p></li>
+</ul>
+</section>
+<section id="model-retraining-immediate">
+<h3>2. MODEL RETRAINING (IMMEDIATE)<a class="headerlink" href="#model-retraining-immediate" title="Link to this heading"></a></h3>
+<p><strong>All existing models are invalid:</strong></p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Retrain all models with bug #13 fix (correct PnL attribution)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Re-run all evaluations with fixed action masking</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Regenerate all performance metrics and benchmarks</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Document training/evaluation baseline changes</p></li>
+</ul>
+</section>
+<section id="architectural-refactoring-high-priority">
+<h3>3. ARCHITECTURAL REFACTORING (HIGH PRIORITY)<a class="headerlink" href="#architectural-refactoring-high-priority" title="Link to this heading"></a></h3>
+<p><strong>Fix systemic issues:</strong></p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Implement <code class="docutils literal notranslate"><span class="pre">LiveTradingEnv</span></code> wrapper for action masks</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Refactor backtest adapters to accept mask providers</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Create <code class="docutils literal notranslate"><span class="pre">MaskableVecEnv</span></code> wrapper for permutation importance</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Add type-level enforcement for MaskablePPO usage</p></li>
+</ul>
+</section>
+<section id="testing-infrastructure-high-priority">
+<h3>4. TESTING INFRASTRUCTURE (HIGH PRIORITY)<a class="headerlink" href="#testing-infrastructure-high-priority" title="Link to this heading"></a></h3>
+<p><strong>Prevent future regressions:</strong></p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Create end-to-end pipeline tests</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Add MaskablePPO integration tests</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Implement pre-commit hooks for <code class="docutils literal notranslate"><span class="pre">model.predict()</span></code> pattern detection</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Add CI/CD validation for action mask usage</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="lessons-learned">
+<h2>🎓 Lessons Learned<a class="headerlink" href="#lessons-learned" title="Link to this heading"></a></h2>
+<section id="technical-debt-compounds">
+<h3>Technical Debt Compounds<a class="headerlink" href="#technical-debt-compounds" title="Link to this heading"></a></h3>
+<p>20 bugs across 4 review cycles shows <strong>systemic quality issues</strong>:</p>
+<ul class="simple">
+<li><p>Each bug individually seems minor</p></li>
+<li><p>Collectively they invalidate entire pipelines</p></li>
+<li><p>Pattern recognition is key to prevention</p></li>
+</ul>
+</section>
+<section id="architecture-matters">
+<h3>Architecture Matters<a class="headerlink" href="#architecture-matters" title="Link to this heading"></a></h3>
+<p><strong>API design should enforce correctness:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># BAD - env is optional, easy to forget</span>
+<span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+<span class="c1"># BETTER - env required for MaskablePPO</span>
+<span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span> <span class="n">ActionMaskProvider</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="production-code-requires-highest-standards">
+<h3>Production Code Requires Highest Standards<a class="headerlink" href="#production-code-requires-highest-standards" title="Link to this heading"></a></h3>
+<p><strong>live_trade.py bug was MOST dangerous because:</strong></p>
+<ul class="simple">
+<li><p>Real financial consequences</p></li>
+<li><p>Should have been caught first</p></li>
+<li><p>Proves testing gaps at highest priority level</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="related-documentation">
+<h2>📚 Related Documentation<a class="headerlink" href="#related-documentation" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">BUGFIX_EXTERNAL_REVIEW.md</span></code> - Review cycle 1 (bugs #1-4)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BUGFIX_THIRD_REVIEW.md</span></code> - Review cycle 2 (bugs #5-8)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DEEP_INVESTIGATION_RESULTS.md</span></code> - Review cycle 3 (bugs #9-13)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">FOURTH_REVIEW_BUGS.md</span></code> - This document (bugs #14-20)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_bugfixes.py</span></code> - Test suite (5/5 passing)</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="conclusion">
+<h2>🎯 Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p><strong>User’s instinct to continue reviewing was absolutely correct.</strong></p>
+<p>The discovery of bugs #14-20, especially the <strong>production trading bug (#14)</strong>, validates the need for extreme thoroughness (“石橋を叩いて渡る”).</p>
+<p><strong>Total</strong>: <strong>20 critical bugs</strong> found and fixed across 4 review cycles.</p>
+<p><strong>Status</strong>: Code is significantly more robust, but architectural refactoring is required before production deployment.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

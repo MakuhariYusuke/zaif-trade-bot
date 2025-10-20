@@ -1,0 +1,646 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>バグ修正レポート - 評価スクリプトの致命的な問題 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">バグ修正レポート - 評価スクリプトの致命的な問題</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bug_fixes/BUG_FIX_REPORT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>バグ修正レポート - 評価スクリプトの致命的な問題<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>実行日時<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>2025年10月7日 22:50</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>🐛 発見されたバグ<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="maskableppoaction-masks">
+<h3>1. <strong>MaskablePPOのaction_masks未使用</strong> (致命的)<a class="headerlink" href="#maskableppoaction-masks" title="Link to this heading"></a></h3>
+<p><strong>影響を受けるファイル:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_model_behavior.py</span></code> (71行目)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">backtest_model.py</span></code> (169行目)</p></li>
+</ul>
+<p><strong>問題:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ バグあり (action_masksを渡していない)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>MaskablePPOでは、<code class="docutils literal notranslate"><span class="pre">action_masks</span></code>パラメータを渡さないと:</p>
+<ol class="arabic simple">
+<li><p><strong>非合法なアクションを予測する可能性</strong>がある</p></li>
+<li><p><strong>学習時と評価時で動作が異なる</strong></p></li>
+<li><p><strong>マスクされたアクションが選択され、環境でエラーになる</strong></p></li>
+</ol>
+<p><strong>修正:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後</span>
+<span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;MaskablePPO&quot;</span><span class="p">:</span>
+    <span class="n">action_masks</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_action_masks</span><span class="p">()</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="deterministic">
+<h3>2. <strong>deterministicフラグの誤用</strong> (重大)<a class="headerlink" href="#deterministic" title="Link to this heading"></a></h3>
+<p><strong>問題:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ バグあり (決定的推論を使用)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">deterministic=True</span></code>は:</p>
+<ul class="simple">
+<li><p><strong>最も確率の高いアクションのみを選択</strong></p></li>
+<li><p><strong>確率的サンプリングを無効化</strong></p></li>
+<li><p><strong>学習時の動作と大きく異なる</strong></p></li>
+</ul>
+<p><strong>修正:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正後 (確率的サンプリング)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>📊 修正前後の比較<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="validate-model-behavior-py-10-2000">
+<h3>validate_model_behavior.py (10エピソード, 2000ステップ)<a class="headerlink" href="#validate-model-behavior-py-10-2000" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>修正前</p></th>
+<th class="head"><p>修正後</p></th>
+<th class="head"><p>改善</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>HOLD</strong></p></td>
+<td><p>96.0%</p></td>
+<td><p>73.1%</p></td>
+<td><p>-22.9%</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>BUY</strong></p></td>
+<td><p>4.0%</p></td>
+<td><p>13.5%</p></td>
+<td><p>+9.5%</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>SELL</strong></p></td>
+<td><p><strong>0.0%</strong></p></td>
+<td><p><strong>13.4%</strong></p></td>
+<td><p><strong>+13.4%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>バランススコア</strong></p></td>
+<td><p>0.000</p></td>
+<td><p>0.183</p></td>
+<td><p>+0.183</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="backtest-model-py-999">
+<h3>backtest_model.py (999ステップ)<a class="headerlink" href="#backtest-model-py-999" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>修正前</p></th>
+<th class="head"><p>修正後</p></th>
+<th class="head"><p>改善</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>HOLD</strong></p></td>
+<td><p>~200 (?)</p></td>
+<td><p>739 (73.9%)</p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>BUY</strong></p></td>
+<td><p>~800 (?)</p></td>
+<td><p>130 (13.0%)</p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>SELL</strong></p></td>
+<td><p>0</p></td>
+<td><p>130 (13.0%)</p></td>
+<td><p>+130</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>🔍 バグの根本原因<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="maskableppo">
+<h3>原因1: MaskablePPOの仕様理解不足<a class="headerlink" href="#maskableppo" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">MaskablePPO</span></code>は、アクションマスキングを<strong>必須</strong>とするアルゴリズム。</p>
+<ul class="simple">
+<li><p>学習時: <code class="docutils literal notranslate"><span class="pre">callback</span></code>でaction_masksが自動的に渡される</p></li>
+<li><p><strong>評価時</strong>: <strong>手動でaction_masksを渡す必要がある</strong></p></li>
+</ul>
+</section>
+<section id="sb3">
+<h3>原因2: SB3のデフォルト動作の誤解<a class="headerlink" href="#sb3" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">deterministic=True</span></code>は:</p>
+<ul class="simple">
+<li><p>テスト/デモ用の設定</p></li>
+<li><p>本番環境では<code class="docutils literal notranslate"><span class="pre">deterministic=False</span></code>を使うべき</p></li>
+<li><p>特に確率的方策では重要</p></li>
+</ul>
+</section>
+<section id="id6">
+<h3>原因3: 検証スクリプトのレビュー不足<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>検証スクリプト作成時にMaskablePPOの動作を確認していなかった</p></li>
+<li><p>学習スクリプトとの整合性チェックが不十分</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🎯 学習済みモデルの正しい評価結果<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="ppo-memory-optimized-zip">
+<h3>ppo_memory_optimized.zip<a class="headerlink" href="#ppo-memory-optimized-zip" title="Link to this heading"></a></h3>
+<p><strong>アクション分布:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HOLD</span><span class="p">:</span>  <span class="mf">73.1</span><span class="o">%</span>
+<span class="n">BUY</span><span class="p">:</span>   <span class="mf">13.5</span><span class="o">%</span>
+<span class="n">SELL</span><span class="p">:</span>  <span class="mf">13.4</span><span class="o">%</span>
+</pre></div>
+</div>
+<p><strong>特徴:</strong></p>
+<ul class="simple">
+<li><p>✅ SELL bias (99.5%) は完全に解消</p></li>
+<li><p>⚠️ HOLD bias (73%) が残存</p></li>
+<li><p>⚠️ BUY/SELL が均等だが、目標(33%)より低い</p></li>
+<li><p>⚠️ バランススコア 0.183 (目標: &gt;0.5)</p></li>
+</ul>
+<p><strong>診断:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>アクションマスキングが頻繁に発動</strong></p>
+<ul class="simple">
+<li><p>BUY: 51.5%の時間マスクされる</p></li>
+<li><p>SELL: 48.0%の時間マスクされる</p></li>
+<li><p>HOLD: 常に合法</p></li>
+</ul>
+</li>
+<li><p><strong>ポジション管理の制約</strong></p>
+<ul class="simple">
+<li><p>ロングポジション時: BUYマスク、SELLのみ</p></li>
+<li><p>ショートポジション時: SELLマスク、BUYのみ</p></li>
+<li><p>これがHOLD biasの主要因</p></li>
+</ul>
+</li>
+<li><p><strong>学習時のLagrange制約</strong></p>
+<ul class="simple">
+<li><p>学習中: SELL 19% (Lagrange制約で強制)</p></li>
+<li><p>評価時: SELL 13.4% (マスキングの影響)</p></li>
+<li><p>制約なしの本来の分布: HOLD優先</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>💡 重要な発見<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="lagrange">
+<h3>発見1: Lagrange制約は表面的<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h3>
+<p><strong>学習中の統計:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>lagrange_r_sell: 0.188 (18.8%)
+→ これはLagrangeペナルティで&quot;強制的&quot;に達成された数値
+</pre></div>
+</div>
+<p><strong>評価時の実際:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>SELL: 13.4%
+→ 制約がなければHOLDを選ぶモデル
+</pre></div>
+</div>
+<p><strong>結論:</strong> モデルは本質的に多様性を学習していない。</p>
+</section>
+<section id="id9">
+<h3>発見2: アクションマスキングの影響大<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">All</span> <span class="n">actions</span> <span class="n">allowed</span><span class="p">:</span> <span class="mf">0.5</span><span class="o">%</span> <span class="n">of</span> <span class="n">the</span> <span class="n">time</span>
+<span class="n">BUY</span> <span class="ow">or</span> <span class="n">SELL</span> <span class="n">masked</span><span class="p">:</span> <span class="mf">99.5</span><span class="o">%</span> <span class="n">of</span> <span class="n">the</span> <span class="n">time</span>
+</pre></div>
+</div>
+<p><strong>これは正常!</strong> ポジション管理上、常にどちらかがマスクされる。</p>
+<ul class="simple">
+<li><p>ポジション保有中は片方の取引が非合法</p></li>
+<li><p>HOLD biasはマスキングの副作用</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>発見3: デバッグツールの重要性<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">debug_action_masking.py</span></code>を作成したことで:</p>
+<ul class="simple">
+<li><p>マスキング統計が可視化された</p></li>
+<li><p>モデルの実際の予測が確認できた</p></li>
+<li><p>バグの特定が容易になった</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🛠️ 実施した修正<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="validate-model-behavior-py">
+<h3>修正1: validate_model_behavior.py<a class="headerlink" href="#validate-model-behavior-py" title="Link to this heading"></a></h3>
+<p><strong>変更箇所:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Before (Line 71)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># After (Lines 66-71)</span>
+<span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;MaskablePPO&quot;</span><span class="p">:</span>
+    <span class="n">action_masks</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_action_masks</span><span class="p">()</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="backtest-model-py">
+<h3>修正2: backtest_model.py<a class="headerlink" href="#backtest-model-py" title="Link to this heading"></a></h3>
+<p><strong>変更箇所1:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Before (Lines 110-119)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+<span class="c1"># (model_type変数なし)</span>
+
+<span class="c1"># After (Lines 112-122)</span>
+<span class="n">model_type</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+<span class="n">model_type</span> <span class="o">=</span> <span class="s2">&quot;MaskablePPO&quot;</span>
+<span class="c1"># (model_typeを追跡)</span>
+</pre></div>
+</div>
+<p><strong>変更箇所2:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Before (Line 169)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># After (Lines 167-173)</span>
+<span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;MaskablePPO&quot;</span><span class="p">:</span>
+    <span class="n">action_masks</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_action_masks</span><span class="p">()</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>修正3: 新規デバッグツール作成<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p><strong>debug_action_masking.py:</strong></p>
+<ul class="simple">
+<li><p>アクションマスキングの統計を収集</p></li>
+<li><p>モデルの予測と実際の行動を比較</p></li>
+<li><p>マスク頻度を可視化</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>✅ 検証結果<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>テスト1: validate_model_behavior.py<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p><strong>実行:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>validate_model_behavior.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_memory_optimized.zip<span class="w"> </span>--episodes<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p><strong>結果:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">HOLD</span><span class="p">:</span>  <span class="mf">73.1</span><span class="o">%</span>
+<span class="n">BUY</span><span class="p">:</span>   <span class="mf">13.5</span><span class="o">%</span>
+<span class="n">SELL</span><span class="p">:</span>  <span class="mf">13.4</span><span class="o">%</span>
+<span class="n">Balance</span> <span class="n">score</span><span class="p">:</span> <span class="mf">0.183</span>
+</pre></div>
+</div>
+<p><strong>評価:</strong> ✅ PASS</p>
+<ul class="simple">
+<li><p>SELLが正常に出現</p></li>
+<li><p>3つのアクションすべてが使用されている</p></li>
+<li><p>修正前の異常(SELL 0%)が解消</p></li>
+</ul>
+</section>
+<section id="debug-action-masking-py">
+<h3>テスト2: debug_action_masking.py<a class="headerlink" href="#debug-action-masking-py" title="Link to this heading"></a></h3>
+<p><strong>実行:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>debug_action_masking.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_memory_optimized.zip<span class="w"> </span>--steps<span class="w"> </span><span class="m">200</span>
+</pre></div>
+</div>
+<p><strong>結果:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Predicted</span> <span class="n">actions</span> <span class="p">(</span><span class="n">by</span> <span class="n">model</span><span class="p">):</span>
+  <span class="n">HOLD</span><span class="p">:</span>  <span class="mi">146</span> <span class="p">(</span><span class="mf">73.0</span><span class="o">%</span><span class="p">)</span>
+  <span class="n">BUY</span><span class="p">:</span>    <span class="mi">27</span> <span class="p">(</span><span class="mf">13.5</span><span class="o">%</span><span class="p">)</span>
+  <span class="n">SELL</span><span class="p">:</span>   <span class="mi">27</span> <span class="p">(</span><span class="mf">13.5</span><span class="o">%</span><span class="p">)</span>
+
+<span class="n">Actual</span> <span class="n">actions</span> <span class="n">taken</span><span class="p">:</span>
+  <span class="n">HOLD</span><span class="p">:</span>  <span class="mi">146</span> <span class="p">(</span><span class="mf">73.0</span><span class="o">%</span><span class="p">)</span>
+  <span class="n">BUY</span><span class="p">:</span>    <span class="mi">27</span> <span class="p">(</span><span class="mf">13.5</span><span class="o">%</span><span class="p">)</span>
+  <span class="n">SELL</span><span class="p">:</span>   <span class="mi">27</span> <span class="p">(</span><span class="mf">13.5</span><span class="o">%</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>評価:</strong> ✅ PASS</p>
+<ul class="simple">
+<li><p>予測と実行が一致</p></li>
+<li><p>マスキングが正常動作</p></li>
+<li><p>非合法アクション予測なし</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>テスト3: backtest_model.py<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<p><strong>実行:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backtest_model.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_memory_optimized.zip
+</pre></div>
+</div>
+<p><strong>結果:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Actions</span> <span class="n">distribution</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="mi">739</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mi">130</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="mi">130</span><span class="p">}</span>
+<span class="n">Total</span> <span class="n">Trades</span><span class="p">:</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p><strong>評価:</strong> ⚠️ PARTIAL</p>
+<ul class="simple">
+<li><p>アクション分布は正常</p></li>
+<li><p><strong>トレード数0は要調査</strong></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>🔧 残存する問題<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>問題1: トレード数が0<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p><strong>症状:</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Total</span> <span class="n">Trades</span><span class="p">:</span> <span class="mi">0</span>
+<span class="n">Total</span> <span class="n">Return</span><span class="p">:</span> <span class="mf">0.00</span><span class="o">%</span>
+</pre></div>
+</div>
+<p><strong>仮説:</strong></p>
+<ol class="arabic simple">
+<li><p>トレード記録ロジックのバグ</p></li>
+<li><p>ポジションクローズ検出の問題</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">realized_pnl</span></code>が更新されていない</p></li>
+</ol>
+<p><strong>次のアクション:</strong></p>
+<ul class="simple">
+<li><p>トレード記録部分のデバッグ</p></li>
+<li><p>ポジション変化のログ確認</p></li>
+</ul>
+</section>
+<section id="hold-bias-73">
+<h3>問題2: HOLD bias (73%)<a class="headerlink" href="#hold-bias-73" title="Link to this heading"></a></h3>
+<p><strong>原因:</strong></p>
+<ul class="simple">
+<li><p>アクションマスキングの副作用</p></li>
+<li><p>Lagrange制約の限界</p></li>
+</ul>
+<p><strong>次のアクション:</strong></p>
+<ul class="simple">
+<li><p>より強力なentropy regularization</p></li>
+<li><p>Intrinsic motivation報酬</p></li>
+<li><p>Behavior cloning pre-training</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>📝 教訓<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>教訓1: 検証スクリプトは学習スクリプトと同じ設定で<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>action_masksの有無</p></li>
+<li><p>deterministicフラグ</p></li>
+<li><p>環境設定(curriculum_stage等)</p></li>
+</ul>
+</section>
+<section id="api">
+<h3>教訓2: API仕様の確認が重要<a class="headerlink" href="#api" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># MaskablePPO.predict()の正しい使い方</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
+    <span class="n">observation</span><span class="o">=</span><span class="n">obs</span><span class="p">,</span>
+    <span class="n">action_masks</span><span class="o">=</span><span class="n">masks</span><span class="p">,</span>  <span class="c1"># ← 必須!</span>
+    <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span>   <span class="c1"># ← 学習時と同じ</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h3>教訓3: デバッグツールを先に作る<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>問題特定が容易</p></li>
+<li><p>仮説検証が高速</p></li>
+<li><p>再現性の確保</p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>教訓4: 異常な結果は必ずバグを疑う<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>SELL: 99.5% → 0%
+</pre></div>
+</div>
+<p>このような極端な変化は、ほぼ確実にバグ。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>🎯 次のステップ<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>即座に実施:<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>トレード記録バグの修正</strong></p>
+<ul class="simple">
+<li><p>backtest_model.pyのトレード検出ロジック確認</p></li>
+<li><p>ポジション変化のログ追加</p></li>
+</ul>
+</li>
+<li><p><strong>他の評価スクリプトの監査</strong></p>
+<ul class="simple">
+<li><p>同様のバグがないか全スクリプト確認</p></li>
+<li><p>MaskablePPO対応の統一</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id24">
+<h3>中期的:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="3">
+<li><p><strong>テストスイートの作成</strong></p>
+<ul class="simple">
+<li><p>検証スクリプトの自動テスト</p></li>
+<li><p>action_masks使用の自動チェック</p></li>
+</ul>
+</li>
+<li><p><strong>ドキュメントの更新</strong></p>
+<ul class="simple">
+<li><p>MaskablePPO使用時の注意事項</p></li>
+<li><p>評価時のベストプラクティス</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>📊 最終的な評価<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>ppo_memory_optimized.zip の真の性能<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<p><strong>アクション分布:</strong></p>
+<ul class="simple">
+<li><p>HOLD: 73.1%</p></li>
+<li><p>BUY:  13.5%</p></li>
+<li><p>SELL: 13.4%</p></li>
+</ul>
+<p><strong>評価:</strong></p>
+<ul class="simple">
+<li><p>✅ SELL bias完全解消</p></li>
+<li><p>⚠️ HOLD biasが支配的</p></li>
+<li><p>⚠️ 取引機会を逃す可能性</p></li>
+<li><p>⚠️ 本番使用には不適</p></li>
+</ul>
+<p><strong>推奨:</strong></p>
+<ul class="simple">
+<li><p>より強力な多様性促進が必要</p></li>
+<li><p>Entropy係数の増加</p></li>
+<li><p>Behavior cloning導入</p></li>
+<li><p>再学習が必要</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id27">
+<h2>ファイル変更履歴<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<section id="id28">
+<h3>修正したファイル:<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">validate_model_behavior.py</span></code> - MaskablePPO対応、deterministic=False</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">backtest_model.py</span></code> - MaskablePPO対応、deterministic=False</p></li>
+</ol>
+</section>
+<section id="id29">
+<h3>新規作成ファイル:<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">debug_action_masking.py</span></code> - アクションマスキングデバッグツール</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BUG_FIX_REPORT.md</span></code> - このレポート</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id30">
+<h2>署名<a class="headerlink" href="#id30" title="Link to this heading"></a></h2>
+<p>バグ修正者: GitHub Copilot
+日時: 2025年10月7日 22:50
+検証: validate_model_behavior.py, debug_action_masking.py</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

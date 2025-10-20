@@ -1,0 +1,286 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.live_trader.action_prediction &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.live_trader.action_prediction</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.live_trader.action_prediction</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Action prediction implementation for live trading.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_NAMES</span><span class="p">,</span> <span class="n">normalize_action</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.live_trader.live_trader</span><span class="w"> </span><span class="kn">import</span> <span class="n">LiveTrader</span>
+
+
+<div class="viewcode-block" id="ActionPrediction">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.live_trader.html#ztb.trading.live_trader.action_prediction.ActionPrediction">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionPrediction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles action prediction using the trained model.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">live_trader</span><span class="p">:</span> <span class="s1">&#39;LiveTrader&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize action prediction with reference to live trader.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span> <span class="o">=</span> <span class="n">live_trader</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ActionPrediction.predict_action">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.live_trader.html#ztb.trading.live_trader.action_prediction.ActionPrediction.predict_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Predict trading action using the model.&quot;&quot;&quot;</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Handle different observation spaces for different algorithms</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="p">,</span> <span class="s1">&#39;algorithm&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">==</span> <span class="s1">&#39;sac&#39;</span><span class="p">:</span>
+                <span class="c1"># SAC expects 5 features, take first 5 or pad if needed</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+                    <span class="n">obs_features</span> <span class="o">=</span> <span class="n">features</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">obs_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)),</span> <span class="s1">&#39;constant&#39;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using first 5 features for SAC: </span><span class="si">{</span><span class="n">obs_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># PPO uses all features, but in dry-run mode use first 5 to match model expectations</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="p">:</span>
+                        <span class="n">obs_features</span> <span class="o">=</span> <span class="n">features</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">obs_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)),</span> <span class="s1">&#39;constant&#39;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dry-run mode: using first 5 features for PPO: </span><span class="si">{</span><span class="n">obs_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">obs_features</span> <span class="o">=</span> <span class="n">features</span>
+
+            <span class="c1"># Reshape for model input</span>
+            <span class="n">obs</span> <span class="o">=</span> <span class="n">obs_features</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_is_maskable_ppo</span><span class="p">:</span>
+                <span class="c1"># Update mask provider state</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">mask_provider</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span>
+                    <span class="n">current_position</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+                    <span class="n">position_entry_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_position_entry_step</span><span class="p">,</span>
+                    <span class="n">current_step</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_current_step</span><span class="p">,</span>
+                    <span class="n">forced_close_reason</span><span class="o">=</span><span class="kc">None</span>
+                <span class="p">)</span>
+                <span class="c1"># Use action masking</span>
+                <span class="n">action_masks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">mask_provider</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Standard prediction</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model prediction result: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">, type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">action</span><span class="p">)</span><span class="si">}</span><span class="s2">, shape: </span><span class="si">{</span><span class="nb">getattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;shape&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;no shape&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Handle different action formats and spaces</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="p">,</span> <span class="s1">&#39;algorithm&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">==</span> <span class="s1">&#39;sac&#39;</span><span class="p">:</span>
+                <span class="c1"># Continuous action space - discretize to [0,1,2]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+                    <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)):</span>
+                    <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">action</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">action</span><span class="o">.</span><span class="n">shape</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+                        <span class="c1"># SAC often returns [[value]] format</span>
+                        <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC action format [[</span><span class="si">{</span><span class="n">action_val</span><span class="si">}</span><span class="s2">]] detected&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected continuous action format: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">action_val</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown continuous action type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">action</span><span class="p">)</span><span class="si">}</span><span class="s2">, value: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">action_val</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Continuous action value: </span><span class="si">{</span><span class="n">action_val</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="c1"># Discretize continuous action to discrete action</span>
+                <span class="n">threshold</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># Small threshold to avoid noise</span>
+                <span class="k">if</span> <span class="n">action_val</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+                    <span class="n">final_action</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># BUY</span>
+                <span class="k">elif</span> <span class="n">action_val</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">threshold</span><span class="p">:</span>
+                    <span class="n">final_action</span> <span class="o">=</span> <span class="mi">2</span>  <span class="c1"># SELL</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">final_action</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># HOLD</span>
+
+                <span class="c1"># Reduce log verbosity - only log significant discretization events</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">action_val</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC model output: </span><span class="si">{</span><span class="n">action_val</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">ACTION_NAMES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">final_action</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;UNKNOWN&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC model output: </span><span class="si">{</span><span class="n">action_val</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> -&gt; HOLD&quot;</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Discrete action space</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+                    <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)):</span>
+                    <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+                    <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">action</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                            <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># Probability distribution</span>
+                            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Treating as probability distribution: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                            <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Multi-dimensional action array, flattening: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">flatten</span><span class="p">()))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown discrete action type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">action</span><span class="p">)</span><span class="si">}</span><span class="s2">, value: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">final_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot convert action </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2"> to int, using HOLD&quot;</span><span class="p">)</span>
+                        <span class="n">final_action</span> <span class="o">=</span> <span class="n">ACTION_HOLD</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Converted action: </span><span class="si">{</span><span class="n">final_action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Clamp action to valid range [0, 1, 2]</span>
+            <span class="k">if</span> <span class="n">final_action</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action </span><span class="si">{</span><span class="n">final_action</span><span class="si">}</span><span class="s2"> is negative, clamping to 0&quot;</span><span class="p">)</span>
+                <span class="n">final_action</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">elif</span> <span class="n">final_action</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action </span><span class="si">{</span><span class="n">final_action</span><span class="si">}</span><span class="s2"> is &gt; 2, clamping to 2&quot;</span><span class="p">)</span>
+                <span class="n">final_action</span> <span class="o">=</span> <span class="mi">2</span>
+
+            <span class="c1"># Additional validation (should be 0, 1, or 2 now)</span>
+            <span class="k">if</span> <span class="n">final_action</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]:</span>  <span class="c1"># Using numeric values since ACTION_* constants may not be imported</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action </span><span class="si">{</span><span class="n">final_action</span><span class="si">}</span><span class="s2"> still invalid after clamping, using HOLD&quot;</span><span class="p">)</span>
+                <span class="n">final_action</span> <span class="o">=</span> <span class="n">ACTION_HOLD</span>
+
+            <span class="c1"># Legacy support: normalize old ACTION_SELL=2 to new ACTION_SELL=-1</span>
+            <span class="n">final_action</span> <span class="o">=</span> <span class="n">normalize_action</span><span class="p">(</span><span class="n">final_action</span><span class="p">)</span>
+
+            <span class="n">action</span> <span class="o">=</span> <span class="n">final_action</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final validated action: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">live_trader</span><span class="o">.</span><span class="n">_current_step</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">return</span> <span class="n">action</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logger</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to predict action: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ACTION_HOLD</span>  <span class="c1"># Safe fallback</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

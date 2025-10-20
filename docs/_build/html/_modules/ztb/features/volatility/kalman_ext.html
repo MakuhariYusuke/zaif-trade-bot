@@ -1,0 +1,581 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.volatility.kalman_ext &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.volatility.kalman_ext</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.volatility.kalman_ext</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">kalman_ext.py</span>
+<span class="sd">Extended Kalman Filter analysis with residuals and autocorrelation</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+
+
+<div class="viewcode-block" id="SimpleKalmanFilter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.SimpleKalmanFilter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimpleKalmanFilter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple Kalman Filter implementation for price estimation</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">process_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span> <span class="n">measurement_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">process_variance</span> <span class="o">=</span> <span class="n">process_variance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">measurement_variance</span> <span class="o">=</span> <span class="n">measurement_variance</span>
+        <span class="c1"># Declare instance variables with type annotations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_estimates</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SimpleKalmanFilter.reset">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.SimpleKalmanFilter.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset filter state&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimates</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_estimates</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="SimpleKalmanFilter.update">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.SimpleKalmanFilter.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">measurement</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update filter with new measurement</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            measurement: New observed value</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (estimate, error_estimate)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># First measurement: initialize without prediction step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span> <span class="o">=</span> <span class="n">measurement</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Prediction step</span>
+            <span class="n">prior_estimate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span><span class="p">)</span>
+            <span class="n">prior_error_estimate</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">process_variance</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Update step</span>
+            <span class="n">kalman_gain</span> <span class="o">=</span> <span class="n">prior_error_estimate</span> <span class="o">/</span> <span class="p">(</span>
+                <span class="n">prior_error_estimate</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">measurement_variance</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span> <span class="o">=</span> <span class="n">prior_estimate</span> <span class="o">+</span> <span class="n">kalman_gain</span> <span class="o">*</span> <span class="p">(</span>
+                <span class="n">measurement</span> <span class="o">-</span> <span class="n">prior_estimate</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">kalman_gain</span><span class="p">)</span> <span class="o">*</span> <span class="n">prior_error_estimate</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">error_estimates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posterior_estimate</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">posterior_error_estimate</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="compute_kalman_estimate">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.compute_kalman_estimate">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Kalman_Estimate&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_kalman_estimate</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kalman Filter Price Estimate&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_kalman_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_estimate&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;kalman_estimate&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_kalman_residual">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.compute_kalman_residual">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Kalman_Residual&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_kalman_residual</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kalman Filter Residual (Price - Estimate)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_kalman_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;kalman_residual&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_kalman_residual_norm">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.compute_kalman_residual_norm">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Kalman_Residual_Norm&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_kalman_residual_norm</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kalman Filter Normalized Residual&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_kalman_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;kalman_residual_normalized&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_kalman_extended">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.calculate_kalman_extended">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_kalman_extended</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">process_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="n">measurement_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">residual_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate extended Kalman Filter features including residuals and autocorrelation</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: DataFrame with OHLCV data</span>
+<span class="sd">        process_variance: Process noise variance</span>
+<span class="sd">        measurement_variance: Measurement noise variance</span>
+<span class="sd">        residual_window: Window for residual analysis</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with extended Kalman features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">close_prices</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">close_prices</span><span class="p">)</span>
+
+    <span class="c1"># Vectorized Kalman filter implementation</span>
+    <span class="n">estimates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">error_estimates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="c1"># Initialize first values</span>
+    <span class="n">estimates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">close_prices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">error_estimates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="c1"># Vectorized Kalman filter update</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n</span><span class="p">):</span>
+        <span class="c1"># Prediction step</span>
+        <span class="n">prior_estimate</span> <span class="o">=</span> <span class="n">estimates</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">prior_error_estimate</span> <span class="o">=</span> <span class="n">error_estimates</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">process_variance</span>
+
+        <span class="c1"># Update step</span>
+        <span class="n">kalman_gain</span> <span class="o">=</span> <span class="n">prior_error_estimate</span> <span class="o">/</span> <span class="p">(</span>
+            <span class="n">prior_error_estimate</span> <span class="o">+</span> <span class="n">measurement_variance</span>
+        <span class="p">)</span>
+        <span class="n">estimates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">prior_estimate</span> <span class="o">+</span> <span class="n">kalman_gain</span> <span class="o">*</span> <span class="p">(</span><span class="n">close_prices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">prior_estimate</span><span class="p">)</span>
+        <span class="n">error_estimates</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">kalman_gain</span><span class="p">)</span> <span class="o">*</span> <span class="n">prior_error_estimate</span>
+
+    <span class="c1"># Calculate residuals</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="n">close_prices</span> <span class="o">-</span> <span class="n">estimates</span>
+
+    <span class="n">features</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Basic Kalman features</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_estimate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">estimates</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_error_estimate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">error_estimates</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residuals</span>
+
+    <span class="c1"># Residual analysis</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_abs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_squared&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residuals</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="c1"># Rolling residual statistics - vectorized</span>
+    <span class="n">residual_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_mean&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_std&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_skew&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_kurt&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">kurt</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Residual percentiles - vectorized</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_percentile&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span>
+        <span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">pct</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Normalized residuals - vectorized</span>
+    <span class="n">residual_std</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">residual_series</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">())</span>
+    <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-8</span>  <span class="c1"># Small value to prevent division by zero</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residuals</span> <span class="o">/</span> <span class="p">(</span><span class="n">residual_std</span> <span class="o">+</span> <span class="n">epsilon</span><span class="p">)</span>
+
+    <span class="c1"># Residual autocorrelation - optimized vectorized implementation</span>
+    <span class="n">autocorr_lags</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="n">autocorr_lags</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">residual_series</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">lag</span> <span class="o">+</span> <span class="n">residual_window</span><span class="p">:</span>
+            <span class="c1"># Vectorized autocorrelation calculation</span>
+            <span class="n">autocorr_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">residual_series</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+            <span class="c1"># Calculate autocorrelation for each window position</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">lag</span> <span class="o">+</span> <span class="n">residual_window</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">residual_series</span><span class="p">)):</span>
+                <span class="n">window_start</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="n">residual_window</span>
+                <span class="n">window_end</span> <span class="o">=</span> <span class="n">i</span>
+
+                <span class="k">if</span> <span class="n">window_end</span> <span class="o">-</span> <span class="n">window_start</span> <span class="o">&gt;=</span> <span class="n">lag</span> <span class="o">+</span> <span class="mi">5</span><span class="p">:</span>
+                    <span class="n">window_data</span> <span class="o">=</span> <span class="n">residuals</span><span class="p">[</span><span class="n">window_start</span><span class="p">:</span><span class="n">window_end</span><span class="p">]</span>
+                    <span class="c1"># Use numpy&#39;s correlate for autocorrelation</span>
+                    <span class="n">autocorr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">corrcoef</span><span class="p">(</span><span class="n">window_data</span><span class="p">[:</span><span class="o">-</span><span class="n">lag</span><span class="p">],</span> <span class="n">window_data</span><span class="p">[</span><span class="n">lag</span><span class="p">:])[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">autocorr</span><span class="p">):</span>
+                        <span class="n">autocorr_values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">autocorr</span>
+
+            <span class="n">features</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;kalman_autocorr_lag</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">autocorr_values</span>
+
+    <span class="c1"># Filter confidence - vectorized</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="n">error_estimates</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_confidence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">confidence</span>
+
+    <span class="c1"># Tracking error (deviation from estimate)</span>
+    <span class="n">close_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+    <span class="n">tracking_error</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">close_values</span> <span class="o">-</span> <span class="n">estimates</span><span class="p">)</span> <span class="o">/</span> <span class="n">close_values</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_tracking_error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tracking_error</span>
+
+    <span class="c1"># Innovation (prediction error)</span>
+    <span class="n">innovation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="n">residuals</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_innovation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">innovation</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_innovation_abs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">innovation</span><span class="p">)</span>
+
+    <span class="c1"># Filter adaptation signals</span>
+    <span class="n">adaptation_signal</span> <span class="o">=</span> <span class="n">error_estimates</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">error_estimates</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_adaptation_signal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adaptation_signal</span>
+
+    <span class="c1"># High residual periods (potential regime changes)</span>
+    <span class="n">residual_threshold</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">residuals</span><span class="p">),</span> <span class="mi">90</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_high_residual&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">residual_threshold</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+        <span class="nb">int</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Trend consistency with filter</span>
+    <span class="n">price_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+    <span class="n">price_trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">price_values</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="n">price_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">filter_trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">estimates</span><span class="p">[</span><span class="mi">0</span><span class="p">]])))</span>
+    <span class="c1"># Ensure both arrays are the same length as data</span>
+    <span class="n">min_len</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">price_trend</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">filter_trend</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">))</span>
+    <span class="n">price_trend</span> <span class="o">=</span> <span class="n">price_trend</span><span class="p">[:</span><span class="n">min_len</span><span class="p">]</span>
+    <span class="n">filter_trend</span> <span class="o">=</span> <span class="n">filter_trend</span><span class="p">[:</span><span class="n">min_len</span><span class="p">]</span>
+    <span class="n">trend_agreement</span> <span class="o">=</span> <span class="p">(</span><span class="n">price_trend</span> <span class="o">==</span> <span class="n">filter_trend</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_trend_agreement&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trend_agreement</span>
+
+    <span class="c1"># Filter divergence</span>
+    <span class="n">price_change</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+    <span class="n">estimate_change</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+    <span class="n">divergence</span> <span class="o">=</span> <span class="n">price_change</span> <span class="o">-</span> <span class="n">estimate_change</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_divergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">divergence</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_divergence_abs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">divergence</span><span class="p">))</span>
+
+    <span class="c1"># Multi-step ahead prediction error</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="c1"># Simple 5-step ahead prediction using current estimate + trend</span>
+        <span class="n">trend_5step</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+        <span class="n">prediction_5step</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">estimates</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span> <span class="o">+</span> <span class="n">trend_5step</span>
+        <span class="n">actual_5step</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">prediction_error_5step</span> <span class="o">=</span> <span class="n">actual_5step</span> <span class="o">-</span> <span class="n">prediction_5step</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_prediction_error_5step&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">prediction_error_5step</span><span class="p">)</span>
+
+    <span class="c1"># Volatility-adjusted residuals</span>
+    <span class="n">volatility</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">residual_window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_vol_adj&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">residual_series</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">volatility</span><span class="p">)</span>
+
+    <span class="c1"># Residual momentum</span>
+    <span class="n">residual_momentum</span> <span class="o">=</span> <span class="n">residual_series</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_momentum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">residual_momentum</span><span class="p">)</span>
+
+    <span class="c1"># Create result DataFrame</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Fill NaN values (forward fill only to avoid masking data issues)</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">result_df</span><span class="o">.</span><span class="n">ffill</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">result_df</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_kalman_signals">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.calculate_kalman_signals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_kalman_signals</span><span class="p">(</span>
+    <span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">confidence_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
+    <span class="n">residual_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate trading signals from extended Kalman features</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        extended_features: Output from calculate_kalman_extended</span>
+<span class="sd">        confidence_threshold: Minimum confidence for signal generation</span>
+<span class="sd">        residual_threshold: Threshold for high residual detection</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with trading signals</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># High confidence trend following</span>
+    <span class="n">high_confidence</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_confidence&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">confidence_threshold</span>
+    <span class="n">trend_up</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_divergence&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.005</span>
+    <span class="n">trend_down</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_divergence&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.005</span>
+
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_confident_bullish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">high_confidence</span> <span class="o">&amp;</span> <span class="n">trend_up</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_confident_bearish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">high_confidence</span> <span class="o">&amp;</span> <span class="n">trend_down</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Mean reversion based on residuals</span>
+    <span class="n">high_positive_residual</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">residual_threshold</span>
+    <span class="p">)</span>
+    <span class="n">high_negative_residual</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual_normalized&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">residual_threshold</span>
+    <span class="p">)</span>
+
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_mean_revert_sell&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">high_positive_residual</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_mean_revert_buy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">high_negative_residual</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Regime change detection</span>
+    <span class="n">regime_change</span> <span class="o">=</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_high_residual&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_trend_agreement&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span>
+    <span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_regime_change&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">regime_change</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Filter breakout (when price consistently deviates from filter)</span>
+    <span class="n">consistent_deviation</span> <span class="o">=</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_tracking_error&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.02</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_trend_agreement&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_breakout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">consistent_deviation</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Autocorrelation-based signals</span>
+    <span class="k">if</span> <span class="s2">&quot;kalman_autocorr_lag1&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">low_autocorr</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_autocorr_lag1&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">0.1</span>
+        <span class="p">)</span>  <span class="c1"># White noise residuals</span>
+        <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;kalman_low_autocorr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">low_autocorr</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">signals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">extended_features</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="generate_synthetic_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.generate_synthetic_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_synthetic_data</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate synthetic OHLCV data with regime changes.&quot;&quot;&quot;</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+    <span class="n">base_price</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">trend1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>  <span class="c1"># Low vol</span>
+    <span class="n">trend2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.002</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>  <span class="c1"># High vol</span>
+    <span class="n">trend3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="o">-</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.015</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>  <span class="c1"># Medium vol, down trend</span>
+    <span class="n">combined_trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">trend1</span><span class="p">,</span> <span class="n">trend2</span><span class="p">,</span> <span class="n">trend3</span><span class="p">])</span>
+    <span class="n">close_prices</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">combined_trend</span><span class="p">)</span>
+    <span class="n">high_mult</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">,</span> <span class="mi">300</span><span class="p">))</span>
+    <span class="n">low_mult</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">,</span> <span class="mi">300</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.995</span><span class="p">,</span> <span class="mf">1.005</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+            <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">high_mult</span><span class="p">,</span>
+            <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">low_mult</span><span class="p">,</span>
+            <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">close_prices</span><span class="p">,</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span></div>
+
+
+
+<div class="viewcode-block" id="print_feature_info">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.print_feature_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_feature_info</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing Kalman Extended Features...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data shape: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Price range: </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Extended features shape: </span><span class="si">{</span><span class="n">extended_features</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature columns (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="print_signal_info">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.print_signal_info">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_signal_info</span><span class="p">(</span><span class="n">signals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Signals shape: </span><span class="si">{</span><span class="n">signals</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Signal counts:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">signals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">signal_count</span> <span class="o">=</span> <span class="n">signals</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">signal_count</span><span class="si">}</span><span class="s2"> signals&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="print_residual_analysis">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.print_residual_analysis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_residual_analysis</span><span class="p">(</span><span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_residual&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Residual analysis:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Mean: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Std: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Skewness: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># type: ignore[str-bytes-safe]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Kurtosis: </span><span class="si">{</span><span class="n">residuals</span><span class="o">.</span><span class="n">kurt</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>  <span class="c1"># type: ignore[str-bytes-safe]</span></div>
+
+
+
+<div class="viewcode-block" id="print_autocorr_analysis">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.print_autocorr_analysis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_autocorr_analysis</span><span class="p">(</span><span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="s2">&quot;kalman_autocorr_lag1&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">autocorr_1</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;kalman_autocorr_lag1&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Lag-1 autocorr mean: </span><span class="si">{</span><span class="n">autocorr_1</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Lag-1 autocorr std: </span><span class="si">{</span><span class="n">autocorr_1</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.volatility.html#ztb.features.volatility.kalman_ext.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">generate_synthetic_data</span><span class="p">()</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_kalman_extended</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">process_variance</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span> <span class="n">measurement_variance</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">residual_window</span><span class="o">=</span><span class="mi">20</span>
+    <span class="p">)</span>
+    <span class="n">print_feature_info</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">extended_features</span><span class="p">)</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="n">calculate_kalman_signals</span><span class="p">(</span><span class="n">extended_features</span><span class="p">)</span>
+    <span class="n">print_signal_info</span><span class="p">(</span><span class="n">signals</span><span class="p">)</span>
+    <span class="n">print_residual_analysis</span><span class="p">(</span><span class="n">extended_features</span><span class="p">)</span>
+    <span class="n">print_autocorr_analysis</span><span class="p">(</span><span class="n">extended_features</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Kalman extended features test completed successfully!&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

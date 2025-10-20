@@ -1,0 +1,567 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P2実装ノート：学習コスト管理とリーク耐性強化 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="run_training.py 修正完了 - v3.6.2" href="RUN_TRAINING_FIX_SUMMARY.html" />
+    <link rel="prev" title="P1実装サマリー：1M学習前の品質向上施策" href="P1_IMPLEMENTATION_SUMMARY.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Implementation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="P0_IMPLEMENTATION_SUMMARY.html">P0実装完了サマリー（手戻り防止・地雷埋め戻し）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="P1_IMPLEMENTATION_SUMMARY.html">P1実装サマリー：1M学習前の品質向上施策</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">P2実装ノート：学習コスト管理とリーク耐性強化</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">実装日時</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#p2-7-gc-artifacts-py-checkpoint-keep">P2-7: gc_artifacts.py（Checkpoint Keep）✅ 完了</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id2">問題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">解決策</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ztb-training-callbacks-py">ztb/training/callbacks.py統合</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">検証結果</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id8">達成効果</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#p2-8-spread-min-tick-min-qty-todo">P2-8: マイクロ構造（spread/min_tick/min_qty）📋 TODO</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">問題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">解決策案</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">保留理由</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#p2-9-todo">P2-9: リーク耐性テスト 📋 TODO</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id15">問題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">解決策案</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">保留理由</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#p2-10-todo">P2-10: モデルカード自動生成 📋 TODO</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id21">問題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id22">解決策案</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id24">保留理由</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id25">今後の優先順位</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id26">即座に実施可能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#m">中期タスク（1M学習前推奨）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id27">推奨実施順序</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id28">まとめ</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="RUN_TRAINING_FIX_SUMMARY.html">run_training.py 修正完了 - v3.6.2</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Implementation</a></li>
+      <li class="breadcrumb-item active">P2実装ノート：学習コスト管理とリーク耐性強化</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/implementation/P2_IMPLEMENTATION_NOTES.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="p2">
+<h1>P2実装ノート：学習コスト管理とリーク耐性強化<a class="headerlink" href="#p2" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>実装日時<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>日付</strong>: 2025年10月7日</p></li>
+<li><p><strong>P2-7実装時間</strong>: 約20分</p></li>
+<li><p><strong>残タスク</strong>: P2-8（マイクロ構造）、P2-9（リーク耐性テスト）、P2-10（モデルカード）</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="p2-7-gc-artifacts-py-checkpoint-keep">
+<h2>P2-7: gc_artifacts.py（Checkpoint Keep）✅ 完了<a class="headerlink" href="#p2-7-gc-artifacts-py-checkpoint-keep" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>問題<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>1M学習 = 25k間隔で約40個のcheckpoint生成</p></li>
+<li><p>1checkpoint = 約50-100MB → 総2-4GB のディスク消費</p></li>
+<li><p>自動削除なしでディスク圧迫リスク</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>解決策<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p><strong>scripts/gc_artifacts.py</strong>（約380行）を作成:</p>
+<section id="id4">
+<h4>保持ポリシー<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Last N checkpoints (最新N個保持)</span>
+<span class="n">keep_last</span> <span class="o">=</span> <span class="mi">4</span>  <span class="c1"># デフォルト: 最新100k steps分</span>
+
+<span class="c1"># Best M by Sharpe ratio (高Sharpe上位M個保持)</span>
+<span class="n">keep_best</span> <span class="o">=</span> <span class="mi">3</span>  <span class="c1"># デフォルト: ベスト3個</span>
+
+<span class="c1"># TTL (Time To Live)</span>
+<span class="n">ttl_days</span> <span class="o">=</span> <span class="mi">14</span>  <span class="c1"># デフォルト: 14日以内のものは保持</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h4>主要機能<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>Checkpoint スキャン</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">checkpoint_25000.zip</span></code> または <code class="docutils literal notranslate"><span class="pre">checkpoint_25000/</span></code> をスキャン</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> からSharpe ratio抽出</p></li>
+<li><p>ファイルサイズ、タイムスタンプ取得</p></li>
+</ul>
+</li>
+<li><p><strong>保持マーキング</strong>:</p>
+<ul class="simple">
+<li><p>最新N個をマーク (<code class="docutils literal notranslate"><span class="pre">keep_last</span></code>)</p></li>
+<li><p>高Sharpe上位M個をマーク (<code class="docutils literal notranslate"><span class="pre">keep_best</span></code>)</p></li>
+<li><p>TTL以内をマーク (<code class="docutils literal notranslate"><span class="pre">ttl_days</span></code>)</p></li>
+</ul>
+</li>
+<li><p><strong>安全削除</strong>:</p>
+<ul class="simple">
+<li><p>マークされていないcheckpointのみ削除</p></li>
+<li><p>Dry-runモード対応（<code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>）</p></li>
+<li><p>削除失敗時も学習継続（保守的設計）</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id6">
+<h4>使用例<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Dry-run（削除内容確認）</span>
+python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_C_1M<span class="w"> </span>--dry-run
+
+<span class="c1"># 実行</span>
+python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_C_1M
+
+<span class="c1"># カスタム設定</span>
+python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_C_1M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--keep-last<span class="w"> </span><span class="m">6</span><span class="w"> </span>--keep-best<span class="w"> </span><span class="m">5</span><span class="w"> </span>--ttl-days<span class="w"> </span><span class="m">21</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="ztb-training-callbacks-py">
+<h3>ztb/training/callbacks.py統合<a class="headerlink" href="#ztb-training-callbacks-py" title="Link to this heading"></a></h3>
+<p><strong>CheckpointGCCallback</strong>（約90行）を追加:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">CheckpointGCCallback</span>
+
+<span class="n">gc_callback</span> <span class="o">=</span> <span class="n">CheckpointGCCallback</span><span class="p">(</span>
+    <span class="n">checkpoint_dir</span><span class="o">=</span><span class="s2">&quot;checkpoints/ensemble_C_1M&quot;</span><span class="p">,</span>
+    <span class="n">keep_last</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">keep_best</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">ttl_days</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span>
+    <span class="n">check_interval</span><span class="o">=</span><span class="mi">25000</span><span class="p">,</span>  <span class="c1"># 25k毎に自動GC</span>
+<span class="p">)</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="mi">1_000_000</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">gc_callback</span><span class="p">)</span>
+</pre></div>
+</div>
+<section id="gc">
+<h4>自動GC実行タイミング<a class="headerlink" href="#gc" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>チェックポイント保存後、25k間隔で自動実行</p></li>
+<li><p>学習を中断せずバックグラウンドで削除</p></li>
+<li><p>GC失敗時もログ出力のみで学習継続</p></li>
+</ul>
+</section>
+</section>
+<section id="id7">
+<h3>検証結果<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ scripts/gc_artifacts.py: 構文チェックPASS</p></li>
+<li><p>✅ ztb/training/callbacks.py: 構文チェックPASS</p></li>
+<li><p>✅ CheckpointGCCallback統合完了</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>達成効果<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ディスク節約</strong>: 40checkpoints → 4-7checkpoints（約85%削減）</p></li>
+<li><p><strong>自動化</strong>: 手動削除不要、25k毎に自動クリーンアップ</p></li>
+<li><p><strong>安全性</strong>: 保守的削除（エラー時は保持）、Dry-runモード対応</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="p2-8-spread-min-tick-min-qty-todo">
+<h2>P2-8: マイクロ構造（spread/min_tick/min_qty）📋 TODO<a class="headerlink" href="#p2-8-spread-min-tick-min-qty-todo" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>問題<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>現在の取引コストモデル: 固定スリッページ（0.1%）のみ</p></li>
+<li><p>実環境では: スプレッド、最小呼値、最小取引量、可変スリッページ</p></li>
+<li><p>学習時の簡略化 ≠ 実運用での複雑性 → Sim-to-real gap</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>解決策案<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p><strong>ztb/trading/environment.py強化</strong>（約150行追加予定）:</p>
+<section id="id11">
+<h4>マイクロ構造パラメータ<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MicrostructureConfig</span><span class="p">:</span>
+    <span class="c1"># Spread (買値-売値差)</span>
+    <span class="n">base_spread_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># 0.05% base spread</span>
+    
+    <span class="c1"># Minimum tick (最小呼値)</span>
+    <span class="n">min_tick</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># BTC/JPY: 1円単位</span>
+    
+    <span class="c1"># Minimum quantity (最小取引量)</span>
+    <span class="n">min_qty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># BTC: 0.001 BTC</span>
+    
+    <span class="c1"># Variable slippage (可変スリッページ)</span>
+    <span class="n">slip_base_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># 0.02% base</span>
+    <span class="n">slip_atr_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># ATR係数</span>
+    <span class="c1"># slip = max(base, k * ATR)</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h4>取引実行ロジック<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">execute_order</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">quantity</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="c1"># 1. Spread適用</span>
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">BUY</span><span class="p">:</span>
+        <span class="n">price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ask_price</span>  <span class="c1"># 買値 = mid + spread/2</span>
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">SELL</span><span class="p">:</span>
+        <span class="n">price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bid_price</span>  <span class="c1"># 売値 = mid - spread/2</span>
+    
+    <span class="c1"># 2. Min tick丸め</span>
+    <span class="n">price</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">price</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_tick</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_tick</span>
+    
+    <span class="c1"># 3. Min quantity チェック</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">quantity</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_qty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># 最小量未満は約定しない</span>
+    
+    <span class="c1"># 4. Variable slippage</span>
+    <span class="n">atr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_atr</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+    <span class="n">slip</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slip_base_bps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slip_atr_coef</span> <span class="o">*</span> <span class="n">atr</span><span class="p">)</span>
+    
+    <span class="c1"># 5. 最終約定価格</span>
+    <span class="n">executed_price</span> <span class="o">=</span> <span class="n">price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">slip</span><span class="o">/</span><span class="mi">10000</span> <span class="o">*</span> <span class="n">sign</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">executed_price</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h4>テストケース<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<p><strong>tests/trading/test_microstructure.py</strong>（約150行予定）:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_spread_application</span><span class="p">():</span>
+    <span class="c1"># Spread適用で買値 &gt; 売値を確認</span>
+    
+<span class="k">def</span><span class="w"> </span><span class="nf">test_min_tick_rounding</span><span class="p">():</span>
+    <span class="c1"># 最小呼値で価格が丸められることを確認</span>
+    
+<span class="k">def</span><span class="w"> </span><span class="nf">test_min_qty_rejection</span><span class="p">():</span>
+    <span class="c1"># 最小量未満の注文が約定しないことを確認</span>
+    
+<span class="k">def</span><span class="w"> </span><span class="nf">test_variable_slippage</span><span class="p">():</span>
+    <span class="c1"># ATR高時にスリッページが増加することを確認</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id14">
+<h3>保留理由<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="http://environment.py">environment.py</a> の取引ロジック全面改修が必要（約200行）</p></li>
+<li><p>既存の <code class="docutils literal notranslate"><span class="pre">cost_gate</span></code> との整合性確認が必要</p></li>
+<li><p>P0/P1の優先度高、時間制約により保留</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="p2-9-todo">
+<h2>P2-9: リーク耐性テスト 📋 TODO<a class="headerlink" href="#p2-9-todo" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>問題<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>特徴量に未来情報が混入している可能性</p></li>
+<li><p>Look-ahead bias, data leakage → 実環境で性能劣化</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>解決策案<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<p><strong>tests/property/test_leak_guards.py</strong>（約250行予定）:</p>
+<section id="id17">
+<h4>テスト1: 時間シフトテスト<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_time_shift_sharpe_degradation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量を1期ずらすとSharpeが悪化するか&quot;&quot;&quot;</span>
+    <span class="c1"># Original features</span>
+    <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    
+    <span class="c1"># Shift features by 1 period</span>
+    <span class="n">features_shifted</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">sharpe_shifted</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">features_shifted</span><span class="p">)</span>
+    
+    <span class="c1"># Assert: Shifted should degrade</span>
+    <span class="k">assert</span> <span class="n">sharpe_shifted</span> <span class="o">&lt;</span> <span class="n">sharpe_original</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;Time shift should degrade Sharpe&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id18">
+<h4>テスト2: シャッフルテスト<a class="headerlink" href="#id18" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_shuffle_sharpe_collapse</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;時系列シャッフルでSharpeが崩壊するか&quot;&quot;&quot;</span>
+    <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    
+    <span class="c1"># Shuffle time series</span>
+    <span class="n">df_shuffled</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">sharpe_shuffled</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df_shuffled</span><span class="p">)</span>
+    
+    <span class="c1"># Assert: Shuffle should collapse Sharpe</span>
+    <span class="k">assert</span> <span class="n">sharpe_shuffled</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;Shuffle should collapse Sharpe to negative&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h4>テスト3: 重複行テスト<a class="headerlink" href="#id19" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_duplicate_rows_overfitting</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;重複行追加で過学習しないか&quot;&quot;&quot;</span>
+    <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    
+    <span class="c1"># Duplicate 10% of rows</span>
+    <span class="n">df_dup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sharpe_dup</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df_dup</span><span class="p">)</span>
+    
+    <span class="c1"># Assert: Should not overfit</span>
+    <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sharpe_dup</span> <span class="o">-</span> <span class="n">sharpe_original</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;Duplicate should not overfit&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id20">
+<h3>保留理由<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>各テストで学習実行 → 約10-15分/テスト</p></li>
+<li><p>総テスト時間 = 30-45分（時間制約により保留）</p></li>
+<li><p>P0/P1完了後の継続タスク</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="p2-10-todo">
+<h2>P2-10: モデルカード自動生成 📋 TODO<a class="headerlink" href="#p2-10-todo" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>問題<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>モデル設定、性能、再現性情報が散在</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">manifest.json</span></code> 手動作成 → 人為ミスリスク</p></li>
+<li><p>MLOps best practice（モデルカード）未整備</p></li>
+</ul>
+</section>
+<section id="id22">
+<h3>解決策案<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<p><strong>scripts/generate_model_card.py</strong>（約200行予定）:</p>
+<section id="id23">
+<h4>機能<a class="headerlink" href="#id23" title="Link to this heading"></a></h4>
+<ol class="arabic">
+<li><p><strong>manifest.json読み込み</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">manifest</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;model_id&quot;</span><span class="p">:</span> <span class="s2">&quot;ensemble_C_1M_25000&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="s2">&quot;2025-10-07T10:30:00Z&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{</span><span class="o">...</span><span class="p">},</span>
+    <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">1.23</span><span class="p">,</span>
+        <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.15</span><span class="p">,</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>Markdown生成</strong>:</p>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="gh"># Model Card: ensemble_C_1M_25000</span>
+
+<span class="gu">## Model Details</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**Model ID**</span>: ensemble_C_1M_25000
+<span class="k">-</span><span class="w"> </span><span class="gs">**Timestamp**</span>: 2025-10-07 10:30:00 UTC
+<span class="k">-</span><span class="w"> </span><span class="gs">**Training Steps**</span>: 25,000
+
+<span class="gu">## Performance Metrics</span>
+<span class="k">-</span><span class="w"> </span><span class="gs">**Sharpe Ratio**</span>: 1.23
+<span class="k">-</span><span class="w"> </span><span class="gs">**Max Drawdown**</span>: -15.0%
+<span class="k">-</span><span class="w"> </span><span class="gs">**Win Rate**</span>: 52.3%
+
+<span class="gu">## Configuration</span>
+```yaml
+learning_rate: 0.0003
+gamma: 0.99
+ent_coef: 0.01
+</pre></div>
+</div>
+<p class="rubric" id="reproducibility">Reproducibility</p>
+<ul class="simple">
+<li><p><strong>Data Version</strong>: v2.3.1</p></li>
+<li><p><strong>Seed</strong>: 42</p></li>
+<li><p><strong>Normalization</strong>: stats_v1.pkl</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</li>
+<li><p><strong>使用例</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/generate_model_card.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--checkpoint-dir<span class="w"> </span>checkpoints/ensemble_C_1M<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>model_cards/
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+</section>
+<section id="id24">
+<h3>保留理由<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>P0/P1優先、時間制約により保留</p></li>
+<li><p>manifest.json構造確定後に実装推奨</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>今後の優先順位<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>即座に実施可能<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <strong>P2-7（gc_artifacts）</strong>: 完了</p></li>
+</ul>
+</section>
+<section id="m">
+<h3>中期タスク（1M学習前推奨）<a class="headerlink" href="#m" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>📋 <strong>P2-8（マイクロ構造）</strong>: environment.py改修必要（約3-4時間）</p></li>
+<li><p>📋 <strong>P2-9（リーク耐性テスト）</strong>: 学習実行必要（約1-2時間）</p></li>
+<li><p>📋 <strong>P2-10（モデルカード）</strong>: 実装容易（約1時間）</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>推奨実施順序<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>P0（完了） → P1（完了） → <strong>P2-7（完了）</strong> → 1M学習開始</p></li>
+<li><p>1M学習中に並行してP2-8, P2-9, P2-10実装</p></li>
+<li><p>1M学習完了後、P2-8, P2-9でモデル検証</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id28">
+<h2>まとめ<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<p>P2-7（gc_artifacts）実装により、1M学習のディスク管理問題を解決しました:</p>
+<ul class="simple">
+<li><p>✅ <strong>scripts/gc_artifacts.py</strong>: 約380行、Checkpoint自動削除機能</p></li>
+<li><p>✅ <strong>ztb/training/callbacks.py</strong>: CheckpointGCCallback追加（約90行）</p></li>
+<li><p>✅ <strong>構文チェック</strong>: 全PASS</p></li>
+<li><p>✅ <strong>達成効果</strong>: ディスク85%削減、自動化、保守的削除</p></li>
+</ul>
+<p><strong>残タスク</strong>: P2-8（マイクロ構造）、P2-9（リーク耐性テスト）、P2-10（モデルカード）
+<strong>推奨</strong>: P0+P1+P2-7完了で1M学習開始可能、残P2タスクは並行実装</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="P1_IMPLEMENTATION_SUMMARY.html" class="btn btn-neutral float-left" title="P1実装サマリー：1M学習前の品質向上施策" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="RUN_TRAINING_FIX_SUMMARY.html" class="btn btn-neutral float-right" title="run_training.py 修正完了 - v3.6.2" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

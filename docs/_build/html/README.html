@@ -1,0 +1,1410 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaif Trade Bot (exchange-agnostic) &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Zaif Trade Bot (exchange-agnostic)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="zaif-trade-bot-exchange-agnostic">
+<h1>Zaif Trade Bot (exchange-agnostic)<a class="headerlink" href="#zaif-trade-bot-exchange-agnostic" title="Link to this heading"></a></h1>
+<section id="unified-trainer">
+<h2>🚀 クイックスタート - Unified Trainer<a class="headerlink" href="#unified-trainer" title="Link to this heading"></a></h2>
+<p><strong>推奨</strong>: 学習にはUnified Trainerを使用してください。旧スクリプト（<code class="docutils literal notranslate"><span class="pre">run_smoke_test.py</span></code>等）は非推奨です。</p>
+<section id="id1">
+<h3>基本的な使い方<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. 設定ファイルの検証（ドライラン）</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_100k_optimized.json<span class="w"> </span>--dry-run
+
+<span class="c1"># 2. トレーニング実行</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_100k_optimized.json<span class="w"> </span>--force
+
+<span class="c1"># 3. アルゴリズムを変更する場合</span>
+-<span class="w"> </span>**学習/環境**:<span class="w"> </span>ztb/training/（Unified<span class="w"> </span>Trainer、PPO、コールバック、評価）
+<span class="w">  </span>-<span class="w"> </span><span class="sb">`</span>trainers/<span class="sb">`</span><span class="w"> </span>-<span class="w"> </span>専門トレーナー（SELLBiasMitigationPPOTrainer等）
+<span class="w">  </span>-<span class="w"> </span><span class="sb">`</span>callbacks_lib/<span class="sb">`</span><span class="w"> </span>-<span class="w"> </span>トレーニングコールバック（SELLBiasMitigationCallback等）
+<span class="w">  </span>-<span class="w"> </span><span class="sb">`</span>optimization/<span class="sb">`</span><span class="w"> </span>-<span class="w"> </span>ハイパーパラメータ最適化ツール
+<span class="w">  </span>-<span class="w"> </span><span class="sb">`</span>unified_trainer.py<span class="sb">`</span><span class="w"> </span>-<span class="w"> </span>メインのトレーニングオーケストレータ
+<span class="w">  </span>→<span class="w"> </span>詳細:<span class="w"> </span><span class="o">[</span>ztb/training/README.md<span class="o">](</span>./ztb/training/README.md<span class="o">)</span>
+-<span class="w"> </span>**設定ファイル**:<span class="w"> </span>configs/training/（JSONベースの学習設定）
+<span class="w">  </span>-<span class="w"> </span><span class="sb">`</span>ppo_100k_optimized.json<span class="sb">`</span><span class="w"> </span>-<span class="w"> </span>100kステップ最適化済み設定
+<span class="w">  </span>-<span class="w"> </span>カスタム設定を追加可能
+-<span class="w"> </span>**データ**:<span class="w"> </span>ztb/data/（ストリーミング、バッファ、バリデーション）
+<span class="w">  </span>→<span class="w"> </span>詳細:<span class="w"> </span><span class="o">[</span>ztb/data/README.md<span class="o">](</span>./ztb/data/README.md<span class="o">)</span>
+-<span class="w"> </span>**ユーティリティ**:<span class="w"> </span>ztb/util/（テスト支援、設定、観測、スキーマ等）
+<span class="w">  </span>→<span class="w"> </span>詳細:<span class="w"> </span><span class="o">[</span>ztb/util/README.md<span class="o">](</span>./ztb/util/README.md<span class="o">)</span>
+-<span class="w"> </span>**非推奨スクリプト**:<span class="w"> </span>_deprecated/（旧トレーニングスクリプト）
+<span class="w">  </span>-<span class="w"> </span>移行ガイド:<span class="w"> </span><span class="o">[</span>_deprecated/README.md<span class="o">](</span>./_deprecated/README.md<span class="o">)</span>
+-<span class="w"> </span>**開発者向け**:<span class="w"> </span>アーキテクチャ/セットアップ/テスト
+<span class="w">  </span>→<span class="w"> </span>詳細:<span class="w"> </span><span class="o">[</span>docs/contributing/architecture.md<span class="o">](</span>./docs/contributing/architecture.md<span class="o">)</span>,
+<span class="w">           </span><span class="o">[</span>docs/contributing/setup.md<span class="o">](</span>./docs/contributing/setup.md<span class="o">)</span>,
+<span class="w">           </span><span class="o">[</span>docs/contributing/testing.md<span class="o">](</span>./docs/contributing/testing.md<span class="o">)</span>_training.py<span class="w"> </span>--config<span class="w"> </span>my_config.json<span class="w"> </span>--algorithm<span class="w"> </span>curriculum
+</pre></div>
+</div>
+</section>
+<section id="id2">
+<h3>設定ファイルの例<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>最適化済みパラメータを使用した100kステップのトレーニング:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;data_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nt">&quot;_comment&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;最適化されたPPOハイパーパラメータ&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.009375625</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.895</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1408</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.02575</span><span class="p">,</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nt">&quot;_comment&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;SELL bias mitigation&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enable_sell_mitigation&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enable_lagrange&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_r_target&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.175</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_tolerance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.042625</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_eta&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.062875</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_lambda_max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.875</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_warmup_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3874</span><span class="p">,</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nt">&quot;checkpoint_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;checkpoints/ppo_100k_optimized&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;models&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3>Unified Trainerの利点<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <strong>統一されたインターフェース</strong>: 全てのアルゴリズム（PPO, Curriculum, Ensemble）を単一のエントリーポイントから実行</p></li>
+<li><p>✅ <strong>設定ファイルベース</strong>: JSONで全パラメータを管理、バージョン管理が容易</p></li>
+<li><p>✅ <strong>保守性</strong>: バグ修正とテストが一箇所に集約</p></li>
+<li><p>✅ <strong>拡張性</strong>: 新しいアルゴリズムや機能を簡単に追加可能</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>サポートされているアルゴリズム<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>アルゴリズム</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>設定例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ppo</span></code></p></td>
+<td><p>標準PPOトレーニング</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">configs/training/ppo_100k_optimized.json</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">curriculum</span></code></p></td>
+<td><p>カリキュラム学習（段階的難易度）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">configs/training/curriculum.json</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ensemble</span></code></p></td>
+<td><p>アンサンブルモデル学習</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">configs/training/ensemble.json</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>旧スクリプトからの移行<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>旧スクリプトは<code class="docutils literal notranslate"><span class="pre">_deprecated/</span></code>ディレクトリに移動しました。移行ガイドは<a class="reference internal" href="#./_deprecated/README.md"><span class="xref myst">こちら</span></a>を参照してください。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>環境仕様<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="id7">
+<h3>✅ 解決した課題<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数の基本設計</strong>: ステップ単位PnL + ATR正規化 + アクション考慮の報酬関数を実装</p></li>
+<li><p><strong>reward_scaling最適化</strong>: 二分探索で6.0を最適値として最適値として特定（71.10%リターン達成）</p></li>
+<li><p><strong>PPOハイパーパラメータ最適化</strong>: learning_rate=5e-4, gamma=0.95, gae_lambda=0.8などの最適値を特定</p></li>
+<li><p><strong>評価フレームワーク構築</strong>: comprehensive_benchmark.py, ablation_study.py, trade_analysis.pyなどのモジュールを実装</p></li>
+<li><p><strong>特徴量計算最適化</strong>: FeatureRegistryの構築とパフォーマンスプロファイリング</p></li>
+<li><p><strong>トレーニングインフラ整備</strong>: unified_trainer.pyと設定ファイルの統合</p></li>
+<li><p><strong>型安全性向上</strong>: mypyエラーを237個から154個に削減（35%改善）、cast()使用による安全な型変換、設定キャッシュ機能の実装、Phase 1-4の包括的なコード品質改善計画完了（ドキュメンテーション、型安全性、インターフェース統一）</p></li>
+<li><p><strong>Ta-Lib統合</strong>: 高性能テクニカル指標ライブラリの統合により、SMA/EMA/RSI/MACDなどの計算が高速化</p></li>
+<li><p><strong>共通ユーティリティ拡充</strong>: データ検証、型定義、設定管理などの再利用可能なユーティリティを整備</p></li>
+<li><p><strong>系統統合テスト</strong>: エンドツーエンドの動作を検証する包括的なテストスイートを実装運用を見据えた、<strong>強化学習 + バックテスト + ペーパートレード</strong>一体型の取引基盤。
+リポジトリ名に”Zaif”を含みますが、**取引所非依存（Zaif/Coincheck 等を切替可能）**な</p></li>
+</ul>
+</section>
+</section>
+<section id="id8">
+<h2>環境仕様<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="heavytradingenv">
+<h3>HeavyTradingEnv の設計原則<a class="headerlink" href="#heavytradingenv" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>ショート対応・常時ドテン設計</strong></p>
+<ul class="simple">
+<li><p>Position states: <code class="docutils literal notranslate"><span class="pre">-1.0</span></code> (short), <code class="docutils literal notranslate"><span class="pre">0.0</span></code> (neutral), <code class="docutils literal notranslate"><span class="pre">+1.0</span></code> (long)</p></li>
+<li><p><strong>BUY action</strong>: Opens long OR closes short position</p></li>
+<li><p><strong>SELL action</strong>: Closes long + Opens short position (always flip)</p></li>
+<li><p><strong>Critical</strong>: Both BUY and SELL are <strong>legal at <code class="docutils literal notranslate"><span class="pre">position=0</span></code></strong></p></li>
+<li><p>HOLD action: Maintains current position</p></li>
+</ul>
+</li>
+<li><p><strong>Action Masking (合法性判定)</strong></p>
+<ul class="simple">
+<li><p>Position-dependent legal actions:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">=</span> <span class="pre">-1.0</span></code> (short): BUY, HOLD legal; SELL masked</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">=</span> <span class="pre">0.0</span></code> (neutral): <strong>BUY, SELL, HOLD all legal</strong></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">=</span> <span class="pre">+1.0</span></code> (long): SELL, HOLD legal; BUY masked</p></li>
+</ul>
+</li>
+<li><p>Illegal actions are masked during inference (should never be selected)</p></li>
+</ul>
+</li>
+<li><p><strong>評価KPI (Legal Action率)</strong></p>
+<ul class="simple">
+<li><p><strong>ポジション依存の指標を使用すること</strong></p></li>
+<li><p>誤: Global SELL rate (denominator includes states where SELL is masked)</p></li>
+<li><p>正: “SELL execution rate when <code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">≥</span> <span class="pre">0</span></code>” (only legal states)</p></li>
+<li><p>Example: <code class="docutils literal notranslate"><span class="pre">SELL_count</span> <span class="pre">/</span> <span class="pre">steps_where_SELL_legal</span> <span class="pre">≥</span> <span class="pre">15%</span></code> target</p></li>
+</ul>
+</li>
+<li><p><strong>Paper Trading 必須要件</strong></p>
+<ul class="simple">
+<li><p>Minimum data length: <strong>100+ steps</strong></p></li>
+<li><p>Warmup period: First <strong>50 steps excluded</strong> from metrics (technical indicators need history)</p></li>
+<li><p>Schema validation: <code class="docutils literal notranslate"><span class="pre">features_schema.json</span></code> must match training</p></li>
+<li><p>Scaler loading: Normalization statistics mandatory</p></li>
+<li><p>Config fingerprint: Environment settings must match training</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="features">
+<h2>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>✅ 解決した課題<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>報酬関数の基本設計</strong>: ステップ単位PnL + ATR正規化 + アクション考慮の報酬関数を実装</p></li>
+<li><p><strong>reward_scaling最適化</strong>: 二分探索で6.0を最適値として特定（71.10%リターン達成）</p></li>
+<li><p><strong>PPOハイパーパラメータ最適化</strong>: learning_rate=5e-4, gamma=0.95, gae_lambda=0.8などの最適値を特定</p></li>
+<li><p><strong>評価フレームワーク構築</strong>: comprehensive_benchmark.py, ablation_study.py, trade_analysis.pyなどのモジュールを実装</p></li>
+<li><p><strong>特徴量計算最適化</strong>: FeatureRegistryの構築とパフォーマンスプロファイリング</p></li>
+<li><p><strong>トレーニングインフラ整備</strong>: unified_trainer.pyと設定ファイルの統合</p></li>
+<li><p><strong>型安全性向上</strong>: mypyエラーを237個から154個に削減（35%改善）、cast()使用による安全な型変換、設定キャッシュ機能の実装</p></li>
+</ul>
+<section id="id10">
+<h4>型安全性向上の詳細<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<p>実施内容:</p>
+<ul class="simple">
+<li><p>mypyの段階的実行で問題パターンを分類し、不要な <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">type:</span> <span class="pre">ignore</span></code> を削除</p></li>
+<li><p>必要箇所で <code class="docutils literal notranslate"><span class="pre">typing.cast()</span></code> を使用し、安全に型を明示</p></li>
+<li><p>設定ローダー (<code class="docutils literal notranslate"><span class="pre">ztb/config/loader.py</span></code>) にファイルキャッシュと環境変数ベースのフォールバックを実装</p></li>
+<li><p>共通ユーティリティ (<code class="docutils literal notranslate"><span class="pre">ztb/utils/errors.py</span></code>, <code class="docutils literal notranslate"><span class="pre">ztb/utils/data_utils.py</span></code>) に型注釈と安全なラッパーを追加</p></li>
+</ul>
+<p>効果:</p>
+<ul class="simple">
+<li><p>mypyエラーを237→154に削減し、型の信頼性が向上</p></li>
+<li><p>テストの安定化（特に設定/ロード周り）とリファクタリングの容易化</p></li>
+</ul>
+</section>
+<section id="ta-lib">
+<h4>Ta-Lib統合とパフォーマンス最適化<a class="headerlink" href="#ta-lib" title="Link to this heading"></a></h4>
+<p>実施内容:</p>
+<ul class="simple">
+<li><p>Ta-Libライブラリの統合により、テクニカル指標計算を高速化</p></li>
+<li><p>フォールバック実装により、Ta-Lib未インストール環境でも動作</p></li>
+<li><p>包括的な入力検証とエラーハンドリングを実装</p></li>
+<li><p>パフォーマンス最適化とメモリ使用量の改善</p></li>
+</ul>
+<p>効果:</p>
+<ul class="simple">
+<li><p>テクニカル指標計算が5-10倍高速化</p></li>
+<li><p>メモリ使用量の最適化により大規模データ処理が可能</p></li>
+<li><p>堅牢なエラーハンドリングにより安定性が向上</p></li>
+</ul>
+</section>
+<section id="id11">
+<h4>共通ユーティリティの拡充<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<p>実施内容:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data_validation.py</span></code>: DataFrameと数値データの検証ユーティリティ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">types.py</span></code>: Protocol、TypedDict、型エイリアスによる高度な型定義</p></li>
+<li><p>既存ユーティリティの強化（file_utils.py、logging_utils.py、<a class="reference external" href="http://config.py">config.py</a>）</p></li>
+</ul>
+<p>効果:</p>
+<ul class="simple">
+<li><p>コードの再利用性と保守性が向上</p></li>
+<li><p>型安全性がさらに強化され、開発効率が改善</p></li>
+<li><p>データ検証によりランタイムエラーが減少</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全テスト実行（ユニット + 統合テスト）</span>
+make<span class="w"> </span><span class="nb">test</span>
+
+<span class="c1"># ```bash</span>
+
+<span class="c1">#### 1. 環境準備 (続)</span>
+-
+<span class="sb">```</span>bash
+<span class="c1"># Python仮想環境のアクティベート</span>
+<span class="nb">source</span><span class="w"> </span>.venv/Scripts/activate<span class="w">  </span><span class="c1"># Windows</span>
+<span class="c1"># または</span>
+.venv/bin/activate<span class="w">  </span><span class="c1"># Linux/Mac</span>
+
+<span class="c1"># 依存関係の確認</span>
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-dev.txt
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>トレーニングステップ</strong>: 1,000,000ステップ（1Mステップ）</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>2. データ準備<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># データファイルの存在確認</span>
+dir<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># データ品質チェック（オプション）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.data.validate_data<span class="w"> </span>ml-dataset-enhanced.csv
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h4>3. 設定ファイルの確認<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定ファイルの検証（ドライラン）</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_100k_optimized.json<span class="w"> </span>--dry-run
+
+<span class="c1"># 特徴量数の確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import pandas as pd; df = pd.read_csv(&#39;ml-dataset-enhanced.csv&#39;); exclude_cols = [&#39;ts&#39;, &#39;pair&#39;, &#39;side&#39;, &#39;pnl&#39;, &#39;win&#39;, &#39;source&#39;, &#39;timestamp&#39;]; features = [col for col in df.columns if col not in exclude_cols and df[col].dtype in [&#39;float64&#39;, &#39;int64&#39;]]; print(f&#39;特徴量数: {len(features)}&#39;)&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h4>4. トレーニング実行<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 推奨: Unified Trainerを使用（100kステップ）</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_100k_optimized.json<span class="w"> </span>--force
+
+<span class="c1"># 1Mステップの場合: 設定ファイルをカスタマイズ</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_1m_optimized.json<span class="w"> </span>--force
+
+<span class="c1"># カリキュラム学習</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/curriculum.json<span class="w"> </span>--algorithm<span class="w"> </span>curriculum
+
+<span class="c1"># ⚠️ 非推奨: 旧スクリプト（_deprecated/に移動済み）</span>
+<span class="c1"># python -m ztb.training.unified_trainer --config unified_training_config.json</span>
+</pre></div>
+</div>
+</section>
+<section id="id15">
+<h4>5. トレーニング監視<a class="headerlink" href="#id15" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># TensorBoard起動</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>checkpoints/ppo_100k_optimized/tensorboard
+
+<span class="c1"># ログファイルの確認</span>
+<span class="nb">type</span><span class="w"> </span>checkpoints<span class="se">\p</span>po_100k_optimized<span class="se">\t</span>raining.log
+</pre></div>
+</div>
+</section>
+<section id="id16">
+<h4>6. 結果確認 (続)<a class="headerlink" href="#id16" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># チェックポイント確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>checkpoints/scalping_15s_ultra_aggressive_1M/
+
+<span class="c1"># ログ確認</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/scalping_15s_ultra_aggressive_1M.log
+
+<span class="c1"># TensorBoard（オプション）</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>logs/
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><p><strong>データファイル読み込みと検証</strong> ⭐⭐⭐⭐⭐ - ファイル不在で即死</p></li>
+</ol>
+</section>
+<section id="id17">
+<h4>メモリ不足エラー (続)<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>RuntimeError: CUDA out of memory
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>バッチサイズを小さくする: <code class="docutils literal notranslate"><span class="pre">--batch-size</span> <span class="pre">32</span></code> または <code class="docutils literal notranslate"><span class="pre">--batch-size</span> <span class="pre">16</span></code></p></li>
+<li><p>ストリーミングを有効化: <code class="docutils literal notranslate"><span class="pre">--enable-streaming</span> <span class="pre">--stream-batch-size</span> <span class="pre">64</span></code></p></li>
+<li><p>CPU専用モード: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">CUDA_VISIBLE_DEVICES=&quot;&quot;</span></code></p></li>
+</ul>
+<ol class="arabic simple" start="3">
+<li><p><strong>引数解析と検証</strong> ⭐⭐⭐⭐ - 設定の基盤</p></li>
+</ol>
+</section>
+<section id="id18">
+<h4>データ読み込みエラー (続)<a class="headerlink" href="#id18" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>FileNotFoundError: ml-dataset-enhanced.csv
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>データファイルの存在を確認: <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-la</span> <span class="pre">ml-dataset-enhanced.csv</span></code></p></li>
+<li><p>パスが正しいか確認: プロジェクトルートから実行するか確認</p></li>
+<li><p>データ生成: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">generate_enhanced_training_data.py</span></code></p></li>
+</ul>
+</section>
+<section id="id19">
+<h4>特徴量計算エラー (続)<a class="headerlink" href="#id19" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ValueError: Input contains NaN
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>データの欠損値チェック: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">pandas</span> <span class="pre">as</span> <span class="pre">pd;</span> <span class="pre">df</span> <span class="pre">=</span> <span class="pre">pd.read_csv('ml-dataset-enhanced.csv');</span> <span class="pre">print(df.isnull().sum())&quot;</span></code></p></li>
+<li><p>欠損値補完: スクリプト内でfillnaを使用</p></li>
+</ul>
+</section>
+<section id="gpu">
+<h4>GPU関連エラー (続)<a class="headerlink" href="#gpu" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CUDA error: no kernel image is available
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>GPU互換性確認: <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code></p></li>
+<li><p>PyTorchバージョン確認: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">torch;</span> <span class="pre">print(torch.version.cuda)&quot;</span></code></p></li>
+<li><p>CPUフォールバック: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">CUDA_VISIBLE_DEVICES=&quot;&quot;</span></code></p></li>
+</ul>
+</section>
+<section id="api">
+<h4>API接続エラー (続)<a class="headerlink" href="#api" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ConnectionError: HTTPSConnectionPool
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>APIキーの確認: <code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">$COINCHECK_API_KEY</span></code></p></li>
+<li><p>ネットワーク接続確認: <code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">-I</span> <span class="pre">https://coincheck.com</span></code></p></li>
+<li><p>レート制限チェック: 短時間に複数リクエストしていないか
+export TEST_FLOW_QTY=0.001  # 小量</p></li>
+</ul>
+</section>
+<section id="id20">
+<h4>注文エラー (続)<a class="headerlink" href="#id20" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>InvalidOrder: Minimum quantity not met
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>最小注文数量確認: 取引所仕様を確認</p></li>
+<li><p>数量計算の確認: <code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code> でテスト</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h4>トレーニングが遅い (続)<a class="headerlink" href="#id21" title="Link to this heading"></a></h4>
+<p><strong>診断:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># CPU使用率確認</span>
+top<span class="w"> </span>-p<span class="w"> </span><span class="k">$(</span>pgrep<span class="w"> </span>-f<span class="w"> </span>unified_trainer<span class="k">)</span>
+
+<span class="c1"># GPU使用率確認</span>
+nvidia-smi
+
+<span class="c1"># メモリ使用量確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import psutil; print(psutil.virtual_memory())&quot;</span>
+</pre></div>
+</div>
+<p><strong>最適化:</strong></p>
+<ul class="simple">
+<li><p>並列環境数調整: <code class="docutils literal notranslate"><span class="pre">--n-envs</span> <span class="pre">2</span></code> から <code class="docutils literal notranslate"><span class="pre">--n-envs</span> <span class="pre">1</span></code></p></li>
+<li><p>チェックポイント間隔延長: <code class="docutils literal notranslate"><span class="pre">--ckpt-interval</span> <span class="pre">20000</span></code></p></li>
+<li><p>非同期チェックポイント有効化: <code class="docutils literal notranslate"><span class="pre">--ckpt-async</span></code></p></li>
+<li><p><strong>学習基盤</strong>: PPO トレーナ、1M ステップ前提のチェックポイント運用（async + zstd 圧縮）</p></li>
+</ul>
+</section>
+<section id="id22">
+<h4>ログが大きくなる (続)<a class="headerlink" href="#id22" title="Link to this heading"></a></h4>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>ログローテーション設定</p></li>
+<li><p>定期的なログ整理: <code class="docutils literal notranslate"><span class="pre">find</span> <span class="pre">logs/</span> <span class="pre">-name</span> <span class="pre">&quot;*.log&quot;</span> <span class="pre">-mtime</span> <span class="pre">+7</span> <span class="pre">-delete</span></code></p></li>
+</ul>
+</section>
+</section>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="circuit-breakerskill-file">
+<h1><strong>安全</strong>: Circuit Breakers、Kill-file、冪等な注文状態機械、ドライラン<a class="headerlink" href="#circuit-breakerskill-file" title="Link to this heading"></a></h1>
+<section id="id23">
+<h2>トレーニング状態確認 (続)<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 現在のステップ数確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import glob</span>
+<span class="s2">checkpoints = glob.glob(&#39;checkpoints/**/*.zip&#39;)</span>
+<span class="s2">if checkpoints:</span>
+<span class="s2">  latest = max(checkpoints, key=lambda x: int(x.split(&#39;_&#39;)[-1].split(&#39;.&#39;)[0]))</span>
+<span class="s2">  print(f&#39;Latest checkpoint: {latest}&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>|—————|———-|———-|</p>
+</section>
+<section id="id24">
+<h2>エラーログ解析 (続)<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># エラーパターン検索</span>
+grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;ERROR&quot;</span><span class="w"> </span>logs/<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-10
+
+<span class="c1"># メモリ使用量トレンド</span>
+grep<span class="w"> </span><span class="s2">&quot;Memory usage&quot;</span><span class="w"> </span>logs/*.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-20
+<span class="c1"># ```</span>
+
+<span class="p">|</span><span class="w"> </span>cost_estimator.py<span class="w"> </span><span class="p">|</span><span class="w"> </span>ztb/ops/artifacts/cost_estimator.py<span class="w"> </span><span class="p">|</span><span class="w"> </span>artifacts/reports<span class="w"> </span><span class="p">|</span>
+
+<span class="c1">#### 設定検証 (続)</span>
+
+
+<span class="sb">```</span>bash
+<span class="c1"># JSON構文チェック</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json; json.load(open(&#39;unified_training_config.json&#39;)); print(&#39;Config OK&#39;)&quot;</span>
+
+<span class="c1"># 必須フィールド確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import json</span>
+<span class="s2">config = json.load(open(&#39;unified_training_config.json&#39;))</span>
+<span class="s2">required = [&#39;algorithm&#39;, &#39;total_timesteps&#39;, &#39;data_path&#39;]</span>
+<span class="s2">missing = [k for k in required if k not in config]</span>
+<span class="s2">if missing:</span>
+<span class="s2">  print(f&#39;Missing fields: {missing}&#39;)</span>
+<span class="s2">else:</span>
+<span class="s2">  print(&#39;All required fields present&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><strong>学習/環境</strong>: ztb/trading/（PPO、環境、チェックポイント、評価フック）
+→ 詳細: <a class="reference internal" href="#./ztb/trading/README.md"><span class="xref myst">ztb/trading/README.md</span></a></p></li>
+<li><p><strong>データ</strong>: ztb/data/（ストリーミング、バッファ、バリデーション）
+→ 詳細: <a class="reference internal" href="#./ztb/data/README.md"><span class="xref myst">ztb/data/README.md</span></a></p></li>
+<li><p><strong>ユーティリティ</strong>: ztb/util/（テスト支援、設定、観測、スキーマ等）
+→ 詳細: <a class="reference internal" href="#./ztb/util/README.md"><span class="xref myst">ztb/util/README.md</span></a></p></li>
+<li><p><strong>開発者向け</strong>: アーキテクチャ/セットアップ/テスト
+→ 詳細: <a class="reference internal" href="#./docs/contributing/architecture.md"><span class="xref myst">docs/contributing/architecture.md</span></a>,
+<a class="reference internal" href="#./docs/contributing/setup.md"><span class="xref myst">docs/contributing/setup.md</span></a>,
+<a class="reference internal" href="#./docs/contributing/testing.md"><span class="xref myst">docs/contributing/testing.md</span></a></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<blockquote>
+<div><p>Python 3.11 で動作確認済。3.13 対応の検証は CI マトリクスで進行中。</p>
+</div></blockquote>
+<section id="id25">
+<h3>環境セットアップ<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># リポジトリをクローン</span>
+git<span class="w"> </span>clone<span class="w"> </span>&lt;repository-url&gt;
+<span class="nb">cd</span><span class="w"> </span>zaif-trade-bot
+
+<span class="c1"># 開発環境のセットアップ（Makefile使用推奨）</span>
+make<span class="w"> </span>setup
+
+<span class="c1"># または手動で</span>
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-dev.txt
+pip<span class="w"> </span>install<span class="w"> </span>types-requests<span class="w"> </span>types-psutil
+pre-commit<span class="w"> </span>install
+npm<span class="w"> </span>install
+</pre></div>
+</div>
+</section>
+<section id="id26">
+<h3>基本的なテスト実行<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全テスト実行（ユニット + 統合テスト）</span>
+make<span class="w"> </span><span class="nb">test</span>
+
+<span class="c1"># ユニットテストのみ（高速）</span>
+npm<span class="w"> </span>run<span class="w"> </span>test:unit
+
+<span class="c1"># 統合テストのみ（低速だが包括的）</span>
+npm<span class="w"> </span>run<span class="w"> </span>test:int-fast
+
+<span class="c1"># コード品質チェック（mypy, black, isort）</span>
+make<span class="w"> </span>check
+
+<span class="c1"># セキュリティ監査</span>
+make<span class="w"> </span>audit
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>トレーニング実行の詳細手順<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<section id="id28">
+<h4>1. 環境準備<a class="headerlink" href="#id28" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Python仮想環境のアクティベート</span>
+<span class="nb">source</span><span class="w"> </span>.venv/Scripts/activate<span class="w">  </span><span class="c1"># Windows</span>
+<span class="c1"># または</span>
+.venv/bin/activate<span class="w">  </span><span class="c1"># Linux/Mac</span>
+
+<span class="c1"># 依存関係の確認</span>
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements-dev.txt
+</pre></div>
+</div>
+</section>
+<section id="id29">
+<h4>2. データ準備<a class="headerlink" href="#id29" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># データファイルの存在確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># データ品質チェック（オプション）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.data.validate_data<span class="w"> </span>ml-dataset-enhanced.csv
+</pre></div>
+</div>
+</section>
+<section id="id30">
+<h4>3. 設定ファイルの確認<a class="headerlink" href="#id30" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 設定ファイルの検証</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json; print(json.load(open(&#39;unified_training_config.json&#39;)))&quot;</span>
+
+<span class="c1"># 特徴量数の確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import pandas as pd</span>
+<span class="s2">df = pd.read_csv(&#39;ml-dataset-enhanced.csv&#39;)</span>
+<span class="s2">exclude_cols = [&#39;ts&#39;, &#39;pair&#39;, &#39;side&#39;, &#39;pnl&#39;, &#39;win&#39;, &#39;source&#39;, &#39;timestamp&#39;]</span>
+<span class="s2">features = [col for col in df.columns if col not in exclude_cols and df[col].dtype in [&#39;float64&#39;, &#39;int64&#39;]]</span>
+<span class="s2">print(f&#39;特徴量数: {len(features)}&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id31">
+<h4>4. トレーニング実行<a class="headerlink" href="#id31" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本実行（1Mステップ）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json
+
+<span class="c1"># ドライラン（設定検証のみ）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--dry-run
+
+<span class="c1"># 短時間テスト実行（10kステップ）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--total-timesteps<span class="w"> </span><span class="m">10000</span>
+</pre></div>
+</div>
+</section>
+<section id="id32">
+<h4>5. トレーニング監視<a class="headerlink" href="#id32" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># リアルタイム監視（別ターミナルで）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.watch_1m<span class="w"> </span>--correlation-id<span class="w"> </span>scalping_15s_ultra_aggressive_1M
+
+<span class="c1"># 定期要約（5分ごと）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.rollup_artifacts<span class="w"> </span>--correlation-id<span class="w"> </span>scalping_15s_ultra_aggressive_1M<span class="w"> </span>--interval-minutes<span class="w"> </span><span class="m">5</span>
+</pre></div>
+</div>
+</section>
+<section id="id33">
+<h4>6. 結果確認<a class="headerlink" href="#id33" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># チェックポイント確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>checkpoints/scalping_15s_ultra_aggressive_1M/
+
+<span class="c1"># ログ確認</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/scalping_15s_ultra_aggressive_1M.log
+
+<span class="c1"># TensorBoard（オプション）</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>logs/
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id34">
+<h3>よく使うユーティリティ<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>監視: python -m ztb.training.watch_1m –correlation-id <code class="docutils literal notranslate"><span class="pre">&lt;ID&gt;</span></code> –run-once</p></li>
+<li><p>要約: python -m ztb.training.rollup_artifacts –correlation-id <code class="docutils literal notranslate"><span class="pre">&lt;ID&gt;</span></code></p></li>
+<li><p>Canary: linux_canary.sh / ps_canary.ps1（同等のフロー・出力）</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="live-trading">
+<h3>Live Trading<a class="headerlink" href="#live-trading" title="Link to this heading"></a></h3>
+</section>
+<section id="id35">
+<h3>準備<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>APIキー設定</strong> (オプション - 設定しない場合はデモモード)</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">COINCHECK_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_api_key&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">COINCHECK_API_SECRET</span><span class="o">=</span><span class="s2">&quot;your_api_secret&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DISCORD_WEBHOOK</span><span class="o">=</span><span class="s2">&quot;your_webhook_url&quot;</span><span class="w">  </span><span class="c1"># 通知用（オプション）</span>
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><p><strong>実行</strong></p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># デモモード（APIキーなし）</span>
+python<span class="w"> </span>live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>models/scalping_iterative_v1_final.zip<span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># 本番モード（APIキー設定済み）</span>
+python<span class="w"> </span>live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>models/scalping_iterative_v1_final.zip<span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">24</span>
+
+<span class="c1"># リスク制限を無効化（テスト/上級者向け）</span>
+python<span class="w"> </span>live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>models/scalping_iterative_v1_final.zip<span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">1</span><span class="w"> </span>--disable-risk-limits
+</pre></div>
+</div>
+</section>
+<section id="id36">
+<h3>リスク管理機能<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>日次損失制限</strong>: 10,000円（デフォルト）</p></li>
+<li><p><strong>日次トレード数制限</strong>: 50回（デフォルト）</p></li>
+<li><p><strong>緊急ストップロス</strong>: 5%（デフォルト）</p></li>
+<li><p><strong>自動停止システム</strong>: 高度なリスク管理</p></li>
+</ul>
+</section>
+<section id="id37">
+<h3>クロスプラットフォーム対応<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<p>WindowsおよびRaspberry Piで動作可能です。自動的に環境を検知して最適化されます。</p>
+</section>
+<section id="id38">
+<h3>ログ確認<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ライブトレーディングログ</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/live_trading_*.log
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="m-step-training-execution">
+<h2>1M Step Training Execution<a class="headerlink" href="#m-step-training-execution" title="Link to this heading"></a></h2>
+<section id="id-correlation-id">
+<h3>推奨の起動方法（セッション ID = correlation-id）<a class="headerlink" href="#id-correlation-id" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1">## 例: UTC タイムスタンプを ID に</span>
+<span class="nv">CORR</span><span class="o">=</span>070929T160549Z
+
+<span class="c1">## 自動再開つき起動（存在すれば run_1m.py、なければ PPO 直呼び）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.supervise_1m<span class="w"> </span>--correlation-id<span class="w">  </span><span class="se">\</span>
+<span class="w">  </span>--ppo-cli-args<span class="w"> </span><span class="s2">&quot;--resume-from latest --total-timesteps 1000000 \</span>
+<span class="s2">  --n-envs 4 --seed 42 --eval-interval 10000 --log-interval 1000 \</span>
+<span class="s2">  --ckpt-async --ckpt-compress zstd --ckpt-max-pending 1&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id39">
+<h3>進行中の監視<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1">## 一度だけチェック</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.watch_1m<span class="w"> </span>--correlation-id<span class="w">  </span>--run-once
+
+<span class="c1">## 連続監視（閾値は環境変数で調整）</span>
+<span class="nv">ZTB_WATCH_STALL_MIN</span><span class="o">=</span><span class="m">10</span><span class="w"> </span><span class="nv">ZTB_WATCH_RSS_MB</span><span class="o">=</span><span class="m">2048</span><span class="w"> </span><span class="nv">ZTB_WATCH_VRAM_MB</span><span class="o">=</span><span class="m">4096</span><span class="w"> </span><span class="se">\</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.watch_1m<span class="w"> </span>--correlation-id
+</pre></div>
+</div>
+</section>
+<section id="id40">
+<h3>定期要約（5 分ごと）<a class="headerlink" href="#id40" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.rollup_artifacts<span class="w"> </span>--correlation-id<span class="w">  </span>--interval-minutes<span class="w"> </span><span class="m">5</span>
+</pre></div>
+</div>
+</section>
+<section id="id41">
+<h3>再開 &amp; 停止<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>自動再開: supervisor が最新チェックポイントから再開</p></li>
+<li><p>手動停止: プロジェクトルートに ztb.stop を作成 → 速やかに安全停止</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="unified-training-runner">
+<h2>Unified Training Runner<a class="headerlink" href="#unified-training-runner" title="Link to this heading"></a></h2>
+<p>複数のトレーニングアプローチを統合した統一インターフェース。詳細: <a class="reference internal" href="#./UNIFIED_TRAINING_README.md"><span class="xref myst">UNIFIED_TRAINING_README.md</span></a></p>
+<section id="id42">
+<h3>サポートされるアルゴリズム<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>PPO Training</strong>: 標準的な PPO 強化学習トレーニング</p></li>
+<li><p><strong>Base ML Reinforcement</strong>: カスタム実験フレームワーク</p></li>
+<li><p><strong>Iterative Training</strong>: 反復トレーニングセッション</p></li>
+</ul>
+</section>
+<section id="id43">
+<h3>使用例<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># PPO トレーニング</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--algorithm<span class="w"> </span>ppo
+
+<span class="c1"># 反復トレーニング</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--algorithm<span class="w"> </span>iterative
+
+<span class="c1"># 設定上書き</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--total-timesteps<span class="w"> </span><span class="m">500000</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="evaluation-validation-dsr-bootstrap-benchmarks">
+<h2>Evaluation &amp; Validation (DSR/Bootstrap/Benchmarks)<a class="headerlink" href="#evaluation-validation-dsr-bootstrap-benchmarks" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>DSR</strong>: 多重検定を考慮した Sharpe の有意性指標。–dsr-trials（既定 cap=1000）</p></li>
+<li><p><strong>Bootstrap</strong>: –bootstrap-resamples（既定 1000 / CI は 200）、–bootstrap-block、–bootstrap-overlap</p></li>
+<li><p><strong>定期評価</strong>: 既定 50k ステップごとに Sharpe/DSR/p 値を算出し、基準戦略（SMA/Buy&amp;Hold）と比較</p></li>
+<li><p><strong>ベンチ</strong></p>
+<ul>
+<li><p>ストリーミング: python ztb/benchmarks/streaming_benchmark.py</p></li>
+<li><p>チェックポイント I/O: python ztb/benchmarks/checkpoint_benchmark.py</p></li>
+</ul>
+</li>
+</ul>
+<p>結果は artifacts/<code class="docutils literal notranslate"><span class="pre">&lt;ID&gt;</span></code>/reports/eval_<em>.json として保存、summary.</em> に集約されます。</p>
+</section>
+<hr class="docutils" />
+<section id="streaming-checkpoints">
+<h2>Streaming &amp; Checkpoints<a class="headerlink" href="#streaming-checkpoints" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>ストリーミング</strong>: 既定 OFF。有効化時は –enable-streaming
+–stream-batch-size 64 –stream-buffer-policy drop_oldest</p></li>
+<li><p><strong>チェックポイント</strong>: 10k ステップ間隔、保持 5、非同期保存、zstd 圧縮、max-pending=1</p></li>
+<li><p><strong>重複防止</strong>: global_step を用いた <strong>duplication guard</strong> で再開時の二重学習を防止</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="production-safety-risk-management-shutdown">
+<h2>Production Safety (Risk Management &amp; Shutdown)<a class="headerlink" href="#production-safety-risk-management-shutdown" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Circuit Breakers</strong>: 異常時は新規建てを禁止（既存ポジの縮小は許可）</p></li>
+<li><p><strong>Kill-file</strong>: ztb.stop により全コンポーネントが安全停止</p></li>
+<li><p><strong>サイジング</strong>: 年率 10% ターゲットボラ + Kelly 0.5、Decimal 丸め、最小数量/Notional 準拠</p></li>
+</ul>
+<p>詳細: <a class="reference internal" href="#./docs/runbook.md"><span class="xref myst">docs/runbook.md</span></a></p>
+</section>
+<hr class="docutils" />
+<section id="canary-fault-injection">
+<h2>Canary &amp; Fault Injection<a class="headerlink" href="#canary-fault-injection" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Canary</strong>: Linux/PowerShell で同等のフェーズ（replay → live-lite → kill/resume）と同一アーティファクト</p></li>
+<li><p><strong>障害注入</strong>: テーブル駆動（切断/タイムアウト/メモリ圧 等）で回帰を検出
+実行例と使い方: <a class="reference internal" href="#./docs/deployment/canary.md"><span class="xref myst">docs/deployment/canary.md</span></a></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="id44">
+<h3>トレーニング実行時の一般的な問題<a class="headerlink" href="#id44" title="Link to this heading"></a></h3>
+<section id="id45">
+<h4>メモリ不足エラー<a class="headerlink" href="#id45" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>RuntimeError: CUDA out of memory
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>バッチサイズを小さくする: <code class="docutils literal notranslate"><span class="pre">--batch-size</span> <span class="pre">32</span></code> または <code class="docutils literal notranslate"><span class="pre">--batch-size</span> <span class="pre">16</span></code></p></li>
+<li><p>ストリーミングを有効化: <code class="docutils literal notranslate"><span class="pre">--enable-streaming</span> <span class="pre">--stream-batch-size</span> <span class="pre">64</span></code></p></li>
+<li><p>CPU専用モード: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">CUDA_VISIBLE_DEVICES=&quot;&quot;</span></code></p></li>
+</ul>
+</section>
+<section id="id46">
+<h4>データ読み込みエラー<a class="headerlink" href="#id46" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>FileNotFoundError: ml-dataset-enhanced.csv
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>データファイルの存在を確認: <code class="docutils literal notranslate"><span class="pre">ls</span> <span class="pre">-la</span> <span class="pre">ml-dataset-enhanced.csv</span></code></p></li>
+<li><p>パスが正しいか確認: プロジェクトルートから実行するか確認</p></li>
+<li><p>データ生成: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">generate_enhanced_training_data.py</span></code></p></li>
+</ul>
+</section>
+<section id="id47">
+<h4>特徴量計算エラー<a class="headerlink" href="#id47" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ValueError: Input contains NaN
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>データの欠損値チェック: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">pandas</span> <span class="pre">as</span> <span class="pre">pd;</span> <span class="pre">df</span> <span class="pre">=</span> <span class="pre">pd.read_csv('ml-dataset-enhanced.csv');</span> <span class="pre">print(df.isnull().sum())&quot;</span></code></p></li>
+<li><p>欠損値補完: スクリプト内でfillnaを使用</p></li>
+</ul>
+</section>
+<section id="id48">
+<h4>GPU関連エラー<a class="headerlink" href="#id48" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>CUDA error: no kernel image is available
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>GPU互換性確認: <code class="docutils literal notranslate"><span class="pre">nvidia-smi</span></code></p></li>
+<li><p>PyTorchバージョン確認: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-c</span> <span class="pre">&quot;import</span> <span class="pre">torch;</span> <span class="pre">print(torch.version.cuda)&quot;</span></code></p></li>
+<li><p>CPUフォールバック: <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">CUDA_VISIBLE_DEVICES=&quot;&quot;</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id49">
+<h3>ライブトレーディングの問題<a class="headerlink" href="#id49" title="Link to this heading"></a></h3>
+<section id="id50">
+<h4>API接続エラー<a class="headerlink" href="#id50" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ConnectionError: HTTPSConnectionPool
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>APIキーの確認: <code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">$COINCHECK_API_KEY</span></code></p></li>
+<li><p>ネットワーク接続確認: <code class="docutils literal notranslate"><span class="pre">curl</span> <span class="pre">-I</span> <span class="pre">https://coincheck.com</span></code></p></li>
+<li><p>レート制限チェック: 短時間に複数リクエストしていないか</p></li>
+</ul>
+</section>
+<section id="id51">
+<h4>注文エラー<a class="headerlink" href="#id51" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>InvalidOrder: Minimum quantity not met
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>最小注文数量確認: 取引所仕様を確認</p></li>
+<li><p>数量計算の確認: <code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code> でテスト</p></li>
+</ul>
+</section>
+</section>
+<section id="id52">
+<h3>パフォーマンス問題<a class="headerlink" href="#id52" title="Link to this heading"></a></h3>
+<section id="id53">
+<h4>トレーニングが遅い<a class="headerlink" href="#id53" title="Link to this heading"></a></h4>
+<p><strong>診断:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># CPU使用率確認</span>
+top<span class="w"> </span>-p<span class="w"> </span><span class="k">$(</span>pgrep<span class="w"> </span>-f<span class="w"> </span>unified_trainer<span class="k">)</span>
+
+<span class="c1"># GPU使用率確認</span>
+nvidia-smi
+
+<span class="c1"># メモリ使用量確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import psutil; print(psutil.virtual_memory())&quot;</span>
+</pre></div>
+</div>
+<p><strong>最適化:</strong></p>
+<ul class="simple">
+<li><p>並列環境数調整: <code class="docutils literal notranslate"><span class="pre">--n-envs</span> <span class="pre">2</span></code> から <code class="docutils literal notranslate"><span class="pre">--n-envs</span> <span class="pre">1</span></code></p></li>
+<li><p>チェックポイント間隔延長: <code class="docutils literal notranslate"><span class="pre">--ckpt-interval</span> <span class="pre">20000</span></code></p></li>
+<li><p>非同期チェックポイント有効化: <code class="docutils literal notranslate"><span class="pre">--ckpt-async</span></code></p></li>
+</ul>
+</section>
+<section id="id54">
+<h4>ログが大きくなる<a class="headerlink" href="#id54" title="Link to this heading"></a></h4>
+<p><strong>解決策:</strong></p>
+<ul class="simple">
+<li><p>ログローテーション設定</p></li>
+<li><p>定期的なログ整理: <code class="docutils literal notranslate"><span class="pre">find</span> <span class="pre">logs/</span> <span class="pre">-name</span> <span class="pre">&quot;*.log&quot;</span> <span class="pre">-mtime</span> <span class="pre">+7</span> <span class="pre">-delete</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id55">
+<h3>モニタリングとデバッグ<a class="headerlink" href="#id55" title="Link to this heading"></a></h3>
+<section id="id56">
+<h4>トレーニング状態確認<a class="headerlink" href="#id56" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 現在のステップ数確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import glob</span>
+<span class="s2">checkpoints = glob.glob(&#39;checkpoints/**/*.zip&#39;)</span>
+<span class="s2">if checkpoints:</span>
+<span class="s2">    latest = max(checkpoints, key=lambda x: int(x.split(&#39;_&#39;)[-1].split(&#39;.&#39;)[0]))</span>
+<span class="s2">    print(f&#39;Latest checkpoint: {latest}&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id57">
+<h4>エラーログ解析<a class="headerlink" href="#id57" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># エラーパターン検索</span>
+grep<span class="w"> </span>-r<span class="w"> </span><span class="s2">&quot;ERROR&quot;</span><span class="w"> </span>logs/<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-10
+
+<span class="c1"># メモリ使用量トレンド</span>
+grep<span class="w"> </span><span class="s2">&quot;Memory usage&quot;</span><span class="w"> </span>logs/*.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-20
+</pre></div>
+</div>
+</section>
+<section id="id58">
+<h4>設定検証<a class="headerlink" href="#id58" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># JSON構文チェック</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import json; json.load(open(&#39;unified_training_config.json&#39;)); print(&#39;Config OK&#39;)&quot;</span>
+
+<span class="c1"># 必須フィールド確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import json</span>
+<span class="s2">config = json.load(open(&#39;unified_training_config.json&#39;))</span>
+<span class="s2">required = [&#39;algorithm&#39;, &#39;total_timesteps&#39;, &#39;data_path&#39;]</span>
+<span class="s2">missing = [k for k in required if k not in config]</span>
+<span class="s2">if missing:</span>
+<span class="s2">    print(f&#39;Missing fields: {missing}&#39;)</span>
+<span class="s2">else:</span>
+<span class="s2">    print(&#39;All required fields present&#39;)</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="artifacts-schema">
+<h2>Artifacts &amp; Schema<a class="headerlink" href="#artifacts-schema" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>ルート: rtifacts/&lt;correlation_id&gt;/logs|metrics|reports|config|meta/</p></li>
+<li><p><strong>run_metadata.json</strong>: git SHA / Python/OS/CPU / seeds /
+package &amp; config ハッシュ / correlation_id</p></li>
+<li><p><strong>results_schema.json</strong> に準拠（schema/ 配下）。
+esults_validator.py で検証可能。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="configuration-cli-environment-variables">
+<h2>Configuration, CLI &amp; Environment Variables<a class="headerlink" href="#configuration-cli-environment-variables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>代表的な CLI:</p>
+<ul>
+<li><p>–total-timesteps, –n-envs, –seed, –eval-interval, –log-interval</p></li>
+<li><p>–ckpt-async, –ckpt-compress zstd, –ckpt-max-pending 1</p></li>
+<li><p>–enable-streaming, –stream-batch-size, –stream-buffer-policy</p></li>
+<li><p>–dsr-trials, –bootstrap-resamples, –bootstrap-block, –bootstrap-overlap</p></li>
+</ul>
+</li>
+<li><p>代表的な環境変数:</p>
+<ul>
+<li><p>ZTB_WATCH_*（監視閾値）, ZTB_KILL（kill-file 即時反映）, 他
+詳細: <a class="reference internal" href="#./docs/configuration.md"><span class="xref myst">docs/configuration.md</span></a></p></li>
+</ul>
+</li>
+</ul>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>環境変数</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>デフォルト値</p></th>
+<th class="head"><p>例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ZTB_WATCH_CPU_PCT</p></td>
+<td><p>CPU使用率監視閾値</p></td>
+<td><p>80</p></td>
+<td><p>90</p></td>
+</tr>
+<tr class="row-odd"><td><p>ZTB_WATCH_MEM_PCT</p></td>
+<td><p>メモリ使用率監視閾値</p></td>
+<td><p>85</p></td>
+<td><p>90</p></td>
+</tr>
+<tr class="row-even"><td><p>ZTB_KILL</p></td>
+<td><p>kill-fileパス</p></td>
+<td><p>ztb.stop</p></td>
+<td><p>/tmp/ztb.stop</p></td>
+</tr>
+<tr class="row-odd"><td><p>DRY_RUN</p></td>
+<td><p>ドライラン有効化</p></td>
+<td><p>0</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-even"><td><p>LIVE_MINIMAL</p></td>
+<td><p>最小ライブモード</p></td>
+<td><p>0</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p>ZTB_MAX_MEMORY_GB</p></td>
+<td><p>最大メモリ使用量</p></td>
+<td><p>8</p></td>
+<td><p>16</p></td>
+</tr>
+</tbody>
+</table>
+<section id="infrastructure-scripts">
+<h3>Infrastructure Scripts<a class="headerlink" href="#infrastructure-scripts" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Venue Health Check</strong>: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.check_venue_health</span> <span class="pre">--venue</span> <span class="pre">coincheck</span> <span class="pre">--symbol</span> <span class="pre">BTC_JPY</span></code></p>
+<ul>
+<li><p>取引所APIの接続性、レイテンシ、レート制限をチェック</p></li>
+</ul>
+</li>
+<li><p><strong>Regression Smoke Tests</strong>: <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.smoke_tests</span></code></p>
+<ul>
+<li><p>合成データを使った基本機能の回帰テスト</p></li>
+</ul>
+</li>
+<li><p><strong>CLI Consistency</strong>: 全スクリプトで統一されたヘルプテキストとバリデーション</p>
+<ul>
+<li><p>共通の引数定義（–artifacts-dir, –correlation-id, –timeout等）</p></li>
+<li><p>標準化されたエラーメッセージとデフォルト値</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id59">
+<h2>移行ガイド: 旧パス→新パス<a class="headerlink" href="#id59" title="Link to this heading"></a></h2>
+<p>v2.5.1 より、スクリプトが適切なパッケージに再編成されました。<code class="docutils literal notranslate"><span class="pre">ztb/scripts/</span></code> はシェルスクリプト専用となり、Pythonファイルは削除されています。</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>旧パス</p></th>
+<th class="head"><p>新パス</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/supervise_1m.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.training.supervise_1m</span></code></p></td>
+<td><p>1M学習監督</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/watch_1m.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.training.watch_1m</span></code></p></td>
+<td><p>1M学習監視</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/rollup_artifacts.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.training.rollup_artifacts</span></code></p></td>
+<td><p>アーティファクト集約</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/ops.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.cli</span></code></p></td>
+<td><p>運用CLI</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/check_schema_version.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.check_schema_version</span></code></p></td>
+<td><p>スキーマチェック</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/check_links.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.check_links</span></code></p></td>
+<td><p>リンクチェック</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">scripts/generate_weekly_report.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">ztb.ops.generate_weekly_report</span></code></p></td>
+<td><p>週次レポート</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>注意</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/scripts/</span></code> には <code class="docutils literal notranslate"><span class="pre">.sh</span></code> および <code class="docutils literal notranslate"><span class="pre">.ps1</span></code> ファイルのみ配置可能です。PythonファイルはCIで拒否されます。</p>
+<p><strong>将来のエントリーポイント</strong> (packaging時):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb-ops</span></code> → <code class="docutils literal notranslate"><span class="pre">ztb.ops.cli:main</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb-run1m</span></code> → <code class="docutils literal notranslate"><span class="pre">ztb.training.run_1m:main</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb-supervise</span></code> → <code class="docutils literal notranslate"><span class="pre">ztb.training.supervise_1m:main</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id60">
+<h2>🧪 テストカバレッジ改善<a class="headerlink" href="#id60" title="Link to this heading"></a></h2>
+<section id="id61">
+<h3>テスト実行<a class="headerlink" href="#id61" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全テスト実行（並列実行）</span>
+npm<span class="w"> </span>run<span class="w"> </span>-s<span class="w"> </span>test:unit
+
+<span class="c1"># トレーニングモジュールのみテスト</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>ztb/tests/unit/training/<span class="w"> </span>--cov<span class="o">=</span>ztb.training<span class="w"> </span>--cov-report<span class="o">=</span>term-missing<span class="w"> </span>-v
+
+<span class="c1"># カバレッジレポート生成</span>
+python<span class="w"> </span>-m<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>ztb<span class="w"> </span>--cov-report<span class="o">=</span>html<span class="w"> </span>--cov-report<span class="o">=</span>term-missing
+</pre></div>
+</div>
+</section>
+<section id="id62">
+<h3>カバレッジ改善の進捗<a class="headerlink" href="#id62" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>unified_trainer.py</strong>: 30% → 59% (29%改善)</p>
+<ul>
+<li><p>5つのトレーニングアルゴリズム全てのテスト実装</p></li>
+<li><p>プロパティベーステスト（hypothesis）導入</p></li>
+<li><p>エラーハンドリングとエッジケースの包括的テスト</p></li>
+</ul>
+</li>
+<li><p><strong>ppo_trainer.py</strong>: 87% (安定)</p>
+<ul>
+<li><p>既存の包括的なテストスイート</p></li>
+</ul>
+</li>
+<li><p><strong>その他のモジュール</strong>: テスト拡張中</p>
+<ul>
+<li><p><a class="reference external" href="http://ensemble.py">ensemble.py</a>: 予測と確率計算のテスト追加</p></li>
+<li><p>curriculum_learning.py: 段階的学習のテスト</p></li>
+<li><p>base_trainer.py: 抽象基底クラスのテスト</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id63">
+<h3>テストインフラ<a class="headerlink" href="#id63" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>並列実行</strong>: pytest-xdist使用（-n auto）</p></li>
+<li><p><strong>プロパティベーステスト</strong>: hypothesisライブラリ導入</p></li>
+<li><p><strong>カバレッジレポート</strong>: HTMLレポート自動生成</p></li>
+<li><p><strong>継続的インテグレーション</strong>: 品質ゲート設定</p></li>
+</ul>
+</section>
+<section id="id64">
+<h3>テスト戦略<a class="headerlink" href="#id64" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>ユニットテスト</strong>: 個別関数/メソッドの動作検証</p></li>
+<li><p><strong>統合テスト</strong>: エンドツーエンドのワークフロー検証</p></li>
+<li><p><strong>プロパティベーステスト</strong>: 自動エッジケース生成</p></li>
+<li><p><strong>パフォーマンステスト</strong>: トレーニング効率の検証</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id65">
+<h2>📊 ハイパーパラメータ最適化結果<a class="headerlink" href="#id65" title="Link to this heading"></a></h2>
+<section id="id66">
+<h3>バイナリサーチ最適化 (2025年10月)<a class="headerlink" href="#id66" title="Link to this heading"></a></h3>
+<p>包括的なバイナリサーチによる段階的最適化を実施しました:</p>
+<ul class="simple">
+<li><p><strong>Phase 1-2</strong>: 2,048ステップ × 最大2反復 (高速スクリーニング)</p></li>
+<li><p><strong>Phase 3-4</strong>: 50,000ステップ × 最大3反復 (長期検証)</p></li>
+<li><p><strong>統計的裏付け</strong>: 95%信頼区間による収束判定</p></li>
+</ul>
+<section id="k">
+<h4>高信頼度パラメータ (50k検証済み)<a class="headerlink" href="#k" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>改善幅</p></th>
+<th class="head"><p>信頼度</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
+<td><p><strong>1024</strong></p></td>
+<td><p>+11</p></td>
+<td><p>✅ 高 (差分&gt;10)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vf_coef</span></code></p></td>
+<td><p><strong>0.1</strong></p></td>
+<td><p>+1</p></td>
+<td><p>✅ 高 (明確な傾向)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_multipliers</span></code></p></td>
+<td><p><strong>5.0</strong></p></td>
+<td><p>+152</p></td>
+<td><p>✅ 高 (劇的改善)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">risk_free_rate</span></code></p></td>
+<td><p><strong>0.0</strong></p></td>
+<td><p>-</p></td>
+<td><p>✅ 完全収束</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id67">
+<h4>中信頼度パラメータ (要再検証)<a class="headerlink" href="#id67" title="Link to this heading"></a></h4>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>暫定最適値</p></th>
+<th class="head"><p>差分</p></th>
+<th class="head"><p>推奨アクション</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gamma</span></code></p></td>
+<td><p><strong>0.8475</strong></p></td>
+<td><p>1~2</p></td>
+<td><p>100k再走 or マルチシード</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_epochs</span></code></p></td>
+<td><p><strong>16</strong></p></td>
+<td><p>&lt;1</p></td>
+<td><p>100k×1 or 50k×2</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id68">
+<h4>統計的基盤<a class="headerlink" href="#id68" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>標準誤差</strong>: ±3.62 (50kステップ、n=51エピソード)</p></li>
+<li><p><strong>95%信頼区間</strong>: ±7.1</p></li>
+<li><p><strong>必要ステップ数の理論推定</strong>:</p>
+<ul>
+<li><p>差分≥10検出: 26k以上</p></li>
+<li><p>差分≥5検出: 103k以上</p></li>
+<li><p>差分≥3検出: 285k以上 (または3シード×100k)</p></li>
+</ul>
+</li>
+</ul>
+<p>詳細は <a class="reference internal" href="#./docs/binary_search_optimization/"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">docs/binary_search_optimization/</span></code></span></a> を参照してください。</p>
+</section>
+<section id="id69">
+<h4>推奨設定<a class="headerlink" href="#id69" title="Link to this heading"></a></h4>
+<p><strong>バイナリサーチ検証済み設定</strong> (高信頼度):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8475</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reward_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;risk_free_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>設定ファイル: <a class="reference internal" href="#./configs/training/ppo_binary_search_validated.json"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">configs/training/ppo_binary_search_validated.json</span></code></span></a></p>
+</section>
+</section>
+<section id="lagrange-202510">
+<h3>Lagrange制約最適化 (2025年10月)<a class="headerlink" href="#lagrange-202510" title="Link to this heading"></a></h3>
+<p>SELL比率制約のための最適化も実施:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>成果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">r_target</span></code></p></td>
+<td><p><strong>0.175</strong></p></td>
+<td><p>31-34% SELL比率達成</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tolerance</span></code></p></td>
+<td><p><strong>0.042625</strong></p></td>
+<td><p>制約違反 &lt;0.01</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">eta</span></code></p></td>
+<td><p><strong>0.062875</strong></p></td>
+<td><p>安定した収束</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lambda_max</span></code></p></td>
+<td><p><strong>3.875</strong></p></td>
+<td><p>適切な制約圧力</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">warmup_steps</span></code></p></td>
+<td><p><strong>3874</strong></p></td>
+<td><p>初期学習の安定化</p></td>
+</tr>
+</tbody>
+</table>
+<p>詳細は <a class="reference internal" href="#./docs/LAGRANGE_OPTIMIZATION_RESULTS.md"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">docs/LAGRANGE_OPTIMIZATION_RESULTS.md</span></code></span></a> を参照してください。</p>
+</section>
+<section id="id70">
+<h3>🔄 継続的な最適化<a class="headerlink" href="#id70" title="Link to this heading"></a></h3>
+<p><strong>📁 二分探索パラメータ最適化ドキュメント集</strong>: <a class="reference internal" href="#./docs/binary_search_optimization/"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">docs/binary_search_optimization/</span></code></span></a></p>
+<p>このディレクトリには以下のドキュメントが含まれます:</p>
+<ul class="simple">
+<li><p>📊 <strong>包括的な結果分析</strong> - 過去の二分探索結果と統計的評価</p></li>
+<li><p>✅ <strong>パラメータ検証進捗管理</strong> - 14パラメータの追跡シート</p></li>
+<li><p>🚀 <strong>クイックリファレンス</strong> - 今すぐ実行できるコマンド集</p></li>
+<li><p>� <strong>実行手順ガイド</strong> - 初心者向け詳細ガイド</p></li>
+<li><p>� <strong>Windowsコマンド集</strong> - コピペ実行可能なコマンド</p></li>
+</ul>
+<p><strong>クイックスタート</strong>:</p>
+<ul class="simple">
+<li><p>初めて実行する方 → <a class="reference internal" href="#./docs/binary_search_optimization/BINARY_SEARCH_EXECUTION_GUIDE.md"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">BINARY_SEARCH_EXECUTION_GUIDE.md</span></code></span></a></p></li>
+<li><p>経験者・即実行したい方 → <a class="reference internal" href="#./docs/binary_search_optimization/PARAMETER_VALIDATION_QUICK_REFERENCE.md"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">PARAMETER_VALIDATION_QUICK_REFERENCE.md</span></code></span></a></p></li>
+<li><p>進捗確認したい方 → <a class="reference internal" href="#./docs/binary_search_optimization/PARAMETER_VALIDATION_TRACKING.md"><span class="xref myst"><code class="docutils literal notranslate"><span class="pre">PARAMETER_VALIDATION_TRACKING.md</span></code></span></a></p></li>
+</ul>
+<p><strong>推奨アクション</strong>: 高優先度パラメータ (batch_size, learning_rate, max_grad_norm) から順次検証を実施してください。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Link to this heading"></a></h2>
+<p>本リポジトリは MIT ライセンスです。詳細は <a class="reference download internal" download="" href="_downloads/9879d6db96fd29134fc802214163b95a/LICENSE"><span class="xref download myst">LICENSE</span></a> を参照してください。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

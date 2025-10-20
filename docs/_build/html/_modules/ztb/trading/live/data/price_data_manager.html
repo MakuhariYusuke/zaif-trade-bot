@@ -1,0 +1,297 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.live.data.price_data_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.live.data.price_data_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.live.data.price_data_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Price data management for live trading bot.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">cast</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PriceDataProvider">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataProvider">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PriceDataProvider</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol for price data providers.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PriceDataProvider.get_current_price">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataProvider.get_current_price">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_price</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current price.&quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="PriceDataProvider.get_historical_prices">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataProvider.get_historical_prices">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_historical_prices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get historical prices.&quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PriceDataManager">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PriceDataManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages price data and feature calculation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">price_provider</span><span class="p">:</span> <span class="n">PriceDataProvider</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_provider</span> <span class="o">=</span> <span class="n">price_provider</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_price_history_max_size</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_price_history_max_size</span><span class="p">)</span>
+
+<div class="viewcode-block" id="PriceDataManager.update_price_history">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.update_price_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_price_history</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update cached price history for technical indicators.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_provider</span><span class="o">.</span><span class="n">get_historical_prices</span><span class="p">(</span>
+                <span class="n">limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="c1"># Convert list to deque</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated price history with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">)</span><span class="si">}</span><span class="s2"> data points&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update price history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Fallback to current price</span>
+            <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_provider</span><span class="o">.</span><span class="n">get_current_price</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">current_price</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="PriceDataManager.get_current_price">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.get_current_price">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_price</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current price.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_provider</span><span class="o">.</span><span class="n">get_current_price</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="PriceDataManager.calculate_rsi">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_rsi">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_rsi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate RSI (Relative Strength Index).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">period</span> <span class="o">+</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;rsi_neutral_value&quot;</span><span class="p">]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Create DataFrame for compute_rsi</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">})</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.ta</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_rsi</span>  <span class="c1"># type: ignore[import-untyped]</span>
+            <span class="n">rsi_series</span> <span class="o">=</span> <span class="n">compute_rsi</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">rsi_series</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">rsi_series</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;rsi_neutral_value&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to calculate RSI: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;rsi_neutral_value&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="PriceDataManager.calculate_sma">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_sma">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_sma</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">period</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate Simple Moving Average.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">period</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="k">if</span> <span class="n">prices</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">prices</span><span class="p">[</span><span class="o">-</span><span class="n">period</span><span class="p">:])</span> <span class="o">/</span> <span class="n">period</span></div>
+
+
+<div class="viewcode-block" id="PriceDataManager.compute_live_features">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.compute_live_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_live_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute live technical indicators.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">prices</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">current_price</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Basic technical indicators</span>
+        <span class="n">rsi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_rsi</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+        <span class="n">sma_short</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">sma_long</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+        <span class="c1"># Price normalized</span>
+        <span class="n">price_norm</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">/</span> <span class="mf">1000000.0</span>
+
+        <span class="c1"># Volume/quantity (mock for now)</span>
+        <span class="n">qty</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># PnL and win flag</span>
+        <span class="n">recent_prices</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span> <span class="k">else</span> <span class="n">prices</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_prices</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">recent_prices</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">recent_prices</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.001</span>
+            <span class="n">win</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">pnl</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">win</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;rsi&quot;</span><span class="p">:</span> <span class="n">rsi</span><span class="p">,</span>
+            <span class="s2">&quot;sma_short&quot;</span><span class="p">:</span> <span class="n">sma_short</span><span class="p">,</span>
+            <span class="s2">&quot;sma_long&quot;</span><span class="p">:</span> <span class="n">sma_long</span><span class="p">,</span>
+            <span class="s2">&quot;price_norm&quot;</span><span class="p">:</span> <span class="n">price_norm</span><span class="p">,</span>
+            <span class="s2">&quot;qty&quot;</span><span class="p">:</span> <span class="n">qty</span><span class="p">,</span>
+            <span class="s2">&quot;pnl&quot;</span><span class="p">:</span> <span class="n">pnl</span><span class="p">,</span>
+            <span class="s2">&quot;win&quot;</span><span class="p">:</span> <span class="n">win</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="PriceDataManager.get_market_features">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.data.html#ztb.trading.live.data.price_data_manager.PriceDataManager.get_market_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_market_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current market features for model prediction.&quot;&quot;&quot;</span>
+        <span class="c1"># Update price history with current price</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">:</span>
+            <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_current_price</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_price</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Initialize deque with current price</span>
+            <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_current_price</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">current_price</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Convert deque to list for calculation functions</span>
+        <span class="n">price_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">)</span>
+
+        <span class="c1"># Get basic features</span>
+        <span class="n">features_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_live_features</span><span class="p">(</span><span class="n">price_list</span><span class="p">)</span>
+
+        <span class="c1"># Start with basic features and extend to 68 dimensions</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">features_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span>  <span class="c1"># RSI (14-period)</span>
+            <span class="n">features_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>  <span class="c1"># Short SMA (5-period)</span>
+            <span class="n">features_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>  <span class="c1"># Long SMA (20-period)</span>
+            <span class="n">features_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_norm&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>  <span class="c1"># Normalized price</span>
+            <span class="n">features_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;qty&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>  <span class="c1"># Quantity</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Extend to 68 features with zeros (simplified for live trading)</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">68</span><span class="p">:</span>
+            <span class="n">features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

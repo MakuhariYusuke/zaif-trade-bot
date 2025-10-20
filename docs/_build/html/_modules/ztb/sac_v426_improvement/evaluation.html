@@ -1,0 +1,378 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.sac_v426_improvement.evaluation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.sac_v426_improvement.evaluation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.sac_v426_improvement.evaluation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SAC v426 Evaluation</span>
+
+<span class="sd">Specialized evaluation functions for SAC v426 improvements,</span>
+<span class="sd">integrating regime analysis, stochastic testing, and comprehensive validation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv426Config</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.improvements</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv426Improvements</span>
+
+
+<div class="viewcode-block" id="SACv426Evaluator">
+<a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.evaluation.SACv426Evaluator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SACv426Evaluator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Specialized evaluator for SAC v426 improvements.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SACv426Config</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">SACv426Config</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">improvements</span> <span class="o">=</span> <span class="n">SACv426Improvements</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SACv426Evaluator.evaluate_model_comprehensive">
+<a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.evaluation.SACv426Evaluator.evaluate_model_comprehensive">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_model_comprehensive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                   <span class="n">backtest_results</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Comprehensive evaluation of SAC v426 model using all integrated systems.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_path: Path to trained model</span>
+<span class="sd">            data_path: Path to evaluation data</span>
+<span class="sd">            backtest_results: Optional pre-computed backtest results</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Comprehensive evaluation results</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+            <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">,</span>
+            <span class="s2">&quot;evaluation_timestamp&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;v426_improvements&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;regime_analysis&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;stochastic_testing&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;stress_testing&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;overall_assessment&quot;</span><span class="p">:</span> <span class="p">{}</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Apply v426 specific improvements validation</span>
+        <span class="k">if</span> <span class="n">backtest_results</span><span class="p">:</span>
+            <span class="n">v426_validation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">improvements</span><span class="o">.</span><span class="n">apply_comprehensive_validation</span><span class="p">(</span><span class="n">backtest_results</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v426_validation</span>
+
+        <span class="c1"># Run stochastic backtest if analyzer is available</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.analysis.analyze_backtest</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestAnalyzer</span>
+            <span class="n">analyzer</span> <span class="o">=</span> <span class="n">BacktestAnalyzer</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">BacktestAnalyzer</span><span class="p">)</span>  <span class="c1"># Create without __init__</span>
+            <span class="n">analyzer</span><span class="o">.</span><span class="n">regime_detector</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockDetector&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{})()</span>  <span class="c1"># Mock regime detector</span>
+
+            <span class="n">stochastic_results</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">run_stochastic_backtest</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span>
+                                                                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">validation_settings</span><span class="p">[</span><span class="s2">&quot;stochastic_episodes&quot;</span><span class="p">])</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;stochastic_testing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">stochastic_results</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;stochastic_testing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+
+        <span class="c1"># Run regime analysis if backtest results available</span>
+        <span class="k">if</span> <span class="n">backtest_results</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.analysis.analyze_backtest</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestAnalyzer</span>
+                <span class="n">analyzer</span> <span class="o">=</span> <span class="n">BacktestAnalyzer</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">BacktestAnalyzer</span><span class="p">)</span>
+                <span class="c1"># Mock required attributes</span>
+                <span class="n">analyzer</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">backtest_results</span>
+                <span class="n">analyzer</span><span class="o">.</span><span class="n">regime_detector</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockDetector&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span>
+                    <span class="s1">&#39;detect_regimes&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="p">[]</span>
+                <span class="p">})()</span>
+
+                <span class="n">regime_results</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_market_regimes</span><span class="p">()</span>
+                <span class="n">results</span><span class="p">[</span><span class="s2">&quot;regime_analysis&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">regime_results</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">results</span><span class="p">[</span><span class="s2">&quot;regime_analysis&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+
+        <span class="c1"># Perform stress testing</span>
+        <span class="k">if</span> <span class="n">backtest_results</span><span class="p">:</span>
+            <span class="n">stress_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_perform_stress_tests</span><span class="p">(</span><span class="n">backtest_results</span><span class="p">)</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;stress_testing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">stress_results</span>
+
+        <span class="c1"># Generate overall assessment</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;overall_assessment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_overall_assessment</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">results</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_stress_tests</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backtest_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform stress tests on backtest results.&quot;&quot;&quot;</span>
+        <span class="n">stress_results</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">portfolio_history</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">backtest_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;portfolio_history&quot;</span><span class="p">,</span> <span class="p">[]))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolio_history</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;No portfolio history available&quot;</span><span class="p">}</span>
+
+        <span class="n">initial_portfolio</span> <span class="o">=</span> <span class="n">portfolio_history</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Price crash scenario (-20%)</span>
+        <span class="n">crash_portfolio</span> <span class="o">=</span> <span class="n">portfolio_history</span> <span class="o">*</span> <span class="mf">0.8</span>
+        <span class="n">crash_return</span> <span class="o">=</span> <span class="p">(</span><span class="n">crash_portfolio</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_portfolio</span><span class="p">)</span> <span class="o">/</span> <span class="n">initial_portfolio</span>
+        <span class="n">stress_results</span><span class="p">[</span><span class="s2">&quot;price_crash_20pct&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;stressed_return&quot;</span><span class="p">:</span> <span class="n">crash_return</span><span class="p">,</span>
+            <span class="s2">&quot;survival_probability&quot;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">crash_portfolio</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">initial_portfolio</span> <span class="o">*</span> <span class="mf">0.5</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">}</span>
+
+        <span class="c1"># High volatility scenario</span>
+        <span class="n">volatility_multiplier</span> <span class="o">=</span> <span class="mf">1.5</span>
+        <span class="n">volatile_portfolio</span> <span class="o">=</span> <span class="n">portfolio_history</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolio_history</span><span class="p">))</span><span class="o">.</span><span class="n">cumsum</span><span class="p">())</span>
+        <span class="n">volatile_return</span> <span class="o">=</span> <span class="p">(</span><span class="n">volatile_portfolio</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_portfolio</span><span class="p">)</span> <span class="o">/</span> <span class="n">initial_portfolio</span>
+        <span class="n">stress_results</span><span class="p">[</span><span class="s2">&quot;high_volatility&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;stressed_return&quot;</span><span class="p">:</span> <span class="n">volatile_return</span><span class="p">,</span>
+            <span class="s2">&quot;volatility_multiplier&quot;</span><span class="p">:</span> <span class="n">volatility_multiplier</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Increased transaction costs</span>
+        <span class="n">cost_multiplier</span> <span class="o">=</span> <span class="mf">2.0</span>
+        <span class="c1"># Simplified: assume higher costs reduce returns by cost_multiplier</span>
+        <span class="n">high_cost_return</span> <span class="o">=</span> <span class="p">(</span><span class="n">portfolio_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">initial_portfolio</span><span class="p">)</span> <span class="o">/</span> <span class="n">initial_portfolio</span> <span class="o">/</span> <span class="n">cost_multiplier</span>
+        <span class="n">stress_results</span><span class="p">[</span><span class="s2">&quot;high_transaction_costs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;stressed_return&quot;</span><span class="p">:</span> <span class="n">high_cost_return</span><span class="p">,</span>
+            <span class="s2">&quot;cost_multiplier&quot;</span><span class="p">:</span> <span class="n">cost_multiplier</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stress_results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_overall_assessment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate overall assessment from all evaluation components.&quot;&quot;&quot;</span>
+        <span class="n">assessment</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;overall_score&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;strengths&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;weaknesses&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;recommendations&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;v426_compliance&quot;</span><span class="p">:</span> <span class="p">{}</span>
+        <span class="p">}</span>
+
+        <span class="n">scores</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Assess v426 improvements</span>
+        <span class="n">v426_results</span> <span class="o">=</span> <span class="n">evaluation_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="n">v426_results</span><span class="p">:</span>
+            <span class="n">bias_score</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_balance_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">adaptation_score</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;market_adaptation&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;adaptation_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">overall_v426_score</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overall_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">scores</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">bias_score</span><span class="p">,</span> <span class="n">adaptation_score</span><span class="p">,</span> <span class="n">overall_v426_score</span><span class="p">])</span>
+
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;v426_compliance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;bias_correction_score&quot;</span><span class="p">:</span> <span class="n">bias_score</span><span class="p">,</span>
+                <span class="s2">&quot;market_adaptation_score&quot;</span><span class="p">:</span> <span class="n">adaptation_score</span><span class="p">,</span>
+                <span class="s2">&quot;overall_compliance&quot;</span><span class="p">:</span> <span class="n">overall_v426_score</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Check compliance with v426 targets</span>
+            <span class="k">if</span> <span class="n">bias_score</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;strengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Good action balance achieved&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;weaknesses&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Action balance needs improvement&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">adaptation_score</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;strengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Market adaptation improved&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;weaknesses&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Market correlation needs enhancement&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Assess stochastic testing</span>
+        <span class="n">stochastic_results</span> <span class="o">=</span> <span class="n">evaluation_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stochastic_testing&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">if</span> <span class="s2">&quot;average_return&quot;</span> <span class="ow">in</span> <span class="n">stochastic_results</span><span class="p">:</span>
+            <span class="n">avg_return</span> <span class="o">=</span> <span class="n">stochastic_results</span><span class="p">[</span><span class="s2">&quot;average_return&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">avg_return</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;strengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Positive stochastic returns: </span><span class="si">{</span><span class="n">avg_return</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+                <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">avg_return</span> <span class="o">/</span> <span class="mf">10.0</span><span class="p">))</span>  <span class="c1"># Normalize to 0-1 scale</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;weaknesses&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Negative stochastic returns: </span><span class="si">{</span><span class="n">avg_return</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Assess stress testing</span>
+        <span class="n">stress_results</span> <span class="o">=</span> <span class="n">evaluation_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stress_testing&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">survival_count</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">test</span> <span class="ow">in</span> <span class="n">stress_results</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+                           <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">test</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;survival_probability&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">survival_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;strengths&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Passed </span><span class="si">{</span><span class="n">survival_count</span><span class="si">}</span><span class="s2"> stress tests&quot;</span><span class="p">)</span>
+            <span class="n">scores</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">survival_count</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">stress_results</span><span class="p">)</span> <span class="k">if</span> <span class="n">stress_results</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Calculate overall score</span>
+        <span class="k">if</span> <span class="n">scores</span><span class="p">:</span>
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;overall_score&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span>
+
+        <span class="c1"># Generate recommendations</span>
+        <span class="k">if</span> <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;overall_score&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.6</span><span class="p">:</span>
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Significant improvements needed&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;overall_score&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Moderate improvements recommended&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Performance meets v426 standards&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Add specific recommendations from v426 improvements</span>
+        <span class="n">v426_recommendations</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;recommendations&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">assessment</span><span class="p">[</span><span class="s2">&quot;recommendations&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">v426_recommendations</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">assessment</span>
+
+<div class="viewcode-block" id="SACv426Evaluator.compare_with_baseline">
+<a class="viewcode-back" href="../../../api/generated/ztb.sac_v426_improvement.html#ztb.sac_v426_improvement.evaluation.SACv426Evaluator.compare_with_baseline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compare_with_baseline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">v426_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+                            <span class="n">baseline_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compare v426 results with baseline performance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            v426_results: SAC v426 evaluation results</span>
+<span class="sd">            baseline_results: Baseline model evaluation results</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Comparison analysis</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">comparison</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;v426_vs_baseline&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;improvement_metrics&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;key_achievements&quot;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Compare key metrics</span>
+        <span class="n">v426_score</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overall_assessment&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overall_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">baseline_score</span> <span class="o">=</span> <span class="n">baseline_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overall_assessment&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;overall_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;v426_vs_baseline&quot;</span><span class="p">][</span><span class="s2">&quot;overall_score_improvement&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v426_score</span> <span class="o">-</span> <span class="n">baseline_score</span>
+
+        <span class="c1"># Compare specific improvements</span>
+        <span class="n">v426_bias</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_balance_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">baseline_bias</span> <span class="o">=</span> <span class="n">baseline_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bias_analysis&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;action_balance_score&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;improvement_metrics&quot;</span><span class="p">][</span><span class="s2">&quot;bias_correction&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v426_bias</span> <span class="o">-</span> <span class="n">baseline_bias</span>
+
+        <span class="n">v426_correlation</span> <span class="o">=</span> <span class="n">v426_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;market_adaptation&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">baseline_correlation</span> <span class="o">=</span> <span class="n">baseline_results</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;v426_improvements&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;market_adaptation&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;correlation_coefficient&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;improvement_metrics&quot;</span><span class="p">][</span><span class="s2">&quot;market_correlation&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v426_correlation</span> <span class="o">-</span> <span class="n">baseline_correlation</span>
+
+        <span class="c1"># Identify key achievements</span>
+        <span class="k">if</span> <span class="n">v426_score</span> <span class="o">&gt;</span> <span class="n">baseline_score</span><span class="p">:</span>
+            <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;key_achievements&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Overall performance improved&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">v426_bias</span> <span class="o">&gt;</span> <span class="n">baseline_bias</span><span class="p">:</span>
+            <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;key_achievements&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;SELL bias significantly reduced&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">v426_correlation</span> <span class="o">&gt;</span> <span class="n">baseline_correlation</span><span class="p">:</span>
+            <span class="n">comparison</span><span class="p">[</span><span class="s2">&quot;key_achievements&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Market correlation enhanced&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">comparison</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

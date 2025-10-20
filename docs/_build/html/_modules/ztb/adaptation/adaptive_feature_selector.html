@@ -1,0 +1,974 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.adaptive_feature_selector &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.adaptive_feature_selector</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.adaptive_feature_selector</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Adaptive Feature Selection Manager</span>
+<span class="sd">適応型特徴量選択マネージャー</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomForestRegressor</span><span class="p">,</span> <span class="n">GradientBoostingRegressor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.feature_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">mutual_info_regression</span><span class="p">,</span> <span class="n">f_regression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.spatial.distance</span><span class="w"> </span><span class="kn">import</span> <span class="n">jensenshannon</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.monitoring.evaluation_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousEvaluationManager</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FeatureSelectionMethod">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.FeatureSelectionMethod">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureSelectionMethod</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量選択手法&quot;&quot;&quot;</span>
+    <span class="n">CORRELATION_BASED</span> <span class="o">=</span> <span class="s2">&quot;correlation_based&quot;</span>  <span class="c1"># 相関ベース</span>
+    <span class="n">IMPORTANCE_BASED</span> <span class="o">=</span> <span class="s2">&quot;importance_based&quot;</span>  <span class="c1"># 重要度ベース</span>
+    <span class="n">MUTUAL_INFO</span> <span class="o">=</span> <span class="s2">&quot;mutual_info&quot;</span>  <span class="c1"># 相互情報量</span>
+    <span class="n">VARIANCE_BASED</span> <span class="o">=</span> <span class="s2">&quot;variance_based&quot;</span>  <span class="c1"># 分散ベース</span>
+    <span class="n">STABILITY_BASED</span> <span class="o">=</span> <span class="s2">&quot;stability_based&quot;</span>  <span class="c1"># 安定性ベース</span>
+    <span class="n">MARKET_CONDITION_BASED</span> <span class="o">=</span> <span class="s2">&quot;market_condition_based&quot;</span>  <span class="c1"># 市場条件ベース</span></div>
+
+
+
+<div class="viewcode-block" id="MarketCondition">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.MarketCondition">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarketCondition</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;市場条件&quot;&quot;&quot;</span>
+    <span class="n">TRENDING</span> <span class="o">=</span> <span class="s2">&quot;trending&quot;</span>  <span class="c1"># トレンド相場</span>
+    <span class="n">RANGING</span> <span class="o">=</span> <span class="s2">&quot;ranging&quot;</span>  <span class="c1"># レンジ相場</span>
+    <span class="n">VOLATILE</span> <span class="o">=</span> <span class="s2">&quot;volatile&quot;</span>  <span class="c1"># 高ボラティリティ</span>
+    <span class="n">CALM</span> <span class="o">=</span> <span class="s2">&quot;calm&quot;</span>  <span class="c1"># 低ボラティリティ</span>
+    <span class="n">NEWS_DRIVEN</span> <span class="o">=</span> <span class="s2">&quot;news_driven&quot;</span>  <span class="c1"># ニュース主導</span>
+    <span class="n">TECHNICAL</span> <span class="o">=</span> <span class="s2">&quot;technical&quot;</span>  <span class="c1"># テクニカル主導</span></div>
+
+
+
+<div class="viewcode-block" id="AdaptiveFeatureConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdaptiveFeatureConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;適応型特徴量選択設定&quot;&quot;&quot;</span>
+
+    <span class="c1"># 選択手法設定</span>
+    <span class="n">enabled_methods</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureSelectionMethod</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">CORRELATION_BASED</span><span class="p">,</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MARKET_CONDITION_BASED</span>
+    <span class="p">])</span>
+
+    <span class="c1"># 特徴量数設定</span>
+    <span class="n">min_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span>  <span class="c1"># 最小特徴量数</span>
+    <span class="n">max_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># 最大特徴量数</span>
+    <span class="n">target_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 目標特徴量数</span>
+
+    <span class="c1"># 適応間隔設定</span>
+    <span class="n">adaptation_interval_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 適応間隔</span>
+    <span class="n">min_adaptation_interval_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">15</span>  <span class="c1"># 最小適応間隔</span>
+
+    <span class="c1"># 重要度計算設定</span>
+    <span class="n">importance_calculation_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># 重要度計算ウィンドウ</span>
+    <span class="n">importance_update_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># 重要度更新閾値</span>
+
+    <span class="c1"># 相関設定</span>
+    <span class="n">max_correlation_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.85</span>  <span class="c1"># 最大相関係数閾値</span>
+    <span class="n">correlation_calculation_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span>  <span class="c1"># 相関計算ウィンドウ</span>
+
+    <span class="c1"># 市場条件適応設定</span>
+    <span class="n">market_condition_window_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 市場条件評価ウィンドウ</span>
+    <span class="n">volatility_threshold_high</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span>  <span class="c1"># 高ボラティリティ閾値</span>
+    <span class="n">volatility_threshold_low</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.005</span>  <span class="c1"># 低ボラティリティ閾値</span>
+    <span class="n">trend_strength_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>  <span class="c1"># トレンド強度閾値</span>
+
+    <span class="c1"># 安定性設定</span>
+    <span class="n">stability_window_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span>  <span class="c1"># 安定性評価期間</span>
+    <span class="n">stability_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>  <span class="c1"># 安定性閾値</span>
+
+    <span class="c1"># 重み付け設定</span>
+    <span class="n">feature_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>  <span class="c1"># 特徴量別重み</span>
+    <span class="n">method_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">FeatureSelectionMethod</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">CORRELATION_BASED</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+        <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MARKET_CONDITION_BASED</span><span class="p">:</span> <span class="mf">0.3</span>
+    <span class="p">})</span></div>
+
+
+
+<div class="viewcode-block" id="FeatureImportance">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.FeatureImportance">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureImportance</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量重要度&quot;&quot;&quot;</span>
+
+    <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">importance_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">method</span><span class="p">:</span> <span class="n">FeatureSelectionMethod</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="FeatureSelectionResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.FeatureSelectionResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量選択結果&quot;&quot;&quot;</span>
+
+    <span class="n">selected_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">feature_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">selection_method</span><span class="p">:</span> <span class="n">FeatureSelectionMethod</span>
+    <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">performance_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">stability_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdaptiveFeatureSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;適応型特徴量選択マネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">online_learning_pipeline</span><span class="p">:</span> <span class="n">OnlineLearningPipeline</span><span class="p">,</span>
+                 <span class="n">evaluation_manager</span><span class="p">:</span> <span class="n">ContinuousEvaluationManager</span><span class="p">,</span>
+                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AdaptiveFeatureConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span> <span class="o">=</span> <span class="n">online_learning_pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_manager</span> <span class="o">=</span> <span class="n">evaluation_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">AdaptiveFeatureConfig</span><span class="p">()</span>
+
+        <span class="c1"># 特徴量管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_importance_history</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureImportance</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 市場条件追跡</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span> <span class="o">=</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_condition_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="n">MarketCondition</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 選択結果履歴</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FeatureSelectionResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># モデルとスケーラー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">importance_models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">FeatureSelectionMethod</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 状態管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># コールバック</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_selection_callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">FeatureSelectionResult</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># スレッド管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_selector</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;AdaptiveFeatureSelector initialized&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_selector</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;セレクターを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 利用可能な特徴量を取得</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">all_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_available_features</span><span class="p">()</span>
+
+            <span class="c1"># 初期特徴量選択</span>
+            <span class="n">initial_selection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_perform_initial_selection</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span> <span class="o">=</span> <span class="n">initial_selection</span><span class="o">.</span><span class="n">selected_features</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feature_weights</span> <span class="o">=</span> <span class="n">initial_selection</span><span class="o">.</span><span class="n">feature_weights</span>
+
+            <span class="c1"># 重要度モデルを初期化</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_importance_models</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features, selected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize selector: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.start_adaptive_selection">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.start_adaptive_selection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_adaptive_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応型選択を開始&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Adaptive selection already active&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_adaptation_worker</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Adaptive feature selection started&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start adaptive selection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.stop_adaptive_selection">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.stop_adaptive_selection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_adaptive_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応型選択を停止&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Adaptive feature selection stopped&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.adapt_features">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.adapt_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量を適応&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="c1"># 市場条件を評価</span>
+            <span class="n">market_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_market_condition</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+            <span class="c1"># 各手法で特徴量を選択</span>
+            <span class="n">selection_results</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_methods</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_features_with_method</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="n">market_data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+                    <span class="n">selection_results</span><span class="p">[</span><span class="n">method</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in </span><span class="si">{</span><span class="n">method</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> selection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 結果を統合</span>
+            <span class="n">final_selection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_selections</span><span class="p">(</span><span class="n">selection_results</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">,</span> <span class="n">current_time</span><span class="p">)</span>
+
+            <span class="c1"># 選択結果を更新</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span> <span class="o">=</span> <span class="n">final_selection</span><span class="o">.</span><span class="n">selected_features</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feature_weights</span> <span class="o">=</span> <span class="n">final_selection</span><span class="o">.</span><span class="n">feature_weights</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_market_condition</span> <span class="o">=</span> <span class="n">market_condition</span>
+
+            <span class="c1"># 履歴に追加</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">final_selection</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span><span class="p">[</span><span class="o">-</span><span class="mi">100</span><span class="p">:]</span>
+
+            <span class="c1"># コールバックを実行</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_selection_callbacks</span><span class="p">(</span><span class="n">final_selection</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adapted features: selected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">final_selection</span><span class="o">.</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features for </span><span class="si">{</span><span class="n">market_condition</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">final_selection</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to adapt features: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># フォールバックとして現在の選択を返す</span>
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Fallback due to adaptation error&quot;</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_market_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarketCondition</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件を評価&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span>
+
+            <span class="c1"># 価格データを取得</span>
+            <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">market_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">prices</span> <span class="o">=</span> <span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 最初の数値列を使用</span>
+                <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">market_data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">numeric_cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span>
+                <span class="n">prices</span> <span class="o">=</span> <span class="n">market_data</span><span class="p">[</span><span class="n">numeric_cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="c1"># ボラティリティを計算</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+
+            <span class="c1"># トレンド強度を計算（ADXのようなもの）</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">14</span><span class="p">:</span>
+                <span class="c1"># 簡易的なトレンド強度計算</span>
+                <span class="n">sma_short</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">sma_long</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="n">trend_strength</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sma_short</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">trend_strength</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="c1"># 市場条件を決定</span>
+            <span class="k">if</span> <span class="n">volatility</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">volatility_threshold_high</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">trend_strength</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">trend_strength_threshold</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">VOLATILE</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">NEWS_DRIVEN</span>
+            <span class="k">elif</span> <span class="n">volatility</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">volatility_threshold_low</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">trend_strength</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">trend_strength_threshold</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">TRENDING</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">RANGING</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to evaluate market condition: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_select_features_with_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                   <span class="n">method</span><span class="p">:</span> <span class="n">FeatureSelectionMethod</span><span class="p">,</span>
+                                   <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                                   <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                                   <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;指定された手法で特徴量を選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_importance_based_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">CORRELATION_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_correlation_based_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MUTUAL_INFO</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutual_info_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MARKET_CONDITION_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_market_condition_based_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in </span><span class="si">{</span><span class="n">method</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> selection: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_importance_based_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                  <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                                  <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                                  <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;重要度ベースの特徴量選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># モデルベースの特徴量重要度を計算</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">importance_models</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">RandomForestRegressor</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">importance_models</span><span class="p">[</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
+
+            <span class="c1"># データを準備</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="c1"># スケーリング</span>
+            <span class="k">if</span> <span class="s1">&#39;importance_scaler&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="s1">&#39;importance_scaler&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+                <span class="n">X_scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="s1">&#39;importance_scaler&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">X_scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="s1">&#39;importance_scaler&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+            <span class="c1"># モデルを訓練</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+            <span class="c1"># 特徴量重要度を取得</span>
+            <span class="n">importances</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">feature_importances_</span>
+            <span class="n">feature_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+
+            <span class="c1"># 重要度でソート</span>
+            <span class="n">feature_importance_pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">feature_names</span><span class="p">,</span> <span class="n">importances</span><span class="p">))</span>
+            <span class="n">feature_importance_pairs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># 上位特徴量を選択</span>
+            <span class="n">num_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_importance_pairs</span><span class="p">))</span>
+            <span class="n">selected_pairs</span> <span class="o">=</span> <span class="n">feature_importance_pairs</span><span class="p">[:</span><span class="n">num_features</span><span class="p">]</span>
+
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">]</span>
+            <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">imp</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">imp</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">}</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Importance-based selection using Random Forest&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Importance-based selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_correlation_based_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                   <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                                   <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                                   <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;相関ベースの特徴量選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># ターゲットとの相関係数を計算</span>
+            <span class="n">correlations</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;int64&#39;</span><span class="p">,</span> <span class="s1">&#39;float64&#39;</span><span class="p">]:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">corr</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">target</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">corr</span><span class="p">):</span>
+                            <span class="n">correlations</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">corr</span>
+                    <span class="k">except</span><span class="p">:</span>
+                        <span class="k">continue</span>
+
+            <span class="c1"># 相関の高い特徴量を選択</span>
+            <span class="n">sorted_features</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">correlations</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># 相関が閾値以下の特徴量を除外</span>
+            <span class="n">filtered_features</span> <span class="o">=</span> <span class="p">[(</span><span class="n">name</span><span class="p">,</span> <span class="n">corr</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">corr</span> <span class="ow">in</span> <span class="n">sorted_features</span> <span class="k">if</span> <span class="n">corr</span> <span class="o">&gt;=</span> <span class="mf">0.1</span><span class="p">]</span>
+
+            <span class="c1"># 特徴量間の相関をチェック（多重共線性を避ける）</span>
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">selected_weights</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">corr</span> <span class="ow">in</span> <span class="n">filtered_features</span><span class="p">:</span>
+                <span class="c1"># 既に選択された特徴量との相関をチェック</span>
+                <span class="n">should_include</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">for</span> <span class="n">selected_name</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">:</span>
+                    <span class="n">feature_corr</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">selected_name</span><span class="p">]))</span>
+                    <span class="k">if</span> <span class="n">feature_corr</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_correlation_threshold</span><span class="p">:</span>
+                        <span class="n">should_include</span> <span class="o">=</span> <span class="kc">False</span>
+                        <span class="k">break</span>
+
+                <span class="k">if</span> <span class="n">should_include</span><span class="p">:</span>
+                    <span class="n">selected_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                    <span class="n">selected_weights</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">corr</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">selected_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">CORRELATION_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Correlation-based selection with multicollinearity check&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Correlation-based selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_mutual_info_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                             <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                             <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                             <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;相互情報量ベースの特徴量選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 数値特徴量のみを使用</span>
+            <span class="n">numeric_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+            <span class="n">X</span> <span class="o">=</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">values</span>
+
+            <span class="c1"># 相互情報量を計算</span>
+            <span class="n">mi_scores</span> <span class="o">=</span> <span class="n">mutual_info_regression</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+            <span class="c1"># 特徴量とスコアをペアリング</span>
+            <span class="n">feature_mi_pairs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">numeric_data</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">mi_scores</span><span class="p">))</span>
+            <span class="n">feature_mi_pairs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># 上位特徴量を選択</span>
+            <span class="n">num_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_mi_pairs</span><span class="p">))</span>
+            <span class="n">selected_pairs</span> <span class="o">=</span> <span class="n">feature_mi_pairs</span><span class="p">[:</span><span class="n">num_features</span><span class="p">]</span>
+
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">]</span>
+            <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">}</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MUTUAL_INFO</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Mutual information-based selection&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mutual info selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_market_condition_based_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                                        <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                                        <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件ベースの特徴量選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 市場条件に応じた特徴量重み付け</span>
+            <span class="n">condition_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_market_condition_weights</span><span class="p">(</span><span class="n">market_condition</span><span class="p">)</span>
+
+            <span class="c1"># 各特徴量の適合性を評価</span>
+            <span class="n">feature_scores</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">base_score</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+                <span class="c1"># 特徴量タイプに応じた重み付け</span>
+                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;trend&#39;</span><span class="p">,</span> <span class="s1">&#39;adx&#39;</span><span class="p">,</span> <span class="s1">&#39;slope&#39;</span><span class="p">]):</span>
+                    <span class="c1"># トレンド系指標</span>
+                    <span class="n">base_score</span> <span class="o">*=</span> <span class="n">condition_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;trend&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;stoch&#39;</span><span class="p">,</span> <span class="s1">&#39;williams&#39;</span><span class="p">]):</span>
+                    <span class="c1"># オシレーター系指標</span>
+                    <span class="n">base_score</span> <span class="o">*=</span> <span class="n">condition_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;oscillator&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;bb&#39;</span><span class="p">,</span> <span class="s1">&#39;band&#39;</span><span class="p">,</span> <span class="s1">&#39;atr&#39;</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">]):</span>
+                    <span class="c1"># ボラティリティ系指標</span>
+                    <span class="n">base_score</span> <span class="o">*=</span> <span class="n">condition_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="s1">&#39;flow&#39;</span><span class="p">]):</span>
+                    <span class="c1"># 出来高系指標</span>
+                    <span class="n">base_score</span> <span class="o">*=</span> <span class="n">condition_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+                <span class="n">feature_scores</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_score</span>
+
+            <span class="c1"># スコアでソート</span>
+            <span class="n">sorted_features</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">feature_scores</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># 上位特徴量を選択</span>
+            <span class="n">num_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_features</span><span class="p">))</span>
+            <span class="n">selected_pairs</span> <span class="o">=</span> <span class="n">sorted_features</span><span class="p">[:</span><span class="n">num_features</span><span class="p">]</span>
+
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">]</span>
+            <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">}</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MARKET_CONDITION_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Market condition-based selection for </span><span class="si">{</span><span class="n">market_condition</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Market condition-based selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_market_condition_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件に応じた重みを取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">market_condition</span> <span class="o">==</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">TRENDING</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>      <span class="c1"># トレンド指標を重視</span>
+                    <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span> <span class="c1"># オシレーターを軽視</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">1.2</span>
+                <span class="p">}</span>
+            <span class="k">elif</span> <span class="n">market_condition</span> <span class="o">==</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">RANGING</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>      <span class="c1"># トレンド指標を軽視</span>
+                    <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">1.4</span><span class="p">,</span> <span class="c1"># オシレーターを重視</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span>
+                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">1.0</span>
+                <span class="p">}</span>
+            <span class="k">elif</span> <span class="n">market_condition</span> <span class="o">==</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">VOLATILE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">1.6</span><span class="p">,</span> <span class="c1"># ボラティリティ指標を重視</span>
+                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">1.3</span>
+                <span class="p">}</span>
+            <span class="k">elif</span> <span class="n">market_condition</span> <span class="o">==</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">,</span>
+                    <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">1.1</span><span class="p">,</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">,</span> <span class="c1"># ボラティリティ指標を軽視</span>
+                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">0.8</span>
+                <span class="p">}</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># NEWS_DRIVEN or TECHNICAL</span>
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">1.2</span><span class="p">,</span>
+                    <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">1.4</span>  <span class="c1"># 出来高を重視</span>
+                <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;oscillator&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_selections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                          <span class="n">selection_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">FeatureSelectionMethod</span><span class="p">,</span> <span class="n">FeatureSelectionResult</span><span class="p">],</span>
+                          <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">,</span>
+                          <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;複数の選択結果を統合&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">selection_results</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(),</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(),</span> <span class="n">market_condition</span><span class="p">)</span>
+
+            <span class="c1"># 全特徴量のスコアを集計</span>
+            <span class="n">all_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="n">feature_total_scores</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">method_contributions</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">method</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">selection_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">method_weight</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">method</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="n">method_contributions</span><span class="p">[</span><span class="n">method</span><span class="p">]</span> <span class="o">=</span> <span class="n">method_weight</span>
+
+                <span class="k">for</span> <span class="n">feature_name</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">feature_weights</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">all_features</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">feature_name</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature_total_scores</span><span class="p">:</span>
+                        <span class="n">feature_total_scores</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+                    <span class="n">feature_total_scores</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span> <span class="o">+=</span> <span class="n">weight</span> <span class="o">*</span> <span class="n">method_weight</span>
+
+            <span class="c1"># スコアでソート</span>
+            <span class="n">sorted_features</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">feature_total_scores</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># 上位特徴量を選択</span>
+            <span class="n">num_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sorted_features</span><span class="p">))</span>
+            <span class="n">selected_pairs</span> <span class="o">=</span> <span class="n">sorted_features</span><span class="p">[:</span><span class="n">num_features</span><span class="p">]</span>
+
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">]</span>
+            <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">selected_pairs</span><span class="p">}</span>
+
+            <span class="c1"># 正規化された重みを計算</span>
+            <span class="n">total_weight</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">feature_weights</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+            <span class="k">if</span> <span class="n">total_weight</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">weight</span> <span class="o">/</span> <span class="n">total_weight</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">weight</span> <span class="ow">in</span> <span class="n">feature_weights</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>  <span class="c1"># 統合結果</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">timestamp</span><span class="p">,</span>
+                <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Combined selection from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selection_results</span><span class="p">)</span><span class="si">}</span><span class="s2"> methods&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to combine selections: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(),</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(),</span> <span class="n">market_condition</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_default_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                          <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+                          <span class="n">target</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span>
+                          <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;デフォルトの特徴量選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 利用可能な特徴量からランダムに選択</span>
+            <span class="n">available_features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">data</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">]</span>
+
+            <span class="n">num_features</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_features</span><span class="p">))</span>
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="n">available_features</span><span class="p">[:</span><span class="n">num_features</span><span class="p">]</span>
+
+            <span class="c1"># 等しい重み付け</span>
+            <span class="n">feature_weights</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">}</span>
+
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="n">selected_features</span><span class="p">,</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="n">feature_weights</span><span class="p">,</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Default selection (fallback)&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Default selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span> <span class="k">else</span> <span class="p">[],</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span> <span class="k">else</span> <span class="p">[])},</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">market_condition</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Emergency fallback selection&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_initial_selection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeatureSelectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期特徴量選択を実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># ダミーデータで初期選択</span>
+            <span class="n">dummy_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="sa">f</span><span class="s1">&#39;feature_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">)))</span>
+            <span class="p">})</span>
+            <span class="n">dummy_target</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">))</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_selection</span><span class="p">(</span><span class="n">dummy_data</span><span class="p">,</span> <span class="n">dummy_target</span><span class="p">,</span> <span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initial selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">FeatureSelectionResult</span><span class="p">(</span>
+                <span class="n">selected_features</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_features</span> <span class="k">else</span> <span class="p">[],</span>
+                <span class="n">feature_weights</span><span class="o">=</span><span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_features</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">target_features</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_features</span> <span class="k">else</span> <span class="p">[])},</span>
+                <span class="n">selection_method</span><span class="o">=</span><span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">,</span>
+                <span class="n">market_condition</span><span class="o">=</span><span class="n">MarketCondition</span><span class="o">.</span><span class="n">CALM</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Initial selection&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_importance_models</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;重要度モデルを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_methods</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">IMPORTANCE_BASED</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">importance_models</span><span class="p">[</span><span class="n">method</span><span class="p">]</span> <span class="o">=</span> <span class="n">RandomForestRegressor</span><span class="p">(</span>
+                        <span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                        <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+                        <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="n">FeatureSelectionMethod</span><span class="o">.</span><span class="n">MUTUAL_INFO</span><span class="p">:</span>
+                    <span class="c1"># 相互情報量はモデル不要</span>
+                    <span class="k">pass</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">importance_models</span><span class="p">)</span><span class="si">}</span><span class="s2"> importance models&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize importance models: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_available_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;利用可能な特徴量を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># オンライン学習パイプラインから特徴量を取得</span>
+            <span class="c1"># （実際の実装では適切なメソッドを呼び出す）</span>
+            <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s1">&#39;feature_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">156</span><span class="p">)]</span>  <span class="c1"># ダミー特徴量</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get available features: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adaptation_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応ワーカー&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+                <span class="c1"># 適応間隔をチェック</span>
+                <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>
+                    <span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">*</span> <span class="mi">60</span><span class="p">):</span>
+
+                    <span class="c1"># 最新データを取得</span>
+                    <span class="n">market_data</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_latest_data</span><span class="p">()</span>
+
+                    <span class="k">if</span> <span class="n">market_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">target</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="c1"># 特徴量適応を実行</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">adapt_features</span><span class="p">(</span><span class="n">market_data</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 1分ごとにチェック</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation worker error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>  <span class="c1"># エラー時は5分待機</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_latest_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最新データを取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># オンライン学習パイプラインからデータを取得</span>
+            <span class="c1"># （実際の実装では適切なメソッドを呼び出す）</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>  <span class="c1"># ダミー</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get latest data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.add_selection_callback">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.add_selection_callback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_selection_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">FeatureSelectionResult</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量選択コールバックを追加&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_selection_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_selection_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">FeatureSelectionResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量選択コールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_selection_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature selection callback failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.get_selection_history">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.get_selection_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_selection_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;選択履歴を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+            <span class="n">recent_selections</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">selection_history</span>
+                <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+            <span class="p">]</span>
+
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="s2">&quot;method&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">selection_method</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s2">&quot;market_condition&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">market_condition</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s2">&quot;num_features&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">selected_features</span><span class="p">),</span>
+                    <span class="s2">&quot;performance_score&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">performance_score</span><span class="p">,</span>
+                    <span class="s2">&quot;stability_score&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">stability_score</span><span class="p">,</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">reason</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">recent_selections</span>
+            <span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get selection history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="AdaptiveFeatureSelector.get_feature_importance_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.adaptive_feature_selector.AdaptiveFeatureSelector.get_feature_importance_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_importance_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量重要度統計を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_importance_history</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;No history for feature </span><span class="si">{</span><span class="n">feature_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+
+            <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+            <span class="n">recent_importance</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">imp</span> <span class="k">for</span> <span class="n">imp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_importance_history</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">imp</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+            <span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">recent_importance</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;No recent importance data&quot;</span><span class="p">}</span>
+
+            <span class="n">scores</span> <span class="o">=</span> <span class="p">[</span><span class="n">imp</span><span class="o">.</span><span class="n">importance_score</span> <span class="k">for</span> <span class="n">imp</span> <span class="ow">in</span> <span class="n">recent_importance</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;feature_name&quot;</span><span class="p">:</span> <span class="n">feature_name</span><span class="p">,</span>
+                <span class="s2">&quot;period_hours&quot;</span><span class="p">:</span> <span class="n">hours</span><span class="p">,</span>
+                <span class="s2">&quot;num_measurements&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">),</span>
+                <span class="s2">&quot;mean_importance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">scores</span><span class="p">)),</span>
+                <span class="s2">&quot;std_importance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">scores</span><span class="p">)),</span>
+                <span class="s2">&quot;min_importance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">scores</span><span class="p">)),</span>
+                <span class="s2">&quot;max_importance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">scores</span><span class="p">)),</span>
+                <span class="s2">&quot;latest_importance&quot;</span><span class="p">:</span> <span class="n">scores</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">scores</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get feature importance stats: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

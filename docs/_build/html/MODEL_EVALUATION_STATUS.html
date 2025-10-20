@@ -1,0 +1,397 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>モデル評価レポート - 検証状況 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">モデル評価レポート - 検証状況</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/MODEL_EVALUATION_STATUS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>モデル評価レポート - 検証状況<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>作成日</strong>: 2025年10月10日<br />
+<strong>目的</strong>: 実取引で儲かるモデルを特定する<br />
+<strong>ステータス</strong>: ⚠️ <strong>検証中断（環境問題）</strong></p>
+<hr class="docutils" />
+<section id="id2">
+<h2>📋 検証計画<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>対象モデル<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>v385</strong> (ppo_reward_v385_curated.zip) - 最新・68特徴量</p></li>
+<li><p><strong>v384</strong> (ppo_reward_v384_curated_60.zip) - 60k steps・68特徴量</p></li>
+<li><p><strong>v381</strong> (ppo_reward_v381_revised_profit_focused.zip) - ベースライン</p></li>
+</ol>
+</section>
+<section id="id4">
+<h3>評価指標<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>📈 総収益率 (Total Return %)</p></li>
+<li><p>📊 シャープレシオ (Sharpe Ratio)</p></li>
+<li><p>📉 最大ドローダウン (Max Drawdown)</p></li>
+<li><p>🎯 勝率 (Win Rate)</p></li>
+<li><p>💰 利益率 (Profit Factor)</p></li>
+<li><p>🔄 取引回数 (Total Trades)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>⚠️ 検証で発生した問題<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="paper-trade-py">
+<h3>問題1: paper_trade.py モデル読み込みエラー<a class="headerlink" href="#paper-trade-py" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">File</span> <span class="s2">&quot;ztb/training/scripts/paper_trade.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">187</span><span class="p">,</span> <span class="ow">in</span> <span class="n">_load_model</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="ne">KeyboardInterrupt</span> <span class="p">(</span><span class="n">during</span> <span class="n">PyTorch</span> <span class="n">import</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>原因</strong>: Python 3.13環境でPyTorchインポート時にクラッシュ<br />
+<strong>影響</strong>: paper_trade.pyが使用不可</p>
+</section>
+<section id="backtest-with-schema-py">
+<h3>問題2: backtest_with_schema.py ログ出力エラー<a class="headerlink" href="#backtest-with-schema-py" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">File</span> <span class="s2">&quot;ztb/training/policies/policy_utils.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">74</span><span class="p">,</span> <span class="ow">in</span> <span class="n">predict_with_masks</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MaskablePPO prediction: action=</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">, masks=</span><span class="si">{</span><span class="n">action_masks</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="o">...</span>
+<span class="ne">KeyboardInterrupt</span> <span class="p">(</span><span class="n">during</span> <span class="n">numpy</span> <span class="n">array</span> <span class="n">formatting</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>原因</strong>: ログ出力時のnumpy配列フォーマットでクラッシュ<br />
+<strong>影響</strong>: backtest_with_schema.pyが使用不可</p>
+</section>
+<section id="live-trade-py">
+<h3>問題3: live_trade.py 実行時エラー<a class="headerlink" href="#live-trade-py" title="Link to this heading"></a></h3>
+<p><strong>症状</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">File</span> <span class="s2">&quot;live_trade.py&quot;</span><span class="p">,</span> <span class="n">line</span> <span class="mi">438</span><span class="p">,</span> <span class="ow">in</span> <span class="n">_load_model</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">))</span>
+<span class="o">...</span>
+<span class="ne">KeyboardInterrupt</span> <span class="p">(</span><span class="n">during</span> <span class="n">torch</span><span class="o">.</span><span class="n">_dynamo</span> <span class="n">import</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>原因</strong>: PyTorch動的コンパイルモジュールのインポートエラー<br />
+<strong>影響</strong>: live_trade.pyが使用不可</p>
+</section>
+<section id="id6">
+<h3>問題4: 既存バックテスト結果の問題<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>v384バックテスト結果</strong> (<code class="docutils literal notranslate"><span class="pre">backtest_v384_20251010_164125.json</span></code>):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;avg_reward&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-996.8</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_pnl&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;action_distribution&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;HOLD&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">19980</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;pct&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">100.0</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;BUY&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;pct&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;SELL&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;pct&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;total_trades&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>問題点</strong>: HOLD 100%、取引なし<br />
+<strong>原因</strong>: 環境設定orモデルの問題（要調査）</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🔧 環境問題の根本原因<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="python-3-13-pytorch">
+<h3>Python 3.13 + PyTorch 互換性問題<a class="headerlink" href="#python-3-13-pytorch" title="Link to this heading"></a></h3>
+<p><strong>スタックトレースのパターン</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>import torch._dynamo
+  → import sympy
+    → KeyboardInterrupt (インポート中断)
+</pre></div>
+</div>
+<p><strong>推測される原因</strong>:</p>
+<ol class="arabic simple">
+<li><p>Python 3.13はまだPyTorch/SymPyで完全サポートされていない</p></li>
+<li><p>Windows環境でのインポートパフォーマンス問題</p></li>
+<li><p>環境変数の設定不足</p></li>
+</ol>
+</section>
+<section id="numpy-typing">
+<h3>numpy.typing問題<a class="headerlink" href="#numpy-typing" title="Link to this heading"></a></h3>
+<p><strong>修正済み</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ 以前</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span><span class="p">,</span> <span class="n">_32Bit</span>
+
+<span class="c1"># ✅ 修正後</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>🚨 即時対応が必要な項目<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="high">
+<h3>優先度HIGH<a class="headerlink" href="#high" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Python環境の見直し</strong></p>
+<ul class="simple">
+<li><p>Python 3.11への降格検討</p></li>
+<li><p>PyTorch再インストール</p></li>
+<li><p>環境変数の確認（PYTORCH_<em>, CUDA_</em>）</p></li>
+</ul>
+</li>
+<li><p><strong>ログレベルの調整</strong></p>
+<ul class="simple">
+<li><p>DEBUG → INFO/WARNING</p></li>
+<li><p>numpy配列のlog出力を削除</p></li>
+</ul>
+</li>
+<li><p><strong>代替評価方法</strong></p>
+<ul class="simple">
+<li><p>モデルのmetrics.json確認（トレーニング時の性能）</p></li>
+<li><p>TensorBoardログの分析</p></li>
+<li><p>過去の評価結果の精査</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="medium">
+<h3>優先度MEDIUM<a class="headerlink" href="#medium" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="4">
+<li><p><strong>軽量バックテストスクリプト作成</strong></p>
+<ul class="simple">
+<li><p>ログ出力最小限</p></li>
+<li><p>直接的な環境作成（schema_env_factoryを経由しない）</p></li>
+<li><p>エラーハンドリング強化</p></li>
+</ul>
+</li>
+<li><p><strong>モデル比較分析</strong></p>
+<ul class="simple">
+<li><p>トレーニングログからの性能抽出</p></li>
+<li><p>config比較による特性理解</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>📊 代替アプローチ: トレーニングログ分析<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>トレーニング時の性能指標<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p>モデルのトレーニング時の性能を確認することで、実取引での挙動を予測できます。</p>
+<p><strong>確認すべきファイル</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/
+├── ppo_reward_v385_curated/
+│   └── (TensorBoard logs or metrics)
+├── ppo_reward_v384_curated_60/
+│   └── (TensorBoard logs or metrics)
+└── ppo_reward_v381_revised_profit_focused/
+    └── (TensorBoard logs or metrics)
+</pre></div>
+</div>
+<p><strong>確認すべき指標</strong>:</p>
+<ul class="simple">
+<li><p>Episode Reward (平均・最大・最小)</p></li>
+<li><p>Action Distribution (HOLD/BUY/SELL比率)</p></li>
+<li><p>Policy Loss推移</p></li>
+<li><p>Value Loss推移</p></li>
+<li><p>Entropy推移（探索度合い）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🎯 推奨される次のステップ<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>ステップ1: 環境修復（最優先）<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Python 3.11環境の作成を検討</span>
+py<span class="w"> </span>-3.11<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv311
+
+<span class="c1"># または現在の環境でPyTorch再インストール</span>
+pip<span class="w"> </span>uninstall<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio
+pip<span class="w"> </span>install<span class="w"> </span>torch<span class="w"> </span>torchvision<span class="w"> </span>torchaudio<span class="w"> </span>--index-url<span class="w"> </span>https://download.pytorch.org/whl/cu118
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h3>ステップ2: 軽量テストスクリプト<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># minimal_test.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+
+<span class="c1"># モデル読み込みテスト（環境なし）</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/ppo_reward_v385_curated.zip&quot;</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Model loaded successfully&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observation space: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">observation_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action space: </span><span class="si">{</span><span class="n">model</span><span class="o">.</span><span class="n">action_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="tensorboard">
+<h3>ステップ3: TensorBoard確認<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># トレーニングログの確認</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>logs/
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h3>ステップ4: 手動評価<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>もし自動バックテストが機能しない場合：</p>
+<ol class="arabic simple">
+<li><p>各モデルのトレーニングログを比較</p></li>
+<li><p>config差分を分析</p></li>
+<li><p>過去の開発ログ・コミットメッセージを確認</p></li>
+<li><p>最も安定したパフォーマンスを示したモデルを選択</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="phase-5">
+<h2>💡 Phase 5機能の優先度再評価<a class="headerlink" href="#phase-5" title="Link to this heading"></a></h2>
+<p>元々提案したPhase 5機能：</p>
+<ol class="arabic simple">
+<li><p><s>特徴量順序検証</s> → 既存分析ツールあり（優先度LOW）</p></li>
+<li><p><strong>スキーマDrift検出</strong> → 優先度LOW（まず動くシステムが必要）</p></li>
+<li><p><strong>マルチモデル管理</strong> → 優先度MEDIUM（環境修復後）</p></li>
+<li><p><strong>スキーマバージョニング</strong> → 優先度LOW（将来的に）</p></li>
+</ol>
+<p><strong>現在の最優先事項</strong>:
+✅ <strong>環境修復</strong> → まず1つのモデルでバックテストを成功させる</p>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>📝 結論<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<p>現時点では、環境問題により直接的なモデル評価（バックテスト・live trade dry-run）が実行できない状況です。</p>
+<p><strong>即座に取るべきアクション</strong>:</p>
+<ol class="arabic simple">
+<li><p>Python環境の見直し（3.11へのダウングレード検討）</p></li>
+<li><p>PyTorch再インストール</p></li>
+<li><p>軽量テストスクリプトで段階的に検証</p></li>
+<li><p>トレーニングログからの間接的評価</p></li>
+</ol>
+<p><strong>最終目標</strong>:</p>
+<ul class="simple">
+<li><p>✅ v385, v384, v381の3モデルでバックテスト成功</p></li>
+<li><p>✅ 最も収益性の高いモデルを特定</p></li>
+<li><p>✅ 実取引での検証開始</p></li>
+</ul>
+<p><strong>現状</strong>: ⚠️ <strong>環境問題により検証中断</strong><br />
+<strong>次のステップ</strong>: 🔧 <strong>環境修復 → 軽量テスト → 段階的評価</strong></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

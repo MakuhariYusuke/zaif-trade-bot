@@ -1,0 +1,255 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SELL回避緊急修正 v3.6.3 変更サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SELL回避緊急修正 v3.6.3 変更サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bugs/EMERGENCY_FIX_v3.6.3.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sell-v3-6-3">
+<h1>SELL回避緊急修正 v3.6.3 変更サマリー<a class="headerlink" href="#sell-v3-6-3" title="Link to this heading"></a></h1>
+<p><strong>適用日時</strong>: 2025-10-08<br />
+<strong>対象ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">configs/training/ppo_balanced_mem_optimized.json</span></code></p>
+<hr class="docutils" />
+<section id="id1">
+<h2>🔧 適用した修正内容<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="lagrange-50">
+<h3><strong>1. Lagrange制約の強化 (+50%)</strong><a class="headerlink" href="#lagrange-50" title="Link to this heading"></a></h3>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gd">- &quot;lagrange_lambda_max&quot;: 20.0,</span>
+<span class="gi">+ &quot;lagrange_lambda_max&quot;: 30.0,</span>
+
+<span class="gd">- &quot;lagrange_eta&quot;: 0.1,</span>
+<span class="gi">+ &quot;lagrange_eta&quot;: 0.15,</span>
+</pre></div>
+</div>
+<p><strong>意図</strong>: Lambda上限を30.0に引き上げ、制約をさらに強化。収束速度も向上。</p>
+</section>
+<hr class="docutils" />
+<section id="sell-50">
+<h3><strong>2. SELL報酬の強化 (+50%)</strong><a class="headerlink" href="#sell-50" title="Link to this heading"></a></h3>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gd">- &quot;profit_bonus_multipliers&quot;: [1.0, 1.0, 2.0],</span>
+<span class="gi">+ &quot;profit_bonus_multipliers&quot;: [1.0, 1.0, 3.0],</span>
+</pre></div>
+</div>
+<p><strong>意図</strong>: SELL時の報酬を3倍に増強し、学習インセンティブを最大化。</p>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h3><strong>3. ペナルティの完全撤廃 ⚠️</strong><a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gd">- &quot;action_penalty_scale&quot;: 0.001,</span>
+<span class="gi">+ &quot;action_penalty_scale&quot;: 0.0,</span>
+
+<span class="gd">- &quot;position_penalty_scale&quot;: 0.1,</span>
+<span class="gi">+ &quot;position_penalty_scale&quot;: 0.0,</span>
+
+<span class="gd">- &quot;inventory_penalty_scale&quot;: 0.01,</span>
+<span class="gi">+ &quot;inventory_penalty_scale&quot;: 0.0,</span>
+
+<span class="gd">- &quot;volatility_penalty_scale&quot;: 0.01,</span>
+<span class="gi">+ &quot;volatility_penalty_scale&quot;: 0.0,</span>
+</pre></div>
+</div>
+<p><strong>意図</strong>: すべてのペナルティを除去し、SELL行動への障壁をゼロに。</p>
+<p><strong>⚠️ リスク</strong>: 逆バイアス(過剰SELL)の可能性あり。検証で監視が必要。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>📊 期待される効果<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>v3.6.1 (前回)</p></th>
+<th class="head"><p>v3.6.3 (今回)</p></th>
+<th class="head"><p>期待値</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Lambda上限</strong></p></td>
+<td><p>20.0</p></td>
+<td><p>30.0 (+50%)</p></td>
+<td><p>より強い制約</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SELL報酬</strong></p></td>
+<td><p>2x</p></td>
+<td><p>3x (+50%)</p></td>
+<td><p>学習速度向上</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>ペナルティ</strong></p></td>
+<td><p>微小</p></td>
+<td><p>0.0 (撤廃)</p></td>
+<td><p>行動自由度↑</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>予測SELL率</strong></p></td>
+<td><p>10.7%</p></td>
+<td><p>14-17%</p></td>
+<td><p><strong>15%目標達成</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>🎯 検証計画<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3><strong>実行コマンド</strong><a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3><strong>成功基準</strong><a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <strong>SELL率 ≥ 15%</strong></p></li>
+<li><p>✅ Lambda &lt; 25.0 (上限未到達)</p></li>
+<li><p>⚠️ <strong>SELL率 ≤ 40%</strong> (逆バイアス防止)</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3><strong>監視指標</strong><a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange_r_sell</span></code>: 各ステップのSELL率</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange_lambda_dual</span></code>: Lambda値の推移</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pan_action_counts</span></code>: HOLD/BUY/SELL分布</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>⚠️ リスク管理<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3><strong>想定される逆バイアスシナリオ</strong><a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>SELL率 &gt; 40%</strong>: 過剰なSELL偏重</p></li>
+<li><p><strong>BUY率 &lt; 10%</strong>: BUY行動の抑制</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3><strong>対処法</strong><a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Lambda上限をさらに調整 (25.0など)</p></li>
+<li><p>SELL報酬を2.5倍に減衰</p></li>
+<li><p>一部ペナルティを復活 (position_penalty_scaleなど)</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>バージョン</strong>: v3.6.3<br />
+<strong>ステータス</strong>: ⚠️ EXPERIMENTAL - 逆バイアス監視下<br />
+<strong>次のアクション</strong>: 10,000ステップ検証実行 → 結果分析</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

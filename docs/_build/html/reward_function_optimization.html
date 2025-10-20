@@ -1,0 +1,337 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reward Function Structure Optimization &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Reward Function Structure Optimization</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/reward_function_optimization.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="reward-function-structure-optimization">
+<h1>Reward Function Structure Optimization<a class="headerlink" href="#reward-function-structure-optimization" title="Link to this heading"></a></h1>
+<p>This document describes the reward function structure optimization framework for the Zaif Trade Bot. This framework enables systematic optimization of reward function parameters beyond simple scaling, allowing for data-driven reward design.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The reward function optimization framework consists of three main components:</p>
+<ol class="arabic simple">
+<li><p><strong>RewardFunctionOptimizer</strong>: Handles the optimization process using Optuna</p></li>
+<li><p><strong>RewardFunctionEvaluator</strong>: Evaluates parameter performance across market conditions</p></li>
+<li><p><strong>Optimization Scripts</strong>: Command-line tools for running optimizations</p></li>
+</ol>
+</section>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Multi-objective optimization</strong>: Optimize for profit, risk, consistency, and other metrics simultaneously</p></li>
+<li><p><strong>Cross-market validation</strong>: Test parameters across bull, bear, sideways, and volatile market conditions</p></li>
+<li><p><strong>Automated parameter tuning</strong>: Systematic exploration of reward function parameter spaces</p></li>
+<li><p><strong>Comprehensive reporting</strong>: Detailed reports with optimization history and recommendations</p></li>
+</ul>
+</section>
+<section id="supported-reward-stages">
+<h2>Supported Reward Stages<a class="headerlink" href="#supported-reward-stages" title="Link to this heading"></a></h2>
+<p>The framework supports optimization for the following reward function stages:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">balanced_transition</span></code>: Early training stage balancing exploration and exploitation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trading_focused</span></code>: Mid-training stage emphasizing trading activity</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">profit_optimized</span></code>: Late training stage focused on profitability</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ultra_profit</span></code>: Aggressive profit maximization stage</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pnl_focused</span></code>: Pure P&amp;L optimization stage</p></li>
+</ul>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<section id="basic-optimization">
+<h3>Basic Optimization<a class="headerlink" href="#basic-optimization" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Optimize balanced_transition stage with default settings</span>
+python<span class="w"> </span>optimize_reward_function.py<span class="w"> </span>--stage<span class="w"> </span>balanced_transition
+
+<span class="c1"># Optimize with custom number of trials</span>
+python<span class="w"> </span>optimize_reward_function.py<span class="w"> </span>--stage<span class="w"> </span>profit_optimized<span class="w"> </span>--n-trials<span class="w"> </span><span class="m">200</span>
+
+<span class="c1"># Optimize multiple objectives</span>
+python<span class="w"> </span>optimize_reward_function.py<span class="w"> </span>--stage<span class="w"> </span>trading_focused<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--objectives<span class="w"> </span>profit<span class="w"> </span>sharpe<span class="w"> </span>win_rate<span class="w"> </span>consistency<span class="w"> </span>max_drawdown
+</pre></div>
+</div>
+</section>
+<section id="advanced-usage">
+<h3>Advanced Usage<a class="headerlink" href="#advanced-usage" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Custom evaluation settings</span>
+python<span class="w"> </span>optimize_reward_function.py<span class="w"> </span>--stage<span class="w"> </span>ultra_profit<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n-trials<span class="w"> </span><span class="m">150</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--evaluation-episodes<span class="w"> </span><span class="m">20</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--max-steps<span class="w"> </span><span class="m">2000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--output-dir<span class="w"> </span>custom_results<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--verbose
+</pre></div>
+</div>
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<p>The framework uses a JSON configuration file (<code class="docutils literal notranslate"><span class="pre">configs/reward_optimization.json</span></code>) to define:</p>
+<ul class="simple">
+<li><p>Parameter spaces for each reward stage</p></li>
+<li><p>Evaluation settings (episodes, market conditions, etc.)</p></li>
+<li><p>Optimization constraints and objectives</p></li>
+<li><p>Reporting preferences</p></li>
+</ul>
+<section id="parameter-spaces">
+<h3>Parameter Spaces<a class="headerlink" href="#parameter-spaces" title="Link to this heading"></a></h3>
+<p>Each reward stage has its own parameter space definition. For example, the <code class="docutils literal notranslate"><span class="pre">balanced_transition</span></code> stage includes:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;balance_penalty_tolerance&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_scale&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Tolerance for balance deviation before penalty&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;balance_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;type&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;float&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;low&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;high&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;log_scale&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Penalty multiplier for balance deviation&quot;</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="evaluation-metrics">
+<h2>Evaluation Metrics<a class="headerlink" href="#evaluation-metrics" title="Link to this heading"></a></h2>
+<p>The framework evaluates parameters using comprehensive metrics:</p>
+<ul class="simple">
+<li><p><strong>Profit Metrics</strong>: Total return, profit factor, recovery factor</p></li>
+<li><p><strong>Risk Metrics</strong>: Sharpe ratio, Sortino ratio, Calmar ratio, maximum drawdown, volatility</p></li>
+<li><p><strong>Performance Metrics</strong>: Win rate, consistency score</p></li>
+<li><p><strong>Market Adaptation</strong>: Performance across different market conditions</p></li>
+</ul>
+</section>
+<section id="output-files">
+<h2>Output Files<a class="headerlink" href="#output-files" title="Link to this heading"></a></h2>
+<p>Optimization generates several output files:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reward_optimization_{stage}_result.json</span></code>: Complete optimization results</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reward_optimization_{stage}_report.md</span></code>: Human-readable optimization report</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reward_optimization_summary.json</span></code>: Summary for multi-stage optimizations</p></li>
+</ul>
+</section>
+<section id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading"></a></h2>
+<p>Run the test suite to verify the framework:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>test_reward_optimization.py
+</pre></div>
+</div>
+</section>
+<section id="integration-with-training">
+<h2>Integration with Training<a class="headerlink" href="#integration-with-training" title="Link to this heading"></a></h2>
+<p>After optimization, integrate the best parameters back into your reward function:</p>
+<ol class="arabic simple">
+<li><p>Load the optimization results</p></li>
+<li><p>Extract the best parameters for your target stage</p></li>
+<li><p>Update the RewardSettings with optimized parameters</p></li>
+<li><p>Retrain your model with the optimized reward function</p></li>
+</ol>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<section id="parameter-selection">
+<h3>Parameter Selection<a class="headerlink" href="#parameter-selection" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Start with <code class="docutils literal notranslate"><span class="pre">balanced_transition</span></code> for stable optimization</p></li>
+<li><p>Use 100-200 trials for initial optimization</p></li>
+<li><p>Include multiple objectives to avoid overfitting to single metrics</p></li>
+</ul>
+</section>
+<section id="evaluation-settings">
+<h3>Evaluation Settings<a class="headerlink" href="#evaluation-settings" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Use 10+ evaluation episodes for robust results</p></li>
+<li><p>Test across all market conditions for generalization</p></li>
+<li><p>Increase max_steps for more comprehensive evaluation</p></li>
+</ul>
+</section>
+<section id="validation">
+<h3>Validation<a class="headerlink" href="#validation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Always validate optimized parameters on held-out data</p></li>
+<li><p>Monitor for overfitting to optimization objectives</p></li>
+<li><p>Consider ensemble approaches combining multiple optimized configurations</p></li>
+</ul>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-issues">
+<h3>Common Issues<a class="headerlink" href="#common-issues" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Optuna not installed</strong>: Install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">optuna</span></code></p></li>
+<li><p><strong>Memory issues</strong>: Reduce evaluation episodes or max_steps</p></li>
+<li><p><strong>Poor convergence</strong>: Increase number of trials or adjust parameter bounds</p></li>
+<li><p><strong>Unrealistic results</strong>: Check evaluation function implementation</p></li>
+</ol>
+</section>
+<section id="performance-optimization">
+<h3>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Use parallel evaluation when possible</p></li>
+<li><p>Cache evaluation results for repeated parameter sets</p></li>
+<li><p>Use early stopping for faster convergence</p></li>
+</ul>
+</section>
+</section>
+<section id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h2>
+<section id="rewardfunctionoptimizer">
+<h3>RewardFunctionOptimizer<a class="headerlink" href="#rewardfunctionoptimizer" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.optimization.reward_function_optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">RewardFunctionOptimizer</span>
+
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">RewardFunctionOptimizer</span><span class="p">()</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize_reward_function</span><span class="p">(</span>
+    <span class="n">stage</span><span class="o">=</span><span class="s2">&quot;balanced_transition&quot;</span><span class="p">,</span>
+    <span class="n">evaluation_function</span><span class="o">=</span><span class="n">my_eval_func</span><span class="p">,</span>
+    <span class="n">n_trials</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">objectives</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;profit&quot;</span><span class="p">,</span> <span class="s2">&quot;sharpe&quot;</span><span class="p">,</span> <span class="s2">&quot;win_rate&quot;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="rewardfunctionevaluator">
+<h3>RewardFunctionEvaluator<a class="headerlink" href="#rewardfunctionevaluator" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.optimization.reward_function_evaluator</span><span class="w"> </span><span class="kn">import</span> <span class="n">RewardFunctionEvaluator</span>
+
+<span class="n">evaluator</span> <span class="o">=</span> <span class="n">RewardFunctionEvaluator</span><span class="p">()</span>
+<span class="n">eval_func</span> <span class="o">=</span> <span class="n">evaluator</span><span class="o">.</span><span class="n">create_evaluation_function</span><span class="p">(</span><span class="s2">&quot;profit_optimized&quot;</span><span class="p">)</span>
+<span class="n">scores</span> <span class="o">=</span> <span class="n">eval_func</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="future-enhancements">
+<h2>Future Enhancements<a class="headerlink" href="#future-enhancements" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Pareto front optimization for multi-objective problems</p></li>
+<li><p>Neural reward function architectures</p></li>
+<li><p>Meta-learning for reward function adaptation</p></li>
+<li><p>Bayesian optimization integration</p></li>
+<li><p>Automated curriculum learning optimization</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

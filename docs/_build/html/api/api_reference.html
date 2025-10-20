@@ -1,0 +1,671 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/api_reference.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<p>このドキュメントは、Zaif Trade Botの主要クラスの使用方法とAPIリファレンスを提供します。</p>
+<section id="id1">
+<h2>目次<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="#ppotrainer"><span class="xref myst">PPOTrainer</span></a></p></li>
+<li><p><a class="reference internal" href="#heavytradingenv"><span class="xref myst">HeavyTradingEnv</span></a></p></li>
+<li><p><a class="reference internal" href="#featureregistry"><span class="xref myst">FeatureRegistry</span></a></p></li>
+</ol>
+</section>
+<section id="ppotrainer">
+<h2>PPOTrainer<a class="headerlink" href="#ppotrainer" title="Link to this heading"></a></h2>
+<p>PPO (Proximal Policy Optimization) アルゴリズムを使用した強化学習トレーナー。1Mステップの長時間トレーニングをサポート。</p>
+<section id="id2">
+<h3>PPOTrainerの基本的な使用例<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.ppo_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPOTrainer</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># データ読み込み</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;ml-dataset-enhanced.csv&#39;</span><span class="p">)</span>
+
+<span class="c1"># トレーナー初期化</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">PPOTrainer</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">1000000</span><span class="p">,</span>
+        <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="s1">&#39;n_steps&#39;</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
+        <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="mf">0.0003</span><span class="p">,</span>
+        <span class="s1">&#39;ent_coef&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;verbose&#39;</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># トレーニング実行</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+<span class="c1"># モデル保存</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;models/scalping_model.zip&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3>PPOTrainerの高度な使用例（ストリーミング対応）<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.streaming_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingPipeline</span>
+
+<span class="c1"># ストリーミングパイプライン設定</span>
+<span class="n">streaming_pipeline</span> <span class="o">=</span> <span class="n">StreamingPipeline</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+    <span class="n">buffer_policy</span><span class="o">=</span><span class="s1">&#39;drop_oldest&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># トレーナー初期化（ストリーミングモード）</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">PPOTrainer</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ストリーミング時はNone</span>
+    <span class="n">streaming_pipeline</span><span class="o">=</span><span class="n">streaming_pipeline</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">1000000</span><span class="p">,</span>
+        <span class="s1">&#39;enable_streaming&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;stream_batch_size&#39;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
+        <span class="s1">&#39;checkpoint_interval&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="s1">&#39;async_checkpoint&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;checkpoint_compression&#39;</span><span class="p">:</span> <span class="s1">&#39;zstd&#39;</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># トレーニング実行</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>設定パラメータ<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>型</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>デフォルト値</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">total_timesteps</span></code></p></td>
+<td><p>int</p></td>
+<td><p>総トレーニングステップ数</p></td>
+<td><p>1000000</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code></p></td>
+<td><p>int</p></td>
+<td><p>バッチサイズ</p></td>
+<td><p>64</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
+<td><p>int</p></td>
+<td><p>各環境のステップ数</p></td>
+<td><p>2048</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">learning_rate</span></code></p></td>
+<td><p>float</p></td>
+<td><p>学習率</p></td>
+<td><p>0.0003</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ent_coef</span></code></p></td>
+<td><p>float</p></td>
+<td><p>エントロピー係数</p></td>
+<td><p>0.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">clip_range</span></code></p></td>
+<td><p>float</p></td>
+<td><p>PPOクリップ範囲</p></td>
+<td><p>0.2</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">n_epochs</span></code></p></td>
+<td><p>int</p></td>
+<td><p>エポック数</p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gae_lambda</span></code></p></td>
+<td><p>float</p></td>
+<td><p>GAEラムダ</p></td>
+<td><p>0.95</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_grad_norm</span></code></p></td>
+<td><p>float</p></td>
+<td><p>最大勾配ノルム</p></td>
+<td><p>0.5</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vf_coef</span></code></p></td>
+<td><p>float</p></td>
+<td><p>価値関数係数</p></td>
+<td><p>0.5</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code></p></td>
+<td><p>int</p></td>
+<td><p>ログレベル</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p>int</p></td>
+<td><p>乱数シード</p></td>
+<td><p>42</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id5">
+<h3>チェックポイント機能<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 非同期チェックポイント有効化</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">PPOTrainer</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;checkpoint_interval&#39;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="s1">&#39;async_checkpoint&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;checkpoint_compression&#39;</span><span class="p">:</span> <span class="s1">&#39;zstd&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;max_pending_checkpoints&#39;</span><span class="p">:</span> <span class="mi">1</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># トレーニング再開</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">resume_from_checkpoint</span><span class="p">(</span><span class="s1">&#39;checkpoints/checkpoint_50000.zip&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>リソース監視<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># リソース監視有効化</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">PPOTrainer</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;resource_monitoring&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;resource_log_interval&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s1">&#39;alert_thresholds&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;cpu_pct&#39;</span><span class="p">:</span> <span class="mf">80.0</span><span class="p">,</span>
+            <span class="s1">&#39;memory_pct&#39;</span><span class="p">:</span> <span class="mf">85.0</span><span class="p">,</span>
+            <span class="s1">&#39;gpu_util_pct&#39;</span><span class="p">:</span> <span class="mf">90.0</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="heavytradingenv">
+<h2>HeavyTradingEnv<a class="headerlink" href="#heavytradingenv" title="Link to this heading"></a></h2>
+<p>強化学習用のカスタム取引環境。66次元の特徴量を使用した高度な状態表現を提供。</p>
+<section id="id7">
+<h3>HeavyTradingEnvの基本的な使用例<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">gym</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># データ読み込み</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;ml-dataset-enhanced.csv&#39;</span><span class="p">)</span>
+
+<span class="c1"># 環境初期化</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;reward_scaling&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+        <span class="s1">&#39;transaction_cost&#39;</span><span class="p">:</span> <span class="mf">0.0005</span><span class="p">,</span>
+        <span class="s1">&#39;max_position_size&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="s1">&#39;reward_clip_value&#39;</span><span class="p">:</span> <span class="mf">5.0</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># 環境情報</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;状態空間: </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;行動空間: </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># エピソード実行</span>
+<span class="n">obs</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+<span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+<span class="n">total_reward</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="k">while</span> <span class="ow">not</span> <span class="n">done</span><span class="p">:</span>
+    <span class="n">action</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># ランダム行動</span>
+    <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+    <span class="n">total_reward</span> <span class="o">+=</span> <span class="n">reward</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;総報酬: </span><span class="si">{</span><span class="n">total_reward</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3>HeavyTradingEnvの高度な使用例（カスタム報酬関数）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+
+<span class="c1"># カスタム報酬設定</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;reward_type&#39;</span><span class="p">:</span> <span class="s1">&#39;scalping&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;reward_position_penalty_scale&#39;</span><span class="p">:</span> <span class="mf">20.0</span><span class="p">,</span>
+        <span class="s1">&#39;reward_inventory_penalty_scale&#39;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
+        <span class="s1">&#39;reward_trade_frequency_penalty&#39;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
+        <span class="s1">&#39;reward_max_consecutive_trades&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s1">&#39;reward_consecutive_trade_penalty&#39;</span><span class="p">:</span> <span class="mf">0.1</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># 報酬関数のカスタマイズ</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">custom_reward_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">pnl</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">atr</span><span class="p">):</span>
+    <span class="c1"># カスタム報酬計算ロジック</span>
+    <span class="n">base_reward</span> <span class="o">=</span> <span class="n">pnl</span> <span class="o">*</span> <span class="n">position</span> <span class="o">/</span> <span class="p">(</span><span class="n">atr</span> <span class="o">+</span> <span class="mf">1e-6</span><span class="p">)</span>
+
+    <span class="c1"># 追加ペナルティ</span>
+    <span class="n">penalty</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>  <span class="c1"># 過度なポジション</span>
+        <span class="n">penalty</span> <span class="o">+=</span> <span class="mf">0.1</span>
+
+    <span class="k">return</span> <span class="n">base_reward</span> <span class="o">-</span> <span class="n">penalty</span>
+
+<span class="c1"># 環境に適用</span>
+<span class="n">env</span><span class="o">.</span><span class="n">reward_function</span> <span class="o">=</span> <span class="n">custom_reward_function</span><span class="o">.</span><span class="fm">__get__</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">HeavyTradingEnv</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>ストリーミング対応<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.streaming_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingPipeline</span>
+
+<span class="c1"># ストリーミングパイプライン</span>
+<span class="n">streaming_pipeline</span> <span class="o">=</span> <span class="n">StreamingPipeline</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+    <span class="n">buffer_policy</span><span class="o">=</span><span class="s1">&#39;drop_oldest&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># ストリーミング環境</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># ストリーミング時はNone</span>
+    <span class="n">streaming_pipeline</span><span class="o">=</span><span class="n">streaming_pipeline</span><span class="p">,</span>
+    <span class="n">stream_batch_size</span><span class="o">=</span><span class="mi">256</span>
+<span class="p">)</span>
+
+<span class="c1"># リアルタイムデータ処理</span>
+<span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">streaming_pipeline</span><span class="p">:</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">process_streaming_batch</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+    <span class="c1"># 強化学習ステップ</span>
+    <span class="n">action</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+    <span class="n">next_obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h3>HeavyTradingEnvの設定パラメータ<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>型</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>デフォルト値</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_scaling</span></code></p></td>
+<td><p>float</p></td>
+<td><p>報酬スケーリング</p></td>
+<td><p>1.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">transaction_cost</span></code></p></td>
+<td><p>float</p></td>
+<td><p>取引コスト</p></td>
+<td><p>0.001</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_position_size</span></code></p></td>
+<td><p>float</p></td>
+<td><p>最大ポジションサイズ</p></td>
+<td><p>0.05</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reward_clip_value</span></code></p></td>
+<td><p>float</p></td>
+<td><p>報酬クリップ値</p></td>
+<td><p>5.0</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_position_penalty_scale</span></code></p></td>
+<td><p>float</p></td>
+<td><p>ポジション保持ペナルティ</p></td>
+<td><p>20.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reward_inventory_penalty_scale</span></code></p></td>
+<td><p>float</p></td>
+<td><p>在庫ペナルティ</p></td>
+<td><p>3.0</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_trade_frequency_penalty</span></code></p></td>
+<td><p>float</p></td>
+<td><p>取引頻度ペナルティ</p></td>
+<td><p>3.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">reward_max_consecutive_trades</span></code></p></td>
+<td><p>int</p></td>
+<td><p>最大連続取引数</p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">reward_consecutive_trade_penalty</span></code></p></td>
+<td><p>float</p></td>
+<td><p>連続取引ペナルティ</p></td>
+<td><p>0.1</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id11">
+<h3>状態表現<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 状態ベクトルの構造</span>
+<span class="n">state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;状態次元: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># 特徴量の確認</span>
+<span class="n">feature_names</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">get_feature_names</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;特徴量: </span><span class="si">{</span><span class="n">feature_names</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>  <span class="c1"># 最初の10個</span>
+
+<span class="c1"># 状態の正規化</span>
+<span class="n">normalized_state</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">normalize_state</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="featureregistry">
+<h2>FeatureRegistry<a class="headerlink" href="#featureregistry" title="Link to this heading"></a></h2>
+<p>特徴量計算関数の一元管理レジストリ。66種類のテクニカル指標と価格ベースの特徴量を提供。</p>
+<section id="id12">
+<h3>基本的な使用例<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># レジストリ初期化</span>
+<span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">cache_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">parallel_enabled</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># データ読み込み</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;ml-dataset-enhanced.csv&#39;</span><span class="p">)</span>
+
+<span class="c1"># 利用可能な特徴量一覧</span>
+<span class="n">available_features</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">list_features</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;利用可能特徴量: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">available_features</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;例: </span><span class="si">{</span><span class="n">available_features</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># 特徴量計算</span>
+<span class="n">features_to_compute</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_short&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_long&#39;</span><span class="p">,</span> <span class="s1">&#39;adx&#39;</span><span class="p">,</span> <span class="s1">&#39;macd&#39;</span><span class="p">]</span>
+<span class="n">computed_features</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_features</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">feature_names</span><span class="o">=</span><span class="n">features_to_compute</span><span class="p">,</span>
+    <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;計算された特徴量: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">computed_features</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h3>高度な使用例（カスタム特徴量追加）<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+
+<span class="c1"># カスタム特徴量関数の定義</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">custom_rsi_divergence</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">14</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;カスタムRSIダイバージェンス指標&quot;&quot;&quot;</span>
+    <span class="n">rsi</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_single_feature</span><span class="p">(</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">)</span>
+    <span class="n">price_change</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+    <span class="c1"># ダイバージェンス計算ロジック</span>
+    <span class="n">divergence</span> <span class="o">=</span> <span class="n">rsi</span> <span class="o">-</span> <span class="n">price_change</span> <span class="o">*</span> <span class="mi">100</span>
+    <span class="k">return</span> <span class="n">divergence</span>
+
+<span class="c1"># レジストリに登録</span>
+<span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">register_feature</span><span class="p">(</span><span class="s1">&#39;custom_rsi_divergence&#39;</span><span class="p">,</span> <span class="n">custom_rsi_divergence</span><span class="p">)</span>
+
+<span class="c1"># 使用</span>
+<span class="n">df_with_custom</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_features</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">feature_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;custom_rsi_divergence&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h3>パフォーマンス最適化<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># キャッシュ有効化</span>
+<span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span>
+    <span class="n">cache_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">parallel_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;max_parallel_workers&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="s1">&#39;parallel_batch_size&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="s1">&#39;feature_chunk_size&#39;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="s1">&#39;memory_monitor_enabled&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s1">&#39;gc_collect_interval&#39;</span><span class="p">:</span> <span class="mi">10</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+
+<span class="c1"># 大規模データ処理</span>
+<span class="n">large_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;large_dataset.csv&#39;</span><span class="p">)</span>
+
+<span class="c1"># メモリ効率的な処理</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_features_efficient</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">large_df</span><span class="p">,</span>
+    <span class="n">feature_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_short&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_long&#39;</span><span class="p">,</span> <span class="s1">&#39;adx&#39;</span><span class="p">],</span>
+    <span class="n">chunk_size</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>  <span class="c1"># 10k行ずつ処理</span>
+    <span class="n">use_cache</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id15">
+<h3>FeatureRegistryの設定パラメータ<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>型</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>デフォルト値</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">seed</span></code></p></td>
+<td><p>int</p></td>
+<td><p>乱数シード</p></td>
+<td><p>42</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">cache_enabled</span></code></p></td>
+<td><p>bool</p></td>
+<td><p>キャッシュ有効化</p></td>
+<td><p>True</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_enabled</span></code></p></td>
+<td><p>bool</p></td>
+<td><p>並列処理有効化</p></td>
+<td><p>True</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">max_parallel_workers</span></code></p></td>
+<td><p>int</p></td>
+<td><p>最大並列ワーカー数</p></td>
+<td><p>CPUコア数</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parallel_batch_size</span></code></p></td>
+<td><p>int</p></td>
+<td><p>並列バッチサイズ</p></td>
+<td><p>20</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">feature_chunk_size</span></code></p></td>
+<td><p>int</p></td>
+<td><p>特徴量チャンクサイズ</p></td>
+<td><p>20</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">memory_monitor_enabled</span></code></p></td>
+<td><p>bool</p></td>
+<td><p>メモリ監視有効化</p></td>
+<td><p>False</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gc_collect_interval</span></code></p></td>
+<td><p>int</p></td>
+<td><p>GC収集間隔</p></td>
+<td><p>10</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id16">
+<h3>特徴量一覧<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id17">
+<h4>価格ベース特徴量<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">close</span></code>, <code class="docutils literal notranslate"><span class="pre">high</span></code>, <code class="docutils literal notranslate"><span class="pre">low</span></code>, <code class="docutils literal notranslate"><span class="pre">open</span></code>, <code class="docutils literal notranslate"><span class="pre">volume</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">price</span></code>, <code class="docutils literal notranslate"><span class="pre">qty</span></code>, <code class="docutils literal notranslate"><span class="pre">pnl</span></code>, <code class="docutils literal notranslate"><span class="pre">win</span></code></p></li>
+</ul>
+</section>
+<section id="id18">
+<h4>テクニカル指標<a class="headerlink" href="#id18" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>トレンド</strong>: <code class="docutils literal notranslate"><span class="pre">sma_short</span></code>, <code class="docutils literal notranslate"><span class="pre">sma_long</span></code>, <code class="docutils literal notranslate"><span class="pre">ema_5</span></code>, <code class="docutils literal notranslate"><span class="pre">tema</span></code></p></li>
+<li><p><strong>オシレーター</strong>: <code class="docutils literal notranslate"><span class="pre">rsi</span></code>, <code class="docutils literal notranslate"><span class="pre">stoch</span></code>, <code class="docutils literal notranslate"><span class="pre">cci</span></code>, <code class="docutils literal notranslate"><span class="pre">mfi</span></code></p></li>
+<li><p><strong>ボラティリティ</strong>: <code class="docutils literal notranslate"><span class="pre">atr</span></code>, <code class="docutils literal notranslate"><span class="pre">bb_upper</span></code>, <code class="docutils literal notranslate"><span class="pre">bb_lower</span></code>, <code class="docutils literal notranslate"><span class="pre">hv</span></code></p></li>
+<li><p><strong>モメンタム</strong>: <code class="docutils literal notranslate"><span class="pre">macd</span></code>, <code class="docutils literal notranslate"><span class="pre">roc</span></code>, <code class="docutils literal notranslate"><span class="pre">williams_r</span></code></p></li>
+<li><p><strong>出来高</strong>: <code class="docutils literal notranslate"><span class="pre">obv</span></code>, <code class="docutils literal notranslate"><span class="pre">vwap</span></code>, <code class="docutils literal notranslate"><span class="pre">price_volume_corr</span></code></p></li>
+</ul>
+</section>
+<section id="id19">
+<h4>詳細な使用例<a class="headerlink" href="#id19" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 特定の特徴量の詳細設定</span>
+<span class="n">rsi_features</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_single_feature</span><span class="p">(</span>
+    <span class="s1">&#39;rsi&#39;</span><span class="p">,</span>
+    <span class="n">prices</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">],</span>
+    <span class="n">period</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span>
+    <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># 複数タイムフレーム特徴量</span>
+<span class="n">multi_tf_features</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">compute_multi_timeframe_features</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">base_features</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;sma&#39;</span><span class="p">],</span>
+    <span class="n">timeframes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;5m&#39;</span><span class="p">,</span> <span class="s1">&#39;15m&#39;</span><span class="p">,</span> <span class="s1">&#39;1h&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># 特徴量の相関分析</span>
+<span class="n">correlation_matrix</span> <span class="o">=</span> <span class="n">FeatureRegistry</span><span class="o">.</span><span class="n">analyze_feature_correlations</span><span class="p">(</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;rsi&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_short&#39;</span><span class="p">,</span> <span class="s1">&#39;adx&#39;</span><span class="p">,</span> <span class="s1">&#39;macd&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">correlation_matrix</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>このAPIリファレンスは継続的に更新されます。新しい機能が追加された場合は適宜更新してください。</p>
+</section>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

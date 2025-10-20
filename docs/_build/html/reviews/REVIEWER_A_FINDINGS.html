@@ -1,0 +1,359 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔍 Reviewer A Detailed Findings &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🔍 Reviewer A Detailed Findings</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/reviews/REVIEWER_A_FINDINGS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="reviewer-a-detailed-findings">
+<h1>🔍 Reviewer A Detailed Findings<a class="headerlink" href="#reviewer-a-detailed-findings" title="Link to this heading"></a></h1>
+<section id="profile">
+<h2>Profile<a class="headerlink" href="#profile" title="Link to this heading"></a></h2>
+<p><strong>Focus Area:</strong> Environment state synchronization, forced close logic, production inference
+<strong>Approach:</strong> Deep dive into state management and timestamp tracking
+<strong>Strengths:</strong> Identified subtle synchronization bugs</p>
+</section>
+<hr class="docutils" />
+<section id="critical-bug-found">
+<h2>Critical Bug Found<a class="headerlink" href="#critical-bug-found" title="Link to this heading"></a></h2>
+<section id="bug-24-stop-loss-forced-close-doesnt-update-trade-timestamp">
+<h3>Bug #24: Stop-Loss Forced Close Doesn’t Update Trade Timestamp<a class="headerlink" href="#bug-24-stop-loss-forced-close-doesnt-update-trade-timestamp" title="Link to this heading"></a></h3>
+<p><strong>Location:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py:788</span></code></p>
+<p><strong>Severity:</strong> CRITICAL</p>
+<p><strong>Current Code:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">loss_ratio</span> <span class="o">&gt;</span> <span class="n">stop_loss_threshold</span><span class="p">:</span>
+    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
+    <span class="n">trade_pnl</span> <span class="o">+=</span> <span class="n">forced_close_pnl</span>
+    <span class="c1"># Sync properties</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">realized_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">total_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
+    <span class="c1"># ❌ MISSING: _last_trade_step synchronization</span>
+    <span class="c1"># ❌ MISSING: _consecutive_trade_steps synchronization</span>
+</pre></div>
+</div>
+<p><strong>Problem:</strong>
+Stop-loss forced closes call <code class="docutils literal notranslate"><span class="pre">position_manager.close_position()</span></code> but never propagate the trade timestamp back to <code class="docutils literal notranslate"><span class="pre">_last_trade_step</span></code> (nor <code class="docutils literal notranslate"><span class="pre">_consecutive_trade_steps</span></code>). With <code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code> configured, the environment therefore believes the last trade happened at the earlier agent-initiated step and immediately re-enables BUY/SELL after a forced liquidation.</p>
+<p><strong>Reproduction Steps:</strong></p>
+<ol class="arabic simple">
+<li><p>Configure <code class="docutils literal notranslate"><span class="pre">min_holding_period</span> <span class="pre">=</span> <span class="pre">3</span></code></p></li>
+<li><p>Open a long position (BUY action)</p></li>
+<li><p>Hold position until stop-loss fires</p></li>
+<li><p>Inspect <code class="docutils literal notranslate"><span class="pre">env.get_legal_actions()</span></code> on next step</p></li>
+<li><p><strong>Actual:</strong> Returns <code class="docutils literal notranslate"><span class="pre">[1,</span> <span class="pre">1,</span> <span class="pre">1]</span></code> (all actions legal)</p></li>
+<li><p><strong>Expected:</strong> Should respect min_holding_period, only HOLD legal initially</p></li>
+</ol>
+<p><strong>Impact:</strong></p>
+<ul class="simple">
+<li><p>Risk controls are bypassed</p></li>
+<li><p>Bot can churn in/out of positions immediately after emergency liquidation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code> protection doesn’t work for forced closes</p></li>
+<li><p>Agent can re-enter losing positions immediately</p></li>
+</ul>
+<p><strong>Fix Required:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">loss_ratio</span> <span class="o">&gt;</span> <span class="n">stop_loss_threshold</span><span class="p">:</span>
+    <span class="n">forced_close_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
+    <span class="n">trade_pnl</span> <span class="o">+=</span> <span class="n">forced_close_pnl</span>
+    <span class="c1"># Sync ALL properties including trade tracking</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">realized_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">total_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">_last_trade_step</span>  <span class="c1"># ✅ ADD</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span>  <span class="c1"># ✅ ADD</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="code-review-comments">
+<h2>Code Review Comments<a class="headerlink" href="#code-review-comments" title="Link to this heading"></a></h2>
+<section id="incomplete-state-synchronization-pattern">
+<h3>1. Incomplete State Synchronization Pattern<a class="headerlink" href="#incomplete-state-synchronization-pattern" title="Link to this heading"></a></h3>
+<p><strong>Location:</strong> <code class="docutils literal notranslate"><span class="pre">environment.py:791</span></code> and <code class="docutils literal notranslate"><span class="pre">environment.py:803</span></code></p>
+<p><strong>Issue:</strong>
+Only sync a subset of PositionManager state whenever the environment performs a forced close. That duplication makes it easy to miss critical attributes (as evidenced by Bug #24).</p>
+<p><strong>Current Pattern:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pattern repeated in multiple places</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">realized_pnl</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">total_pnl</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
+<span class="c1"># Easy to forget new attributes!</span>
+</pre></div>
+</div>
+<p><strong>Recommendation:</strong>
+Create a single synchronization method to prevent drift:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_sync_from_position_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sync all state from PositionManager to maintain backward compatibility.&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">realized_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">total_pnl</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">_last_trade_step</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span>
+</pre></div>
+</div>
+</section>
+<section id="production-inference-documentation-mismatch">
+<h3>2. Production Inference Documentation Mismatch<a class="headerlink" href="#production-inference-documentation-mismatch" title="Link to this heading"></a></h3>
+<p><strong>Location:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:1008-1013</span></code></p>
+<p><strong>Issue:</strong>
+Code still documents a fallback to <code class="docutils literal notranslate"><span class="pre">model.predict()</span></code> when masks are unavailable, but the new <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> guard disproves that comment.</p>
+<p><strong>Current Code:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get model prediction (using predict_with_masks for MaskablePPO support)</span>
+<span class="c1"># Note: live_trade doesn&#39;t have environment instance, so predict_with_masks </span>
+<span class="c1"># will fall back to model.predict() for MaskablePPO without masks</span>
+<span class="c1"># TODO: Refactor to use proper environment for action masking</span>
+<span class="n">obs</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Actual Behavior:</strong>
+<code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> for MaskablePPO when <code class="docutils literal notranslate"><span class="pre">env=None</span></code>, so the “fallback” never happens.</p>
+<p><strong>Recommendation:</strong></p>
+<ul class="simple">
+<li><p>Update docstring/logging to reflect actual behavior</p></li>
+<li><p>Add proactive checks so operators get clear “Maskable model requires action masks” message</p></li>
+<li><p>Don’t let runtime loop hit generic errors repeatedly</p></li>
+</ul>
+</section>
+<section id="test-coverage-gap">
+<h3>3. Test Coverage Gap<a class="headerlink" href="#test-coverage-gap" title="Link to this heading"></a></h3>
+<p><strong>Location:</strong> <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> enforcement point</p>
+<p><strong>Issue:</strong>
+<code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> is now the enforcement point for action masking, but there’s no regression test that validates it works in live_trade-style code paths.</p>
+<p><strong>Recommendation:</strong>
+Expand unit coverage with:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_predict_with_masks_live_trade_scenario</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Regression test for MaskablePPO in production-like code.&quot;&quot;&quot;</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">feature_count</span><span class="p">))</span>
+    
+    <span class="c1"># Should raise ValueError without env</span>
+    <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;MaskablePPO requires &#39;env&#39;&quot;</span><span class="p">):</span>
+        <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    
+    <span class="c1"># Should work with env</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">create_mock_env</span><span class="p">()</span>
+    <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">action</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="architectural-recommendations">
+<h2>Architectural Recommendations<a class="headerlink" href="#architectural-recommendations" title="Link to this heading"></a></h2>
+<section id="centralize-forced-close-bookkeeping-inside-positionmanager">
+<h3>1. Centralize Forced-Close Bookkeeping Inside PositionManager<a class="headerlink" href="#centralize-forced-close-bookkeeping-inside-positionmanager" title="Link to this heading"></a></h3>
+<p><strong>Current Problem:</strong>
+Environment manually syncs properties after forced closes, leading to missed attributes (Bug #24).</p>
+<p><strong>Proposed Solution:</strong>
+Let <code class="docutils literal notranslate"><span class="pre">close_position()</span></code> accept the current step so min-hold/consecutive-limit logic lives with the trading state source of truth.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PositionManager</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close position and update trade tracking.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        
+        <span class="c1"># Calculate realized PnL</span>
+        <span class="n">realized_trade_pnl</span> <span class="o">=</span> <span class="o">...</span>
+        
+        <span class="c1"># Update trade tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># ✅ Update here</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="c1"># Reset position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="k">return</span> <span class="n">realized_trade_pnl</span>
+</pre></div>
+</div>
+<p><strong>Benefits:</strong></p>
+<ul class="simple">
+<li><p>Single source of truth for trade tracking</p></li>
+<li><p>Impossible to forget synchronization</p></li>
+<li><p>Environment just reads, doesn’t duplicate logic</p></li>
+</ul>
+</section>
+<section id="introduce-lightweight-actionmaskprovider-wrapper">
+<h3>2. Introduce Lightweight ActionMaskProvider Wrapper<a class="headerlink" href="#introduce-lightweight-actionmaskprovider-wrapper" title="Link to this heading"></a></h3>
+<p><strong>Current Problem:</strong>
+Production/backtest tooling lacks environment instances needed for action masking.</p>
+<p><strong>Proposed Solution:</strong>
+Run an embedded <code class="docutils literal notranslate"><span class="pre">HeavyTradingEnv</span></code> in “observation-only” mode OR export a mask service from the environment.</p>
+<p><strong>Option A: Embedded Environment</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LiveTrader</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+        <span class="c1"># Create lightweight env just for masks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask_env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">):</span>
+        <span class="n">obs</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> 
+            <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_env</span><span class="p">,</span>  <span class="c1"># ✅ Provide environment</span>
+            <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">action</span>
+</pre></div>
+</div>
+<p><strong>Option B: Mask Service</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ActionMaskService</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Lightweight service that provides action masks without full env.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">portfolio_value</span><span class="p">,</span> <span class="n">current_price</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate legal actions based on current state.&quot;&quot;&quot;</span>
+        <span class="c1"># Same logic as HeavyTradingEnv.get_legal_actions()</span>
+        <span class="n">legal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">)</span>
+        <span class="n">legal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># HOLD always legal</span>
+        <span class="c1"># ... rest of logic</span>
+        <span class="k">return</span> <span class="n">legal</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Benefits:</strong></p>
+<ul class="simple">
+<li><p>Every inference surface can hand real masks to <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code></p></li>
+<li><p>No bypassing safety checks</p></li>
+<li><p>Consistent behavior across simulation and production</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p><strong>Bugs Found:</strong> 1 critical (Bug #24)</p>
+<p><strong>Key Insight:</strong>
+State synchronization between Environment and PositionManager is a recurring source of bugs. Moving synchronization logic into PositionManager itself would eliminate this class of errors.</p>
+<p><strong>Top Priority Fix:</strong>
+Add <code class="docutils literal notranslate"><span class="pre">_last_trade_step</span></code> and <code class="docutils literal notranslate"><span class="pre">_consecutive_trade_steps</span></code> synchronization after forced closes to restore risk control functionality.</p>
+<p><strong>Architectural Direction:</strong>
+Centralize bookkeeping in PositionManager and provide lightweight action mask services for production use.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

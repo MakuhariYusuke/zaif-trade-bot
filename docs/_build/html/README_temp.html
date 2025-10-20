@@ -1,0 +1,1855 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaif Trade Bot &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Zaif Trade Bot</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README_temp.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="zaif-trade-bot">
+<h1>Zaif Trade Bot<a class="headerlink" href="#zaif-trade-bot" title="Link to this heading"></a></h1>
+<p>軽量・検証重視の Zaif/Coincheck 向け自動売買ボット。SELL ファースト戦略、モック駆動テスト、堅牢なリトライ/CB/Rate 制御を備え、拡張しやすい土台を提供します。</p>
+<hr class="docutils" />
+<section id="quick-start">
+<h2>すぐ使う（Quick Start）<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>依存インストール</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">install</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p>最速検証（モック + ドライラン）</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$env:USE_PRIVATE_MOCK=&quot;1&quot;; $env:DRY_RUN=&quot;1&quot;; npm start
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p>最小ライブ検証（自己責任・即キャンセル）</p></li>
+</ol>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">live</span><span class="p">:</span><span class="n">minimal</span>
+</pre></div>
+</div>
+<p>ヒント: PowerShell では環境変数の一時設定に <code class="docutils literal notranslate"><span class="pre">$env:NAME=&quot;value&quot;</span></code> を使用します。</p>
+<p>安全上の注意: 本リポジトリは学習・検証目的の参考実装です。実運用はご自身の責任で、極小サイズから十分に検証してください。</p>
+</section>
+<hr class="docutils" />
+<section id="id1">
+<h2>アーキテクチャ概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">core/</span></code>: 純粋ロジック（I/O・fs・env に非依存）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">adapters/</span></code>: I/O・外部 API 委譲（FS/HTTP/署名/レート制御等）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">application/</span></code>: 戦略やユースケースのオーケストレーション（イベント購読/集計）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">app/</span></code>: メインの定期実行ループ（<code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">start</span></code>）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tools/</span></code>: live/paper/ml/stats の各 CLI</p></li>
+</ul>
+<p>移行状況メモ</p>
+<ul class="simple">
+<li><p>旧 <code class="docutils literal notranslate"><span class="pre">src/services/*</span></code> は削除済みです。新規/既存コードとも <code class="docutils literal notranslate"><span class="pre">&#64;adapters/*</span></code> を使用してください。</p></li>
+<li><p>型は <code class="docutils literal notranslate"><span class="pre">src/contracts</span></code> に集約し <code class="docutils literal notranslate"><span class="pre">&#64;contracts</span></code> で import できます。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="eventbus">
+<h2>アプリケーションイベント（EventBus）<a class="headerlink" href="#eventbus" title="Link to this heading"></a></h2>
+<p>軽量なインメモリ EventBus で実行と副作用（ポジション/統計/ロギング）を分離します。外部公開はしません。</p>
+<ul class="simple">
+<li><p>バス: <code class="docutils literal notranslate"><span class="pre">src/application/events/bus.ts</span></code>（既定は非同期 dispatch）</p></li>
+<li><p>型: <code class="docutils literal notranslate"><span class="pre">src/application/events/types.ts</span></code></p></li>
+<li><p>サブスクライバ: <code class="docutils literal notranslate"><span class="pre">src/application/events/subscribers/*</span></code></p></li>
+<li><p>登録: <code class="docutils literal notranslate"><span class="pre">registerAllSubscribers()</span></code> を <code class="docutils literal notranslate"><span class="pre">src/app/index.ts</span></code> で呼び出し</p></li>
+</ul>
+<p>主なイベント（抜粋）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ORDER_SUBMITTED</span></code> / <code class="docutils literal notranslate"><span class="pre">ORDER_FILLED</span></code> / <code class="docutils literal notranslate"><span class="pre">ORDER_CANCELED</span></code> / <code class="docutils literal notranslate"><span class="pre">ORDER_EXPIRED</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SLIPPAGE_REPRICED</span></code>（スリッページによりリプライス）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TRADE_PLAN</span></code> / <code class="docutils literal notranslate"><span class="pre">TRADE_PHASE</span></code>（trade-live ツールの計画・段階進行）</p></li>
+</ul>
+<p>共通メタデータ: <code class="docutils literal notranslate"><span class="pre">requestId</span></code>, <code class="docutils literal notranslate"><span class="pre">eventId</span></code>, <code class="docutils literal notranslate"><span class="pre">pair</span></code>, <code class="docutils literal notranslate"><span class="pre">side</span></code>, <code class="docutils literal notranslate"><span class="pre">amount</span></code>, <code class="docutils literal notranslate"><span class="pre">price</span></code>, <code class="docutils literal notranslate"><span class="pre">orderId?</span></code>, <code class="docutils literal notranslate"><span class="pre">retries?</span></code>, <code class="docutils literal notranslate"><span class="pre">cause?</span></code></p>
+<p>購読例（型安全）</p>
+<div class="highlight-ts notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">getEventBus</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@application/events&#39;</span><span class="p">;</span>
+<span class="nx">getEventBus</span><span class="p">().</span><span class="nx">subscribe</span><span class="p">(</span><span class="s1">&#39;ORDER_FILLED&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">&#39;filled&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">orderId</span><span class="p">,</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">filled</span><span class="p">,</span><span class="w"> </span><span class="nx">e</span><span class="p">.</span><span class="nx">avgPrice</span><span class="p">);</span>
+<span class="p">});</span>
+</pre></div>
+</div>
+<p>Idempotency: <code class="docutils literal notranslate"><span class="pre">eventId</span></code>/<code class="docutils literal notranslate"><span class="pre">requestId</span></code> をキーに重複に耐性を持つ実装にしてください。</p>
+<p>テスト時の同期発行: 競合を避けるため、Vitest/TEST_MODE では <code class="docutils literal notranslate"><span class="pre">publishAndWait()</span></code> を用いて <code class="docutils literal notranslate"><span class="pre">TRADE_PLAN</span></code>/<code class="docutils literal notranslate"><span class="pre">TRADE_PHASE</span></code> を同期発行しています。</p>
+</section>
+<hr class="docutils" />
+<section id="circuit-breaker">
+<h2>Circuit Breaker（内蔵）<a class="headerlink" href="#circuit-breaker" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>状態: <code class="docutils literal notranslate"><span class="pre">CLOSED</span></code>/<code class="docutils literal notranslate"><span class="pre">OPEN</span></code>/<code class="docutils literal notranslate"><span class="pre">HALF_OPEN</span></code>。判定は失敗率・連続失敗・レイテンシ中央値。</p></li>
+<li><p>適用: <code class="docutils literal notranslate"><span class="pre">API-PUBLIC</span></code>（観測のみ）, <code class="docutils literal notranslate"><span class="pre">API-PRIVATE</span></code>/<code class="docutils literal notranslate"><span class="pre">EXEC</span></code>（ゲート対象）。</p></li>
+<li><p>ログ: 遷移は <code class="docutils literal notranslate"><span class="pre">CB/INFO</span></code>、ブロックは <code class="docutils literal notranslate"><span class="pre">CB/ERROR</span> <span class="pre">blocked</span></code>（<code class="docutils literal notranslate"><span class="pre">CIRCUIT_OPEN</span></code>）。</p></li>
+<li><p>既定（環境で上書き可）: <code class="docutils literal notranslate"><span class="pre">CB_WINDOW_SIZE=50</span></code>, <code class="docutils literal notranslate"><span class="pre">CB_FAILURE_THRESHOLD=0.5</span></code>, <code class="docutils literal notranslate"><span class="pre">CB_MAX_CONSEC_FAIL=5</span></code>, <code class="docutils literal notranslate"><span class="pre">CB_LATENCY_THRESHOLD_MS=30000</span></code>, <code class="docutils literal notranslate"><span class="pre">CB_HALF_OPEN_TRIAL=5</span></code>, <code class="docutils literal notranslate"><span class="pre">CB_COOLDOWN_MS=60000</span></code>。</p></li>
+</ul>
+<p>withRetry 使用例</p>
+<div class="highlight-ts notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">withRetry</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@adapters/base-service&#39;</span><span class="p">;</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">publicApi</span><span class="p">.</span><span class="nx">fetchDepth</span><span class="p">(</span><span class="s1">&#39;btc_jpy&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;fetchDepth&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">100</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PUBLIC&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">privateApi</span><span class="p">.</span><span class="nx">getBalance</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;getBalance&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PRIVATE&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">exec</span><span class="p">.</span><span class="nx">cancelOrder</span><span class="p">(</span><span class="nx">orderId</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;cancelOrder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;EXEC&#39;</span><span class="w"> </span><span class="p">});</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="rate-limiter">
+<h2>Rate Limiter（カテゴリ別・予約枠対応）<a class="headerlink" href="#rate-limiter" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>概要: トークンバケツでスループットを平準化（プロセス内シングルトン）。適用順は CB → Rate → Execute。</p></li>
+<li><p>既定: <code class="docutils literal notranslate"><span class="pre">capacity=100</span></code>, <code class="docutils literal notranslate"><span class="pre">refill=10</span> <span class="pre">tokens/sec</span></code>, 予約枠 10%（<code class="docutils literal notranslate"><span class="pre">opType:'ORDER'</span></code> のみ使用）。</p></li>
+<li><p>動作: 通常は最大 1 秒取得待機（<code class="docutils literal notranslate"><span class="pre">RATE_MAX_WAIT_MS</span></code> で上書き可）。未取得で <code class="docutils literal notranslate"><span class="pre">RATE_LIMITED</span></code> を投げます。<code class="docutils literal notranslate"><span class="pre">LONG_TESTS=1</span></code> 環境ではスループット長時間検証用に内部待機上限を 200 秒へ自動拡張し、100〜1000 リクエストシナリオで拒否なく平準化挙動を観測します。</p></li>
+<li><p>ログ: <code class="docutils literal notranslate"><span class="pre">RATE/INFO</span> <span class="pre">acquired</span></code>, <code class="docutils literal notranslate"><span class="pre">RATE/WARN</span> <span class="pre">waited</span></code>, <code class="docutils literal notranslate"><span class="pre">RATE/ERROR</span> <span class="pre">rejected</span></code>, <code class="docutils literal notranslate"><span class="pre">RATE/METRICS</span> <span class="pre">metrics</span></code>（直近 N=50 の平均待機/拒否率/カテゴリ詳細）。</p></li>
+</ul>
+<p>環境変数（最新）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_LIMITER_ENABLED</span></code> (1|0, 既定 1)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_CAPACITY</span></code> / <code class="docutils literal notranslate"><span class="pre">RATE_REFILL</span></code>（共通）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_RESERVE_RATIO</span></code>（0…1, 既定 0.1）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_METRICS_INTERVAL_MS</span></code>（既定 60000, 0 で無効）</p></li>
+<li><p>カテゴリ別: <code class="docutils literal notranslate"><span class="pre">RATE_CAPACITY_PUBLIC|PRIVATE|EXEC</span></code>, <code class="docutils literal notranslate"><span class="pre">RATE_REFILL_PUBLIC|PRIVATE|EXEC</span></code></p>
+<ul>
+<li><p>後方互換: <code class="docutils literal notranslate"><span class="pre">RATE_REFILL_PER_SEC</span></code>, <code class="docutils literal notranslate"><span class="pre">RATE_PRIORITY_RESERVE</span></code> も解釈されます。</p></li>
+</ul>
+</li>
+</ul>
+<p>withRetry の指定例</p>
+<div class="highlight-ts notranslate"><div class="highlight"><pre><span></span><span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">publicApi</span><span class="p">.</span><span class="nx">getTicker</span><span class="p">(</span><span class="s1">&#39;btc_jpy&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;getTicker&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">100</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PUBLIC&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;low&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">opType</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;QUERY&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">privateApi</span><span class="p">.</span><span class="nx">getBalance</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;getBalance&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PRIVATE&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;normal&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">exec</span><span class="p">.</span><span class="nx">placeOrder</span><span class="p">(</span><span class="nx">req</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;placeOrder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;EXEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;high&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">opType</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;ORDER&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">exec</span><span class="p">.</span><span class="nx">cancelOrder</span><span class="p">(</span><span class="nx">id</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;cancelOrder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;EXEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;high&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">opType</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;CANCEL&#39;</span><span class="w"> </span><span class="p">});</span>
+</pre></div>
+</div>
+<p>テスト時の扱い（重要）</p>
+<ul class="simple">
+<li><p>既定でテストはレート制御を無効化しますが、スイート側でカスタム limiter を注入した場合はグローバルフラグで強制有効になります（メトリクス系テストの安定性向上）。</p></li>
+<li><p>長時間スループット検証 (<code class="docutils literal notranslate"><span class="pre">LONG_TESTS=1</span></code>): 待機上限拡張により拒否率ではなく待機時間分布の回帰を検知可能。</p></li>
+</ul>
+<section id="long-tests">
+<h3>LONG_TESTS モード<a class="headerlink" href="#long-tests" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>内容</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>目的</p></td>
+<td><p>レートリミッタの 100 / 1000 リクエスト連続取得でのスループット回帰検知</p></td>
+</tr>
+<tr class="row-odd"><td><p>発動</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">LONG_TESTS=1</span></code> 環境変数（ローカル/CI）</p></td>
+</tr>
+<tr class="row-even"><td><p>主効果</p></td>
+<td><p>内部 <code class="docutils literal notranslate"><span class="pre">RATE_MAX_WAIT_DEFAULT</span></code> を 1000ms → 200000ms に拡張</p></td>
+</tr>
+<tr class="row-odd"><td><p>対象テスト</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">integration.api.rate.heavy.test.ts</span></code>, <code class="docutils literal notranslate"><span class="pre">rate-limiter.throughput.test.ts</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>期待所要時間</p></td>
+<td><p>100 リクエスト: ~9–12s / 1000 リクエスト: ~90–110s</p></td>
+</tr>
+<tr class="row-odd"><td><p>本番影響</p></td>
+<td><p>非発動時は従来の 1s 上限で動作</p></td>
+</tr>
+</tbody>
+</table>
+<p>ローカル実行例 (PowerShell):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:LONG_TESTS</span><span class="p">=</span><span class="n">1</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">test</span><span class="p">:</span><span class="n">long</span>
+</pre></div>
+</div>
+<p>直接指定例:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:LONG_TESTS</span><span class="p">=</span><span class="n">1</span><span class="p">;</span> <span class="n">npx</span> <span class="n">vitest</span> <span class="n">run</span> <span class="n">__tests__</span><span class="p">/</span><span class="n">unit</span><span class="p">/</span><span class="n">integration</span><span class="p">.</span><span class="n">api</span><span class="p">.</span><span class="n">rate</span><span class="p">.</span><span class="n">heavy</span><span class="p">.</span><span class="n">test</span><span class="p">.</span><span class="n">ts</span> <span class="n">__tests__</span><span class="p">/</span><span class="n">unit</span><span class="p">/</span><span class="n">rate-limiter</span><span class="p">.</span><span class="n">throughput</span><span class="p">.</span><span class="n">test</span><span class="p">.</span><span class="n">ts</span>
+</pre></div>
+</div>
+<p>CI では手動/ナイトリー用に <code class="docutils literal notranslate"><span class="pre">LONG_TESTS=1</span></code> を付与したワークフローを追加し、性能退行 (拒否増/時間短縮=不正な早期拒否) を監視することを推奨します。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>キャッシュ・メトリクス（任意）<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>市場系キャッシュのヒット/ミス/ステールをカウントし、<code class="docutils literal notranslate"><span class="pre">CACHE/METRICS</span></code> を定期出力。</p></li>
+<li><p>主に <code class="docutils literal notranslate"><span class="pre">market:ticker</span></code>/<code class="docutils literal notranslate"><span class="pre">market:orderbook</span></code>/<code class="docutils literal notranslate"><span class="pre">market:trades</span></code> を可視化。</p></li>
+<li><p>環境: <code class="docutils literal notranslate"><span class="pre">CACHE_METRICS_INTERVAL_MS</span></code>, <code class="docutils literal notranslate"><span class="pre">MARKET_CACHE_TTL_MS</span></code>。</p></li>
+</ul>
+<section id="id3">
+<h3>メモリ効率化・軽量化機能<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>バックテスト高速化のための特徴量キャッシュと、トレーニング高速化のための軽量チェックポイントを備えています。</p>
+<section id="feature-cache">
+<h4>特徴量キャッシュ（Feature Cache）<a class="headerlink" href="#feature-cache" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>動的圧縮</strong>: zstd/lz4/zlib をデータサイズ・アクセス頻度に応じて自動選択</p></li>
+<li><p><strong>LRU + TTL</strong>: サイズ制限と有効期限ベースの自動クリーンアップ</p></li>
+<li><p><strong>プロセス分離</strong>: 並列実行時の競合回避</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本使用</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span>
+
+<span class="c1"># キャッシュ設定例</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cache-compressor<span class="w"> </span>auto<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cache-access-pattern<span class="w"> </span>balanced<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cache-max-mb<span class="w"> </span><span class="m">500</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cache-ttl-days<span class="w"> </span><span class="m">7</span>
+</pre></div>
+</div>
+<p><strong>圧縮アルゴリズム選択基準</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">50KB</span></code>: lz4優先（速度最優先）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;</span> <span class="pre">1MB</span></code>: アクセス頻度により lz4/zstd 選択</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&gt;=</span> <span class="pre">1MB</span></code>: zstd優先（CPUコア数考慮）</p></li>
+</ul>
+</section>
+<section id="id4">
+<h4>軽量チェックポイント<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>最小保存セット</strong>: policy + value_net + scaler（optimizer/replay除外）</p></li>
+<li><p><strong>圧縮保存</strong>: 自動圧縮でサイズ60-80%削減</p></li>
+<li><p><strong>高速復元</strong>: 学習再開時のオーバーヘッド最小化</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 軽量チェックポイント使用</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--checkpoint-light<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--checkpoint-compressor<span class="w"> </span>zstd
+
+<span class="c1"># 並列トレーニング</span>
+python<span class="w"> </span>scripts/parallel_train.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--timesteps<span class="w"> </span><span class="m">1000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--checkpoint-light<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cache-compressor<span class="w"> </span>auto
+</pre></div>
+</div>
+<p><strong>サイズ削減効果</strong>:</p>
+<ul class="simple">
+<li><p>完全チェックポイント: 500MB</p></li>
+<li><p>軽量チェックポイント: 150MB (70%削減)</p></li>
+<li><p>Policyのみ: 50MB (90%削減)</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="cli">
+<h2>ダッシュボード（軽量 CLI）<a class="headerlink" href="#cli" title="Link to this heading"></a></h2>
+<p>直近の RATE/CACHE/EVENT メトリクスを要約表示します（<code class="docutils literal notranslate"><span class="pre">LOG_JSON=1</span></code> 前提）。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">dash</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">dash</span> <span class="o">--</span> <span class="o">--</span><span class="n">watch</span>         <span class="c1"># 2 秒ごと</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">dash</span> <span class="o">--</span> <span class="o">--</span><span class="n">watch</span> <span class="mi">5000</span>    <span class="c1"># 5 秒ごと</span>
+</pre></div>
+</div>
+<p>PowerShell 例</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">dash</span> <span class="o">--</span> <span class="o">--</span><span class="n">file</span> <span class="o">.</span>\<span class="n">logs</span>\<span class="n">trades</span><span class="o">-</span><span class="mi">2025</span><span class="o">-</span><span class="mi">09</span><span class="o">-</span><span class="mf">17.</span><span class="n">log</span> <span class="o">--</span><span class="n">lines</span> <span class="mi">8000</span>
+</pre></div>
+</div>
+<p>使い方（補足）</p>
+<ul class="simple">
+<li><p>フラグ: <code class="docutils literal notranslate"><span class="pre">--file</span> <span class="pre">&lt;path&gt;</span></code>（既定は最新ログ自動検出/<code class="docutils literal notranslate"><span class="pre">METRICS_LOG</span></code>）、<code class="docutils literal notranslate"><span class="pre">--lines</span> <span class="pre">N</span></code>（末尾N行）、<code class="docutils literal notranslate"><span class="pre">--watch</span> <span class="pre">[ms]</span></code>（継続監視）、<code class="docutils literal notranslate"><span class="pre">--json</span></code>（1回分のJSON出力）</p></li>
+<li><p>インタラクティブ操作: 上下矢印で RATE/CACHE/EVENT を切替、左右でスパークライン幅、<code class="docutils literal notranslate"><span class="pre">q</span></code> で終了</p></li>
+<li><p>表示: RATE は p95/拒否率とカテゴリ別、CACHE はヒット率/ステール率、EVENT はタイプ別 pub/calls/errors/avg/p95 と最頻ハンドラ</p></li>
+<li><p>TRADE_PHASE: <code class="docutils literal notranslate"><span class="pre">TRADE_STATE_FILE</span></code>（既定 <code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code>）を読み取り、現在フェーズと累計成功を併記</p></li>
+<li><p>精度: <code class="docutils literal notranslate"><span class="pre">LOG_JSON=1</span></code> を推奨（プレーンテキストは簡易パーサのフォールバック）</p></li>
+</ul>
+<p>JSON 出力例（<code class="docutils literal notranslate"><span class="pre">--json</span></code>）</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">	</span><span class="nt">&quot;rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;avgWaitMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">120</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;rejectRate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.03</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;details&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;PUBLIC&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;acquired&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">	</span><span class="nt">&quot;cache&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;ticker&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;hits&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">90</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;misses&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;stale&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;hitRate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.9</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">	</span><span class="nt">&quot;events&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;windowMs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">60000</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;types&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;ORDER_FILLED&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;publishes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">},</span>
+<span class="w">	</span><span class="nt">&quot;tradePhase&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;totalSuccess&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">21</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="observability">
+<h2>観測性（Observability）まとめ<a class="headerlink" href="#observability" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>ログ形式: 既定はプレーン。<code class="docutils literal notranslate"><span class="pre">LOG_JSON=1</span></code> で JSONL（<code class="docutils literal notranslate"><span class="pre">ts</span></code>,<code class="docutils literal notranslate"><span class="pre">level</span></code>,<code class="docutils literal notranslate"><span class="pre">category</span></code>,<code class="docutils literal notranslate"><span class="pre">message</span></code>,<code class="docutils literal notranslate"><span class="pre">data[]</span></code>）。カテゴリーは <code class="docutils literal notranslate"><span class="pre">RATE</span></code>/<code class="docutils literal notranslate"><span class="pre">CACHE</span></code>/<code class="docutils literal notranslate"><span class="pre">EVENT</span></code> などを使用</p></li>
+<li><p>メトリクス:</p>
+<ul>
+<li><p>Rate Limiter: <code class="docutils literal notranslate"><span class="pre">RATE/METRICS</span></code> を定期出力（平均待機/拒否率/カテゴリ別詳細）。間隔は <code class="docutils literal notranslate"><span class="pre">RATE_METRICS_INTERVAL_MS</span></code></p></li>
+<li><p>Cache: <code class="docutils literal notranslate"><span class="pre">CACHE/METRICS</span></code>（ヒット/ミス/ステール）。<code class="docutils literal notranslate"><span class="pre">CACHE_METRICS_INTERVAL_MS</span></code></p></li>
+<li><p>Event: <code class="docutils literal notranslate"><span class="pre">EVENT/METRICS</span></code>（タイプ別 pub/calls/errors/latency）。ダッシュが拾います</p></li>
+</ul>
+</li>
+<li><p>レッドアクション: 機密キー/シークレット/Authorization/生ペイロード等は自動マスク（<code class="docutils literal notranslate"><span class="pre">src/utils/logger.ts</span></code> の <code class="docutils literal notranslate"><span class="pre">addLoggerRedactFields</span></code> で拡張可）</p></li>
+<li><p>推奨レベル: 運用は <code class="docutils literal notranslate"><span class="pre">INFO</span></code>、調査/CI は <code class="docutils literal notranslate"><span class="pre">DEBUG</span></code>。テスト時は低レベルログを抑制しつつ、重要イベント（ERROR/WARN/メトリクス）は出力</p></li>
+<li><p>付随メタデータ: <code class="docutils literal notranslate"><span class="pre">requestId</span></code>/<code class="docutils literal notranslate"><span class="pre">eventId</span></code>/<code class="docutils literal notranslate"><span class="pre">pair</span></code>/<code class="docutils literal notranslate"><span class="pre">side</span></code> などをイベントに付与（冪等/相関用）</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>テスト構成 (2025-09 リファクタ後)<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>種別</p></th>
+<th class="head"><p>パス</p></th>
+<th class="head"><p>内容</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/application/events</span></code></p></td>
+<td><p>EventBus / subscriber 系 (旧 <code class="docutils literal notranslate"><span class="pre">unit/events</span></code> 統合)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/core</span></code></p></td>
+<td><p>戦略・実行・ポジション等純粋ロジック</p></td>
+</tr>
+<tr class="row-even"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/tools</span></code></p></td>
+<td><p>CLI/ダッシュ/設定系ユニット</p></td>
+</tr>
+<tr class="row-odd"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/adapters</span></code></p></td>
+<td><p>FS/価格キャッシュ/リスク計算アダプタ</p></td>
+</tr>
+<tr class="row-even"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/ml</span></code></p></td>
+<td><p>ML シミュレーション/特徴量/探索</p></td>
+</tr>
+<tr class="row-odd"><td><p>Unit</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/unit/obs</span></code></p></td>
+<td><p>システムメトリクスなど観測系</p></td>
+</tr>
+<tr class="row-even"><td><p>Integration</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">__tests__/integration/trade-live</span></code></p></td>
+<td><p>trade-live フロー/フェーズ昇格</p></td>
+</tr>
+</tbody>
+</table>
+<p>変更点:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">integration-fast</span></code> → <code class="docutils literal notranslate"><span class="pre">integration</span></code> に統合</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">unit/events</span></code> を削除し <code class="docutils literal notranslate"><span class="pre">unit/application/events</span></code> に一元化</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test:integration-fast</span></code> スクリプトが新パスを参照</p></li>
+</ul>
+<p>拡張指針:</p>
+<ul class="simple">
+<li><p>API 実結合: <code class="docutils literal notranslate"><span class="pre">__tests__/integration/api/</span></code></p></li>
+<li><p>シナリオ/E2E: <code class="docutils literal notranslate"><span class="pre">__tests__/integration/scenario/</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="trade-live-phase-driven">
+<h2>Trade Live（段階制御 / Phase-driven）<a class="headerlink" href="#trade-live-phase-driven" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>設定: <code class="docutils literal notranslate"><span class="pre">trade-config.json</span></code>（<code class="docutils literal notranslate"><span class="pre">TRADE_CONFIG_FILE</span></code> で切替）</p></li>
+<li><p>状態: <code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code>（<code class="docutils literal notranslate"><span class="pre">TRADE_STATE_FILE</span></code> で切替）</p></li>
+<li><p>コマンド: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">trade:live</span></code> / <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">trade:live:dry</span></code></p></li>
+<li><p>昇格ルールは環境で調整: <code class="docutils literal notranslate"><span class="pre">PROMO_TO2_DAYS</span></code>, <code class="docutils literal notranslate"><span class="pre">PROMO_TO3_SUCCESS</span></code>, <code class="docutils literal notranslate"><span class="pre">PROMO_TO4_SUCCESS</span></code></p></li>
+<li><p>テストでは <code class="docutils literal notranslate"><span class="pre">publishAndWait()</span></code> により <code class="docutils literal notranslate"><span class="pre">TRADE_PLAN</span></code>/<code class="docutils literal notranslate"><span class="pre">TRADE_PHASE</span></code> を同期発行し、昇格閾値も TEST_MODE デフォルトで緩和（1 日で 1→2 を許可）</p></li>
+</ul>
+<section id="trading-phases">
+<h3>Trading Phases 詳細<a class="headerlink" href="#trading-phases" title="Link to this heading"></a></h3>
+<ul>
+<li><p>設定ファイル: <code class="docutils literal notranslate"><span class="pre">trade-config.json</span></code>（<code class="docutils literal notranslate"><span class="pre">TRADE_CONFIG_FILE</span></code> で差し替え）</p>
+<ul>
+<li><p>例:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;pair&quot;</span><span class="p">:</span><span class="s2">&quot;btc_jpy&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;phaseSteps&quot;</span><span class="p">:[</span>
+<span class="w">	</span><span class="p">{</span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">&quot;ordersPerDay&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span><span class="nt">&quot;ordersPerDay&quot;</span><span class="p">:</span><span class="mi">3</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span><span class="nt">&quot;ordersPerDay&quot;</span><span class="p">:</span><span class="mi">5</span><span class="p">},</span><span class="w"> </span><span class="p">{</span><span class="nt">&quot;phase&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span><span class="nt">&quot;ordersPerDay&quot;</span><span class="p">:</span><span class="mi">10</span><span class="p">}</span>
+<span class="p">]}</span>
+</pre></div>
+</div>
+</li>
+</ul>
+</li>
+<li><p>状態ファイル: <code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code>（<code class="docutils literal notranslate"><span class="pre">TRADE_STATE_FILE</span></code>）。<code class="docutils literal notranslate"><span class="pre">{</span> <span class="pre">phase,</span> <span class="pre">consecutiveDays,</span> <span class="pre">totalSuccess,</span> <span class="pre">lastDate</span> <span class="pre">}</span></code></p></li>
+<li><p>昇格ルール（環境で上書き）: <code class="docutils literal notranslate"><span class="pre">PROMO_TO2_DAYS</span></code>（既定 5・TEST_MODE は 1）/<code class="docutils literal notranslate"><span class="pre">PROMO_TO3_SUCCESS</span></code>（既定 20）/<code class="docutils literal notranslate"><span class="pre">PROMO_TO4_SUCCESS</span></code>（既定 50）</p></li>
+<li><p>CLI:</p>
+<ul class="simple">
+<li><p>ドライラン: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">-s</span> <span class="pre">trade:live:dry</span> <span class="pre">&gt;</span> <span class="pre">trade-plan.json</span></code>（標準出力に計画 JSON: <code class="docutils literal notranslate"><span class="pre">pair/phase/plannedOrders/today</span></code>）</p></li>
+<li><p>ライブ: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">trade:live</span></code>（当日の成功数に応じて <code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code> を更新し、必要時 <code class="docutils literal notranslate"><span class="pre">EVENT/TRADE_PHASE</span></code> を発行）</p></li>
+</ul>
+</li>
+<li><p>テスト安定化: Vitest/TEST_MODE では <code class="docutils literal notranslate"><span class="pre">publishAndWait()</span></code> で <code class="docutils literal notranslate"><span class="pre">TRADE_PLAN/TRADE_PHASE</span></code> を同期発行し、日次成功の既定を 1 に短縮</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>日常の使い方<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<p>戦略モード切替（<code class="docutils literal notranslate"><span class="pre">TRADE_MODE=SELL|BUY</span></code>）</p>
+<ul class="simple">
+<li><p>SELL/BUY で戦略を切替。ログに <code class="docutils literal notranslate"><span class="pre">[SIGNAL][mode=SELL|BUY]</span></code> が出ます。</p></li>
+</ul>
+<p>オーダーフロー（<code class="docutils literal notranslate"><span class="pre">TRADE_FLOW</span></code>）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">BUY_ONLY|SELL_ONLY|BUY_SELL|SELL_BUY</span></code>（既定 BUY_SELL）。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY&gt;0</span></code> で 1 サイクル内にフロー実行。DRY_RUN=1 なら即時 fill をシミュレート。</p></li>
+</ul>
+<p>Coincheck 切替</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$env:EXCHANGE=&quot;coincheck&quot;; npm start
+</pre></div>
+</div>
+<p>注意: 最小単位や丸めが異なります。小サイズで開始してください。</p>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>スクリプト一覧（主要）<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<p>package.json に定義された主なコマンド:</p>
+<ul class="simple">
+<li><p>実行</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">start</span></code>（メインループ）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">live:minimal</span></code>（最小ライブ検証・即キャンセル）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">health</span></code>（署名/nonce/permission ヘルス）</p></li>
+</ul>
+</li>
+<li><p>テスト</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">test:unit</span></code> / <code class="docutils literal notranslate"><span class="pre">:int-fast</span></code> / <code class="docutils literal notranslate"><span class="pre">:cb-rate</span></code> / <code class="docutils literal notranslate"><span class="pre">:event-metrics</span></code> / <code class="docutils literal notranslate"><span class="pre">:long</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">test</span></code>（カバレッジ込みフル）</p></li>
+</ul>
+</li>
+<li><p>ツール</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">dash</span></code>（メトリクスダッシュ）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">stats:today</span></code> / <code class="docutils literal notranslate"><span class="pre">stats:graph</span></code></p></li>
+<li><p>ML: <code class="docutils literal notranslate"><span class="pre">ml:export</span></code> / <code class="docutils literal notranslate"><span class="pre">ml:search</span></code> / <code class="docutils literal notranslate"><span class="pre">feature:importance</span></code></p></li>
+</ul>
+</li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="test-mode-vitest">
+<h2>TEST_MODE/Vitest の振る舞い（安定化の工夫）<a class="headerlink" href="#test-mode-vitest" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>EventBus: <code class="docutils literal notranslate"><span class="pre">TRADE_PLAN</span></code>/<code class="docutils literal notranslate"><span class="pre">TRADE_PHASE</span></code> を <code class="docutils literal notranslate"><span class="pre">publishAndWait()</span></code> で同期発行。</p></li>
+<li><p>Trade Live: テストでは daySuccess 既定を 1 に短縮し、1→2 昇格を観測しやすくしています。</p></li>
+<li><p>Sleep: <code class="docutils literal notranslate"><span class="pre">utils/toolkit.sleep</span></code> は Vitest/TEST_MODE で自動的に短縮（デフォルト ~1ms）。</p></li>
+<li><p>Live minimal: テスト時は重いサブプロセス/サマリー書き込みをスキップし、タイムアウト回避。</p></li>
+<li><p>Rate Limiter: 既定無効。ただしテストでカスタム limiter をセットした場合は強制有効化しメトリクスを出力。</p></li>
+<li><p>一時ディレクトリ: テストは一時領域を用い、実データと混ざらないよう配慮（<code class="docutils literal notranslate"><span class="pre">STATS_DIR</span></code>, <code class="docutils literal notranslate"><span class="pre">POSITION_STORE_DIR</span></code> など）。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="coverage-ci">
+<h2>Coverage / CI<a class="headerlink" href="#coverage-ci" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>GitHub Actions で <code class="docutils literal notranslate"><span class="pre">unit</span> <span class="pre">/</span> <span class="pre">integration</span> <span class="pre">/</span> <span class="pre">cb-rate</span> <span class="pre">/</span> <span class="pre">event-metrics</span> <span class="pre">/</span> <span class="pre">long</span></code> に分割実行。</p></li>
+<li><p>Coverage レポートは Pages に公開可能。ワークフロー: <code class="docutils literal notranslate"><span class="pre">.github/workflows/coverage-pages.yml</span></code>。</p></li>
+<li><p>既定しきい値: Statements &gt;= 70%。</p></li>
+</ul>
+<section id="id8">
+<h3>テストマトリクス（分割）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">unit</span></code>: 純粋ロジック/ユーティリティ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">integration-fast</span></code>: 主要フローの高速結合（EventBus 同期発行でレース回避）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cb-rate</span></code>: Circuit Breaker/Rate Limiter の待機・拒否・メトリクス</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">event-metrics</span></code>: EVENT/METRICS の集計とハンドラ健全性</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">long</span></code>（任意）: 長時間スモーク</p></li>
+</ul>
+</section>
+<section id="nightly-paper">
+<h3>Nightly / Paper<a class="headerlink" href="#nightly-paper" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">paper-nightly</span></code>: 1 日分をドライランし、<code class="docutils literal notranslate"><span class="pre">reports/day-YYYY-MM-DD/</span></code> に成果をコミット</p></li>
+<li><p>主要成果: <code class="docutils literal notranslate"><span class="pre">stats-timeline.svg</span></code>, <code class="docutils literal notranslate"><span class="pre">stats-diff.json</span></code>, <code class="docutils literal notranslate"><span class="pre">report-summary-paper.json</span></code>, <code class="docutils literal notranslate"><span class="pre">ml-search-top.json</span></code>, <code class="docutils literal notranslate"><span class="pre">trade-plan.json</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trade-plan.json</span></code>: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">-s</span> <span class="pre">trade:live:dry</span></code> の出力 JSON。レポート index にリンク</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ts-prune.yml</span></code>: 未使用エクスポート件数の推移を <code class="docutils literal notranslate"><span class="pre">ci/reports/ts-prune-*.json</span></code> に保存（count/top20 サマリ付き）</p></li>
+</ul>
+</section>
+<section id="ci">
+<h3>CI チェックリスト<a class="headerlink" href="#ci" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>テスト green: unit / integration-fast / cb-rate / event-metrics</p></li>
+<li><p>Coverage &gt;= 70%（Pages 有効なら <code class="docutils literal notranslate"><span class="pre">/coverage/</span></code> で HTML 確認）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trade:live:dry</span></code> が成功し <code class="docutils literal notranslate"><span class="pre">trade-plan.json</span></code> が生成（レポート index に含まれる）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">dash</span> <span class="pre">--</span> <span class="pre">--json</span></code> が rate/cache/event/tradePhase を返す</p></li>
+<li><p>ts-prune 件数が直近から悪化していない（WoW）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="recovery-semantics">
+<h2>ストレージ破損時の挙動（Recovery Semantics）<a class="headerlink" href="#recovery-semantics" title="Link to this heading"></a></h2>
+<p>対象: price-cache (<code class="docutils literal notranslate"><span class="pre">price_cache.json</span></code>), position-store (<code class="docutils literal notranslate"><span class="pre">positions.json</span></code> など fs 保存物)。</p>
+<ul class="simple">
+<li><p>原則: 読み込み時に JSON パース失敗すると「破損」と見なし、イベント/ログを 1 回だけ出します。</p>
+<ul>
+<li><p>price-cache: <code class="docutils literal notranslate"><span class="pre">CACHE_ERROR</span></code>（2.2.1 で同期単発保証）。</p></li>
+<li><p>position-store: 破損は即座に空状態として再初期化（次の write が健全ファイルを再生成）。</p></li>
+</ul>
+</li>
+<li><p>リカバリ: 過去履歴の再構築は行いません（シンプルさと一貫性優先）。</p></li>
+<li><p>推奨運用: 日次/週次で <code class="docutils literal notranslate"><span class="pre">logs/</span></code> or <code class="docutils literal notranslate"><span class="pre">artifacts/</span></code> を外部へローテーションし、必要なら別途履歴保管層を実装。</p></li>
+<li><p>チューニング: 高頻度書き込み競合は atomic write（<code class="docutils literal notranslate"><span class="pre">fs-atomic</span></code>）と一時ファイル rename で抑制しています。</p></li>
+</ul>
+<p>FAQ:</p>
+<ul class="simple">
+<li><p>Q: 破損イベント後はトレード止めるべき？ → 重要度によります。price-cache は再生成されますが、履歴指標計算が乖離するリスクがあるため再計測/監視を推奨。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="live">
+<h2>Live 起動前セーフティチェックリスト<a class="headerlink" href="#live" title="Link to this heading"></a></h2>
+<p>次の最低限を満たしてから <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">trade:live</span></code> もしくは <code class="docutils literal notranslate"><span class="pre">live:minimal</span></code> を実行してください。</p>
+<ol class="arabic simple">
+<li><p>DRY RUN から開始: <code class="docutils literal notranslate"><span class="pre">$env:DRY_RUN=&quot;1&quot;</span></code> で期待ログ/イベントを確認済み</p></li>
+<li><p>API キー: 取引所（Zaif/Coincheck）側で権限/残高/手数料を確認（最初は極小数量）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TRADE_CONFIG_FILE</span></code>: phaseSteps が意図通り（例: <code class="docutils literal notranslate"><span class="pre">1,3,10,25</span></code>）か再チェック</p></li>
+<li><p>SAFETY_MODE 有効: <code class="docutils literal notranslate"><span class="pre">$env:SAFETY_MODE=&quot;1&quot;</span></code> と clamp ログ動作確認</p></li>
+<li><p>Rate/Circuit 設定: 既定の <code class="docutils literal notranslate"><span class="pre">CB_*</span></code> / <code class="docutils literal notranslate"><span class="pre">RATE_*</span></code> を本番レイテンシ・API 制限に合わせ調整済み</p></li>
+<li><p>ログ出力形式: <code class="docutils literal notranslate"><span class="pre">LOG_JSON=1</span></code> でメトリクス/イベントを可視化できる状態</p></li>
+<li><p>タイムゾーン/時計: OS 時刻同期が取れている（約定タイムスタンプ依存指標を守る）</p></li>
+<li><p>バックアップ: <code class="docutils literal notranslate"><span class="pre">trade-state.json</span></code> / ポジションファイルの初期バックアップを取得</p></li>
+<li><p>テスト済み: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">test:unit</span></code> / <code class="docutils literal notranslate"><span class="pre">:int-fast</span></code> / <code class="docutils literal notranslate"><span class="pre">:cb-rate</span></code> / <code class="docutils literal notranslate"><span class="pre">:event-metrics</span></code> が local green</p></li>
+<li><p>失敗ハンドリング: <code class="docutils literal notranslate"><span class="pre">EVENT/ERROR</span></code> ログを監視する簡易アラート（tail or dashboard）用意</p></li>
+</ol>
+<p>追加推奨:</p>
+<ul class="simple">
+<li><p>小さな <code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code> で 1 サイクル流し fill→EXIT ライフサイクルを live:minimal で先に確認</p></li>
+<li><p>監視: 5〜10 分間は手動監視し、意図しない連続注文が無いか確認</p></li>
+</ul>
+<hr class="docutils" />
+</section>
+<hr class="docutils" />
+<section id="live-minimal-dry-run">
+<h2>Live Minimal（DRY_RUN 統合）<a class="headerlink" href="#live-minimal-dry-run" title="Link to this heading"></a></h2>
+<p>最小の発注→即キャンセル検証を <code class="docutils literal notranslate"><span class="pre">live:minimal</span></code> に統合。<code class="docutils literal notranslate"><span class="pre">DRY_RUN=1</span></code> ならモック/ドライラン、<code class="docutils literal notranslate"><span class="pre">DRY_RUN=0</span></code> なら実発注（要 API キー）。</p>
+<p>環境変数</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EXCHANGE</span></code> / <code class="docutils literal notranslate"><span class="pre">PAIR</span></code> / <code class="docutils literal notranslate"><span class="pre">TRADE_FLOW</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code>（DRY_RUN=1 既定 0.002）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_RATE</span></code> / <code class="docutils literal notranslate"><span class="pre">ORDER_TYPE=market|limit</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DRY_RUN=0|1</span></code>, <code class="docutils literal notranslate"><span class="pre">SAFETY_MODE=1</span></code>, <code class="docutils literal notranslate"><span class="pre">SAFETY_CLAMP_PCT</span></code>, <code class="docutils literal notranslate"><span class="pre">EXPOSURE_WARN_PCT</span></code></p></li>
+</ul>
+<p>PowerShell 例（実発注・即キャンセル）</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:EXCHANGE</span><span class="p">=</span><span class="s2">&quot;coincheck&quot;</span><span class="p">;</span> <span class="nv">$env:TRADE_FLOW</span><span class="p">=</span><span class="s2">&quot;BUY_ONLY&quot;</span><span class="p">;</span> <span class="nv">$env:TEST_FLOW_QTY</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="nv">$env:TEST_FLOW_RATE</span><span class="p">=</span><span class="s2">&quot;490&quot;</span><span class="p">;</span> <span class="nv">$env:DRY_RUN</span><span class="p">=</span><span class="s2">&quot;0&quot;</span><span class="p">;</span> <span class="nv">$env:SAFETY_MODE</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">live</span><span class="p">:</span><span class="n">minimal</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>テクニカル指標と特徴量ログ<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">features-logger</span></code> が RSI/SMA/MACD/ATR/BB 幅など多様な指標を自動計算し JSONL で記録します。観測開始時に 1 回だけサンプル WARN を出力します。</p>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>主要な環境変数（抜粋）<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>変数</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EXCHANGE</span></code></p></td>
+<td><p>取引所切替（<code class="docutils literal notranslate"><span class="pre">zaif</span></code>/<code class="docutils literal notranslate"><span class="pre">coincheck</span></code>）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DRY_RUN</span></code></p></td>
+<td><p>実注文せずシミュレーション</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">PAIR</span></code></p></td>
+<td><p>取引ペア（例: <code class="docutils literal notranslate"><span class="pre">btc_jpy</span></code>）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">TRADE_MODE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SELL</span></code>/<code class="docutils literal notranslate"><span class="pre">BUY</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TRADE_FLOW</span></code> / <code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code></p></td>
+<td><p>フロー/数量（ワンショット検証）</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ZAIF_API_KEY</span></code>/<code class="docutils literal notranslate"><span class="pre">ZAIF_API_SECRET</span></code></p></td>
+<td><p>Zaif 認証</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">COINCHECK_API_KEY</span></code>/<code class="docutils literal notranslate"><span class="pre">COINCHECK_API_SECRET</span></code></p></td>
+<td><p>Coincheck 認証</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SAFETY_MODE</span></code>/<code class="docutils literal notranslate"><span class="pre">SAFETY_CLAMP_PCT</span></code>/<code class="docutils literal notranslate"><span class="pre">EXPOSURE_WARN_PCT</span></code></p></td>
+<td><p>安全クランプ/露出警告</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RATE_*</span></code> / <code class="docutils literal notranslate"><span class="pre">CB_*</span></code> / <code class="docutils literal notranslate"><span class="pre">CACHE_*</span></code></p></td>
+<td><p>レート/CB/キャッシュ計測</p></td>
+</tr>
+</tbody>
+</table>
+<p>より詳細な一覧はコードの各モジュール（<code class="docutils literal notranslate"><span class="pre">utils/config</span></code> ほか）を参照してください。</p>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>注意事項（重要）<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<p>本リポジトリは学習・検証目的です。実運用前に以下を検討してください。</p>
+<ul class="simple">
+<li><p>API レート制限/指数バックオフ、WebSocket 約定照合、秘密情報管理、冗長化/復旧/アラート、時刻同期（NTP）/nonce 管理。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>変更履歴 / ライセンス<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>変更履歴は <code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> を参照してください。</p></li>
+<li><p>ライセンスは検討中です。現時点では個人学習向けの利用を想定しています（将来 OSS ライセンス付与予定）。</p></li>
+</ul>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>種別</p></th>
+<th class="head"><p>規則</p></th>
+<th class="head"><p>例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>型 / Interface</p></td>
+<td><p>PascalCase</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PrivateApi</span></code>, <code class="docutils literal notranslate"><span class="pre">OrderLifecycleSummary</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>関数 / 変数</p></td>
+<td><p>camelCase</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">fetchMarketOverview</span></code>, <code class="docutils literal notranslate"><span class="pre">appendPriceSamples</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>定数 / 環境変数</p></td>
+<td><p>UPPER_SNAKE_CASE</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RISK_MIN_TRADE_SIZE</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>ファイル</p></td>
+<td><p>kebab-case.ts</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">position-store.ts</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<section id="id13">
+<h3>命名規則（詳細）<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<p>注: 本規約は厳密適用ではなく「原則＋例外を許容する運用」です。既存コードや外部API仕様との整合、スピード/安全性の観点で、合理的な範囲で弾力運用してください。PR 時に逸脱理由がわかるようコメントや説明を添えるとスムーズです。</p>
+<ul class="simple">
+<li><p>ディレクトリ/ファイル</p>
+<ul>
+<li><p>ディレクトリは kebab-case、ソースは kebab-case.ts を基本とする。</p></li>
+<li><p>ツール類は <code class="docutils literal notranslate"><span class="pre">src/tools/</span></code>、公開APIは <code class="docutils literal notranslate"><span class="pre">src/api/*-public.ts</span></code> か <code class="docutils literal notranslate"><span class="pre">public-router.ts</span></code> に集約。</p></li>
+<li><p>取引所ごとの差分は <code class="docutils literal notranslate"><span class="pre">src/api/EXCHANGE-*.ts</span></code> に分離し、app/core からは抽象化された関数を呼ぶ。</p></li>
+</ul>
+</li>
+<li><p>型・命名の接尾辞</p>
+<ul>
+<li><p>リクエスト/レスポンス/結果型は <code class="docutils literal notranslate"><span class="pre">FooRequest</span></code> / <code class="docutils literal notranslate"><span class="pre">FooResponse</span></code> / <code class="docutils literal notranslate"><span class="pre">FooResult</span></code> / <code class="docutils literal notranslate"><span class="pre">FooParams</span></code> / <code class="docutils literal notranslate"><span class="pre">FooOptions</span></code> を使用。</p></li>
+<li><p>ドメイン横断の集計は <code class="docutils literal notranslate"><span class="pre">*Summary</span></code>（例: <code class="docutils literal notranslate"><span class="pre">OrderLifecycleSummary</span></code>）。</p></li>
+<li><p>列挙は TypeScript の文字列リテラル Union を優先（<code class="docutils literal notranslate"><span class="pre">&quot;bid&quot;|&quot;ask&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;BUY&quot;|&quot;SELL&quot;</span></code>）。</p></li>
+</ul>
+</li>
+<li><p>関数の語彙（prefix）</p>
+<ul>
+<li><p>取得系: <code class="docutils literal notranslate"><span class="pre">get*</span></code>（キャッシュ/同期）, <code class="docutils literal notranslate"><span class="pre">fetch*</span></code>（外部IO/HTTP）, 読み込み: <code class="docutils literal notranslate"><span class="pre">load*</span></code>, 保存: <code class="docutils literal notranslate"><span class="pre">save*</span></code>,
+変更: <code class="docutils literal notranslate"><span class="pre">update*</span></code>, 追加: <code class="docutils literal notranslate"><span class="pre">append*</span></code>, 削除: <code class="docutils literal notranslate"><span class="pre">remove*</span></code>。</p></li>
+<li><p>計算系: <code class="docutils literal notranslate"><span class="pre">calculate*</span></code>（SMA/RSI 等）, 記述/整形: <code class="docutils literal notranslate"><span class="pre">describe*</span></code>, 管理: <code class="docutils literal notranslate"><span class="pre">manage*</span></code>（例: <code class="docutils literal notranslate"><span class="pre">manageTrailingStop</span></code>）。</p></li>
+<li><p>非同期関数名に Async 接尾辞は付けない（Promise/await で判別）。</p></li>
+</ul>
+</li>
+<li><p>変数/定数/真偽値</p>
+<ul>
+<li><p>ランタイム不変の構成値は <code class="docutils literal notranslate"><span class="pre">UPPER_SNAKE_CASE</span></code>（環境変数名も同様）。</p></li>
+<li><p>真偽値は <code class="docutils literal notranslate"><span class="pre">is*/has*/should*/can*</span></code> を推奨（<code class="docutils literal notranslate"><span class="pre">isArmed</span></code>, <code class="docutils literal notranslate"><span class="pre">hasCreds</span></code>, <code class="docutils literal notranslate"><span class="pre">shouldExit</span></code>, <code class="docutils literal notranslate"><span class="pre">canPlaceOrder</span></code>）。</p></li>
+</ul>
+</li>
+<li><p>時刻・単位・ペア表記</p>
+<ul>
+<li><p>内部 <code class="docutils literal notranslate"><span class="pre">ts</span></code> はミリ秒（ms）。外部APIで秒を受け取る場合は即 ms に正規化して保存。</p></li>
+<li><p>金額は JPY、数量は BTC を基本。<code class="docutils literal notranslate"><span class="pre">amount</span></code> はベース資産数量、<code class="docutils literal notranslate"><span class="pre">price</span></code> は見積通貨（JPY）。</p></li>
+<li><p>ペアは <code class="docutils literal notranslate"><span class="pre">btc_jpy</span></code> の snake_case・小文字に統一。</p></li>
+</ul>
+</li>
+<li><p>サイド/方向の表現</p>
+<ul>
+<li><p>取引API層（Zaif/Coincheck私設）では <code class="docutils literal notranslate"><span class="pre">&quot;bid&quot;|&quot;ask&quot;</span></code>、上位の発注ヘルパでは <code class="docutils literal notranslate"><span class="pre">&quot;BUY&quot;|&quot;SELL&quot;</span></code> を使用。</p></li>
+<li><p>境界の変換は <code class="docutils literal notranslate"><span class="pre">core/market.ts</span></code>（<code class="docutils literal notranslate"><span class="pre">placeLimitOrder</span></code>）で行う。</p></li>
+</ul>
+</li>
+<li><p>ID と数値の扱い</p>
+<ul>
+<li><p>外部API由来の <code class="docutils literal notranslate"><span class="pre">order_id</span></code> は一貫して文字列として扱う（比較/マップ用途のため）。</p></li>
+<li><p>金額/数量は Number、必要に応じ 8 桁程度で丸め/切り捨て（BTC）。</p></li>
+</ul>
+</li>
+<li><p>ログ/イベント</p>
+<ul>
+<li><p>トレードログは <code class="docutils literal notranslate"><span class="pre">logSignal/logOrder/logExecution/logTradeError/logTradeInfo</span></code> を利用。</p></li>
+<li><p>日次集計に反映するカウンタは <code class="docutils literal notranslate"><span class="pre">utils/daily-stats.ts</span></code> のインクリメント関数を用いる。</p></li>
+</ul>
+</li>
+<li><p>エラー・結果</p>
+<ul>
+<li><p>失敗結果は <code class="docutils literal notranslate"><span class="pre">err(code,</span> <span class="pre">message,</span> <span class="pre">cause?)</span></code>、成功は <code class="docutils literal notranslate"><span class="pre">ok(value)</span></code> を推奨（<code class="docutils literal notranslate"><span class="pre">utils/result.ts</span></code>）。</p></li>
+<li><p>例外メッセージは外部レスポンスの要点を含めつつ機密はログに出さない。</p></li>
+</ul>
+</li>
+<li><p>テスト/ツール命名</p>
+<ul>
+<li><p>最小実行ツールは <code class="docutils literal notranslate"><span class="pre">src/tools/*</span></code>、テストユーティリティは <code class="docutils literal notranslate"><span class="pre">__tests__/helpers/*</span></code>。</p></li>
+<li><p>フロー検証は <code class="docutils literal notranslate"><span class="pre">test-&lt;exchange&gt;-flow.ts</span></code> の形式を推奨。</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id14">
+<h3>既存リネームの指針（対比）<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>旧</p></th>
+<th class="head"><p>新</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trailManager</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">manageTrailingStop</span></code></p></td>
+<td><p>リスクサービス/コアで統一</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">calcSMA</span></code> / <code class="docutils literal notranslate"><span class="pre">calcRSI</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">calculateSma</span></code> / <code class="docutils literal notranslate"><span class="pre">calculateRsi</span></code></p></td>
+<td><p>関数は動詞始まり</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">submitWithRetry</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">submitOrderWithRetry</span></code></p></td>
+<td><p>役割が明確になるように</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">appendPrices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">appendPriceSamples</span></code></p></td>
+<td><p>意味の明確化</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">getRecentPrices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">getPriceSeries</span></code></p></td>
+<td><p>シリーズ取得の意味合い</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">writeTradeLog</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logTrade</span></code></p></td>
+<td><p>既存ログAPIに寄せる</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ok</span></code>(GuardResult)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">isAllowed</span></code></p></td>
+<td><p>真偽を明示</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fillCount</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">filledCount</span></code></p></td>
+<td><p>語形統一</p></td>
+</tr>
+</tbody>
+</table>
+<p>チェックリスト（PR時の確認）</p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 取引所差異は <code class="docutils literal notranslate"><span class="pre">api/public-router.ts</span></code> / PrivateApi 実装で吸収し、app/core は抽象 API のみ参照</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> <code class="docutils literal notranslate"><span class="pre">btc_jpy</span></code>・JPY/BTC の単位整合、ms/秒の正規化の一貫性</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Request/Response/Params/Result の接尾辞の付与と型レベルでの I/O 明示</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ログ種別・日次カウンタの適切な利用（重複ロギングの抑制）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>⚙️ 主な環境変数<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>変数</p></th>
+<th class="head"><p>用途</p></th>
+<th class="head"><p>例</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ZAIF_API_KEY</span></code> / <code class="docutils literal notranslate"><span class="pre">ZAIF_API_SECRET</span></code></p></td>
+<td><p>認証キー</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xxx</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">USE_PRIVATE_MOCK</span></code></p></td>
+<td><p>プライベートAPIモック利用</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">EXCHANGE</span></code></p></td>
+<td><p>取引所選択 (<code class="docutils literal notranslate"><span class="pre">zaif</span></code>/<code class="docutils literal notranslate"><span class="pre">coincheck</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">zaif</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">COINCHECK_API_KEY</span></code> / <code class="docutils literal notranslate"><span class="pre">COINCHECK_API_SECRET</span></code></p></td>
+<td><p>Coincheck用キー</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">xxx</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DRY_RUN</span></code></p></td>
+<td><p>約定シミュレーションのみ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">PAIR</span></code></p></td>
+<td><p>取引ペア</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">btc_jpy</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LOOP_INTERVAL_MS</span></code></p></td>
+<td><p>メインループ周期</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">15000</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">KILL_SWITCH</span></code></p></td>
+<td><p>新規停止+全キャンセル</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RISK_MIN_TRADE_SIZE</span></code></p></td>
+<td><p>最小数量</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0001</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RISK_MAX_SLIPPAGE_PCT</span></code></p></td>
+<td><p>許容スリッページ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.005</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SMA_SHORT</span></code> / <code class="docutils literal notranslate"><span class="pre">SMA_LONG</span></code></p></td>
+<td><p>短期・長期 SMA 期間</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">9</span></code> / <code class="docutils literal notranslate"><span class="pre">26</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SELL_SMA_SHORT</span></code> / <code class="docutils literal notranslate"><span class="pre">SELL_SMA_LONG</span></code></p></td>
+<td><p>SELL モード専用の SMA 期間（未設定時は SMA_SHORT/LONG）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">9</span></code> / <code class="docutils literal notranslate"><span class="pre">26</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">BUY_SMA_SHORT</span></code> / <code class="docutils literal notranslate"><span class="pre">BUY_SMA_LONG</span></code></p></td>
+<td><p>BUY モード専用の SMA 期間（未設定時は SMA_SHORT/LONG）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">9</span></code> / <code class="docutils literal notranslate"><span class="pre">26</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RSI_PERIOD</span></code></p></td>
+<td><p>RSI 期間</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">14</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SELL_RSI_OVERBOUGHT</span></code></p></td>
+<td><p>SELL 判定用 RSI 上限（以上で売り強化）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">70</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">BUY_RSI_OVERSOLD</span></code></p></td>
+<td><p>BUY 判定用 RSI 下限（以下で買い強化）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">30</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RISK_TRAIL_TRIGGER_PCT</span></code></p></td>
+<td><p>利幅確保でトレール武装</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RISK_TRAIL_STOP_PCT</span></code></p></td>
+<td><p>トレール利確幅</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.03</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TRADE_MODE</span></code></p></td>
+<td><p>戦略モード <code class="docutils literal notranslate"><span class="pre">SELL</span></code>/<code class="docutils literal notranslate"><span class="pre">BUY</span></code>（デフォルト <code class="docutils literal notranslate"><span class="pre">SELL</span></code>）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SELL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MOCK_FORCE_EXIT</span></code></p></td>
+<td><p>モック強制部分 fill 継続</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">MOCK_FORCE_IMMEDIATE_FILL</span></code></p></td>
+<td><p>初回即 partial fill</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">TRADE_FLOW</span></code></p></td>
+<td><p>BUY/SELL フロー: <code class="docutils literal notranslate"><span class="pre">BUY_ONLY</span></code>/<code class="docutils literal notranslate"><span class="pre">SELL_ONLY</span></code>/<code class="docutils literal notranslate"><span class="pre">BUY_SELL</span></code>/<code class="docutils literal notranslate"><span class="pre">SELL_BUY</span></code>（デフォルト <code class="docutils literal notranslate"><span class="pre">BUY_SELL</span></code>）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BUY_SELL</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY</span></code></p></td>
+<td><p>TRADE_FLOW 実行時の数量（&gt;0 で有効化）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.002</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">LOG_LEVEL</span></code></p></td>
+<td><p>ログレベル <code class="docutils literal notranslate"><span class="pre">DEBUG</span></code>/<code class="docutils literal notranslate"><span class="pre">INFO</span></code>/<code class="docutils literal notranslate"><span class="pre">WARN</span></code>/<code class="docutils literal notranslate"><span class="pre">ERROR</span></code>（既定: <code class="docutils literal notranslate"><span class="pre">INFO</span></code>）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DEBUG</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">LOG_JSON</span></code></p></td>
+<td><p>ログを1行JSONで出力（<code class="docutils literal notranslate"><span class="pre">1</span></code>で有効）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">MAX_NONCE_RETRIES</span></code></p></td>
+<td><p>Nonce リトライ回数</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">5</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RETRY_BACKOFF_MS</span></code></p></td>
+<td><p>リトライ初期待機（指数バックオフの基準）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">300</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RETRY_ATTEMPTS</span></code></p></td>
+<td><p>公開API取得など withRetry の試行回数（services 層）。<code class="docutils literal notranslate"><span class="pre">1</span></code> で 1 回試行のみ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RETRY_BACKOFF_FACTOR</span></code></p></td>
+<td><p>バックオフ係数（指数）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1.5</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">RETRY_MAX_BACKOFF_MS</span></code></p></td>
+<td><p>バックオフ上限</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">3000</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RETRY_JITTER_MS</span></code></p></td>
+<td><p>バックオフに加えるジッター</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">100</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">NONCE_PERSIST</span></code></p></td>
+<td><p>Nonce の永続化（<code class="docutils literal notranslate"><span class="pre">0</span></code>で無効、既定: 有効）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">NONCE_RESTORE_ON_ERROR</span></code></p></td>
+<td><p>Nonce エラー時に復元（<code class="docutils literal notranslate"><span class="pre">0</span></code>で無効、既定: 有効）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">SAFETY_MODE</span></code></p></td>
+<td><p>安全クランプ有効化（10%デフォルト）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">SAFETY_CLAMP_PCT</span></code></p></td>
+<td><p>クランプ割合（0-1）。例: 0.1=10%</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">EXPOSURE_WARN_PCT</span></code></p></td>
+<td><p>露出警告閾値（0-1）。既定 0.05=5%</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.05</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ML_SEARCH_MODE</span></code></p></td>
+<td><p>ML 探索モード <code class="docutils literal notranslate"><span class="pre">grid</span></code>/<code class="docutils literal notranslate"><span class="pre">random</span></code>/<code class="docutils literal notranslate"><span class="pre">earlystop</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">grid</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ML_RANDOM_STEPS</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">random</span></code> モードでの試行回数</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">200</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ML_EARLY_PATIENCE</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">earlystop</span></code> の打ち切り猶予ステップ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ML_EARLY_MAX_STEPS</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">earlystop</span></code> の最大試行ステップ</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">300</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ML_MAX_WORKERS</span></code></p></td>
+<td><p>ML 探索の並列ワーカー数（CI では 1 推奨）</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>追加: <code class="docutils literal notranslate"><span class="pre">RETRY_TIMEOUT_MS</span></code>, <code class="docutils literal notranslate"><span class="pre">RETRY_PRICE_OFFSET_PCT</span></code>, <code class="docutils literal notranslate"><span class="pre">CLOCK_SKEW_TOLERANCE_MS</span></code> などはコード参照。</p>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>🚀 使い方<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>1. 依存インストール<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">install</span>
+</pre></div>
+</div>
+</section>
+<section id="id18">
+<h3>2. モック + ドライラン (最速検証)<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">USE_PRIVATE_MOCK</span><span class="o">=</span><span class="mi">1</span> <span class="n">DRY_RUN</span><span class="o">=</span><span class="mi">1</span> <span class="n">npm</span> <span class="n">start</span>
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h3>3. シナリオテスト<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">mock</span><span class="p">:</span><span class="n">scenario</span>
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h3>4. スモークテスト<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">mock</span><span class="p">:</span><span class="n">smoke</span>
+</pre></div>
+</div>
+</section>
+<section id="id21">
+<h3>5. 本番 (自己責任)<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+</section>
+<section id="coincheck">
+<h3>6. Coincheck 確認 (残高/発注/取消/履歴 最小テスト)<a class="headerlink" href="#coincheck" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">EXCHANGE</span><span class="o">=</span><span class="n">coincheck</span> <span class="n">DRY_RUN</span><span class="o">=</span><span class="mi">0</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">test</span><span class="p">:</span><span class="n">coincheck</span>
+</pre></div>
+</div>
+<p>注意: 数量・rate・手数料・最小単位に留意し、極小サイズでテストしてください。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="trade-mode">
+<h2>🎛 戦略モード切替 (TRADE_MODE)<a class="headerlink" href="#trade-mode" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>環境変数 <code class="docutils literal notranslate"><span class="pre">TRADE_MODE=SELL|BUY</span></code> で戦略を切替（デフォルトは SELL）。</p></li>
+<li><p>モードごとに独立した実装:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">core/strategies/sell-strategy.ts</span></code> — SELL ファーストの売り起点戦略</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">core/strategies/buy-strategy.ts</span></code> — BUY モード（買い戻し/反発起点）</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">app/index.ts</span></code> が <code class="docutils literal notranslate"><span class="pre">utils/config.loadTradeMode()</span></code> でモードを読み、該当戦略を実行。</p></li>
+<li><p>ログには <code class="docutils literal notranslate"><span class="pre">[SIGNAL][mode=SELL]</span></code> / <code class="docutils literal notranslate"><span class="pre">[SIGNAL][mode=BUY]</span></code> が出力されます。</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="trade-flow">
+<h2>🔄 発注フロー (TRADE_FLOW)<a class="headerlink" href="#trade-flow" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">TRADE_FLOW=BUY_ONLY|SELL_ONLY|BUY_SELL|SELL_BUY</span></code>（既定: BUY_SELL）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY&gt;0</span></code> を設定すると、アプリの1サイクル内でフローを実行します。</p>
+<ul>
+<li><p>BUY_SELL: BUY 約定確認後に SELL を必ず実施</p></li>
+<li><p>SELL_BUY: SELL 約定確認後に BUY を必ず実施</p></li>
+</ul>
+</li>
+<li><p>DRY_RUN=1 の場合は即時 fill をシミュレートします。</p></li>
+<li><p>日次統計（stats）はフローに応じて buyEntries/sellEntries を加算します。</p></li>
+</ul>
+<p>ワンショット実行（単発スモーク）</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$env:USE_PRIVATE_MOCK=&quot;1&quot;
+$env:DRY_RUN=&quot;1&quot;
+$env:TRADE_FLOW=&quot;BUY_SELL&quot;
+$env:TEST_FLOW_QTY=&quot;0.002&quot;
+npm run smoke:once
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="coincheck-npm-start">
+<h2>Coincheck でも npm start が動作します<a class="headerlink" href="#coincheck-npm-start" title="Link to this heading"></a></h2>
+<p>環境変数で <code class="docutils literal notranslate"><span class="pre">EXCHANGE=coincheck</span></code> を指定すれば、共通の戦略ループ (<code class="docutils literal notranslate"><span class="pre">src/app/index.ts</span></code>) がそのまま Coincheck を利用します。</p>
+<p>注意事項:</p>
+<ul class="simple">
+<li><p>取引最小単位や丸めは Zaif と異なります。テストは小サイズ (例: 0.005 BTC) で開始し、エラー内容に応じて調整してください。</p></li>
+<li><p>公開APIの板/トレードは取引所差異を吸収済みですが、銘柄は <code class="docutils literal notranslate"><span class="pre">btc_jpy</span></code> 固定を前提にしています。</p></li>
+<li><p>レート制限に注意し、短時間に連続発注/取消を避けてください。</p></li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ZAIF_API_KEY</span><span class="o">=...</span> <span class="n">ZAIF_API_SECRET</span><span class="o">=...</span> <span class="n">DRY_RUN</span><span class="o">=</span><span class="mi">0</span> <span class="n">npm</span> <span class="n">start</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>🧪 テスト / ユーティリティ<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>コマンド</p></th>
+<th class="head"><p>内容</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">mock:scenario</span></code></p></td>
+<td><p>モックでシナリオ実行 (パラメータ組合せ)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">mock:smoke</span></code></p></td>
+<td><p>最小スモーク (起動～一連 cycle)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">health</span></code></p></td>
+<td><p>署名・nonce / permission ヘルスチェック</p></td>
+</tr>
+</tbody>
+</table>
+<p>補助: ツール実行の統合エントリ</p>
+<p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">tool</span> <span class="pre">--</span> <span class="pre">&lt;name&gt;</span></code> でツールを統一的に呼び出せます（内部的に <code class="docutils literal notranslate"><span class="pre">src/tools/run.ts</span></code> が委譲）。</p>
+<p>例:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">live</span><span class="p">:</span><span class="n">health</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">paper</span><span class="p">:</span><span class="n">mock-scenario</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">ml</span><span class="p">:</span><span class="n">export</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">stats</span><span class="p">:</span><span class="n">today</span> <span class="p">--</span> <span class="p">-</span><span class="n">-diff</span>
+</pre></div>
+</div>
+<section id="coverage-github-pages">
+<h3>Coverage レポート（GitHub Pages）<a class="headerlink" href="#coverage-github-pages" title="Link to this heading"></a></h3>
+<p>main ブランチへの push または手動実行で <code class="docutils literal notranslate"><span class="pre">coverage-pages</span></code> ワークフローが走り、<code class="docutils literal notranslate"><span class="pre">coverage/</span></code> を GitHub Pages に公開します。しきい値 (statements &gt;= 70%) を満たさない場合は CI が失敗します。</p>
+<ul class="simple">
+<li><p>Pages 公開先: リポジトリの Pages 設定で確認（<code class="docutils literal notranslate"><span class="pre">/coverage/</span></code> 以下に HTML レポート）</p></li>
+<li><p>ワークフロー: <code class="docutils literal notranslate"><span class="pre">.github/workflows/coverage-pages.yml</span></code></p></li>
+<li><p>公開 URL（既定）: <a class="reference external" href="https://MakuhariYusuke.github.io/zaif-trade-bot/">https://MakuhariYusuke.github.io/zaif-trade-bot/</a></p>
+<ul>
+<li><p>本ワークフローは <code class="docutils literal notranslate"><span class="pre">coverage/</span></code> 配下を Pages ルートに配置するため、トップで coverage レポート（index.html）が表示されます。</p></li>
+<li><p>404 の場合は GitHub Pages 有効化を確認し、<code class="docutils literal notranslate"><span class="pre">/index.html</span></code> で直接参照してください。</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id23">
+<h2>📑 日次レポートのリポジトリ内公開（デフォルト）<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<p>各ワークフロー（paper-nightly / paper-ml / paper-matrix / live-ml / live-trade）の末尾で、生成物をブランチに直接コミットします。</p>
+<ul class="simple">
+<li><p>パス: <code class="docutils literal notranslate"><span class="pre">reports/day-YYYY-MM-DD/</span></code></p></li>
+<li><p>目次: <code class="docutils literal notranslate"><span class="pre">reports/day-YYYY-MM-DD/index.md</span></code>（当日の主要アーティファクトへのリンクを列挙）</p></li>
+<li><p>保持期間: 14 日分（古い日付は自動で削除）</p></li>
+<li><p>Slack / GitHub コメントにも「Added report: reports/day-YYYY-MM-DD/index.md」を追記します</p></li>
+</ul>
+<p>ローカルや CI の成果を Pages に依存せず参照でき、履歴もブランチに残ります。</p>
+<section id="github-pages">
+<h3>GitHub Pages（任意）<a class="headerlink" href="#github-pages" title="Link to this heading"></a></h3>
+<p>Pages に ML/Stats のダッシュボードを公開するワークフロー（<code class="docutils literal notranslate"><span class="pre">.github/workflows/pages-ml-stats.yml</span></code>）は、既定で無効化されています。</p>
+<ul class="simple">
+<li><p>有効化するには、リポジトリの Actions Variables に <code class="docutils literal notranslate"><span class="pre">ENABLE_PAGES=1</span></code> を設定してください（Settings → Secrets and variables → Actions → Variables）。</p></li>
+<li><p>その上でリポジトリの Pages を GitHub Actions 発行に設定します（Settings → Pages → Build and deployment → Source: GitHub Actions）。</p></li>
+</ul>
+<p>Pages を無効のままでも、上記の <code class="docutils literal notranslate"><span class="pre">reports/day-YYYY-MM-DD/</span></code> で日次レポートは参照可能です。</p>
+</section>
+<section id="jsonl-csv">
+<h3>JSONL ベースライン（CSV 廃止）<a class="headerlink" href="#jsonl-csv" title="Link to this heading"></a></h3>
+<p>特徴量・統計の出力は JSONL に統一しました（1 行 1 レコード追記）。移行期間の CSV 読み取り互換は削除済みです。</p>
+<ul class="simple">
+<li><p>特徴量: <code class="docutils literal notranslate"><span class="pre">logs/features/&lt;source&gt;/&lt;pair&gt;/features-YYYY-MM-DD.jsonl</span></code></p></li>
+<li><p>日次統計スナップショット: <code class="docutils literal notranslate"><span class="pre">logs/pairs/&lt;pair&gt;/stats-YYYY-MM-DD.jsonl</span></code> および合算 <code class="docutils literal notranslate"><span class="pre">logs/stats-YYYY-MM-DD.jsonl</span></code></p></li>
+<li><p>ML データセット: ルート <code class="docutils literal notranslate"><span class="pre">ml-dataset.jsonl</span></code></p></li>
+</ul>
+<p>ユーティリティ <code class="docutils literal notranslate"><span class="pre">readFeatureCsvRows(dir)</span></code> は JSONL のみを読みます（名称は互換維持）。</p>
+</section>
+<section id="id24">
+<h3>テクニカル指標の自動付与<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">features-logger</span></code> にインジケータ計算を内蔵し、足取り（近似 OHLC）から以下を出力します。</p>
+<ul class="simple">
+<li><p>トレンド系: SMA/EMA/WMA/HMA/KAMA（短期/長期）</p></li>
+<li><p>オシレーター: RSI、ROC、Momentum、CCI、Williams %R、ストキャスティクス</p></li>
+<li><p>ボラティリティ: 標準偏差（StdDev）、ATR、ボリンジャーバンド幅（BB width）、ドンチャン幅（Donchian width）</p></li>
+<li><p>複合/その他: MACD（line/signal/hist）、DMI/ADX、パラボリックSAR、一目均衡表（転換/基準/先行/遅行）</p></li>
+<li><p>価格乖離/帯: 移動平均からの乖離率（deviation%）、エンベロープ、簡易 Fibonacci 位置</p></li>
+</ul>
+<p>エイリアス列（使い勝手向上のため）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rsi14</span></code>（既定 14 の RSI）、<code class="docutils literal notranslate"><span class="pre">atr14</span></code>（既定 14 の ATR）、<code class="docutils literal notranslate"><span class="pre">macd_hist</span></code>（MACD ヒストグラム）</p></li>
+</ul>
+<p>観測開始時に 1 度だけ、WARN ログでサンプルを出します。</p>
+<ul class="simple">
+<li><p>例: <code class="docutils literal notranslate"><span class="pre">[WARN]</span> <span class="pre">[INDICATOR]</span> <span class="pre">sample</span> <span class="pre">pair=btc_jpy</span> <span class="pre">rsi14=57.3</span> <span class="pre">atr14=123.4</span> <span class="pre">macd_hist=-0.002</span> <span class="pre">...</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">IND_LOG_EVERY_N</span></code> &gt; 0 の場合、N レコードごとに <code class="docutils literal notranslate"><span class="pre">[IND]</span></code> ダイジェストを DEBUG 出力します。</p></li>
+</ul>
+<p>制御用の主な環境変数:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">IND_LOG_EVERY_N</span></code> = N 件ごとに <code class="docutils literal notranslate"><span class="pre">[IND]</span></code> ダイジェストを DEBUG ログに出力（0 で無効）</p></li>
+</ul>
+</section>
+<section id="id25">
+<h3>週次トレンド（7 日集計）<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">trend:weekly</span></code> で直近 7 日の集計を生成し、以下へ保存します。</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">reports/day-YYYY-MM-DD/trend-7d.json</span></code>（当日ディレクトリ）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reports/week-YYYY-WW/weekly-summary.json</span></code>（ISO 週）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reports/latest/trend-weekly.json</span></code>（最新へのリンク）</p></li>
+</ul>
+<p>ワークフロー（paper-nightly / paper-ml など）から自動実行・コミットされ、Slack/PR コメントにも <code class="docutils literal notranslate"><span class="pre">Trend7d</span></code> が含まれます。</p>
+<section id="slack-github-trend7dwin">
+<h4>通知（Slack / GitHub コメント）: Trend7dWin%<a class="headerlink" href="#slack-github-trend7dwin" title="Link to this heading"></a></h4>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id26">
+<h2>Rate Limiter<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>集中トークンバケツで API 呼び出しを制御します。</p></li>
+<li><p>既定: <code class="docutils literal notranslate"><span class="pre">capacity=100</span></code>, <code class="docutils literal notranslate"><span class="pre">refill=10</span> <span class="pre">tokens/sec</span></code>, 予約枠 <code class="docutils literal notranslate"><span class="pre">RATE_PRIORITY_RESERVE=0.1</span></code>（高優先専用）。</p></li>
+<li><p>優先度: <code class="docutils literal notranslate"><span class="pre">high</span></code>（発注/取消）、<code class="docutils literal notranslate"><span class="pre">normal</span></code>（約定ポーリング等）、<code class="docutils literal notranslate"><span class="pre">low</span></code>（市場データ/統計）。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BaseService.withRetry</span></code> のフロー順序: CircuitBreaker → RateLimiter → 実行。</p></li>
+</ul>
+<p>ログ仕様</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE/INFO</span></code> … 取得成功（<code class="docutils literal notranslate"><span class="pre">waitedMs</span></code> 同報）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE/WARN</span></code> … 200ms 超の待機</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE/ERROR</span></code> … 1 秒以内にトークン取得できず拒否（<code class="docutils literal notranslate"><span class="pre">code:</span> <span class="pre">RATE_LIMITED</span></code>）</p></li>
+</ul>
+<p>環境変数</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_CAPACITY</span></code>（既定 100）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_REFILL_PER_SEC</span></code>（既定 10）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RATE_PRIORITY_RESERVE</span></code>（既定 0.1）</p></li>
+</ul>
+<p>使い方（カテゴリと優先度の例）</p>
+<div class="highlight-ts notranslate"><div class="highlight"><pre><span></span><span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">getTicker</span><span class="p">(</span><span class="s1">&#39;btc_jpy&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;getTicker&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">100</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PUBLIC&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;low&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="k">private</span><span class="p">.</span><span class="nx">placeLimitOrder</span><span class="p">(...),</span><span class="w"> </span><span class="s1">&#39;placeLimitOrder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;API-PRIVATE&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;normal&#39;</span><span class="w"> </span><span class="p">});</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">withRetry</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">exec</span><span class="p">.</span><span class="nx">cancelOrder</span><span class="p">(</span><span class="nx">id</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;cancelOrder&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="mf">150</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;EXEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">priority</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;high&#39;</span><span class="w"> </span><span class="p">});</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">report-summary-*.json</span></code> を各ワークフロー（live-ml / live-trade / paper-ml / paper-nightly）で生成し、Totals に PnL/Win%/MaxDD に加えて 7 日移動の勝率 <code class="docutils literal notranslate"><span class="pre">Trend7dWin%</span></code> を含めて通知します。</p>
+<p>例（Totals 1 行表示）:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Totals</span><span class="p">:</span> <span class="n">pnl</span><span class="o">=+</span><span class="mf">12.34</span><span class="p">,</span> <span class="n">winRate</span><span class="o">=</span><span class="mf">61.1</span><span class="o">%</span><span class="p">,</span> <span class="n">maxDD</span><span class="o">=</span><span class="mf">3.2</span><span class="p">,</span> <span class="n">Trend7dWin</span><span class="o">%=</span><span class="mf">64.3</span>
+</pre></div>
+</div>
+<p>サマリー JSON（抜粋）:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">	</span><span class="nt">&quot;source&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;live&quot;</span><span class="p">,</span>
+<span class="w">	</span><span class="nt">&quot;totals&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">		</span><span class="nt">&quot;winRate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.611</span><span class="p">,</span>
+<span class="w">		</span><span class="nt">&quot;maxDrawdown&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">3.2</span><span class="p">,</span>
+<span class="w">		</span><span class="nt">&quot;trend7dWinRate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.643</span>
+<span class="w">	</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="core-i-o">
+<h2>🧼 Core 純化と I/O の外出し（今回の変更）<a class="headerlink" href="#core-i-o" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>目標: core は純粋ロジックのみ。I/O（fs/HTTP）、logger、環境変数依存は adapters に集約。</p></li>
+<li><p>対象: <code class="docutils literal notranslate"><span class="pre">core/risk.ts</span></code> と <code class="docutils literal notranslate"><span class="pre">core/position-store.ts</span></code> の純粋化を実施。</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">core/risk.ts</span></code>: I/O と logger を撤去し、環境変数のみを読む <code class="docutils literal notranslate"><span class="pre">getRiskConfig()</span></code> と計算系関数に限定。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">core/position-store.ts</span></code>: FS/永続化と logger を撤去し、実体は <code class="docutils literal notranslate"><span class="pre">&#64;adapters/position-store-fs</span></code> に委譲（API は不変）。</p></li>
+</ul>
+</li>
+<li><p>アダプタ:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;adapters/risk-config</span></code>: リスク設定読み込み/ポジション永続化の I/O を担当。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;adapters/position-store-fs</span></code>: ポジションストアの FS 実装（環境変数 <code class="docutils literal notranslate"><span class="pre">POSITION_STORE_DIR</span></code>/<code class="docutils literal notranslate"><span class="pre">POSITION_STORE_FILE</span></code> を解決）。</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&#64;adapters/risk-service</span></code>: 旧 API 互換のため、<code class="docutils literal notranslate"><span class="pre">getRiskConfig</span></code>/<code class="docutils literal notranslate"><span class="pre">getPositions</span></code>/<code class="docutils literal notranslate"><span class="pre">savePositionsToFile</span></code> の別名エクスポートを提供。</p></li>
+</ul>
+</li>
+</ul>
+<p>互換性:</p>
+<ul class="simple">
+<li><p>既存の import は shim/再エクスポートで動作を維持しつつ、初回のみ CONFIG/WARN を 1 回出力（次メジャーで削除予定）。</p></li>
+<li><p>テスト/カバレッジは既存基準（Statements &gt;= 70%）を維持。</p></li>
+</ul>
+<p>推奨移行先（新規コード）:</p>
+<ul class="simple">
+<li><p>PositionStore: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">{</span> <span class="pre">loadPosition,</span> <span class="pre">savePosition</span> <span class="pre">}</span> <span class="pre">from</span> <span class="pre">'&#64;adapters/position-store-fs'</span></code></p></li>
+<li><p>Risk 設定/永続: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">{</span> <span class="pre">getRiskConfig,</span> <span class="pre">getPositions,</span> <span class="pre">savePositionsToFile</span> <span class="pre">}</span> <span class="pre">from</span> <span class="pre">'&#64;adapters/risk-service'</span></code></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="paper-matrix">
+<h2>🧰 Paper Matrix（シナリオ実行）<a class="headerlink" href="#paper-matrix" title="Link to this heading"></a></h2>
+<p>GitHub Actions の <code class="docutils literal notranslate"><span class="pre">paper-matrix</span></code> では、モック駆動の多様なシナリオを並列実行して統計/レポートを生成・アーカイブします（tar.gz）。主なプリセットと用途:</p>
+<ul class="simple">
+<li><p>normal: 既定の軽負荷動作</p></li>
+<li><p>error: エラー頻度を上げる（<code class="docutils literal notranslate"><span class="pre">SCENARIO_PAPER_ERROR_RATE=0.2</span></code>）</p></li>
+<li><p>latency: レイテンシ付加（<code class="docutils literal notranslate"><span class="pre">SCENARIO_PAPER_LATENCY_MS=200</span></code>）</p></li>
+<li><p>timeout: API タイムアウト付加（<code class="docutils literal notranslate"><span class="pre">SCENARIO_PAPER_TIMEOUT_MS=1000</span></code>）</p></li>
+<li><p>composite: error+latency の複合</p></li>
+<li><p>hf-light: 高頻度ライト（<code class="docutils literal notranslate"><span class="pre">LOOP=2000</span></code>）</p></li>
+<li><p>hf-mid: 高頻度ミドル（<code class="docutils literal notranslate"><span class="pre">LOOP=5000</span></code>）</p></li>
+<li><p>hf-stress: 高頻度ストレス（<code class="docutils literal notranslate"><span class="pre">LOOP=10000</span></code>）</p></li>
+<li><p>sweep-rsi: RSI しきい値スイープ</p></li>
+<li><p>sweep-sma: SMA パラメータスイープ</p></li>
+<li><p>high-error: 高エラー率（<code class="docutils literal notranslate"><span class="pre">SCENARIO_PAPER_ERROR_RATE=0.5</span></code>）</p></li>
+<li><p>stress: レイテンシと軽負荷ループ（<code class="docutils literal notranslate"><span class="pre">SCENARIO_PAPER_LATENCY_MS=500</span></code>, <code class="docutils literal notranslate"><span class="pre">LOOP=1000</span></code>）</p></li>
+</ul>
+<p>ローカル実行の例（PowerShell）:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:USE_PRIVATE_MOCK</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="nv">$env:DRY_RUN</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="nv">$env:SCENARIO_PAPER_LATENCY_MS</span><span class="p">=</span><span class="s2">&quot;200&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">mock</span><span class="p">:</span><span class="n">scenario</span>
+</pre></div>
+</div>
+<p>CI ではシナリオごとに <code class="docutils literal notranslate"><span class="pre">stats-&lt;scenario&gt;.json/.svg</span></code> と <code class="docutils literal notranslate"><span class="pre">report-summary-&lt;scenario&gt;.json</span></code> をまとめて <code class="docutils literal notranslate"><span class="pre">stats-&lt;scenario&gt;.tar.gz</span></code> としてアップロードしています。</p>
+</section>
+<hr class="docutils" />
+<section id="ml-grid-random-earlystop">
+<h2>🧠 ML 検索/レポート（grid/random/earlystop）<a class="headerlink" href="#ml-grid-random-earlystop" title="Link to this heading"></a></h2>
+<p>ツール群（<code class="docutils literal notranslate"><span class="pre">src/tools/ml/*</span></code>）で特徴量の集約/探索/レポート生成を行います。データセットには以下の列が含まれます（抜粋）。</p>
+<ul class="simple">
+<li><p>時系列特徴: 価格、SMA、RSI 等</p></li>
+<li><p>付加列: <code class="docutils literal notranslate"><span class="pre">source</span></code>（paper/live）、<code class="docutils literal notranslate"><span class="pre">tradeFlow</span></code>、<code class="docutils literal notranslate"><span class="pre">durationSec</span></code>（エントリー〜エグジットの概算秒）</p></li>
+</ul>
+<p>探索モード（<code class="docutils literal notranslate"><span class="pre">ML_SEARCH_MODE</span></code>）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">grid</span></code>: しきい値の格子探索（従来）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">random</span></code>: ランダム探索。<code class="docutils literal notranslate"><span class="pre">ML_RANDOM_STEPS</span></code> で試行回数を制御</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">earlystop</span></code>: 早期打ち切り探索。<code class="docutils literal notranslate"><span class="pre">ML_EARLY_PATIENCE</span></code> と <code class="docutils literal notranslate"><span class="pre">ML_EARLY_MAX_STEPS</span></code> で制御</p></li>
+<li><p>並列度は <code class="docutils literal notranslate"><span class="pre">ML_MAX_WORKERS</span></code>（CI では 1 推奨）</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="path-alias">
+<h2>📦 Path alias と移行ガイド<a class="headerlink" href="#path-alias" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>型は <code class="docutils literal notranslate"><span class="pre">src/contracts</span></code> に集約しました。以後は <code class="docutils literal notranslate"><span class="pre">&#64;contracts</span></code> で import してください。</p>
+<ul>
+<li><p>例: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">{</span> <span class="pre">PositionStore,</span> <span class="pre">RiskManager</span> <span class="pre">}</span> <span class="pre">from</span> <span class="pre">'&#64;contracts'</span></code></p></li>
+</ul>
+</li>
+<li><p>実装は <code class="docutils literal notranslate"><span class="pre">&#64;adapters/*</span></code> と <code class="docutils literal notranslate"><span class="pre">&#64;application/*</span></code> を利用してください（旧 <code class="docutils literal notranslate"><span class="pre">src/services/*</span></code> と <code class="docutils literal notranslate"><span class="pre">src/strategies/*</span></code> は削除済み）。</p>
+<ul>
+<li><p>例: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">{</span> <span class="pre">createServicePositionStore</span> <span class="pre">}</span> <span class="pre">from</span> <span class="pre">'&#64;adapters/position-store'</span></code></p></li>
+<li><p>例: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">{</span> <span class="pre">runBuyStrategy</span> <span class="pre">}</span> <span class="pre">from</span> <span class="pre">'&#64;application/strategies/buy-strategy-app'</span></code></p></li>
+</ul>
+</li>
+</ul>
+<p>生成物（ルート直下）</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ml-dataset.jsonl</span></code>（特徴量データ・JSON Lines）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ml-search-results.csv</span></code>（全試行） / <code class="docutils literal notranslate"><span class="pre">ml-search-top.json</span></code>（上位）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">report-ml-&lt;mode&gt;.json</span></code> / <code class="docutils literal notranslate"><span class="pre">report-ml-&lt;mode&gt;.csv</span></code>（mode は <code class="docutils literal notranslate"><span class="pre">grid|random|earlystop</span></code>）</p></li>
+<li><p>Feature Importance: <code class="docutils literal notranslate"><span class="pre">report-ml-feature-importance.json</span></code>（Top N 特徴量） / <code class="docutils literal notranslate"><span class="pre">importance.csv</span></code></p></li>
+</ul>
+<p>ローカル実行例（PowerShell）</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># 特徴量のエクスポート</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">ml</span><span class="p">:</span><span class="n">export</span>
+
+<span class="c"># grid 探索</span>
+<span class="nv">$env:ML_SEARCH_MODE</span><span class="p">=</span><span class="s2">&quot;grid&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">ml</span><span class="p">:</span><span class="n">search</span>
+
+<span class="c"># random 探索（200 ステップ）</span>
+<span class="nv">$env:ML_SEARCH_MODE</span><span class="p">=</span><span class="s2">&quot;random&quot;</span><span class="p">;</span> <span class="nv">$env:ML_RANDOM_STEPS</span><span class="p">=</span><span class="s2">&quot;200&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">ml</span><span class="p">:</span><span class="n">search</span>
+
+<span class="c"># early stopping 探索（猶予 10、最大 300）</span>
+<span class="nv">$env:ML_SEARCH_MODE</span><span class="p">=</span><span class="s2">&quot;earlystop&quot;</span><span class="p">;</span> <span class="nv">$env:ML_EARLY_PATIENCE</span><span class="p">=</span><span class="s2">&quot;10&quot;</span><span class="p">;</span> <span class="nv">$env:ML_EARLY_MAX_STEPS</span><span class="p">=</span><span class="s2">&quot;300&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">tool</span> <span class="p">--</span> <span class="n">ml</span><span class="p">:</span><span class="n">search</span>
+
+<span class="c"># Feature Importance（相関ベースの簡易重要度・Top20）</span>
+<span class="n">npm</span> <span class="n">run</span> <span class="n">feature</span><span class="p">:</span><span class="n">importance</span>
+</pre></div>
+</div>
+<p>補足: 簡易シミュレーション（ml-simulate）の勝率算出</p>
+<ul class="simple">
+<li><p>トレード判定: pnl が数値、または win フラグが存在する行をトレードとしてカウント</p></li>
+<li><p>勝ち判定: win が 1 | true | ‘1’ の行を勝ちとしてカウント</p></li>
+<li><p>PnL 集計: pnl がある場合のみ合算（win フラグのみの行は PnL=0 とみなす）</p></li>
+</ul>
+<p>CI 連携</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">paper-ml</span></code> / <code class="docutils literal notranslate"><span class="pre">live-ml</span></code> ワークフローで <code class="docutils literal notranslate"><span class="pre">grid</span></code> の後に <code class="docutils literal notranslate"><span class="pre">random</span></code> を実行し、<code class="docutils literal notranslate"><span class="pre">report-ml-random.json/.csv</span></code> をアーティファクト化</p></li>
+<li><p>併せて Feature Importance を実行し、<code class="docutils literal notranslate"><span class="pre">report-ml-feature-importance.json</span></code> と <code class="docutils literal notranslate"><span class="pre">importance.csv</span></code> を成果物に含め、レポート index にリンクします</p></li>
+<li><p>通知（Slack/GitHub コメント）に「ML(random) Top: Win%/PnL/params」に加えて「Top Features: name1,name2,name3…」を 1 行で追記します</p></li>
+</ul>
+<p>備考: <code class="docutils literal notranslate"><span class="pre">stats-graph</span></code> は paper / live の PnL・勝率のテキストオーバーレイを含む SVG を出力します。</p>
+</section>
+<hr class="docutils" />
+<section id="id27">
+<h2>インジケータ（補足）<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>実装: 純粋関数群は <code class="docutils literal notranslate"><span class="pre">src/utils/indicators.ts</span></code> に集約（副作用なし）。EMA/SMA/RSI/MACD/ATR/ボリンジャー/一目/CCI/ROC/Momentum/HMA/KAMA/Donchian/Choppiness/Aroon/Vortex/SuperTrend 等</p></li>
+<li><p>エイリアス推奨: <code class="docutils literal notranslate"><span class="pre">rsi14</span></code>/<code class="docutils literal notranslate"><span class="pre">atr14</span></code>/<code class="docutils literal notranslate"><span class="pre">macd_hist</span></code> など既定パラメータのショート名を採用</p></li>
+<li><p>スナップショット: 指標は features-logger から JSONL に追記。<code class="docutils literal notranslate"><span class="pre">IND_LOG_EVERY_N&gt;0</span></code> で N レコードおきに <code class="docutils literal notranslate"><span class="pre">[IND]</span></code> ダイジェストを DEBUG 出力</p></li>
+<li><p>欠落サンプルの WARN: 監視開始時に 1 回だけ代表値を WARN ログで提示（冗長抑制のため once）</p></li>
+<li><p>体感的な注意点: 体積（出来高）依存の指標は現行フローで取得が無い場合があり、その際は null を返します（WARN 付与）。アルゴ側で null セーフに取り扱ってください</p></li>
+</ul>
+<hr class="docutils" />
+<section id="id28">
+<h3>テスト実行時の環境変数の注意<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<p>テストはファイル出力（統計やポジションストア）を行うため、実データと混ざらないよう一時ディレクトリを使うことを推奨します。テストコード側でも設定していますが、手動実行時は以下を任意のパスに設定してください。</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">STATS_DIR</span></code>: 日次統計の出力先ディレクトリ（例: <code class="docutils literal notranslate"><span class="pre">./.tmp-stats/logs</span></code>）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POSITION_STORE_DIR</span></code>: ペア別のポジションファイルを保存するディレクトリ（例: <code class="docutils literal notranslate"><span class="pre">./.positions-test</span></code>）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POSITION_STORE_FILE</span></code>: 旧式の単一ストアファイルのパス（互換目的のみ）</p></li>
+</ul>
+<p>PowerShell 例:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:STATS_DIR</span><span class="p">=</span><span class="s2">&quot;.tmp-stats\\logs&quot;</span><span class="p">;</span> <span class="nv">$env:POSITION_STORE_DIR</span><span class="p">=</span><span class="s2">&quot;.positions-test&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">test</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="safety-mode-1-warn">
+<h2>� SAFETY_MODE=1（数量クランプと WARN ログ）<a class="headerlink" href="#safety-mode-1-warn" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">SAFETY_MODE=1</span></code> を指定すると、発注数量は残高の一定割合（既定 10%: <code class="docutils literal notranslate"><span class="pre">SAFETY_CLAMP_PCT=0.1</span></code>）にクランプされます。クランプが発生した場合は WARN ログが出力されます。</p>
+<p>例:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">WARN</span><span class="p">]</span> <span class="p">[</span><span class="n">SAFETY</span><span class="p">]</span> <span class="n">amount</span> <span class="n">clamped</span> <span class="n">side</span><span class="o">=</span><span class="n">bid</span> <span class="n">requested</span><span class="o">=</span><span class="mi">20000</span> <span class="n">clamped</span><span class="o">=</span><span class="mi">10000</span> <span class="n">pct</span><span class="o">=</span><span class="mf">10.0</span><span class="o">%</span>
+</pre></div>
+</div>
+<p>この挙動はユニットテストで検証済みで、CI でも維持されます。</p>
+</section>
+<hr class="docutils" />
+<section id="id29">
+<h2>�📊 ログ &amp; 日次統計<a class="headerlink" href="#id29" title="Link to this heading"></a></h2>
+<p>ログ種別: SIGNAL / ORDER / EXECUTION / ERROR / INFO。<code class="docutils literal notranslate"><span class="pre">logs/trades-YYYY-MM-DD.log</span></code> に JSON 追記。</p>
+<p>日次統計 <code class="docutils literal notranslate"><span class="pre">stats-YYYY-MM-DD.json</span></code></p>
+<ul class="simple">
+<li><p>filledCount / realizedPnl / 各 *RetryCount / trailArmedTotal / trailExitTotal / trailStops / sellEntries 他</p></li>
+</ul>
+<p>Trailing Stop:</p>
+<ol class="arabic simple">
+<li><p>価格がエントリー比 <code class="docutils literal notranslate"><span class="pre">RISK_TRAIL_TRIGGER_PCT</span></code> 上昇で武装</p></li>
+<li><p>最高値を追従し <code class="docutils literal notranslate"><span class="pre">highestPrice</span> <span class="pre">*</span> <span class="pre">(1</span> <span class="pre">-</span> <span class="pre">RISK_TRAIL_STOP_PCT)</span></code> を割れたら EXIT</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="fallback">
+<h2>🔍 約定ヒューリスティック (fallback)<a class="headerlink" href="#fallback" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">order_id</span></code> で特定できない場合:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">submittedAt</span> <span class="pre">±</span> <span class="pre">SLIPPAGE_TIME_WINDOW_MS</span></code></p></li>
+<li><p>side 一致</p></li>
+<li><p>価格偏差 &lt;= <code class="docutils literal notranslate"><span class="pre">TOL_PRICE_PCT</span></code></p></li>
+<li><p>部分累積量が目標量に到達で完了</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id30">
+<h2>♻️ リネーム / コード規約差分 (最近適用)<a class="headerlink" href="#id30" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>旧</p></th>
+<th class="head"><p>新</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">IPrivateApi</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PrivateApi</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">TradeHistoryItem</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TradeHistoryRecord</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trailManager</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">manageTrailingStop</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">calcSMA</span></code> / <code class="docutils literal notranslate"><span class="pre">calcRSI</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">calculateSma</span></code> / <code class="docutils literal notranslate"><span class="pre">calculateRsi</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">submitWithRetry</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">submitOrderWithRetry</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">appendPrices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">appendPriceSamples</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">getRecentPrices</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">getPriceSeries</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">writeTradeLog</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">logTrade</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ok</span></code> (GuardResult)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">isAllowed</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fillCount</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">filledCount</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">*Retries</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">*RetryCount</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id31">
+<h2>⚠️ 注意事項<a class="headerlink" href="#id31" title="Link to this heading"></a></h2>
+<p>本リポジトリは学習・検証目的の参考実装です。実運用前に以下を必ず検討してください。</p>
+<ul class="simple">
+<li><p>API レート制限と指数バックオフ</p></li>
+<li><p>完全な約定照合 (WebSocket / order executions)</p></li>
+<li><p>本番用秘密情報管理 (Vault / KMS 等)</p></li>
+<li><p>冗長化 / 障害復旧 / アラート設計</p></li>
+<li><p>高精度時刻同期 (NTP) と nonce 管理</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id32">
+<h2>🛠 今後の拡張候補<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>WebSocket 板/トレード購読</p></li>
+<li><p>マルチペア同時戦略 / ポートフォリオ管理</p></li>
+<li><p>PnL / リスク指標 (Sharpe, 最大ドローダウン) 生成</p></li>
+<li><p>Backtest エンジン統合</p></li>
+<li><p>Prometheus / OpenTelemetry 連携</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id33">
+<h2>📄 ライセンス・利用条件<a class="headerlink" href="#id33" title="Link to this heading"></a></h2>
+<p>ライセンスは未確定ですが、現時点では学習・検証目的での個人利用を想定しています。
+商用利用や再配布はご遠慮ください。今後 OSS ライセンス（MIT など）を付与する方針です。
+正式なライセンス決定後は LICENSE ファイルおよび README にて告知します。</p>
+</section>
+<hr class="docutils" />
+<section id="id34">
+<h2>最小ライブ検証（自己責任）/ Live Minimal（DRY_RUN統合）<a class="headerlink" href="#id34" title="Link to this heading"></a></h2>
+<p>発注→即キャンセルの最小検証を、単一スクリプト <code class="docutils literal notranslate"><span class="pre">live:minimal</span></code> に統合しました。DRY_RUN=1 ならモック/ドライラン、DRY_RUN=0 なら実発注（要API鍵）で動きます。少額で慎重に実施してください。</p>
+<p>実行コマンド: <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">live:minimal</span></code></p>
+<p>使用する環境変数:</p>
+<ul class="simple">
+<li><p>EXCHANGE: 取引所（例: coincheck, zaif）</p></li>
+<li><p>TRADE_FLOW: BUY_ONLY | SELL_ONLY | BUY_SELL | SELL_BUY</p></li>
+<li><p>TEST_FLOW_QTY: 発注数量（DRY_RUN=1 の場合は未設定時 0.002 を既定値として使用）</p></li>
+<li><p>TEST_FLOW_RATE: 価格（未指定なら板の最優先を利用）。<code class="docutils literal notranslate"><span class="pre">ORDER_TYPE=market</span></code> の場合は未指定でOK</p></li>
+<li><p>ORDER_TYPE: <code class="docutils literal notranslate"><span class="pre">market</span></code> または <code class="docutils literal notranslate"><span class="pre">limit</span></code>（省略可）</p></li>
+<li><p>DRY_RUN: <code class="docutils literal notranslate"><span class="pre">0</span></code>（実発注）/ <code class="docutils literal notranslate"><span class="pre">1</span></code>（ドライラン）</p></li>
+<li><p>SAFETY_MODE: 1 で残高の10%以内に数量をクランプ</p></li>
+<li><p>SAFETY_CLAMP_PCT: クランプ割合（例: 0.1=10%）</p></li>
+<li><p>EXPOSURE_WARN_PCT: 露出警告閾値（例: 0.05=5%）</p></li>
+</ul>
+<p>PowerShell 実行例（DRY_RUN=0 実発注・即キャンセル）:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:EXCHANGE</span><span class="p">=</span><span class="s2">&quot;coincheck&quot;</span><span class="p">;</span> <span class="nv">$env:TRADE_FLOW</span><span class="p">=</span><span class="s2">&quot;BUY_ONLY&quot;</span><span class="p">;</span> <span class="nv">$env:TEST_FLOW_QTY</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="nv">$env:TEST_FLOW_RATE</span><span class="p">=</span><span class="s2">&quot;490&quot;</span><span class="p">;</span> <span class="nv">$env:DRY_RUN</span><span class="p">=</span><span class="s2">&quot;0&quot;</span><span class="p">;</span> <span class="nv">$env:SAFETY_MODE</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">live</span><span class="p">:</span><span class="n">minimal</span>
+</pre></div>
+</div>
+<p>DRY_RUN=1（ドライラン/モック）:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="nv">$env:USE_PRIVATE_MOCK</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="nv">$env:EXCHANGE</span><span class="p">=</span><span class="s2">&quot;coincheck&quot;</span><span class="p">;</span> <span class="nv">$env:TRADE_FLOW</span><span class="p">=</span><span class="s2">&quot;BUY_ONLY&quot;</span><span class="p">;</span> <span class="nv">$env:TEST_FLOW_QTY</span><span class="p">=</span><span class="s2">&quot;0.002&quot;</span><span class="p">;</span> <span class="nv">$env:DRY_RUN</span><span class="p">=</span><span class="s2">&quot;1&quot;</span><span class="p">;</span> <span class="n">npm</span> <span class="n">run</span> <span class="n">live</span><span class="p">:</span><span class="n">minimal</span>
+</pre></div>
+</div>
+<p>通知に Top 3（ML random）の表を追加しました（Slack/GitHub コメント）。例:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>#</p></th>
+<th class="head"><p>pair</p></th>
+<th class="head"><p>Win%</p></th>
+<th class="head"><p>PnL</p></th>
+<th class="head"><p>Params</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>btc_jpy</p></td>
+<td><p>62</p></td>
+<td><p>12.3</p></td>
+<td><p>S=9,L=26,RSI=70,30</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>eth_jpy</p></td>
+<td><p>59</p></td>
+<td><p>10.8</p></td>
+<td><p>S=11,L=29,RSI=65,28</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>xrp_jpy</p></td>
+<td><p>57</p></td>
+<td><p>9.4</p></td>
+<td><p>S=7,L=21,RSI=60,25</p></td>
+</tr>
+</tbody>
+</table>
+<p>注: Live最小トレード検証は features ログ（JSONL のみ）も保存します。収集したデータは <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">ml:export</span></code>（src/tools/ml/ml-export.ts）でデータセット化し（<code class="docutils literal notranslate"><span class="pre">ml-dataset.jsonl</span></code> を出力）、<code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">ml:search</span></code>（src/tools/ml/ml-search.ts）で簡易探索が可能です。</p>
+<section id="id35">
+<h3>ヘルスチェック<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">health</span></code> で以下を確認します。</p>
+<ul class="simple">
+<li><p>Private API: <code class="docutils literal notranslate"><span class="pre">healthCheck()</span></code>（未実装の場合は get_info2）</p></li>
+<li><p>Public API: <code class="docutils literal notranslate"><span class="pre">ticker</span></code> と <code class="docutils literal notranslate"><span class="pre">orderbook</span></code> のベスト気配、および <code class="docutils literal notranslate"><span class="pre">EXPOSURE_WARN_PCT</span></code> の現在値（warnPct）</p></li>
+</ul>
+</section>
+</section>
+<section id="live-minimal-trade-github-actions">
+<h2>Live Minimal Trade (GitHub Actions)<a class="headerlink" href="#live-minimal-trade-github-actions" title="Link to this heading"></a></h2>
+<p>手動で最小ライブトレードを走らせ、要約をSlack/GitHubに通知するワークフローを用意しています。</p>
+<ul class="simple">
+<li><p>ワークフロー: <code class="docutils literal notranslate"><span class="pre">.github/workflows/live-trade.yml</span></code></p></li>
+<li><p>実行条件: 手動起動（Actionsタブ → Live Minimal Trade → Run workflow）</p></li>
+<li><p>使用Secrets:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">COINCHECK_KEY</span></code> / <code class="docutils literal notranslate"><span class="pre">COINCHECK_SECRET</span></code>（CoincheckのAPIキー）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SLACK_WEBHOOK</span></code>（任意。未設定なら通知スキップ）</p></li>
+</ul>
+</li>
+<li><p>固定パラメータ（必要に応じ変更可）:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">EXCHANGE=coincheck</span></code>, <code class="docutils literal notranslate"><span class="pre">PAIR=xrp_jpy</span></code>, <code class="docutils literal notranslate"><span class="pre">TRADE_FLOW=BUY_ONLY</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TEST_FLOW_QTY=500</span></code>, <code class="docutils literal notranslate"><span class="pre">TEST_FLOW_RATE=490</span></code>, <code class="docutils literal notranslate"><span class="pre">DRY_RUN=0</span></code>, <code class="docutils literal notranslate"><span class="pre">FEATURES_SOURCE=live</span></code></p></li>
+</ul>
+</li>
+</ul>
+<p>成果物/通知:</p>
+<ul class="simple">
+<li><p>Artifacts: <code class="docutils literal notranslate"><span class="pre">logs/live/summary-*.json</span></code>, <code class="docutils literal notranslate"><span class="pre">logs/features/live/**</span></code></p></li>
+<li><p>Slack: 成功時 ✅/失敗時 ❌ とサマリ本文（Pair/Buy/Sell/PnL/WinRate/Warn）</p></li>
+<li><p>GitHub: PR/commit へ要約コメント投稿</p></li>
+</ul>
+<p>改善 PR / Issue 歓迎。</p>
+</section>
+<hr class="docutils" />
+<section id="python">
+<h2>機械学習用データの利用例（Python）<a class="headerlink" href="#python" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">ml:export</span></code> で <code class="docutils literal notranslate"><span class="pre">ml-dataset.jsonl</span></code>（JSON Lines）を生成できます。以下は最小の分類タスク例です。</p>
+<p>scikit-learn:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomForestClassifier</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">accuracy_score</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="s1">&#39;ml-dataset.jsonl&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span><span class="s2">&quot;price&quot;</span><span class="p">,</span><span class="s2">&quot;qty&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;win&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">clf</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+<span class="n">pred</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Accuracy:&#39;</span><span class="p">,</span> <span class="n">accuracy_score</span><span class="p">(</span><span class="n">y_test</span><span class="p">,</span> <span class="n">pred</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>TensorFlow (Keras):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="s1">&#39;ml-dataset.jsonl&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span><span class="s2">&quot;price&quot;</span><span class="p">,</span><span class="s2">&quot;qty&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;win&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Sequential</span><span class="p">([</span>
+	<span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],)),</span>
+	<span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+	<span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;relu&#39;</span><span class="p">),</span>
+	<span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">activation</span><span class="o">=</span><span class="s1">&#39;sigmoid&#39;</span><span class="p">)</span>
+<span class="p">])</span>
+<span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="s1">&#39;adam&#39;</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="s1">&#39;binary_crossentropy&#39;</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;accuracy&#39;</span><span class="p">])</span>
+<span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PyTorch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">TensorDataset</span><span class="p">,</span> <span class="n">DataLoader</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_json</span><span class="p">(</span><span class="s1">&#39;ml-dataset.jsonl&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span><span class="s2">&quot;price&quot;</span><span class="p">,</span><span class="s2">&quot;qty&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;win&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+<span class="n">loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+	<span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">32</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+	<span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">16</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+	<span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">()</span>
+<span class="p">)</span>
+<span class="n">opt</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+<span class="n">loss_fn</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">BCELoss</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+	<span class="k">for</span> <span class="n">xb</span><span class="p">,</span> <span class="n">yb</span> <span class="ow">in</span> <span class="n">loader</span><span class="p">:</span>
+		<span class="n">pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">)</span>
+		<span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">pred</span><span class="p">,</span> <span class="n">yb</span><span class="p">)</span>
+		<span class="n">opt</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">();</span> <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">();</span> <span class="n">opt</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+	<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;epoch&#39;</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="s1">&#39;loss&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">loss</span><span class="p">))</span>
+
+<span class="o">---</span>
+
+<span class="c1">## RLトレーニング運用ガイド</span>
+
+<span class="c1">### Quickモード vs Productionモード</span>
+
+<span class="o">-</span> <span class="o">**</span><span class="n">Quickモード</span><span class="err">（</span><span class="n">デフォルト</span><span class="err">）</span><span class="o">**</span><span class="p">:</span> <span class="err">`</span><span class="n">PRODUCTION</span><span class="o">=</span><span class="mi">1</span><span class="err">`</span> <span class="n">未設定時</span><span class="err">。`</span><span class="n">total_timesteps</span><span class="err">`</span> <span class="n">を1000に強制クランプ</span><span class="err">。</span><span class="n">テスト</span><span class="o">/</span><span class="n">検証用</span><span class="err">。</span>
+<span class="o">-</span> <span class="o">**</span><span class="n">Productionモード</span><span class="o">**</span><span class="p">:</span> <span class="err">`</span><span class="n">PRODUCTION</span><span class="o">=</span><span class="mi">1</span><span class="err">`</span> <span class="n">設定時</span><span class="err">。</span><span class="n">本番学習</span><span class="err">（</span><span class="mi">1</span><span class="n">Mステップ等</span><span class="err">）</span><span class="n">可能</span><span class="err">。</span>
+
+<span class="c1">### コマンド実行例</span>
+
+<span class="err">```</span><span class="n">bash</span>
+<span class="c1"># Quick実行（1kステップ固定）</span>
+<span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">config</span> <span class="n">config</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">test</span><span class="o">.</span><span class="n">json</span>
+
+<span class="c1"># Production実行（1Mステップ）</span>
+<span class="n">PRODUCTION</span><span class="o">=</span><span class="mi">1</span> <span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">config</span> <span class="n">config</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">prod</span><span class="o">.</span><span class="n">json</span>
+
+<span class="c1"># 手動timesteps指定（PRODUCTION未設定時はmin(requested, 1000)に丸め）</span>
+<span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">timesteps</span> <span class="mi">50000</span>  <span class="c1"># → 1000に丸め</span>
+<span class="n">PRODUCTION</span><span class="o">=</span><span class="mi">1</span> <span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">timesteps</span> <span class="mi">50000</span>  <span class="c1"># → 50000実行</span>
+
+<span class="c1"># キャッシュ無効化（データ再処理時）</span>
+<span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">cache</span>
+
+<span class="c1"># 軽量チェックポイント（高速保存・小容量）</span>
+<span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">train</span><span class="o">.</span><span class="n">py</span> <span class="o">--</span><span class="n">checkpoint</span><span class="o">-</span><span class="n">light</span>
+</pre></div>
+</div>
+<section id="id36">
+<h3>キャッシュ管理<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<p>特徴量キャッシュでデータ再処理を高速化。設定: <code class="docutils literal notranslate"><span class="pre">config/environment/*.json</span></code></p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">memory.cache_max_mb</span></code></strong>: キャッシュサイズ上限（MB）。超過時はLRUで古いデータを削除。</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">memory.max_age_days</span></code></strong>: キャッシュ有効期限（日）。古いファイルは自動削除。</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">memory.compressor</span></code></strong>: 圧縮アルゴリズム。<code class="docutils literal notranslate"><span class="pre">zstd</span></code>(推奨), <code class="docutils literal notranslate"><span class="pre">lz4</span></code>(最速), <code class="docutils literal notranslate"><span class="pre">zlib</span></code>(互換)から選択。</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--no-cache</span></code></strong>: キャッシュ無効化オプション。再処理が必要な場合に使用。</p></li>
+</ul>
+</section>
+<section id="id37">
+<h3>チェックポイント<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<p>定期的にモデルを保存。非同期・世代管理でパフォーマンスを維持。</p>
+<ul class="simple">
+<li><p><strong>通常モード</strong>: 完全モデル保存（重いが高信頼性）。</p></li>
+<li><p><strong>軽量モード</strong> (<code class="docutils literal notranslate"><span class="pre">--checkpoint-light</span></code>): Policyのみ保存（高速・小容量）。</p></li>
+<li><p><strong>自動クリーンアップ</strong>: 世代数上限で古いチェックポイントを削除。</p></li>
+<li><p><strong>並列トレーニング</strong>: プロセスごとに個別ディレクトリを使用。</p></li>
+</ul>
+</section>
+<section id="id38">
+<h3>監視・自動最適化<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>キャッシュ肥大化検知</strong>: サイズ超過時に警告ログと自動クリーンアップ。</p></li>
+<li><p><strong>ヒット率監視</strong>: 低ヒット率時の警告（チューニング推奨）。</p></li>
+<li><p><strong>メモリ使用量</strong>: トレーニング完了時に詳細統計を表示。</p></li>
+<li><p>総スレッド数 ≦ 物理コア数 を厳守（例: 8コアで2プロセス×4スレッド）。</p></li>
+<li><p>各プロセスに連続コア割当（P0: 0-3, P1: 4-7）。</p></li>
+<li><p>環境変数 <code class="docutils literal notranslate"><span class="pre">PARALLEL_PROCESSES</span></code>, <code class="docutils literal notranslate"><span class="pre">PROCESS_ID</span></code>, <code class="docutils literal notranslate"><span class="pre">CPU_AFFINITY</span></code> が自動設定。</p></li>
+</ul>
+</section>
+<section id="discord">
+<h3>Discord通知の見分け方<a class="headerlink" href="#discord" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>🧪TEST</strong>: Quick/テスト実行。タイトル先頭に🧪。</p></li>
+<li><p><strong>🚀PROD</strong>: Production実行。タイトル先頭に🚀。</p></li>
+<li><p><strong>🚨ERROR</strong>: エラー通知。即時送信。</p></li>
+</ul>
+</section>
+<section id="id39">
+<h3>事故防止ルール<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>長時間学習は必ず <code class="docutils literal notranslate"><span class="pre">--timesteps</span></code> 明示</strong>。</p></li>
+<li><p><strong>PRODUCTION=1 が付かない限り1k以内に丸め</strong>。</p></li>
+<li><p>並列実行時は総メモリ使用量を確認（プロセス数×2GB目安）。</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id40">
+<h2>特徴量管理<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
+<section id="id41">
+<h3>特徴量セット<a class="headerlink" href="#id41" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">config/feature_sets.yaml</span></code> で定義された特徴量セットを使用することで、検証規模に応じた適切な特徴量を選択できます。</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>セット</p></th>
+<th class="head"><p>特徴量数</p></th>
+<th class="head"><p>目的</p></th>
+<th class="head"><p>想定用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Minimal</strong></p></td>
+<td><p>5個</p></td>
+<td><p>軽量テスト</p></td>
+<td><p>基本機能確認、CI/CD</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Balanced</strong></p></td>
+<td><p>10個</p></td>
+<td><p>標準検証</p></td>
+<td><p>通常のバックテスト検証</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Medium</strong></p></td>
+<td><p>14個</p></td>
+<td><p>中規模検証</p></td>
+<td><p>パフォーマンス評価、チューニング</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Large</strong></p></td>
+<td><p>19個</p></td>
+<td><p>広範検証</p></td>
+<td><p>包括的な特徴量テスト</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Extended</strong></p></td>
+<td><p>全量</p></td>
+<td><p>フル網羅</p></td>
+<td><p>完全な特徴量評価</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="harmful">
+<h3>Harmfulフラグ<a class="headerlink" href="#harmful" title="Link to this heading"></a></h3>
+<p>一部の特徴量には <code class="docutils literal notranslate"><span class="pre">harmful</span></code> フラグが設定されており、以下の基準で判定されます：</p>
+<ul class="simple">
+<li><p><strong>VIF (Variance Inflation Factor) &gt; 10</strong>: 多重共線性の問題</p></li>
+<li><p><strong>MI (Mutual Information) ≈ 0</strong>: ターゲット変数との関連性が低い</p></li>
+<li><p><strong>アブレーション分析で Sharpe ratio 大幅低下</strong>: 予測性能の悪化</p></li>
+</ul>
+<p>harmfulフラグが設定された特徴量は自動的に除外されます。詳細は <code class="docutils literal notranslate"><span class="pre">docs/features/harmful.md</span></code> を参照してください。</p>
+</section>
+<section id="experimental">
+<h3>Experimentalフロー<a class="headerlink" href="#experimental" title="Link to this heading"></a></h3>
+<p>新しい特徴量の開発・評価フローは以下の通りです：</p>
+<ol class="arabic simple">
+<li><p><strong><a class="reference external" href="http://experimental.py">experimental.py</a></strong> に実装</p></li>
+<li><p><strong>experimental_evaluator.py</strong> で性能評価</p></li>
+<li><p><strong>ablation_runner.py</strong> でアブレーション分析</p></li>
+<li><p>CI/CD で定期評価</p></li>
+</ol>
+<p>特徴量の成熟度は以下のレベルで管理されます：</p>
+<ul class="simple">
+<li><p><strong>prototype</strong>: 初期実装段階</p></li>
+<li><p><strong>beta</strong>: 評価・チューニング段階</p></li>
+<li><p><strong>stable</strong>: 本番投入可能</p></li>
+</ul>
+</section>
+<section id="id42">
+<h3>使い方例<a class="headerlink" href="#id42" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Minimal セットで 1k テスト</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span>--feature-set<span class="w"> </span>minimal<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">1000</span>
+
+<span class="c1"># Medium セットで 100k 検証</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span>--feature-set<span class="w"> </span>medium<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">100000</span>
+
+<span class="c1"># Extended セットで 1M 学習</span>
+python<span class="w"> </span>scripts/train.py<span class="w"> </span>--feature-set<span class="w"> </span>extended<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">1000000</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

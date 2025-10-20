@@ -1,0 +1,1049 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.evaluation.status &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.evaluation.status</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.evaluation.status</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Feature status and reason enums for consistent validation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.core.stats</span><span class="w"> </span><span class="kn">import</span> <span class="n">count_features_by_category</span>
+
+
+<div class="viewcode-block" id="FeatureStatus">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.FeatureStatus">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature validation status enum&quot;&quot;&quot;</span>
+
+    <span class="n">VERIFIED</span> <span class="o">=</span> <span class="s2">&quot;verified&quot;</span>
+    <span class="n">STAGING</span> <span class="o">=</span> <span class="s2">&quot;staging&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>
+    <span class="n">PENDING_DUE_TO_GATE_FAIL</span> <span class="o">=</span> <span class="s2">&quot;pending_due_to_gate_fail&quot;</span>
+    <span class="n">UNVERIFIED</span> <span class="o">=</span> <span class="s2">&quot;unverified&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="FeatureReason">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.FeatureReason">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureReason</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature validation reason enum&quot;&quot;&quot;</span>
+
+    <span class="c1"># Pending reasons</span>
+    <span class="n">INSUFFICIENT_DATA</span> <span class="o">=</span> <span class="s2">&quot;insufficient_data&quot;</span>
+    <span class="n">HIGH_NAN_RATE</span> <span class="o">=</span> <span class="s2">&quot;high_nan_rate&quot;</span>
+    <span class="n">ALIGNMENT_MISMATCH</span> <span class="o">=</span> <span class="s2">&quot;alignment_mismatch&quot;</span>
+
+    <span class="c1"># Unverified reasons</span>
+    <span class="n">NOT_TESTED</span> <span class="o">=</span> <span class="s2">&quot;not_tested&quot;</span>
+
+    <span class="c1"># Failed reasons</span>
+    <span class="n">COMPUTATION_ERROR</span> <span class="o">=</span> <span class="s2">&quot;computation_error&quot;</span>
+    <span class="n">TYPE_MISMATCH</span> <span class="o">=</span> <span class="s2">&quot;type_mismatch&quot;</span>
+    <span class="n">INVALID_RESULT</span> <span class="o">=</span> <span class="s2">&quot;invalid_result&quot;</span></div>
+
+
+
+<span class="c1"># Status to allowed reasons mapping</span>
+<span class="n">STATUS_REASONS</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">FeatureStatus</span><span class="p">,</span> <span class="nb">set</span><span class="p">[</span><span class="n">FeatureReason</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">INSUFFICIENT_DATA</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">HIGH_NAN_RATE</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">ALIGNMENT_MISMATCH</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING_DUE_TO_GATE_FAIL</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">INSUFFICIENT_DATA</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">HIGH_NAN_RATE</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">ALIGNMENT_MISMATCH</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">STAGING</span><span class="p">:</span> <span class="nb">set</span><span class="p">(),</span>  <span class="c1"># Staging features don&#39;t need reasons</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">UNVERIFIED</span><span class="p">:</span> <span class="p">{</span><span class="n">FeatureReason</span><span class="o">.</span><span class="n">NOT_TESTED</span><span class="p">},</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">COMPUTATION_ERROR</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">TYPE_MISMATCH</span><span class="p">,</span>
+        <span class="n">FeatureReason</span><span class="o">.</span><span class="n">INVALID_RESULT</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span> <span class="nb">set</span><span class="p">(),</span>  <span class="c1"># Verified features don&#39;t need reasons</span>
+<span class="p">}</span>
+
+
+<div class="viewcode-block" id="CoverageValidator">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CoverageValidator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validates coverage.json structure and consistency&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CoverageValidator.load_coverage_files">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator.load_coverage_files">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_coverage_files</span><span class="p">(</span><span class="n">base_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ztb/coverage&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load and merge multiple coverage files&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+        <span class="n">base_path_obj</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">base_path</span><span class="p">)</span>
+        <span class="n">merged_coverage</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="p">[],</span>  <span class="c1"># Event sourcing</span>
+            <span class="s2">&quot;current_state&quot;</span><span class="p">:</span> <span class="p">{</span>  <span class="c1"># Current snapshot</span>
+                <span class="s2">&quot;verified&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;staging&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;pending&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;pending_due_to_gate_fail&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;failed&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;unverified&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;discarded&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;quality_gates&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;discarded_features&quot;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;total_verified&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_staging&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_pending&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_pending_due_to_gate_fail&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_failed&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_unverified&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;total_discarded&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;source_files&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Load main coverage.json</span>
+        <span class="n">main_file</span> <span class="o">=</span> <span class="n">base_path_obj</span> <span class="o">/</span> <span class="s2">&quot;coverage.json&quot;</span>
+        <span class="k">if</span> <span class="n">main_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">main_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">main_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_merge_coverage_data</span><span class="p">(</span>
+                    <span class="n">merged_coverage</span><span class="p">,</span> <span class="n">main_data</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">main_file</span><span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Load yearly coverage files (coverage_2024.json, etc.)</span>
+        <span class="n">yearly_pattern</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">base_path_obj</span> <span class="o">/</span> <span class="s2">&quot;coverage_*.json&quot;</span><span class="p">)</span>
+        <span class="n">yearly_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">yearly_pattern</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">yearly_files</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">year_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_merge_coverage_data</span><span class="p">(</span>
+                    <span class="n">merged_coverage</span><span class="p">,</span> <span class="n">year_data</span><span class="p">,</span> <span class="n">file_path</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Update totals</span>
+        <span class="n">current_state</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">])</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_verified&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;verified&quot;</span><span class="p">])</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_staging&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;staging&quot;</span><span class="p">])</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_pending&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;pending&quot;</span><span class="p">])</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_pending_due_to_gate_fail&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;pending_due_to_gate_fail&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_failed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">])</span>
+        <span class="n">merged_coverage</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_unverified&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span>
+            <span class="n">current_state</span><span class="p">[</span><span class="s2">&quot;unverified&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">merged_coverage</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_merge_coverage_data</span><span class="p">(</span>
+        <span class="n">target</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">source</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">source_file</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge source coverage data into target with strictness priority&quot;&quot;&quot;</span>
+        <span class="c1"># Handle event sourcing structure</span>
+        <span class="k">if</span> <span class="s2">&quot;events&quot;</span> <span class="ow">in</span> <span class="n">source</span><span class="p">:</span>
+            <span class="n">target</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Handle current state merging</span>
+        <span class="n">source_current</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]],</span>
+            <span class="n">source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;current_state&quot;</span><span class="p">,</span> <span class="n">source</span><span class="p">),</span>
+        <span class="p">)</span>  <span class="c1"># Backward compatibility</span>
+        <span class="n">target_current</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]],</span> <span class="n">target</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Status priority: VERIFIED &gt; STAGING &gt; PENDING &gt; UNVERIFIED &gt; FAILED</span>
+        <span class="n">status_priority</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">STAGING</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING_DUE_TO_GATE_FAIL</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">UNVERIFIED</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Track existing features by name</span>
+        <span class="n">existing_features</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">FeatureStatus</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">{}</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">target_current</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="n">existing_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="n">existing_features</span><span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+
+        <span class="c1"># Merge status sections with conflict resolution</span>
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">source_current</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="c1"># Verified is list of feature names</span>
+                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">source_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">existing_features</span><span class="p">:</span>
+                            <span class="n">existing_status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">existing_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="p">(</span>
+                                <span class="n">status_priority</span><span class="p">[</span><span class="n">status</span><span class="p">]</span>
+                                <span class="o">&gt;</span> <span class="n">status_priority</span><span class="p">[</span><span class="n">existing_status</span><span class="p">]</span>
+                            <span class="p">):</span>
+                                <span class="c1"># Remove from old status and add to new</span>
+                                <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_remove_feature_from_status</span><span class="p">(</span>
+                                    <span class="n">target_current</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">existing_status</span>
+                                <span class="p">)</span>
+                                <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">STAGING</span><span class="p">:</span>
+                    <span class="c1"># STAGING status: Similar to PENDING but for staging evaluation</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">source_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">existing_features</span><span class="p">:</span>
+                            <span class="n">existing_status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">existing_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="p">(</span>
+                                <span class="n">status_priority</span><span class="p">[</span><span class="n">status</span><span class="p">]</span>
+                                <span class="o">&gt;</span> <span class="n">status_priority</span><span class="p">[</span><span class="n">existing_status</span><span class="p">]</span>
+                            <span class="p">):</span>
+                                <span class="c1"># Remove from old status and add to new</span>
+                                <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_remove_feature_from_status</span><span class="p">(</span>
+                                    <span class="n">target_current</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">existing_status</span>
+                                <span class="p">)</span>
+                                <span class="n">cast</span><span class="p">(</span>
+                                    <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                                <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">cast</span><span class="p">(</span>
+                                <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span>
+                    <span class="c1"># FAILED status: Only add if feature doesn&#39;t exist in higher priority statuses</span>
+                    <span class="c1"># FAILED should not override VERIFIED, STAGING, PENDING, or UNVERIFIED</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">source_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_features</span><span class="p">:</span>
+                            <span class="c1"># New failed feature - add it</span>
+                            <span class="n">cast</span><span class="p">(</span>
+                                <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="c1"># Feature exists - check if it&#39;s already FAILED, and merge dependency info</span>
+                            <span class="n">existing_status</span><span class="p">,</span> <span class="n">existing_item</span> <span class="o">=</span> <span class="n">existing_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="p">(</span>
+                                <span class="n">existing_status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span>
+                                <span class="ow">and</span> <span class="n">existing_item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                            <span class="p">):</span>
+                                <span class="c1"># Merge dependency information</span>
+                                <span class="k">if</span> <span class="p">(</span>
+                                    <span class="s2">&quot;dependency_chain&quot;</span> <span class="ow">in</span> <span class="n">item</span>
+                                    <span class="ow">and</span> <span class="s2">&quot;dependency_chain&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_item</span>
+                                <span class="p">):</span>
+                                    <span class="n">existing_item</span><span class="p">[</span><span class="s2">&quot;dependency_chain&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span>
+                                        <span class="s2">&quot;dependency_chain&quot;</span>
+                                    <span class="p">]</span>
+                                <span class="k">if</span> <span class="p">(</span>
+                                    <span class="s2">&quot;blocked_children&quot;</span> <span class="ow">in</span> <span class="n">item</span>
+                                    <span class="ow">and</span> <span class="s2">&quot;blocked_children&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_item</span>
+                                <span class="p">):</span>
+                                    <span class="n">existing_item</span><span class="p">[</span><span class="s2">&quot;blocked_children&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span>
+                                        <span class="s2">&quot;blocked_children&quot;</span>
+                                    <span class="p">]</span>
+                                <span class="c1"># Merge error details if present</span>
+                                <span class="k">if</span> <span class="s2">&quot;error&quot;</span> <span class="ow">in</span> <span class="n">item</span> <span class="ow">and</span> <span class="s2">&quot;error&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">existing_item</span><span class="p">:</span>
+                                    <span class="n">existing_item</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span>
+                            <span class="c1"># If feature exists in higher priority status, skip (don&#39;t override)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># PENDING and UNVERIFIED: normal priority-based merging</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">cast</span><span class="p">(</span><span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">source_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]):</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">existing_features</span><span class="p">:</span>
+                            <span class="n">existing_status</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">existing_features</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="p">(</span>
+                                <span class="n">status_priority</span><span class="p">[</span><span class="n">status</span><span class="p">]</span>
+                                <span class="o">&gt;</span> <span class="n">status_priority</span><span class="p">[</span><span class="n">existing_status</span><span class="p">]</span>
+                            <span class="p">):</span>
+                                <span class="c1"># Remove from old status and add to new</span>
+                                <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_remove_feature_from_status</span><span class="p">(</span>
+                                    <span class="n">target_current</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">existing_status</span>
+                                <span class="p">)</span>
+                                <span class="n">cast</span><span class="p">(</span>
+                                    <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                                <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">cast</span><span class="p">(</span>
+                                <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                            <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="c1"># Update metadata</span>
+        <span class="n">target</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;source_files&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source_file</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;last_updated&quot;</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{}):</span>
+            <span class="n">source_updated</span> <span class="o">=</span> <span class="n">source</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">target</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="ow">or</span> <span class="n">source_updated</span> <span class="o">&gt;</span> <span class="n">target</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="n">target</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_updated</span>
+
+<div class="viewcode-block" id="CoverageValidator.record_event">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator.record_event">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_event</span><span class="p">(</span>
+        <span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">event_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">from_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">to_status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">details</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record an event in the coverage data&quot;&quot;&quot;</span>
+        <span class="n">event</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">event_type</span><span class="p">,</span>
+            <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feature</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">from_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">event</span><span class="p">[</span><span class="s2">&quot;from_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">from_status</span>
+        <span class="k">if</span> <span class="n">to_status</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">event</span><span class="p">[</span><span class="s2">&quot;to_status&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">to_status</span>
+        <span class="k">if</span> <span class="n">details</span><span class="p">:</span>
+            <span class="n">event</span><span class="p">[</span><span class="s2">&quot;details&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">details</span>
+
+        <span class="k">if</span> <span class="s2">&quot;events&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+
+        <span class="c1"># Update current_state based on event type</span>
+        <span class="k">if</span> <span class="s2">&quot;current_state&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">event_type</span> <span class="o">==</span> <span class="s2">&quot;feature_promoted&quot;</span><span class="p">:</span>
+            <span class="c1"># Update current_state for promotion</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="n">to_status</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+            <span class="p">}</span>
+        <span class="k">elif</span> <span class="n">event_type</span> <span class="o">==</span> <span class="s2">&quot;feature_tested&quot;</span><span class="p">:</span>
+            <span class="c1"># Update current_state for test results</span>
+            <span class="k">if</span> <span class="n">details</span> <span class="ow">and</span> <span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;harmful&quot;</span><span class="p">:</span>
+                <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;discarded&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                <span class="p">}</span>
+                <span class="c1"># Add to discarded list</span>
+                <span class="k">if</span> <span class="s2">&quot;discarded&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                    <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;discarded&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;discarded&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">feature</span><span class="p">,</span>
+                        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">,</span> <span class="s2">&quot;harmful&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;discarded_at&quot;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">details</span> <span class="ow">and</span> <span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span>
+                <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;current_state&quot;</span><span class="p">][</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;last_updated&quot;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                <span class="p">}</span>
+                <span class="c1"># Add to failed list</span>
+                <span class="k">if</span> <span class="s2">&quot;failed&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                    <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;failed&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">feature</span><span class="p">,</span>
+                        <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">details</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown_error&quot;</span><span class="p">),</span>
+                        <span class="s2">&quot;failed_at&quot;</span><span class="p">:</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Update last_updated</span>
+        <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="CoverageValidator.archive_coverage_data">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator.archive_coverage_data">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">archive_coverage_data</span><span class="p">(</span>
+        <span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">archive_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;ztb/coverage/archive&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Archive coverage data by year&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+        <span class="k">if</span> <span class="s2">&quot;events&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Get current year</span>
+        <span class="n">current_year</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">year</span>
+        <span class="n">archive_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">archive_dir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;coverage_</span><span class="si">{</span><span class="n">current_year</span><span class="si">}</span><span class="s2">.json&quot;</span>
+
+        <span class="c1"># Load existing archive or create new</span>
+        <span class="n">archive_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;events&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="n">current_year</span><span class="p">},</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">archive_file</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">archive_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">archive_data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">,</span> <span class="ne">FileNotFoundError</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># Add current events to archive</span>
+        <span class="n">archive_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Update metadata</span>
+        <span class="n">archive_data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="n">archive_data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;total_events&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">archive_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Save archive</span>
+        <span class="n">archive_file</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">archive_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">archive_data</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># Clear events from current coverage (keep recent events)</span>
+        <span class="n">recent_events</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">e</span>
+            <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">e</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">year</span> <span class="o">==</span> <span class="n">current_year</span>
+        <span class="p">]</span>
+        <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;events&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">recent_events</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_remove_feature_from_status</span><span class="p">(</span>
+        <span class="n">target_current</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]],</span>
+        <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Remove a feature from a specific status section&quot;&quot;&quot;</span>
+        <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">status_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">target_current</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+            <span class="c1"># VERIFIED is list of strings</span>
+            <span class="n">status_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+            <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">status_list</span><span class="p">:</span>
+                <span class="n">status_list</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">feature_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Other statuses are list of dicts with &quot;name&quot; key</span>
+            <span class="n">status_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">target_current</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>  <span class="c1"># type: ignore</span>
+            <span class="n">status_list</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">item</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">status_list</span> <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">feature_name</span>  <span class="c1"># type: ignore</span>
+            <span class="p">]</span>
+
+<div class="viewcode-block" id="CoverageValidator.validate_coverage_structure">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator.validate_coverage_structure">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_coverage_structure</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate coverage.json structure&quot;&quot;&quot;</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Check required top-level keys</span>
+        <span class="n">required_statuses</span> <span class="o">=</span> <span class="p">{</span><span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">}</span>
+        <span class="n">status_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">coverage_data</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">-</span> <span class="p">{</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="s2">&quot;business_rules&quot;</span><span class="p">}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">status_keys</span><span class="o">.</span><span class="n">issubset</span><span class="p">(</span><span class="n">required_statuses</span><span class="p">):</span>
+            <span class="n">invalid_keys</span> <span class="o">=</span> <span class="n">status_keys</span> <span class="o">-</span> <span class="n">required_statuses</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid status keys: </span><span class="si">{</span><span class="n">invalid_keys</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Validate each status section</span>
+        <span class="k">for</span> <span class="n">status_key</span><span class="p">,</span> <span class="n">items</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="s2">&quot;business_rules&quot;</span><span class="p">]:</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">FeatureStatus</span><span class="p">(</span><span class="n">status_key</span><span class="p">)</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_validate_status_section</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">items</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid status: </span><span class="si">{</span><span class="n">status_key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">errors</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_status_section</span><span class="p">(</span><span class="n">status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">,</span> <span class="n">items</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate a status section&quot;&quot;&quot;</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;VERIFIED section must be a list, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">items</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> section must be a list, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">items</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+                        <span class="ow">or</span> <span class="s2">&quot;name&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">item</span>
+                        <span class="ow">or</span> <span class="s2">&quot;reason&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">item</span>
+                    <span class="p">):</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid item in </span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">reason</span> <span class="o">=</span> <span class="n">FeatureReason</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">])</span>
+                            <span class="k">if</span> <span class="ow">not</span> <span class="n">validate_status_reason</span><span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">reason</span><span class="p">):</span>
+                                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                    <span class="sa">f</span><span class="s2">&quot;Invalid reason &#39;</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; for status &#39;</span><span class="si">{</span><span class="n">status</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                                <span class="p">)</span>
+                        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid reason: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">errors</span>
+
+<div class="viewcode-block" id="CoverageValidator.validate_coverage_comprehensive">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageValidator.validate_coverage_comprehensive">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_coverage_comprehensive</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Comprehensive validation including business rules&quot;&quot;&quot;</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">validate_coverage_structure</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">)</span>
+
+        <span class="c1"># Business rule validations</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">CoverageValidator</span><span class="o">.</span><span class="n">_validate_business_rules</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">errors</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_validate_business_rules</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate business rules for coverage data&quot;&quot;&quot;</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Validate timestamp format in metadata</span>
+        <span class="k">if</span> <span class="s2">&quot;metadata&quot;</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+            <span class="n">metadata</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="s2">&quot;last_updated&quot;</span> <span class="ow">in</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]:</span>
+                <span class="n">last_updated</span> <span class="o">=</span> <span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;last_updated&quot;</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Validate ISO format timestamp</span>
+                    <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">last_updated</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;Z&quot;</span><span class="p">,</span> <span class="s2">&quot;+00:00&quot;</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Invalid timestamp format in metadata.last_updated: </span><span class="si">{</span><span class="n">last_updated</span><span class="si">}</span><span class="s2"> (expected ISO format)&quot;</span>
+                    <span class="p">)</span>
+
+        <span class="c1"># Check feature name uniqueness across all statuses</span>
+        <span class="n">all_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">duplicate_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]:</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">all_features</span><span class="p">:</span>
+                            <span class="n">duplicate_features</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="n">all_features</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]:</span>
+                        <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">all_features</span><span class="p">:</span>
+                            <span class="n">duplicate_features</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                        <span class="n">all_features</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">dup</span> <span class="ow">in</span> <span class="n">duplicate_features</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Duplicate feature name across statuses: </span><span class="si">{</span><span class="n">dup</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Status-specific business rules</span>
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                <span class="c1"># VERIFIED features must have verified_at timestamp</span>
+                <span class="c1"># Note: This would be checked when features are promoted</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">status</span> <span class="ow">in</span> <span class="p">[</span>
+                <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">,</span>
+                <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">UNVERIFIED</span><span class="p">,</span>
+                <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span>
+            <span class="p">]:</span>
+                <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
+
+                    <span class="c1"># Must have reason</span>
+                    <span class="k">if</span> <span class="s2">&quot;reason&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; in </span><span class="si">{</span><span class="n">status_key</span><span class="si">}</span><span class="s2"> missing &#39;reason&#39; field&quot;</span>
+                        <span class="p">)</span>
+                    <span class="k">elif</span> <span class="ow">not</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;reason&quot;</span><span class="p">]:</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; in </span><span class="si">{</span><span class="n">status_key</span><span class="si">}</span><span class="s2"> has empty &#39;reason&#39;&quot;</span>
+                        <span class="p">)</span>
+
+                    <span class="c1"># Status-specific validations</span>
+                    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
+                            <span class="n">r</span><span class="o">.</span><span class="n">value</span>
+                            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">[</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">INSUFFICIENT_DATA</span><span class="p">,</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">HIGH_NAN_RATE</span><span class="p">,</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">ALIGNMENT_MISMATCH</span><span class="p">,</span>
+                            <span class="p">]</span>
+                        <span class="p">]:</span>
+                            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Invalid reason &#39;</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; for PENDING status on feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">UNVERIFIED</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="n">FeatureReason</span><span class="o">.</span><span class="n">NOT_TESTED</span><span class="o">.</span><span class="n">value</span><span class="p">:</span>
+                            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Invalid reason &#39;</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; for UNVERIFIED status on feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                            <span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reason&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span>
+                            <span class="n">r</span><span class="o">.</span><span class="n">value</span>
+                            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="p">[</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">COMPUTATION_ERROR</span><span class="p">,</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">TYPE_MISMATCH</span><span class="p">,</span>
+                                <span class="n">FeatureReason</span><span class="o">.</span><span class="n">INVALID_RESULT</span><span class="p">,</span>
+                            <span class="p">]</span>
+                        <span class="p">]:</span>
+                            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Invalid reason &#39;</span><span class="si">{</span><span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; for FAILED status on feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                            <span class="p">)</span>
+                        <span class="c1"># Must have error field</span>
+                        <span class="k">if</span> <span class="s2">&quot;error&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">item</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]:</span>
+                            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">&quot;Feature &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; in FAILED status missing &#39;error&#39; field&quot;</span>
+                            <span class="p">)</span>
+
+        <span class="c1"># Additional quality metrics validation (if business_rules section exists)</span>
+        <span class="k">if</span> <span class="s2">&quot;business_rules&quot;</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+            <span class="n">rules</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;business_rules&quot;</span><span class="p">]</span>
+
+            <span class="c1"># Validate minimum series length requirement</span>
+            <span class="k">if</span> <span class="s2">&quot;min_series_length&quot;</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span><span class="s2">&quot;min_series_length&quot;</span><span class="p">]</span>
+                <span class="c1"># Note: Actual series length validation would require data access</span>
+                <span class="c1"># This is a placeholder for future implementation</span>
+
+            <span class="c1"># Validate maximum skew tolerance</span>
+            <span class="k">if</span> <span class="s2">&quot;max_skew_tolerance&quot;</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span><span class="s2">&quot;max_skew_tolerance&quot;</span><span class="p">]</span>
+                <span class="c1"># Note: Actual skew validation would require statistical analysis</span>
+                <span class="c1"># This is a placeholder for future implementation</span>
+
+        <span class="k">return</span> <span class="n">errors</span></div>
+
+
+
+<div class="viewcode-block" id="CoverageReporter">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageReporter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CoverageReporter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unified reporting for coverage.json in multiple formats&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="CoverageReporter.generate_json_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageReporter.generate_json_report">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_json_report</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate JSON format report&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CoverageReporter.generate_markdown_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageReporter.generate_markdown_report">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_markdown_report</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate Markdown format report&quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;# Feature Coverage Report</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Summary</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;## Summary</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Last Updated**: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last_updated&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Verified Features**: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_verified&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Pending Features**: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_pending&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Failed Features**: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_failed&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;- **Unverified Features**: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_unverified&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Details by status</span>
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;## </span><span class="si">{</span><span class="n">status_key</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2"> Features</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">**: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CoverageReporter.generate_text_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.CoverageReporter.generate_text_report">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_text_report</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate plain text format report&quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Feature Coverage Report&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">]</span>
+
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metadata&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Last Updated: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;last_updated&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;N/A&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Verified: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_verified&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pending: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_pending&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_failed&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unverified: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_unverified&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">status_key</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2"> Features:&quot;</span><span class="p">)</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;-&quot;</span> <span class="o">*</span> <span class="mi">30</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="StatusTransitionManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.StatusTransitionManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StatusTransitionManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages status transitions for features&quot;&quot;&quot;</span>
+
+    <span class="c1"># Valid transitions: from -&gt; to</span>
+    <span class="n">VALID_TRANSITIONS</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">UNVERIFIED</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">:</span> <span class="p">{</span><span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">,</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">},</span>
+        <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="p">},</span>  <span class="c1"># Can be demoted if issues found</span>
+        <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">FAILED</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">PENDING</span><span class="p">,</span>
+            <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">,</span>
+        <span class="p">},</span>  <span class="c1"># Can be fixed and re-tested</span>
+    <span class="p">}</span>
+
+<div class="viewcode-block" id="StatusTransitionManager.can_transition">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.StatusTransitionManager.can_transition">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">can_transition</span><span class="p">(</span><span class="n">from_status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">,</span> <span class="n">to_status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if transition is valid&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">to_status</span> <span class="ow">in</span> <span class="n">StatusTransitionManager</span><span class="o">.</span><span class="n">VALID_TRANSITIONS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">from_status</span><span class="p">,</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StatusTransitionManager.transition_feature">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.StatusTransitionManager.transition_feature">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">transition_feature</span><span class="p">(</span>
+        <span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">new_status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">,</span>
+        <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FeatureReason</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Transition a feature to new status&quot;&quot;&quot;</span>
+        <span class="c1"># Find current status</span>
+        <span class="n">current_status</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">current_item</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">status</span> <span class="ow">in</span> <span class="n">FeatureStatus</span><span class="p">:</span>
+            <span class="n">status_key</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">if</span> <span class="n">status_key</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+                <span class="n">items</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="n">status_key</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="n">current_status</span> <span class="o">=</span> <span class="n">status</span>
+                        <span class="n">current_item</span> <span class="o">=</span> <span class="n">feature_name</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">feature_name</span><span class="p">:</span>
+                            <span class="n">current_status</span> <span class="o">=</span> <span class="n">status</span>  <span class="c1"># type: ignore</span>
+                            <span class="n">current_item</span> <span class="o">=</span> <span class="n">item</span>
+                            <span class="k">break</span>
+
+            <span class="k">if</span> <span class="n">current_status</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">current_status</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># Feature not found</span>
+
+        <span class="c1"># Check if transition is valid</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">StatusTransitionManager</span><span class="o">.</span><span class="n">can_transition</span><span class="p">(</span><span class="n">current_status</span><span class="p">,</span> <span class="n">new_status</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Remove from current status</span>
+        <span class="k">if</span> <span class="n">current_status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="n">current_status</span><span class="o">.</span><span class="n">value</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">feature_name</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">current_item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># type: ignore[unreachable]</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="n">current_status</span><span class="o">.</span><span class="n">value</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">current_item</span><span class="p">)</span>
+
+        <span class="c1"># Add to new status</span>
+        <span class="n">new_status_key</span> <span class="o">=</span> <span class="n">new_status</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">if</span> <span class="n">new_status_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="n">new_status_key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">new_status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="n">new_status_key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feature_name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">coverage_data</span><span class="p">[</span><span class="n">new_status_key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">feature_name</span><span class="p">,</span> <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="o">.</span><span class="n">value</span><span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="validate_coverage_comprehensive">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.validate_coverage_comprehensive">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_coverage_comprehensive</span><span class="p">(</span>
+    <span class="n">coverage_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Comprehensive validation including business rules and category requirements.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        coverage_data: Coverage data to validate</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (is_valid, error_messages)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Basic structure validation</span>
+    <span class="n">structure_errors</span> <span class="o">=</span> <span class="n">CoverageValidator</span><span class="o">.</span><span class="n">validate_coverage_structure</span><span class="p">(</span><span class="n">coverage_data</span><span class="p">)</span>
+    <span class="n">errors</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">structure_errors</span><span class="p">)</span>
+
+    <span class="c1"># Business rules validation</span>
+    <span class="k">if</span> <span class="s2">&quot;business_rules&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">coverage_data</span><span class="p">:</span>
+        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Missing business_rules section in coverage data&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">errors</span>
+
+    <span class="n">rules</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="p">[</span><span class="s2">&quot;business_rules&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Check minimum requirements</span>
+    <span class="n">verified_features</span> <span class="o">=</span> <span class="n">coverage_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;verified&quot;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">total_verified</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">verified_features</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">&quot;total_verified_min&quot;</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+        <span class="n">min_total</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span><span class="s2">&quot;total_verified_min&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">total_verified</span> <span class="o">&lt;</span> <span class="n">min_total</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Insufficient total verified features: </span><span class="si">{</span><span class="n">total_verified</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">min_total</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Category-based validation</span>
+    <span class="n">category_counts</span> <span class="o">=</span> <span class="n">count_features_by_category</span><span class="p">(</span><span class="n">verified_features</span><span class="p">)</span>
+
+    <span class="n">category_reqs</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;trend_features_min&quot;</span><span class="p">:</span> <span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;oscillator_features_min&quot;</span><span class="p">:</span> <span class="s2">&quot;oscillator&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;volume_features_min&quot;</span><span class="p">:</span> <span class="s2">&quot;volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;channel_features_min&quot;</span><span class="p">:</span> <span class="s2">&quot;channel&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">rule_key</span><span class="p">,</span> <span class="n">category</span> <span class="ow">in</span> <span class="n">category_reqs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">rule_key</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
+            <span class="n">min_count</span> <span class="o">=</span> <span class="n">rules</span><span class="p">[</span><span class="n">rule_key</span><span class="p">]</span>
+            <span class="n">actual_count</span> <span class="o">=</span> <span class="n">category_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">actual_count</span> <span class="o">&lt;</span> <span class="n">min_count</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Insufficient </span><span class="si">{</span><span class="n">category</span><span class="si">}</span><span class="s2"> features: </span><span class="si">{</span><span class="n">actual_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">min_count</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+
+<div class="viewcode-block" id="validate_status_reason">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.validate_status_reason">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_status_reason</span><span class="p">(</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FeatureReason</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate that the reason is appropriate for the given status.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        status: Feature status</span>
+<span class="sd">        reason: Feature reason (optional for VERIFIED)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if valid combination, False otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="n">FeatureStatus</span><span class="o">.</span><span class="n">VERIFIED</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">reason</span> <span class="ow">is</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">reason</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">return</span> <span class="n">reason</span> <span class="ow">in</span> <span class="n">STATUS_REASONS</span><span class="p">[</span><span class="n">status</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="serialize_status">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.serialize_status">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">serialize_status</span><span class="p">(</span><span class="n">status</span><span class="p">:</span> <span class="n">FeatureStatus</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize FeatureStatus to string for JSON output&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">status</span><span class="o">.</span><span class="n">value</span></div>
+
+
+
+<div class="viewcode-block" id="serialize_reason">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.status.serialize_reason">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">serialize_reason</span><span class="p">(</span><span class="n">reason</span><span class="p">:</span> <span class="n">FeatureReason</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Serialize FeatureReason to string for JSON output&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">reason</span><span class="o">.</span><span class="n">value</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

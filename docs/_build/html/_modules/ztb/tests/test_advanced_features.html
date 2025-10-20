@@ -1,0 +1,791 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.test_advanced_features &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.test_advanced_features</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.test_advanced_features</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Comprehensive tests for SAC v421 advanced features: Anomaly Detection, Meta Learning, and Federated Learning.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.anomaly_detection</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ComprehensiveAnomalyDetector</span><span class="p">,</span>
+    <span class="n">StatisticalAnomalyDetector</span><span class="p">,</span>
+    <span class="n">MLAnomalyDetector</span><span class="p">,</span>
+    <span class="n">AutoencoderAnomalyDetector</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.meta_learning</span><span class="w"> </span><span class="kn">import</span> <span class="n">MarketMetaLearner</span><span class="p">,</span> <span class="n">MetaLearner</span><span class="p">,</span> <span class="n">MAML</span><span class="p">,</span> <span class="n">Reptile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.federated_learning</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MarketFederatedLearner</span><span class="p">,</span>
+    <span class="n">FedAvgServer</span><span class="p">,</span>
+    <span class="n">FederatedClient</span><span class="p">,</span>
+    <span class="n">FederatedConfig</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainerConfig</span><span class="p">,</span> <span class="n">UnifiedAlgorithm</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.continual_learning</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ContinualLearner</span><span class="p">,</span>
+    <span class="n">ElasticWeightConsolidation</span><span class="p">,</span>
+    <span class="n">RehearsalBuffer</span><span class="p">,</span>
+    <span class="n">ProgressiveNetwork</span><span class="p">,</span>
+    <span class="n">ContinualLearningConfig</span><span class="p">,</span>
+    <span class="n">TaskData</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestAnomalyDetection</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for anomaly detection system.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestAnomalyDetection.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>  <span class="c1"># Anomalous data</span></div>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection.test_statistical_anomaly_detector">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.test_statistical_anomaly_detector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_statistical_anomaly_detector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test statistical anomaly detection.&quot;&quot;&quot;</span>
+        <span class="n">detector</span> <span class="o">=</span> <span class="n">StatisticalAnomalyDetector</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;zscore&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">3.0</span><span class="p">)</span>
+
+        <span class="c1"># Test normal data</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">is_anomaly</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">anomaly_score</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+
+        <span class="c1"># Test with anomaly</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anomaly_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">is_anomaly</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection.test_ml_anomaly_detector">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.test_ml_anomaly_detector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_ml_anomaly_detector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ML-based anomaly detection.&quot;&quot;&quot;</span>
+        <span class="n">detector</span> <span class="o">=</span> <span class="n">MLAnomalyDetector</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;isolation_forest&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Fit detector</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+
+        <span class="c1"># Test detection</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">is_anomaly</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">anomaly_score</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection.test_autoencoder_anomaly_detector">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.test_autoencoder_anomaly_detector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_autoencoder_anomaly_detector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test autoencoder-based anomaly detection.&quot;&quot;&quot;</span>
+        <span class="n">detector</span> <span class="o">=</span> <span class="n">AutoencoderAnomalyDetector</span><span class="p">(</span><span class="n">input_dim</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+
+        <span class="c1"># Fit detector</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+
+        <span class="c1"># Test detection</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">is_anomaly</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">anomaly_score</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection.test_comprehensive_anomaly_detector">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.test_comprehensive_anomaly_detector">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_comprehensive_anomaly_detector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test comprehensive anomaly detection system.&quot;&quot;&quot;</span>
+        <span class="n">detector</span> <span class="o">=</span> <span class="n">ComprehensiveAnomalyDetector</span><span class="p">(</span>
+            <span class="n">statistical_methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;zscore&#39;</span><span class="p">],</span>
+            <span class="n">ml_methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;isolation_forest&#39;</span><span class="p">],</span>
+            <span class="n">voting_threshold</span><span class="o">=</span><span class="mf">0.5</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Fit ML detectors</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">fit_ml_detectors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+
+        <span class="c1"># Test detection</span>
+        <span class="n">is_anomaly</span><span class="p">,</span> <span class="n">results</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">is_anomaly</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;anomaly_score&#39;</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;method_results&#39;</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAnomalyDetection.test_anomaly_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAnomalyDetection.test_anomaly_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_anomaly_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test anomaly detection statistics.&quot;&quot;&quot;</span>
+        <span class="n">detector</span> <span class="o">=</span> <span class="n">ComprehensiveAnomalyDetector</span><span class="p">()</span>
+
+        <span class="c1"># Run multiple detections</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="n">detector</span><span class="o">.</span><span class="n">detect_anomalies</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">test_data</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">get_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">total_samples</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">anomaly_rate</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestMetaLearning">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestMetaLearning">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestMetaLearning</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for meta learning system.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestMetaLearning.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestMetaLearning.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span> <span class="o">=</span> <span class="mi">10</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span> <span class="o">=</span> <span class="mi">4</span>
+
+        <span class="c1"># Create simple model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">()</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMetaLearning.test_maml_algorithm">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestMetaLearning.test_maml_algorithm">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_maml_algorithm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test MAML algorithm.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.meta_learning</span><span class="w"> </span><span class="kn">import</span> <span class="n">MAML</span><span class="p">,</span> <span class="n">MetaLearningConfig</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">MetaLearningConfig</span><span class="p">()</span>
+        <span class="n">maml</span> <span class="o">=</span> <span class="n">MAML</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Create dummy task data</span>
+        <span class="n">task_data</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">states</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">outputs</span> <span class="o">-</span> <span class="n">actions</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Test adaptation</span>
+        <span class="n">adapted_model</span> <span class="o">=</span> <span class="n">maml</span><span class="o">.</span><span class="n">adapt_to_task</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adapted_model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span>
+
+        <span class="c1"># Test meta update</span>
+        <span class="n">losses</span> <span class="o">=</span> <span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.8</span><span class="p">)]</span>
+        <span class="n">meta_loss</span> <span class="o">=</span> <span class="n">maml</span><span class="o">.</span><span class="n">meta_update</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">meta_loss</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMetaLearning.test_reptile_algorithm">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestMetaLearning.test_reptile_algorithm">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reptile_algorithm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test Reptile algorithm.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.meta_learning</span><span class="w"> </span><span class="kn">import</span> <span class="n">Reptile</span><span class="p">,</span> <span class="n">MetaLearningConfig</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">MetaLearningConfig</span><span class="p">()</span>
+        <span class="n">reptile</span> <span class="o">=</span> <span class="n">Reptile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Create dummy task data</span>
+        <span class="n">task_data</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">states</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">)</span>
+        <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">outputs</span> <span class="o">-</span> <span class="n">actions</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Test adaptation</span>
+        <span class="n">adapted_model</span><span class="p">,</span> <span class="n">task_info</span> <span class="o">=</span> <span class="n">reptile</span><span class="o">.</span><span class="n">adapt_to_task</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adapted_model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;adaptation_losses&#39;</span><span class="p">,</span> <span class="n">task_info</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMetaLearning.test_market_meta_learner">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestMetaLearning.test_market_meta_learner">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_market_meta_learner</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test market-specific meta learning.&quot;&quot;&quot;</span>
+        <span class="n">meta_learner</span> <span class="o">=</span> <span class="n">MarketMetaLearner</span><span class="p">(</span>
+            <span class="n">state_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">,</span>
+            <span class="n">action_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add market data</span>
+        <span class="n">market_data</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">),</span>
+            <span class="s1">&#39;actions&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span><span class="p">),</span>
+            <span class="s1">&#39;rewards&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="s1">&#39;next_states&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">),</span>
+            <span class="s1">&#39;dones&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="p">}</span>
+
+        <span class="n">meta_learner</span><span class="o">.</span><span class="n">add_market_data</span><span class="p">(</span><span class="s1">&#39;test_market&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">market_data</span><span class="p">)</span>
+
+        <span class="c1"># Test training</span>
+        <span class="n">history</span> <span class="o">=</span> <span class="n">meta_learner</span><span class="o">.</span><span class="n">train_on_markets</span><span class="p">(</span><span class="n">num_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">history</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;meta_losses&#39;</span><span class="p">,</span> <span class="n">history</span><span class="p">)</span>
+
+        <span class="c1"># Test adaptation</span>
+        <span class="n">adapted_model</span> <span class="o">=</span> <span class="n">meta_learner</span><span class="o">.</span><span class="n">adapt_to_market</span><span class="p">(</span><span class="s1">&#39;test_market&#39;</span><span class="p">,</span> <span class="n">market_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adapted_model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span>
+
+        <span class="c1"># Test prediction</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">state_dim</span><span class="p">)</span>
+        <span class="n">action</span> <span class="o">=</span> <span class="n">meta_learner</span><span class="o">.</span><span class="n">predict_market_action</span><span class="p">(</span><span class="s1">&#39;test_market&#39;</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_dim</span><span class="p">,))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestFederatedLearning">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestFederatedLearning">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestFederatedLearning</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for federated learning system.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestFederatedLearning.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestFederatedLearning.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">FederatedConfig</span><span class="p">(</span>
+            <span class="n">num_clients</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">num_rounds</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">local_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">enable_privacy</span><span class="o">=</span><span class="kc">False</span>  <span class="c1"># Disable for testing</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedLearning.test_federated_client">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestFederatedLearning.test_federated_client">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_federated_client</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test federated client functionality.&quot;&quot;&quot;</span>
+        <span class="n">client</span> <span class="o">=</span> <span class="n">FederatedClient</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Create dummy data</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">TensorDataset</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+        <span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="n">client</span><span class="o">.</span><span class="n">local_data</span> <span class="o">=</span> <span class="n">dataloader</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+
+        <span class="c1"># Test local training</span>
+        <span class="n">update</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">train_local_model</span><span class="p">(</span><span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">update</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">client_id</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">update</span><span class="o">.</span><span class="n">model_state</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedLearning.test_fedavg_server">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestFederatedLearning.test_fedavg_server">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_fedavg_server</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test FedAvg server functionality.&quot;&quot;&quot;</span>
+        <span class="n">server</span> <span class="o">=</span> <span class="n">FedAvgServer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Create clients</span>
+        <span class="n">clients</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">dataloaders</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">client</span> <span class="o">=</span> <span class="n">FederatedClient</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+            <span class="c1"># Create client data</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">TensorDataset</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+            <span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+            <span class="n">clients</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+            <span class="n">dataloaders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dataloader</span><span class="p">)</span>
+            <span class="n">server</span><span class="o">.</span><span class="n">add_client</span><span class="p">(</span><span class="n">client</span><span class="p">)</span>
+
+        <span class="n">server</span><span class="o">.</span><span class="n">initialize_clients</span><span class="p">(</span><span class="n">dataloaders</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+
+        <span class="c1"># Test federated round</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">run_federated_round</span><span class="p">(</span><span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">round_number</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">global_loss</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedLearning.test_market_federated_learner">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestFederatedLearning.test_market_federated_learner">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_market_federated_learner</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test market-based federated learning.&quot;&quot;&quot;</span>
+        <span class="n">market_configs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;market1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+            <span class="s1">&#39;market2&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="p">}</span>
+
+        <span class="n">federated_learner</span> <span class="o">=</span> <span class="n">MarketFederatedLearner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span> <span class="n">market_configs</span><span class="p">)</span>
+
+        <span class="c1"># Add clients to markets</span>
+        <span class="k">for</span> <span class="n">market</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;market1&#39;</span><span class="p">,</span> <span class="s1">&#39;market2&#39;</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+                <span class="n">targets</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+                <span class="n">dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">TensorDataset</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+                <span class="n">dataloader</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+                <span class="n">federated_learner</span><span class="o">.</span><span class="n">add_market_client</span><span class="p">(</span><span class="n">market</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+
+        <span class="c1"># Test training</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">federated_learner</span><span class="o">.</span><span class="n">train_all_markets</span><span class="p">(</span><span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market1&#39;</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market2&#39;</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+
+        <span class="c1"># Test cross-market aggregation</span>
+        <span class="n">aggregated_model</span> <span class="o">=</span> <span class="n">federated_learner</span><span class="o">.</span><span class="n">aggregate_cross_market_knowledge</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">aggregated_model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span>
+
+        <span class="c1"># Test stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">federated_learner</span><span class="o">.</span><span class="n">get_federated_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestAdvancedFeaturesIntegration">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAdvancedFeaturesIntegration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestAdvancedFeaturesIntegration</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test integration of advanced features in UnifiedTrainer.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestAdvancedFeaturesIntegration.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAdvancedFeaturesIntegration.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;algorithm&#39;</span><span class="p">:</span> <span class="s1">&#39;ppo&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="s1">&#39;model_name&#39;</span><span class="p">:</span> <span class="s1">&#39;test_advanced&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;enable_anomaly_detection&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;enable_meta_learning&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;enable_federated&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;federated_markets&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;markets&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;market1&#39;</span><span class="p">,</span> <span class="s1">&#39;market2&#39;</span><span class="p">]</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="TestAdvancedFeaturesIntegration.test_advanced_features_setup">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAdvancedFeaturesIntegration.test_advanced_features_setup">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.create_algorithm_trainer&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_advanced_features_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_create_trainer</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test advanced features setup in UnifiedTrainer.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainer</span>
+
+        <span class="c1"># Mock algorithm trainer</span>
+        <span class="n">mock_trainer</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">mock_trainer</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+        <span class="n">mock_trainer</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">mock_create_trainer</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_trainer</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Test setup (would be called during training)</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_advanced_features</span><span class="p">()</span>
+
+        <span class="c1"># Check if components were initialized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">anomaly_detector</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">meta_learner</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">federated_learner</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestAdvancedFeaturesIntegration.test_config_validation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestAdvancedFeaturesIntegration.test_config_validation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_config_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test configuration validation for advanced features.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainerConfig</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">UnifiedTrainerConfig</span><span class="p">(</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="n">UnifiedAlgorithm</span><span class="o">.</span><span class="n">PPO</span><span class="p">,</span>
+            <span class="n">enable_anomaly_detection</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">enable_meta_learning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">federated_markets</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">markets</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;test_market&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Check config attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">enable_anomaly_detection</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">enable_meta_learning</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">federated_markets</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">markets</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;test_market&#39;</span><span class="p">])</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestContinualLearning">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestContinualLearning</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for continual learning system.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestContinualLearning.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ContinualLearningConfig</span><span class="p">(</span>
+            <span class="n">method</span><span class="o">=</span><span class="s1">&#39;ewc&#39;</span><span class="p">,</span>
+            <span class="n">ewc_lambda</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">rehearsal_buffer_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+            <span class="n">max_tasks_in_memory</span><span class="o">=</span><span class="mi">3</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create sample task data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_data</span> <span class="o">=</span> <span class="n">TaskData</span><span class="p">(</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;test_task&#39;</span><span class="p">,</span>
+            <span class="n">states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="n">actions</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="n">rewards</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">next_states</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="n">dones</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">50</span><span class="p">,))</span><span class="o">.</span><span class="n">float</span><span class="p">(),</span>
+            <span class="n">num_samples</span><span class="o">=</span><span class="mi">50</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_elastic_weight_consolidation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_elastic_weight_consolidation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_elastic_weight_consolidation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test EWC functionality.&quot;&quot;&quot;</span>
+        <span class="n">ewc</span> <span class="o">=</span> <span class="n">ElasticWeightConsolidation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
+
+        <span class="c1"># Consolidate task</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">ewc</span><span class="o">.</span><span class="n">consolidate_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;task_id&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
+
+        <span class="c1"># Test regularization loss</span>
+        <span class="n">current_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()}</span>
+        <span class="n">reg_loss</span> <span class="o">=</span> <span class="n">ewc</span><span class="o">.</span><span class="n">regularization_loss</span><span class="p">(</span><span class="n">current_params</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">reg_loss</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_rehearsal_buffer">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_rehearsal_buffer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_rehearsal_buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test rehearsal buffer functionality.&quot;&quot;&quot;</span>
+        <span class="n">buffer</span> <span class="o">=</span> <span class="n">RehearsalBuffer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Add samples</span>
+        <span class="n">buffer</span><span class="o">.</span><span class="n">add_samples</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">)</span>
+
+        <span class="c1"># Get rehearsal batch</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">get_rehearsal_batch</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;states&#39;</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+
+        <span class="c1"># Get buffer stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">get_buffer_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_samples&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_progressive_network">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_progressive_network">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_progressive_network</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test progressive network functionality.&quot;&quot;&quot;</span>
+        <span class="n">progressive_net</span> <span class="o">=</span> <span class="n">ProgressiveNetwork</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="c1"># Add task network</span>
+        <span class="n">task_net</span> <span class="o">=</span> <span class="n">progressive_net</span><span class="o">.</span><span class="n">add_task_network</span><span class="p">(</span><span class="s1">&#39;task1&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">task_net</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span>
+
+        <span class="c1"># Test forward with lateral connections</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">progressive_net</span><span class="o">.</span><span class="n">forward_with_lateral</span><span class="p">(</span><span class="s1">&#39;task1&#39;</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+        <span class="c1"># Get network stats</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">progressive_net</span><span class="o">.</span><span class="n">get_network_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_continual_learner_ewc">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_continual_learner_ewc">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_continual_learner_ewc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test continual learner with EWC.&quot;&quot;&quot;</span>
+        <span class="n">learner</span> <span class="o">=</span> <span class="n">ContinualLearner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># Learn task</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">learn_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;final_loss&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
+
+        <span class="c1"># Test prediction</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">predict_with_continual</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">output</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+
+        <span class="c1"># Get stats</span>
+        <span class="n">learner_stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">get_continual_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">learner_stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_continual_learner_rehearsal">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_continual_learner_rehearsal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_continual_learner_rehearsal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test continual learner with rehearsal.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">ContinualLearningConfig</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;rehearsal&#39;</span><span class="p">,</span> <span class="n">rehearsal_buffer_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+        <span class="n">learner</span> <span class="o">=</span> <span class="n">ContinualLearner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># Learn task</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">learn_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+
+        <span class="c1"># Check rehearsal buffer</span>
+        <span class="n">learner_stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">get_continual_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;rehearsal_stats&#39;</span><span class="p">,</span> <span class="n">learner_stats</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearning.test_continual_learner_progressive">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearning.test_continual_learner_progressive">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_continual_learner_progressive</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test continual learner with progressive networks.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">ContinualLearningConfig</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;progressive&#39;</span><span class="p">)</span>
+        <span class="n">learner</span> <span class="o">=</span> <span class="n">ContinualLearner</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">dummy_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_outputs</span><span class="p">,</span> <span class="n">dones</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">functional</span><span class="o">.</span><span class="n">mse_loss</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># Learn task</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">learn_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_data</span><span class="p">,</span> <span class="n">dummy_loss</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">num_epochs</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+
+        <span class="c1"># Check progressive stats</span>
+        <span class="n">learner_stats</span> <span class="o">=</span> <span class="n">learner</span><span class="o">.</span><span class="n">get_continual_stats</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;progressive_stats&#39;</span><span class="p">,</span> <span class="n">learner_stats</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestContinualLearningIntegration">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearningIntegration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestContinualLearningIntegration</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test integration of continual learning in UnifiedTrainer.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestContinualLearningIntegration.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearningIntegration.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;algorithm&#39;</span><span class="p">:</span> <span class="s1">&#39;ppo&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="s1">&#39;model_name&#39;</span><span class="p">:</span> <span class="s1">&#39;test_continual&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;enable_continual_learning&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;continual_method&#39;</span><span class="p">:</span> <span class="s1">&#39;ewc&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;continual_ewc_lambda&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+            <span class="s1">&#39;continual_buffer_size&#39;</span><span class="p">:</span> <span class="mi">100</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearningIntegration.test_continual_learning_setup">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearningIntegration.test_continual_learning_setup">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.create_algorithm_trainer&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_continual_learning_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_create_trainer</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test continual learning setup in UnifiedTrainer.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainer</span>
+
+        <span class="c1"># Mock algorithm trainer</span>
+        <span class="n">mock_trainer</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">mock_model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+        <span class="n">mock_trainer</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">mock_model</span>
+        <span class="n">mock_trainer</span><span class="o">.</span><span class="n">train</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">mock_create_trainer</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_trainer</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">algorithm_trainer</span> <span class="o">=</span> <span class="n">mock_trainer</span>  <span class="c1"># Set algorithm trainer for testing</span>
+
+        <span class="c1"># Test setup</span>
+        <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_advanced_features</span><span class="p">()</span>
+
+        <span class="c1"># Check if continual learner was initialized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">continual_learner</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestContinualLearningIntegration.test_config_validation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_advanced_features.TestContinualLearningIntegration.test_config_validation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_config_validation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test configuration validation for continual learning.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainerConfig</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">UnifiedTrainerConfig</span><span class="p">(</span>
+            <span class="n">algorithm</span><span class="o">=</span><span class="n">UnifiedAlgorithm</span><span class="o">.</span><span class="n">PPO</span><span class="p">,</span>
+            <span class="n">enable_continual_learning</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">continual_method</span><span class="o">=</span><span class="s1">&#39;ewc&#39;</span><span class="p">,</span>
+            <span class="n">continual_ewc_lambda</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">continual_buffer_size</span><span class="o">=</span><span class="mi">1000</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Check config attributes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">enable_continual_learning</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">continual_method</span><span class="p">,</span> <span class="s1">&#39;ewc&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">continual_ewc_lambda</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,340 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.environment.components.action_validator &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.environment.components.action_validator</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.environment.components.action_validator</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Action validation utilities for trading environment</span>
+<span class="c1"># 取引環境のアクション検証ユーティリティ</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnvironmentConfig</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ActionValidator">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.ActionValidator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionValidator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handles action validation and masking for trading actions.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="s2">&quot;EnvironmentConfig&quot;</span><span class="p">,</span>
+        <span class="n">initial_portfolio_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="n">initial_portfolio_value</span>
+
+<div class="viewcode-block" id="ActionValidator.get_legal_actions">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.ActionValidator.get_legal_actions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_legal_actions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">position</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">total_pnl</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">trades_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">last_trade_step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+        <span class="n">consecutive_trade_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">close_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">price_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在の状態で合法なアクションを返す（1=合法, 0=非法）&quot;&quot;&quot;</span>
+        <span class="n">legal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">)</span>  <span class="c1"># [HOLD, BUY, SELL] - デフォルト非法</span>
+
+        <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_price</span><span class="p">(</span><span class="n">current_step</span><span class="p">,</span> <span class="n">price_array</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+        <span class="n">portfolio_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">+</span> <span class="n">total_pnl</span>
+        <span class="n">position_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_position_size</span>
+        <span class="n">transaction_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span>
+
+        <span class="c1"># HOLDは常に合法</span>
+        <span class="n">legal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># 取引所別取引頻度制限（Coincheckは手数料無料なので制限緩和）</span>
+        <span class="n">exchange</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;exchange&quot;</span><span class="p">,</span> <span class="s2">&quot;coincheck&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">exchange</span> <span class="o">!=</span> <span class="s2">&quot;coincheck&quot;</span><span class="p">:</span>
+            <span class="c1"># Coincheck以外は取引頻度制限を適用</span>
+            <span class="c1"># 最小ホールド期間チェック</span>
+            <span class="n">min_holding_period</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">last_trade_step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">steps_since_last_trade</span> <span class="o">=</span> <span class="n">current_step</span> <span class="o">-</span> <span class="n">last_trade_step</span>
+                <span class="k">if</span> <span class="n">steps_since_last_trade</span> <span class="o">&lt;</span> <span class="n">min_holding_period</span><span class="p">:</span>
+                    <span class="c1"># 最小ホールド期間中でも、ポジションクローズは許可（リスク管理上重要）</span>
+                    <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># ロングポジション保有中: SELLでクローズ可能</span>
+                        <span class="n">legal</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="k">elif</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># ショートポジション保有中: BUYでクローズ可能</span>
+                        <span class="n">legal</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+                    <span class="c1"># その他の新規建ては制限</span>
+                    <span class="k">return</span> <span class="n">legal</span>
+
+            <span class="c1"># 連続取引制限チェック</span>
+            <span class="n">max_consecutive_trades</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;max_consecutive_trades&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">consecutive_trade_steps</span> <span class="o">&gt;=</span> <span class="n">max_consecutive_trades</span><span class="p">:</span>
+                <span class="c1"># 連続取引上限に達した場合もポジションクローズは許可</span>
+                <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">legal</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># SELL to close long</span>
+                <span class="k">elif</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">legal</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># BUY to close short</span>
+                <span class="k">return</span> <span class="n">legal</span>
+
+        <span class="c1"># 市場ボラティリティチェック（高ボラティリティ時は取引制限）</span>
+        <span class="n">volatility_threshold</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;volatility_trade_threshold&quot;</span><span class="p">,</span> <span class="mf">0.02</span>
+        <span class="p">)</span>  <span class="c1"># 2%ボラティリティ閾値</span>
+        <span class="k">if</span> <span class="n">current_step</span> <span class="o">&gt;</span> <span class="mi">20</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volatility</span><span class="p">(</span>
+            <span class="n">current_step</span><span class="p">,</span> <span class="n">volatility_threshold</span><span class="p">,</span> <span class="n">close_array</span><span class="p">,</span> <span class="n">price_array</span><span class="p">,</span> <span class="n">df</span>
+        <span class="p">):</span>
+            <span class="k">return</span> <span class="n">legal</span>
+
+        <span class="c1"># BUY: ショートまたはフラットの場合、かつ十分な残高がある場合</span>
+        <span class="c1"># 🔧 CRITICAL FIX: 少額取引対応</span>
+        <span class="c1"># - 実口座では1 mBTC (0.001 BTC ≈ 18,000円) 程度の少額取引が必要</span>
+        <span class="c1"># - max_position_size はフル購入時のサイズだが、実際は利用可能資金に応じて調整</span>
+        <span class="c1"># - 最小取引単位を考慮して柔軟に判定</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># 理想的な購入コスト（フルサイズ）</span>
+            <span class="n">ideal_buy_cost</span> <span class="o">=</span> <span class="n">position_size</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">)</span>
+            
+            <span class="c1"># 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする</span>
+            <span class="c1"># これにより、資金がmax_position_size分に満たなくても、</span>
+            <span class="c1"># 持っている資金の範囲内で取引できるようになる</span>
+            <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
+            <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># 最小取引単位 (0.01 mBTC, 約1,800円相当)</span>
+            
+            <span class="c1"># 条件: 理想サイズが買えるか、または最小単位以上が買える</span>
+            <span class="k">if</span> <span class="n">portfolio_value</span> <span class="o">&gt;=</span> <span class="n">ideal_buy_cost</span> <span class="ow">or</span> <span class="n">affordable_size</span> <span class="o">&gt;=</span> <span class="n">min_trade_size</span><span class="p">:</span>
+                <span class="n">legal</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># SELL: ロングまたはフラットの場合</span>
+        <span class="c1"># 🔧 CRITICAL FIX: ショートポジション判定の簡素化</span>
+        <span class="c1"># - 実取引ではショートは使わないケースが多いため、判定を緩和</span>
+        <span class="k">if</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># ショートポジションを開く場合、ポジションサイズ分の価値が必要</span>
+            <span class="n">ideal_sell_value</span> <span class="o">=</span> <span class="n">position_size</span> <span class="o">*</span> <span class="n">current_price</span>
+            
+            <span class="c1"># 🔧 少額取引対応: BUYと同様に柔軟に判定</span>
+            <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">/</span> <span class="n">current_price</span>
+            <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># 最小取引単位</span>
+            
+            <span class="k">if</span> <span class="n">portfolio_value</span> <span class="o">&gt;=</span> <span class="n">ideal_sell_value</span> <span class="ow">or</span> <span class="n">affordable_size</span> <span class="o">&gt;=</span> <span class="n">min_trade_size</span><span class="p">:</span>
+                <span class="n">legal</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># Safety check: ensure at least one action is legal (HOLD should always be legal)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">legal</span><span class="p">):</span>
+            <span class="c1"># This should never happen since HOLD is always legal, but add safety</span>
+            <span class="n">legal</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Force HOLD to be legal</span>
+
+        <span class="k">return</span> <span class="n">legal</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_price</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">price_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]],</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve current price for action validation.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">price_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">price_array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="n">current_step</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">price_array</span><span class="p">[</span><span class="n">current_step</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="s1">&#39;iloc&#39;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">row</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">current_step</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="s2">&quot;adj_close&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_volatility</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">close_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]],</span>
+        <span class="n">price_array</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]],</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if current market volatility exceeds threshold.&quot;&quot;&quot;</span>
+        <span class="n">price_slice</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">start_idx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_step</span> <span class="o">-</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="n">end_idx</span> <span class="o">=</span> <span class="n">current_step</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">close_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">close_array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">end_idx</span>
+            <span class="ow">and</span> <span class="n">end_idx</span> <span class="o">&gt;</span> <span class="n">start_idx</span>
+        <span class="p">):</span>
+            <span class="n">price_slice</span> <span class="o">=</span> <span class="n">close_array</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="n">price_array</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">price_array</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;=</span> <span class="n">end_idx</span>
+            <span class="ow">and</span> <span class="n">end_idx</span> <span class="o">&gt;</span> <span class="n">start_idx</span>
+        <span class="p">):</span>
+            <span class="n">price_slice</span> <span class="o">=</span> <span class="n">price_array</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">df</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">recent_prices</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">][</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_prices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">price_slice</span> <span class="o">=</span> <span class="n">recent_prices</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="n">price_slice</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">price_slice</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">price_slice</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">finite_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">price_slice</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">finite_mask</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">valid_prices</span> <span class="o">=</span> <span class="n">price_slice</span><span class="p">[</span><span class="n">finite_mask</span><span class="p">]</span>
+                <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">,</span> <span class="n">invalid</span><span class="o">=</span><span class="s2">&quot;ignore&quot;</span><span class="p">):</span>
+                    <span class="n">denominators</span> <span class="o">=</span> <span class="n">valid_prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">valid_prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                        <span class="n">denominators</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">denominators</span>
+                    <span class="p">)</span>
+                <span class="n">returns</span> <span class="o">=</span> <span class="n">returns</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">returns</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="n">returns</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                    <span class="n">current_volatility</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">returns</span><span class="p">))</span>
+                    <span class="k">return</span> <span class="n">current_volatility</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="ActionValidator.action_mask">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.ActionValidator.action_mask">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">action_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">legal_actions</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return action mask for gymnasium ActionMasker wrapper.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">legal_actions</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ActionValidator.get_action_masks">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.ActionValidator.get_action_masks">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">legal_actions</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return action masks for SB3 MaskablePPO.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_mask</span><span class="p">(</span><span class="n">legal_actions</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

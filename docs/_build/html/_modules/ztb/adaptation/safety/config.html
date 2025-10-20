@@ -1,0 +1,335 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.safety.config &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.safety.config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.safety.config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Configuration management for Safety Mechanisms and Fallback</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyLevel</span><span class="p">,</span> <span class="n">FallbackStrategy</span><span class="p">,</span> <span class="n">SafetyThreshold</span><span class="p">,</span> <span class="n">CircuitBreakerConfig</span><span class="p">,</span> <span class="n">FallbackAction</span><span class="p">,</span> <span class="n">DeploymentStage</span><span class="p">,</span> <span class="n">DeploymentPhase</span>
+
+
+<div class="viewcode-block" id="SafetyConfig">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全設定&quot;&quot;&quot;</span>
+
+    <span class="c1"># 基本設定</span>
+    <span class="n">safety_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">safety_level</span><span class="p">:</span> <span class="n">SafetyLevel</span> <span class="o">=</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">MEDIUM</span>
+    <span class="n">emergency_stop_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># 安全閾値</span>
+    <span class="n">safety_thresholds</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyThreshold</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="c1"># サーキットブレーカー設定</span>
+    <span class="n">circuit_breakers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">CircuitBreakerConfig</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+
+    <span class="c1"># フォールバック設定</span>
+    <span class="n">fallback_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">max_concurrent_fallbacks</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+
+    <span class="c1"># 段階的デプロイメント設定</span>
+    <span class="n">deployment_stages</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DeploymentStage</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">auto_progression_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">progression_delay_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span>
+
+    <span class="c1"># リスク管理設定</span>
+    <span class="n">risk_assessment_interval_hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">acceptable_risk_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
+    <span class="n">risk_factors_weights</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;market_volatility&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+        <span class="s2">&quot;model_performance&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+        <span class="s2">&quot;system_stability&quot;</span><span class="p">:</span> <span class="mf">0.3</span>
+    <span class="p">})</span>
+
+    <span class="c1"># 異常検知設定</span>
+    <span class="n">anomaly_detection_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">anomaly_detection_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">anomaly_threshold_sigma</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">false_positive_tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+
+    <span class="c1"># 監視設定</span>
+    <span class="n">monitoring_interval_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">safety_check_interval_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>
+    <span class="n">incident_reporting_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">incident_storage_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;logs/safety_incidents&quot;</span>
+
+<div class="viewcode-block" id="SafetyConfig.__post_init__">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyConfig.__post_init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;設定の検証と初期化&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">acceptable_risk_threshold</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">acceptable_risk_threshold</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;acceptable_risk_threshold must be between 0 and 1&quot;</span><span class="p">)</span>
+
+        <span class="c1"># デフォルトの安全閾値を設定</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">safety_thresholds</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">safety_thresholds</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">SafetyThreshold</span><span class="p">(</span>
+                    <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span>
+                    <span class="n">threshold_value</span><span class="o">=</span><span class="mf">0.20</span><span class="p">,</span>
+                    <span class="n">comparison</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span>
+                    <span class="n">safety_level</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Maximum drawdown exceeded 20%&quot;</span>
+                <span class="p">),</span>
+                <span class="n">SafetyThreshold</span><span class="p">(</span>
+                    <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;daily_pnl&quot;</span><span class="p">,</span>
+                    <span class="n">threshold_value</span><span class="o">=-</span><span class="mf">0.15</span><span class="p">,</span>
+                    <span class="n">comparison</span><span class="o">=</span><span class="s2">&quot;lte&quot;</span><span class="p">,</span>
+                    <span class="n">safety_level</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Daily P&amp;L dropped below -15%&quot;</span>
+                <span class="p">),</span>
+                <span class="n">SafetyThreshold</span><span class="p">(</span>
+                    <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;win_rate&quot;</span><span class="p">,</span>
+                    <span class="n">threshold_value</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span>
+                    <span class="n">comparison</span><span class="o">=</span><span class="s2">&quot;lte&quot;</span><span class="p">,</span>
+                    <span class="n">safety_level</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Win rate dropped below 35%&quot;</span>
+                <span class="p">),</span>
+                <span class="n">SafetyThreshold</span><span class="p">(</span>
+                    <span class="n">metric_name</span><span class="o">=</span><span class="s2">&quot;api_error_rate&quot;</span><span class="p">,</span>
+                    <span class="n">threshold_value</span><span class="o">=</span><span class="mf">0.10</span><span class="p">,</span>
+                    <span class="n">comparison</span><span class="o">=</span><span class="s2">&quot;gte&quot;</span><span class="p">,</span>
+                    <span class="n">safety_level</span><span class="o">=</span><span class="n">SafetyLevel</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;API error rate exceeded 10%&quot;</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="c1"># デフォルトのサーキットブレーカーを設定</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">circuit_breakers</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">CircuitBreakerConfig</span><span class="p">(</span>
+                    <span class="n">failure_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                    <span class="n">recovery_timeout_seconds</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+                    <span class="n">monitoring_window_seconds</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span>
+                    <span class="n">success_threshold</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;trading_circuit_breaker&quot;</span>
+                <span class="p">),</span>
+                <span class="n">CircuitBreakerConfig</span><span class="p">(</span>
+                    <span class="n">failure_threshold</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">recovery_timeout_seconds</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span>
+                    <span class="n">monitoring_window_seconds</span><span class="o">=</span><span class="mi">1800</span><span class="p">,</span>
+                    <span class="n">success_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;api_circuit_breaker&quot;</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="c1"># デフォルトのフォールバックアクションを設定</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_actions</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fallback_actions</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">FallbackAction</span><span class="p">(</span>
+                    <span class="n">strategy</span><span class="o">=</span><span class="n">FallbackStrategy</span><span class="o">.</span><span class="n">REDUCE_POSITION_SIZE</span><span class="p">,</span>
+                    <span class="n">trigger_conditions</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;daily_pnl&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.10</span><span class="p">,</span> <span class="s2">&quot;lte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="s2">&quot;Daily P&amp;L warning&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">execution_order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                    <span class="n">requires_approval</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Reduce position size by 50% when daily P&amp;L drops below -10%&quot;</span><span class="p">,</span>
+                    <span class="n">rollback_model_path</span><span class="o">=</span><span class="kc">None</span>
+                <span class="p">),</span>
+                <span class="n">FallbackAction</span><span class="p">(</span>
+                    <span class="n">strategy</span><span class="o">=</span><span class="n">FallbackStrategy</span><span class="o">.</span><span class="n">ROLLBACK_TO_PREVIOUS</span><span class="p">,</span>
+                    <span class="n">trigger_conditions</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span> <span class="s2">&quot;High drawdown&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">execution_order</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">requires_approval</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Rollback to previous model version when drawdown exceeds 15%&quot;</span><span class="p">,</span>
+                    <span class="n">rollback_model_path</span><span class="o">=</span><span class="s2">&quot;models/previous_version&quot;</span>
+                <span class="p">),</span>
+                <span class="n">FallbackAction</span><span class="p">(</span>
+                    <span class="n">strategy</span><span class="o">=</span><span class="n">FallbackStrategy</span><span class="o">.</span><span class="n">STOP_TRADING</span><span class="p">,</span>
+                    <span class="n">trigger_conditions</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span> <span class="s2">&quot;Critical drawdown&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">execution_order</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+                    <span class="n">requires_approval</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Stop all trading when drawdown exceeds 25%&quot;</span><span class="p">,</span>
+                    <span class="n">rollback_model_path</span><span class="o">=</span><span class="kc">None</span>
+                <span class="p">)</span>
+            <span class="p">]</span>
+
+        <span class="c1"># デフォルトのデプロイメントステージを設定</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">deployment_stages</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">deployment_stages</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">DeploymentStage</span><span class="p">(</span>
+                    <span class="n">phase</span><span class="o">=</span><span class="n">DeploymentPhase</span><span class="o">.</span><span class="n">STAGING</span><span class="p">,</span>
+                    <span class="n">traffic_percentage</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+                    <span class="n">duration_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+                    <span class="n">success_criteria</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;win_rate&quot;</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="s2">&quot;Minimum win rate&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">rollback_triggers</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">HIGH</span><span class="p">,</span> <span class="s2">&quot;Staging drawdown limit&quot;</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">),</span>
+                <span class="n">DeploymentStage</span><span class="p">(</span>
+                    <span class="n">phase</span><span class="o">=</span><span class="n">DeploymentPhase</span><span class="o">.</span><span class="n">PRODUCTION</span><span class="p">,</span>
+                    <span class="n">traffic_percentage</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                    <span class="n">duration_hours</span><span class="o">=</span><span class="mi">168</span><span class="p">,</span>  <span class="c1"># 1週間</span>
+                    <span class="n">success_criteria</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">MEDIUM</span><span class="p">,</span> <span class="s2">&quot;Minimum Sharpe ratio&quot;</span><span class="p">)</span>
+                    <span class="p">],</span>
+                    <span class="n">rollback_triggers</span><span class="o">=</span><span class="p">[</span>
+                        <span class="n">SafetyThreshold</span><span class="p">(</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="mf">0.10</span><span class="p">,</span> <span class="s2">&quot;gte&quot;</span><span class="p">,</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span> <span class="s2">&quot;Production drawdown limit&quot;</span><span class="p">)</span>
+                    <span class="p">]</span>
+                <span class="p">)</span>
+            <span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="EmergencyProtocol">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.EmergencyProtocol">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EmergencyProtocol</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;緊急時プロトコル&quot;&quot;&quot;</span>
+
+    <span class="n">protocol_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">trigger_conditions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyThreshold</span><span class="p">]</span>
+    <span class="n">actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">notification_channels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">requires_immediate_action</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">documentation_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+
+<div class="viewcode-block" id="EmergencyProtocol.is_triggered">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.EmergencyProtocol.is_triggered">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_triggered</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;プロトコルがトリガーされるか判定&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">condition</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trigger_conditions</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">condition</span><span class="o">.</span><span class="n">metric_name</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="n">condition</span><span class="o">.</span><span class="n">comparison</span> <span class="o">==</span> <span class="s2">&quot;gt&quot;</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&gt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold_value</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="n">condition</span><span class="o">.</span><span class="n">comparison</span> <span class="o">==</span> <span class="s2">&quot;lt&quot;</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&lt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold_value</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="n">condition</span><span class="o">.</span><span class="n">comparison</span> <span class="o">==</span> <span class="s2">&quot;gte&quot;</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&gt;=</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold_value</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">elif</span> <span class="n">condition</span><span class="o">.</span><span class="n">comparison</span> <span class="o">==</span> <span class="s2">&quot;lte&quot;</span> <span class="ow">and</span> <span class="n">value</span> <span class="o">&lt;=</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold_value</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

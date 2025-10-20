@@ -1,0 +1,365 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.volume package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.inference package" href="ztb.inference.html" />
+    <link rel="prev" title="ztb.features.volatility package" href="ztb.features.volatility.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.features.html">ztb.features package</a></li>
+      <li class="breadcrumb-item active">ztb.features.volume package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.features.volume.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-features-volume-package">
+<h1>ztb.features.volume package<a class="headerlink" href="#ztb-features-volume-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.features.volume.chaikin_ad">
+<span id="ztb-features-volume-chaikin-ad-module"></span><h2>ztb.features.volume.chaikin_ad module<a class="headerlink" href="#module-ztb.features.volume.chaikin_ad" title="Link to this heading"></a></h2>
+<p>Chaikin AD (Accumulation/Distribution) feature implementation.
+Chaikin AD is a volume-based indicator that measures the cumulative flow of money into and out of a security.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>chaikin_ad: Chaikin AD values</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad.compute_chaikin_ad">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.chaikin_ad.</span></span><span class="sig-name descname"><span class="pre">compute_chaikin_ad</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad.html#compute_chaikin_ad"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad.compute_chaikin_ad" title="Link to this definition"></a></dt>
+<dd><p>Chaikin AD using Ta-Lib wrapper</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad.ChaikinAD">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.volume.chaikin_ad.</span></span><span class="sig-name descname"><span class="pre">ChaikinAD</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad.html#ChaikinAD"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad.ChaikinAD" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Chaikin AD (Accumulation/Distribution) indicator.
+Measures the cumulative flow of money into and out of a security.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad.ChaikinAD.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad.html#ChaikinAD.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad.ChaikinAD.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’, ‘volume’].
+Returns a DataFrame with Chaikin AD values.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.chaikin_ad_oscillator">
+<span id="ztb-features-volume-chaikin-ad-oscillator-module"></span><h2>ztb.features.volume.chaikin_ad_oscillator module<a class="headerlink" href="#module-ztb.features.volume.chaikin_ad_oscillator" title="Link to this heading"></a></h2>
+<p>Chaikin AD Oscillator feature implementation.
+Chaikin AD Oscillator is the difference between the 3-day EMA and 10-day EMA of the Chaikin AD line.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>chaikin_ad_oscillator: Chaikin AD Oscillator values</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad_oscillator.compute_chaikin_ad_oscillator">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.chaikin_ad_oscillator.</span></span><span class="sig-name descname"><span class="pre">compute_chaikin_ad_oscillator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad_oscillator.html#compute_chaikin_ad_oscillator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad_oscillator.compute_chaikin_ad_oscillator" title="Link to this definition"></a></dt>
+<dd><p>Chaikin AD Oscillator using Ta-Lib wrapper</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad_oscillator.ChaikinADOscillator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.volume.chaikin_ad_oscillator.</span></span><span class="sig-name descname"><span class="pre">ChaikinADOscillator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fast_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slow_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad_oscillator.html#ChaikinADOscillator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad_oscillator.ChaikinADOscillator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Chaikin AD Oscillator indicator.
+The difference between the 3-day EMA and 10-day EMA of the Chaikin AD line.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.volume.chaikin_ad_oscillator.ChaikinADOscillator.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/chaikin_ad_oscillator.html#ChaikinADOscillator.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.chaikin_ad_oscillator.ChaikinADOscillator.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’, ‘volume’].
+Returns a DataFrame with Chaikin AD Oscillator values.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.cmf">
+<span id="ztb-features-volume-cmf-module"></span><h2>ztb.features.volume.cmf module<a class="headerlink" href="#module-ztb.features.volume.cmf" title="Link to this heading"></a></h2>
+<p>Chaikin Money Flow (CMF) feature implementation.
+Chaikin Money Flow measures the amount of money flow volume over a period.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>cmf: Chaikin Money Flow value</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.cmf.compute_cmf">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.cmf.</span></span><span class="sig-name descname"><span class="pre">compute_cmf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/cmf.html#compute_cmf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.cmf.compute_cmf" title="Link to this definition"></a></dt>
+<dd><p>Chaikin Money Flow (CMF)</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.volume.cmf.ChaikinMoneyFlow">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.volume.cmf.</span></span><span class="sig-name descname"><span class="pre">ChaikinMoneyFlow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">21</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/volume/cmf.html#ChaikinMoneyFlow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.cmf.ChaikinMoneyFlow" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Chaikin Money Flow (CMF) indicator.
+Combines price and volume to measure buying and selling pressure.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.volume.cmf.ChaikinMoneyFlow.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/cmf.html#ChaikinMoneyFlow.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.cmf.ChaikinMoneyFlow.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’, ‘volume’].
+Returns a DataFrame with CMF values.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.mfi">
+<span id="ztb-features-volume-mfi-module"></span><h2>ztb.features.volume.mfi module<a class="headerlink" href="#module-ztb.features.volume.mfi" title="Link to this heading"></a></h2>
+<p>MFI (Money Flow Index) implementation.
+MFIの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.mfi.compute_mfi">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.mfi.</span></span><span class="sig-name descname"><span class="pre">compute_mfi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/mfi.html#compute_mfi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.mfi.compute_mfi" title="Link to this definition"></a></dt>
+<dd><p>Compute MFI (Money Flow Index) using Ta-Lib wrapper</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.obv">
+<span id="ztb-features-volume-obv-module"></span><h2>ztb.features.volume.obv module<a class="headerlink" href="#module-ztb.features.volume.obv" title="Link to this heading"></a></h2>
+<p>OBV (On-Balance Volume) implementation.
+OBVの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.obv.compute_obv">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.obv.</span></span><span class="sig-name descname"><span class="pre">compute_obv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/obv.html#compute_obv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.obv.compute_obv" title="Link to this definition"></a></dt>
+<dd><p>Compute OBV (On-Balance Volume) using Ta-Lib wrapper</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.price_volume_corr">
+<span id="ztb-features-volume-price-volume-corr-module"></span><h2>ztb.features.volume.price_volume_corr module<a class="headerlink" href="#module-ztb.features.volume.price_volume_corr" title="Link to this heading"></a></h2>
+<p>Price-Volume Correlation implementation.
+価格と出来高の相関係数を計算</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.price_volume_corr.compute_price_volume_corr">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.price_volume_corr.</span></span><span class="sig-name descname"><span class="pre">compute_price_volume_corr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/price_volume_corr.html#compute_price_volume_corr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.price_volume_corr.compute_price_volume_corr" title="Link to this definition"></a></dt>
+<dd><p>Compute rolling correlation between price and volume</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.return_ma">
+<span id="ztb-features-volume-return-ma-module"></span><h2>ztb.features.volume.return_ma module<a class="headerlink" href="#module-ztb.features.volume.return_ma" title="Link to this heading"></a></h2>
+<p>Moving Averages of Returns implementation.
+リターンの移動平均を計算</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.return_ma.compute_return_ma_short">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.return_ma.</span></span><span class="sig-name descname"><span class="pre">compute_return_ma_short</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/return_ma.html#compute_return_ma_short"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.return_ma.compute_return_ma_short" title="Link to this definition"></a></dt>
+<dd><p>Compute short-term moving average of returns</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.return_ma.compute_return_ma_medium">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.return_ma.</span></span><span class="sig-name descname"><span class="pre">compute_return_ma_medium</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/return_ma.html#compute_return_ma_medium"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.return_ma.compute_return_ma_medium" title="Link to this definition"></a></dt>
+<dd><p>Compute medium-term moving average of returns</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.volume_profile">
+<span id="ztb-features-volume-volume-profile-module"></span><h2>ztb.features.volume.volume_profile module<a class="headerlink" href="#module-ztb.features.volume.volume_profile" title="Link to this heading"></a></h2>
+<p>volume_profile.py
+Volume Profile analysis for price levels and volume distribution</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.compute_volume_profile_poc">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">compute_volume_profile_poc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#compute_volume_profile_poc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.compute_volume_profile_poc" title="Link to this definition"></a></dt>
+<dd><p>Volume Profile Point of Control (price level with highest volume)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.compute_volume_profile_vah">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">compute_volume_profile_vah</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#compute_volume_profile_vah"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.compute_volume_profile_vah" title="Link to this definition"></a></dt>
+<dd><p>Volume Profile Value Area High (70% of volume)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.compute_volume_profile_val">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">compute_volume_profile_val</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#compute_volume_profile_val"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.compute_volume_profile_val" title="Link to this definition"></a></dt>
+<dd><p>Volume Profile Value Area Low (70% of volume)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.compute_volume_profile_distribution">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">compute_volume_profile_distribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#compute_volume_profile_distribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.compute_volume_profile_distribution" title="Link to this definition"></a></dt>
+<dd><p>Volume Profile Distribution (normalized volume at each price level)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.calculate_volume_profile_extended">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">calculate_volume_profile_extended</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_area_percent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#calculate_volume_profile_extended"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.calculate_volume_profile_extended" title="Link to this definition"></a></dt>
+<dd><p>Calculate Volume Profile features using precise price-volume distribution.</p>
+<p>This implementation uses a more accurate method where volume is distributed
+across all price levels that a bar spans, proportional to the price range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame with OHLCV data</p></li>
+<li><p><strong>bins</strong> – Number of price bins for volume distribution</p></li>
+<li><p><strong>value_area_percent</strong> – Percentage of volume for value area calculation</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with Volume Profile features</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.volume_profile.volume_profile_feature_summary">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.volume_profile.</span></span><span class="sig-name descname"><span class="pre">volume_profile_feature_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/volume_profile.html#volume_profile_feature_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.volume_profile.volume_profile_feature_summary" title="Link to this definition"></a></dt>
+<dd><p>Returns a dictionary summarizing each Volume Profile feature.</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume.vwap">
+<span id="ztb-features-volume-vwap-module"></span><h2>ztb.features.volume.vwap module<a class="headerlink" href="#module-ztb.features.volume.vwap" title="Link to this heading"></a></h2>
+<p>VWAP (Volume Weighted Average Price) implementation.
+VWAPの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.volume.vwap.compute_vwap">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.volume.vwap.</span></span><span class="sig-name descname"><span class="pre">compute_vwap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/volume/vwap.html#compute_vwap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.volume.vwap.compute_vwap" title="Link to this definition"></a></dt>
+<dd><p>Compute VWAP (Volume Weighted Average Price)</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.volume">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.features.volume" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.features.volatility.html" class="btn btn-neutral float-left" title="ztb.features.volatility package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.inference.html" class="btn btn-neutral float-right" title="ztb.inference package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

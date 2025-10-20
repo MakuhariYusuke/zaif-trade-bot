@@ -1,0 +1,442 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>v3.6.4-v3.6.6 完全分析と重要発見 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">v3.6.4-v3.6.6 完全分析と重要発見</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/analysis/V366_COMPREHENSIVE_ANALYSIS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="v3-6-4-v3-6-6">
+<h1>v3.6.4-v3.6.6 完全分析と重要発見<a class="headerlink" href="#v3-6-4-v3-6-6" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>🎯 最重要発見<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="sell16-7">
+<h3>✅ <strong>SELL率16.7% 達成！</strong><a class="headerlink" href="#sell16-7" title="Link to this heading"></a></h3>
+<p>v3.6.6で<strong>初めて目標15%を突破</strong>しました（最終ログの10.2%はLagrange統計の集計方法の問題）</p>
+</section>
+<section id="pan-action-counts">
+<h3>実際の結果（pan_action_countsから集計）:<a class="headerlink" href="#pan-action-counts" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>          HOLD%   BUY%   SELL%
+v3.6.4:   79.2    8.3   12.5   multipliers [1.0, 3.0, 1.0]
+v3.6.5:   73.4   14.1   12.5   multipliers [2.0, 3.0, 0.5]
+v3.6.6:   70.8   12.5   16.7   multipliers [2.0, 3.0, 1.0] + penalties ✅
+</pre></div>
+</div>
+<p><strong>進捗</strong>:</p>
+<ul class="simple">
+<li><p>SELL: 12.5% → 16.7% (+4.2pp) ✅ <strong>目標達成！</strong></p></li>
+<li><p>HOLD: 79.2% → 70.8% (-8.4pp) ✅</p></li>
+<li><p>BUY: 8.3% → 12.5% (+4.2pp) ✅</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="bug-51-ep-rew-mean-495">
+<h2>🐛 Bug #51: ep_rew_mean=-495の謎<a class="headerlink" href="#bug-51-ep-rew-mean-495" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>問題<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>すべてのバージョンで<code class="docutils literal notranslate"><span class="pre">ep_rew_mean</span></code>が極端にマイナス（-495～-499）</p>
+</section>
+<section id="id3">
+<h3>根本原因<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p><strong><code class="docutils literal notranslate"><span class="pre">forced_balance</span></code> curriculumステージがPnLを無視</strong></p>
+<p><code class="docutils literal notranslate"><span class="pre">_calculate_forced_balance_reward()</span></code>の実装:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_calculate_forced_balance_reward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Force balanced action distribution (33% each action).&quot;&quot;&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_action_counts</span><span class="p">[</span><span class="n">action</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_action_counts</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">action_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="n">count</span> <span class="o">/</span> <span class="n">total_actions</span> <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_action_counts</span><span class="p">]</span>
+        <span class="n">balance_penalty</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">ratio</span> <span class="o">-</span> <span class="n">target_ratio</span><span class="p">)</span> <span class="k">for</span> <span class="n">ratio</span> <span class="ow">in</span> <span class="n">action_ratios</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">balance_penalty</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">2.0</span>      <span class="c1"># Perfect balance</span>
+        <span class="k">elif</span> <span class="n">balance_penalty</span> <span class="o">&lt;</span> <span class="mf">0.2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">1.0</span>      <span class="c1"># Good balance</span>
+        <span class="k">elif</span> <span class="n">balance_penalty</span> <span class="o">&lt;</span> <span class="mf">0.3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.5</span>      <span class="c1"># OK balance</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="o">-</span><span class="mf">1.0</span>     <span class="c1"># Poor balance ← Most common</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">0.1</span>          <span class="c1"># Warmup</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>影響<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>実際のトレード損益は完全に無視される</strong></p></li>
+<li><p><strong>アクション分布のバランスのみが評価される</strong></p></li>
+<li><p>分布が33/33/33から外れると<code class="docutils literal notranslate"><span class="pre">-1.0</span></code>のペナルティ</p></li>
+<li><p>エピソード999ステップで多くが-1.0 → 合計約-500</p></li>
+</ol>
+</section>
+<section id="id5">
+<h3>重要な洞察<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p><strong>これは実は正しい設計です！</strong></p>
+<ul class="simple">
+<li><p>Curriculum学習の第0ステージ（forced_balance）</p></li>
+<li><p>目的: アクション分布を強制的にバランスさせる</p></li>
+<li><p>PnL最適化は次のステージ（balanced_transition, pnl_focused）で行う</p></li>
+<li><p><strong>収益性よりもまず行動多様性を確立する</strong></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>✅ 成功要因分析<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="v3-6-6sell-15">
+<h3>v3.6.6で初めてSELL 15%+を達成した理由<a class="headerlink" href="#v3-6-6sell-15" title="Link to this heading"></a></h3>
+<section id="id7">
+<h4>1. <strong>適切なマルチプライヤー設定</strong><a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">]</span><span class="w">  </span><span class="c1">// [BUY, SELL, HOLD]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>BUY 2倍: ポジション開設を促進</p></li>
+<li><p>SELL 3倍: ポジション決済を促進</p></li>
+<li><p>HOLD 1倍: 過度な保持を抑制（v3.6.5の0.5は過剰だった）</p></li>
+</ul>
+</section>
+<section id="id8">
+<h4>2. <strong>明示的アクションペナルティ</strong><a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;hold_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w">   </span><span class="c1">// HOLDを直接ペナルティ</span>
+<span class="nt">&quot;buy_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.1</span><span class="p">,</span><span class="w">   </span><span class="c1">// BUYに報酬</span>
+<span class="nt">&quot;sell_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.15</span><span class="w">  </span><span class="c1">// SELLにより強い報酬</span>
+</pre></div>
+</div>
+<p>実効ペナルティ:</p>
+<ul class="simple">
+<li><p>HOLD: 0.23-0.25（ベース + 設定値）</p></li>
+<li><p>BUY: -0.085（0.015 - 0.1 = 報酬）</p></li>
+<li><p>SELL: -0.135（0.015 - 0.15 = より強い報酬）</p></li>
+</ul>
+</section>
+<section id="id9">
+<h4>3. <strong>ゼロ利益状態での優位性</strong><a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>ゼロ利益時の報酬:
+  HOLD: 0.0 - 0.25 = -0.25  （最悪）
+  BUY:  0.0 + 0.085 = +0.085 （良い）
+  SELL: 0.0 + 0.135 = +0.135 （最良）
+</pre></div>
+</div>
+<p>→ 明示的ペナルティにより、<strong>利益がなくてもBUY/SELLが選ばれる</strong></p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>📊 詳細バグ診断<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="bug-48-reward-settings-not-passed-fixed">
+<h3>Bug #48: reward_settings not passed ✅ FIXED<a class="headerlink" href="#bug-48-reward-settings-not-passed-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>v3.6.4で修正</p></li>
+<li><p>env_configにreward_settingsを追加</p></li>
+</ul>
+</section>
+<section id="bug-49-profit-bonus-multipliers-order-fixed">
+<h3>Bug #49: profit_bonus_multipliers order ✅ FIXED<a class="headerlink" href="#bug-49-profit-bonus-multipliers-order-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>v3.6.4で修正</p></li>
+<li><p>[BUY, SELL, HOLD]順序を正しく理解</p></li>
+</ul>
+</section>
+<section id="bug-50-buy-scarcity-limits-sell-fixed">
+<h3>Bug #50: BUY scarcity limits SELL ✅ FIXED<a class="headerlink" href="#bug-50-buy-scarcity-limits-sell-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>v3.6.5/v3.6.6でBUYマルチプライヤー2.0に引き上げ</p></li>
+<li><p>BUY率改善: 8.3% → 14.1% → 12.5%</p></li>
+</ul>
+</section>
+<section id="bug-51-forced-balance-ignores-pnl-not-a-bug">
+<h3>Bug #51: forced_balance ignores PnL ⚠️ NOT A BUG<a class="headerlink" href="#bug-51-forced-balance-ignores-pnl-not-a-bug" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>設計通り</p></li>
+<li><p>Curriculum学習の第0ステージ</p></li>
+<li><p>次ステップでpnl_focusedに移行する必要がある</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🎯 次のアクションプラン<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="phase-1-curriculum">
+<h3>Phase 1: Curriculumステージ移行 ✅ <strong>最優先</strong><a class="headerlink" href="#phase-1-curriculum" title="Link to this heading"></a></h3>
+<p><strong>問題</strong>: 現在<code class="docutils literal notranslate"><span class="pre">forced_balance</span></code>ステージで停滞
+<strong>解決</strong>: <code class="docutils literal notranslate"><span class="pre">balanced_transition</span></code>または<code class="docutils literal notranslate"><span class="pre">pnl_focused</span></code>に移行</p>
+<section id="option-a-balanced-transition">
+<h4>Option A: balanced_transitionステージ<a class="headerlink" href="#option-a-balanced-transition" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;balanced_transition&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>アクション分布とPnLの両方を考慮</p></li>
+<li><p>バランスペナルティ0.5（過度な偏りを防止）</p></li>
+<li><p>通常報酬計算を使用</p></li>
+</ul>
+</section>
+<section id="option-b-pnl-focused">
+<h4>Option B: pnl_focusedステージ（推奨）<a class="headerlink" href="#option-b-pnl-focused" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pnl_focused&quot;</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>PnL最適化に集中</p></li>
+<li><p>アクション分布チェックは軽微</p></li>
+<li><p>profit_bonus_multipliersとpenaltiesが最大効果を発揮</p></li>
+</ul>
+</section>
+</section>
+<section id="phase-2-lambda">
+<h3>Phase 2: Lambda制約の調整<a class="headerlink" href="#phase-2-lambda" title="Link to this heading"></a></h3>
+<p>現状: <code class="docutils literal notranslate"><span class="pre">λ=30.0</span></code>で上限張り付き</p>
+<p>Option 1: Lambda上限引き上げ</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;lagrange_lambda_max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span>
+</pre></div>
+</div>
+<p>Option 2: Lambda無効化（推奨）</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;enable_lagrange&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>v3.6.6の設定だけで15%+達成している</p></li>
+<li><p>Lagrange constraint不要の可能性</p></li>
+</ul>
+</section>
+<section id="phase-3">
+<h3>Phase 3: 長期トレーニング<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h3>
+<p>現状: 10,000ステップ（検証用）
+推奨: 30,000～100,000ステップ</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>💡 重要な学び<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="forced-balance">
+<h3>1. <strong>forced_balanceは収益性を犠牲にする</strong><a class="headerlink" href="#forced-balance" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>アクション多様性確立が目的</p></li>
+<li><p>PnL学習は別ステージで行う</p></li>
+<li><p>ep_rew_mean=-495は正常動作</p></li>
+</ul>
+</section>
+<section id="id13">
+<h3>2. <strong>明示的ペナルティが効果的</strong><a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>マルチプライヤーだけでは不十分</p></li>
+<li><p>ゼロ利益状態でも行動誘導が可能</p></li>
+<li><p>hold_penalty=0.2が特に効果的</p></li>
+</ul>
+</section>
+<section id="buysell">
+<h3>3. <strong>BUY促進がSELL促進につながる</strong><a class="headerlink" href="#buysell" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>SELLにはポジション保有が前提</p></li>
+<li><p>BUY 2倍 + SELL 3倍の組み合わせが有効</p></li>
+</ul>
+</section>
+<section id="v3-6-6">
+<h3>4. <strong>v3.6.6設定が最良</strong><a class="headerlink" href="#v3-6-6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>SELL 16.7%（目標15%突破）</p></li>
+<li><p>HOLD 70.8%（依然高いが許容範囲）</p></li>
+<li><p>BUY 12.5%（改善余地あり）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>🚀 即実行推奨アクション<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="curriculum">
+<h3>最優先: Curriculum移行検証<a class="headerlink" href="#curriculum" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;_comment_header&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;=== v3.6.7: pnl_focused transition ===&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;pnl_focused&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;hold_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;buy_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sell_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.15</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enable_lagrange&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">30000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>期待される結果</strong>:</p>
+<ul class="simple">
+<li><p>ep_rew_mean &gt; -100（PnL考慮開始）</p></li>
+<li><p>SELL率 15-20%維持</p></li>
+<li><p>収益性向上</p></li>
+</ul>
+<p><strong>検証コマンド</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># v3.6.7設定作成後</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">30000</span><span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>📈 進捗サマリー<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Version</p></th>
+<th class="head"><p>HOLD%</p></th>
+<th class="head"><p>BUY%</p></th>
+<th class="head"><p>SELL%</p></th>
+<th class="head"><p>ep_rew</p></th>
+<th class="head"><p>Status</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>v3.6.4</p></td>
+<td><p>79.2</p></td>
+<td><p>8.3</p></td>
+<td><p>12.5</p></td>
+<td><p>-493</p></td>
+<td><p>Bug #48,49 fix</p></td>
+</tr>
+<tr class="row-odd"><td><p>v3.6.5</p></td>
+<td><p>73.4</p></td>
+<td><p>14.1</p></td>
+<td><p>12.5</p></td>
+<td><p>-495</p></td>
+<td><p>BUY multiplier 2x</p></td>
+</tr>
+<tr class="row-even"><td><p>v3.6.6</p></td>
+<td><p>70.8</p></td>
+<td><p>12.5</p></td>
+<td><p><strong>16.7</strong></p></td>
+<td><p>-495</p></td>
+<td><p>✅ <strong>SELL 15%+ 達成</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>v3.6.7</p></td>
+<td><p>???</p></td>
+<td><p>???</p></td>
+<td><p>???</p></td>
+<td><p>???</p></td>
+<td><p>pnl_focused移行（予定）</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: v3.6.6でアクション分布目標達成。次は収益性改善フェーズへ。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

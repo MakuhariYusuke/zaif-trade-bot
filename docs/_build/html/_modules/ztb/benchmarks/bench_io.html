@@ -1,0 +1,610 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.benchmarks.bench_io &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.benchmarks.bench_io</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.benchmarks.bench_io</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">bench_io.py</span>
+<span class="sd">I/O benchmarking script for Parquet compression, chunking, and column projection.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="c1"># Add parent directory to path</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">))))</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.cache.parquet_io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_parquet</span><span class="p">,</span> <span class="n">write_parquet</span>
+
+
+<div class="viewcode-block" id="ParquetConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.ParquetConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParquetConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for Parquet I/O operations.&quot;&quot;&quot;</span>
+
+    <span class="n">compression</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">row_group_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">use_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">engine</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="BenchmarkConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.BenchmarkConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BenchmarkConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for benchmark runs.&quot;&quot;&quot;</span>
+
+    <span class="n">parquet</span><span class="p">:</span> <span class="n">ParquetConfig</span>
+    <span class="n">limits</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="generate_test_data">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.generate_test_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_test_data</span><span class="p">(</span><span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate test DataFrame similar to trading data&quot;&quot;&quot;</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1min&quot;</span><span class="p">),</span>
+        <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;rsi&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;macd&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;bb_upper&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+        <span class="s2">&quot;bb_lower&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n_rows</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="c1"># Build DataFrame and use pandas vectorized operations which have better</span>
+    <span class="c1"># typing support for mypy than numpy ufunc overloads here.</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="measure_io_performance">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.measure_io_performance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">measure_io_performance</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">BenchmarkConfig</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">:</span> <span class="n">Path</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Measure I/O performance for given config&quot;&quot;&quot;</span>
+    <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+
+    <span class="c1"># Write benchmark</span>
+    <span class="n">write_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">mem_before_write</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span>
+    <span class="c1"># sample CPU percent (we only use the after-sample values)</span>
+    <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">parquet_path</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">temp_dir</span>
+        <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;test_</span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;parquet&#39;</span><span class="p">][</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;parquet&#39;</span><span class="p">][</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">.parquet&quot;</span>
+    <span class="p">)</span>
+    <span class="n">write_parquet</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">parquet_path</span><span class="p">,</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">))</span>
+
+    <span class="n">write_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">write_start</span>
+    <span class="n">mem_after_write</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span>
+    <span class="n">cpu_after_write</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># Read benchmark</span>
+    <span class="n">read_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">mem_before_read</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span>
+    <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">_</span> <span class="o">=</span> <span class="n">read_parquet</span><span class="p">(</span><span class="n">parquet_path</span><span class="p">,</span> <span class="n">cast</span><span class="p">(</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">config</span><span class="p">))</span>
+
+    <span class="n">read_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">read_start</span>
+    <span class="n">mem_after_read</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span>
+    <span class="n">cpu_after_read</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># Calculate metrics</span>
+    <span class="n">file_size</span> <span class="o">=</span> <span class="n">parquet_path</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_size</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">)</span>  <span class="c1"># MB</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;compression&quot;</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;parquet&quot;</span><span class="p">][</span><span class="s2">&quot;compression&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;row_group_size&quot;</span><span class="p">:</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;parquet&quot;</span><span class="p">][</span><span class="s2">&quot;row_group_size&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;use_columns&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;parquet&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;use_columns&quot;</span><span class="p">,</span> <span class="p">[]))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;write_time_sec&quot;</span><span class="p">:</span> <span class="n">write_time</span><span class="p">,</span>
+        <span class="s2">&quot;read_time_sec&quot;</span><span class="p">:</span> <span class="n">read_time</span><span class="p">,</span>
+        <span class="s2">&quot;file_size_mb&quot;</span><span class="p">:</span> <span class="n">file_size</span><span class="p">,</span>
+        <span class="s2">&quot;write_throughput_mbps&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">file_size</span> <span class="o">/</span> <span class="n">write_time</span><span class="p">)</span> <span class="k">if</span> <span class="n">write_time</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">file_size</span> <span class="o">/</span> <span class="n">read_time</span><span class="p">)</span> <span class="k">if</span> <span class="n">read_time</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="s2">&quot;write_cpu_percent&quot;</span><span class="p">:</span> <span class="n">cpu_after_write</span><span class="p">,</span>
+        <span class="s2">&quot;read_cpu_percent&quot;</span><span class="p">:</span> <span class="n">cpu_after_read</span><span class="p">,</span>
+        <span class="s2">&quot;write_mem_mb&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">mem_after_write</span> <span class="o">-</span> <span class="n">mem_before_write</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+        <span class="s2">&quot;read_mem_mb&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">mem_after_read</span> <span class="o">-</span> <span class="n">mem_before_read</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="run_benchmark">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.run_benchmark">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_benchmark</span><span class="p">(</span>
+    <span class="n">n_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run comprehensive I/O benchmark&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;reports&quot;</span><span class="p">)</span>
+    <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Generate test data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">generate_test_data</span><span class="p">(</span><span class="n">n_rows</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated test data: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Benchmark configurations</span>
+    <span class="n">configs</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">BenchmarkConfig</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Compression types</span>
+    <span class="n">compressions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;snappy&quot;</span><span class="p">,</span> <span class="s2">&quot;lz4&quot;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+
+        <span class="k">if</span> <span class="s2">&quot;ZSTD&quot;</span> <span class="ow">in</span> <span class="n">pa</span><span class="o">.</span><span class="n">Codec</span><span class="o">.</span><span class="n">list_codecs</span><span class="p">():</span>
+            <span class="n">compressions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;zstd&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Row group sizes</span>
+    <span class="n">row_group_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20000</span><span class="p">,</span> <span class="mi">50000</span><span class="p">,</span> <span class="mi">100000</span><span class="p">]</span>
+
+    <span class="c1"># Column projection: all vs subset</span>
+    <span class="n">column_configs</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[],</span>  <span class="c1"># All columns</span>
+        <span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">,</span> <span class="s2">&quot;rsi&quot;</span><span class="p">],</span>  <span class="c1"># Essential columns</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">compression</span> <span class="ow">in</span> <span class="n">compressions</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">row_group_size</span> <span class="ow">in</span> <span class="n">row_group_sizes</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">use_columns</span> <span class="ow">in</span> <span class="n">column_configs</span><span class="p">:</span>
+                <span class="n">config</span><span class="p">:</span> <span class="n">BenchmarkConfig</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;parquet&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;compression&quot;</span><span class="p">:</span> <span class="n">compression</span><span class="p">,</span>
+                        <span class="s2">&quot;row_group_size&quot;</span><span class="p">:</span> <span class="n">row_group_size</span><span class="p">,</span>
+                        <span class="s2">&quot;use_columns&quot;</span><span class="p">:</span> <span class="n">use_columns</span><span class="p">,</span>
+                        <span class="s2">&quot;engine&quot;</span><span class="p">:</span> <span class="s2">&quot;pyarrow&quot;</span><span class="p">,</span>
+                    <span class="p">},</span>
+                    <span class="s2">&quot;limits&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;peak_memory_mb&quot;</span><span class="p">:</span> <span class="mi">1200</span><span class="p">},</span>
+                <span class="p">}</span>
+                <span class="n">configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+    <span class="c1"># Run benchmarks</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+        <span class="n">temp_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">configs</span><span class="p">):</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Benchmark </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">configs</span><span class="p">)</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;parquet&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">measure_io_performance</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">temp_path</span><span class="p">)</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in benchmark: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+    <span class="c1"># Convert to DataFrame</span>
+    <span class="n">results_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+    <span class="c1"># Save results</span>
+    <span class="n">csv_path</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;io_bench_results.csv&quot;</span>
+    <span class="n">results_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Generate plots</span>
+    <span class="n">generate_plots</span><span class="p">(</span><span class="n">results_df</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">results_df</span></div>
+
+
+
+<div class="viewcode-block" id="generate_plots">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.generate_plots">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_plots</span><span class="p">(</span><span class="n">results_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate performance comparison plots&quot;&quot;&quot;</span>
+    <span class="c1"># Group by configuration for top 3</span>
+    <span class="n">grouped</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">results_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s2">&quot;compression&quot;</span><span class="p">,</span> <span class="s2">&quot;row_group_size&quot;</span><span class="p">,</span> <span class="s2">&quot;use_columns&quot;</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;write_throughput_mbps&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;write_cpu_percent&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;read_cpu_percent&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;write_mem_mb&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;read_mem_mb&quot;</span><span class="p">:</span> <span class="s2">&quot;mean&quot;</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Sort by read throughput (primary metric)</span>
+    <span class="n">top_configs</span> <span class="o">=</span> <span class="n">grouped</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Plot throughput</span>
+    <span class="n">_fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+
+    <span class="c1"># Write throughput</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span> <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;write_throughput_mbps&quot;</span><span class="p">])</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Write Throughput (MB/s)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)))</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;subset&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;use_columns&#39;</span><span class="p">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;all&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">top_configs</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+        <span class="p">],</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Read throughput</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span> <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">])</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Read Throughput (MB/s)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)))</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;subset&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;use_columns&#39;</span><span class="p">]</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;all&#39;</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">top_configs</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()</span>
+        <span class="p">],</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># CPU usage</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span>
+        <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;write_cpu_percent&quot;</span><span class="p">],</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Write&quot;</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span>
+        <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;read_cpu_percent&quot;</span><span class="p">],</span>
+        <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Read&quot;</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;CPU Usage (%)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="c1"># Memory usage</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span> <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;write_mem_mb&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Write&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span>
+    <span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span>
+        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">top_configs</span><span class="p">)),</span> <span class="n">top_configs</span><span class="p">[</span><span class="s2">&quot;read_mem_mb&quot;</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Read&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span>
+    <span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Memory Usage (MB)&quot;</span><span class="p">)</span>
+    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;io_bench_top3.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Top 3 configurations saved to </span><span class="si">{</span><span class="n">output_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="s1">&#39;io_bench_top3.png&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="generate_weekly_report_section">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.generate_weekly_report_section">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_weekly_report_section</span><span class="p">(</span><span class="n">results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate markdown section for weekly report</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        results: Benchmark results DataFrame</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Markdown content for weekly report</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;## I/O Performance Benchmark</span><span class="se">\n\n</span><span class="s2">No benchmark results available.</span><span class="se">\n</span><span class="s2">&quot;</span>
+
+    <span class="c1"># Get top 3 configurations</span>
+    <span class="n">top3</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">)</span>
+
+    <span class="n">report_lines</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;## I/O Performance Benchmark&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;*Generated: </span><span class="si">{</span><span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">*&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Summary statistics</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;### Performance Summary&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;- **Best Read Throughput**: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;read_throughput_mbps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;- **Best Write Throughput**: </span><span class="si">{</span><span class="n">results</span><span class="p">[</span><span class="s1">&#39;write_throughput_mbps&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;- **Lowest Memory Usage**: </span><span class="si">{</span><span class="n">results</span><span class="p">[[</span><span class="s1">&#39;write_mem_mb&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;read_mem_mb&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Configurations Tested**: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Top 3 configurations table</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;### Top 3 I/O Configurations&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="s2">&quot;| Rank | Compression | Row Group | Columns | Read MB/s | Write MB/s | Memory MB |&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="s2">&quot;|------|-------------|-----------|---------|-----------|------------|-----------|&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">top3</span><span class="o">.</span><span class="n">iterrows</span><span class="p">(),</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">columns_desc</span> <span class="o">=</span> <span class="s2">&quot;All&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;use_columns&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;Essential&quot;</span>
+        <span class="n">total_mem</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;write_mem_mb&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;read_mem_mb&quot;</span><span class="p">]</span>
+
+        <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;| </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">1000</span><span class="si">}</span><span class="s2">K | </span><span class="si">{</span><span class="n">columns_desc</span><span class="si">}</span><span class="s2"> | &quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;read_throughput_mbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;write_throughput_mbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">total_mem</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> |&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Recommended configuration</span>
+    <span class="n">best_config</span> <span class="o">=</span> <span class="n">top3</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;### Recommended Configuration&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;**Optimal for Raspberry Pi environments:**&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Compression: `</span><span class="si">{</span><span class="n">best_config</span><span class="p">[</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Row Group Size: `</span><span class="si">{</span><span class="n">best_config</span><span class="p">[</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">`&quot;</span><span class="p">)</span>
+    <span class="n">columns_rec</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;Use column projection (essential columns only)&quot;</span>
+        <span class="k">if</span> <span class="n">best_config</span><span class="p">[</span><span class="s2">&quot;use_columns&quot;</span><span class="p">]</span>
+        <span class="k">else</span> <span class="s2">&quot;Read all columns&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Column Strategy: </span><span class="si">{</span><span class="n">columns_rec</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;- Expected Performance: </span><span class="si">{</span><span class="n">best_config</span><span class="p">[</span><span class="s1">&#39;read_throughput_mbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s read, </span><span class="si">{</span><span class="n">best_config</span><span class="p">[</span><span class="s1">&#39;write_throughput_mbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s write&quot;</span>
+    <span class="p">)</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Performance insights</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;### Performance Insights&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Compression analysis</span>
+    <span class="n">compression_perf</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;compression&quot;</span><span class="p">)[</span><span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">best_compression</span> <span class="o">=</span> <span class="n">compression_perf</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;- **Best compression for speed**: </span><span class="si">{</span><span class="n">best_compression</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">compression_perf</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s avg)&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Memory usage analysis</span>
+    <span class="k">if</span> <span class="s2">&quot;use_columns&quot;</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">proj_results</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;use_columns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;[]&quot;</span><span class="p">]</span>
+        <span class="n">no_proj_results</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;use_columns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;[]&quot;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">proj_results</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">no_proj_results</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="n">proj_mem</span> <span class="o">=</span> <span class="n">proj_results</span><span class="p">[[</span><span class="s2">&quot;read_mem_mb&quot;</span><span class="p">,</span> <span class="s2">&quot;write_mem_mb&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">no_proj_mem</span> <span class="o">=</span> <span class="n">no_proj_results</span><span class="p">[[</span><span class="s2">&quot;read_mem_mb&quot;</span><span class="p">,</span> <span class="s2">&quot;write_mem_mb&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">mem_savings</span> <span class="o">=</span> <span class="p">(</span><span class="n">no_proj_mem</span> <span class="o">-</span> <span class="n">proj_mem</span><span class="p">)</span> <span class="o">/</span> <span class="n">no_proj_mem</span> <span class="o">*</span> <span class="mi">100</span>
+
+            <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;- **Column projection savings**: </span><span class="si">{</span><span class="n">mem_savings</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">% memory reduction&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">report_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">report_lines</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="update_weekly_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.update_weekly_report">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">update_weekly_report</span><span class="p">(</span>
+    <span class="n">benchmark_results</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">weekly_report_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;weekly_report.md&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update weekly report with I/O benchmark results</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        benchmark_results: Results from I/O benchmarking</span>
+<span class="sd">        weekly_report_path: Path to weekly report file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Generate benchmark section</span>
+    <span class="n">benchmark_section</span> <span class="o">=</span> <span class="n">generate_weekly_report_section</span><span class="p">(</span><span class="n">benchmark_results</span><span class="p">)</span>
+
+    <span class="c1"># Read existing weekly report</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">weekly_report_path</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">weekly_report_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;# Weekly Feature Evaluation Report</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+
+    <span class="c1"># Remove existing I/O benchmark section if present</span>
+    <span class="n">io_section_start</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;## I/O Performance Benchmark&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">io_section_start</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Find the next section or end of file</span>
+        <span class="n">next_section</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">## &quot;</span><span class="p">,</span> <span class="n">io_section_start</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">next_section</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="p">[:</span><span class="n">io_section_start</span><span class="p">]</span> <span class="o">+</span> <span class="n">content</span><span class="p">[</span><span class="n">next_section</span><span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">content</span><span class="p">[:</span><span class="n">io_section_start</span><span class="p">]</span>
+
+    <span class="c1"># Add new benchmark section before &quot;Notes&quot; section or at the end</span>
+    <span class="k">if</span> <span class="s2">&quot;## Notes&quot;</span> <span class="ow">in</span> <span class="n">content</span><span class="p">:</span>
+        <span class="n">insert_pos</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;## Notes&quot;</span><span class="p">)</span>
+        <span class="n">updated_content</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">content</span><span class="p">[:</span><span class="n">insert_pos</span><span class="p">]</span> <span class="o">+</span> <span class="n">benchmark_section</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">content</span><span class="p">[</span><span class="n">insert_pos</span><span class="p">:]</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">updated_content</span> <span class="o">=</span> <span class="n">content</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">benchmark_section</span>
+
+    <span class="c1"># Write updated report</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">weekly_report_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">updated_content</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Weekly report updated with I/O benchmark results: </span><span class="si">{</span><span class="n">weekly_report_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.bench_io.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;I/O Benchmarking Tool&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--rows&quot;</span><span class="p">,</span> <span class="s2">&quot;-r&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of test rows&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;reports&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--update-weekly&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Update weekly report with results&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Starting I/O benchmark...&quot;</span><span class="p">)</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="n">run_benchmark</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="c1"># Print top 3</span>
+    <span class="n">top3</span> <span class="o">=</span> <span class="n">results</span><span class="o">.</span><span class="n">nlargest</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;read_throughput_mbps&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Top 3 configurations by read throughput:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">top3</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">columns_desc</span> <span class="o">=</span> <span class="s2">&quot;All&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;use_columns&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;Essential&quot;</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;compression&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;row_group_size&#39;</span><span class="p">]</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">1000</span><span class="si">}</span><span class="s2">K/</span><span class="si">{</span><span class="n">columns_desc</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;read_throughput_mbps&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> MB/s read&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Update weekly report if requested</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">update_weekly</span><span class="p">:</span>
+        <span class="n">update_weekly_report</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Benchmark section added to weekly report&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,577 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.live.data package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.trading.live_trader package" href="ztb.trading.live_trader.html" />
+    <link rel="prev" title="ztb.trading.live.core package" href="ztb.trading.live.core.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.trading.html">ztb.trading package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.trading.live.html">ztb.trading.live package</a></li>
+      <li class="breadcrumb-item active">ztb.trading.live.data package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.trading.live.data.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-trading-live-data-package">
+<h1>ztb.trading.live.data package<a class="headerlink" href="#ztb-trading-live-data-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.trading.live.data.price_data_manager">
+<span id="ztb-trading-live-data-price-data-manager-module"></span><h2>ztb.trading.live.data.price_data_manager module<a class="headerlink" href="#module-ztb.trading.live.data.price_data_manager" title="Link to this heading"></a></h2>
+<p>Price data management for live trading bot.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataProvider">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.price_data_manager.</span></span><span class="sig-name descname"><span class="pre">PriceDataProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataProvider" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a></p>
+<p>Protocol for price data providers.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataProvider.get_current_price">
+<span class="sig-name descname"><span class="pre">get_current_price</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider.get_current_price"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataProvider.get_current_price" title="Link to this definition"></a></dt>
+<dd><p>Get current price.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataProvider.get_historical_prices">
+<span class="sig-name descname"><span class="pre">get_historical_prices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider.get_historical_prices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataProvider.get_historical_prices" title="Link to this definition"></a></dt>
+<dd><p>Get historical prices.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.price_data_manager.</span></span><span class="sig-name descname"><span class="pre">PriceDataManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_provider</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live.data.price_data_manager.PriceDataProvider" title="ztb.trading.live.data.price_data_manager.PriceDataProvider"><span class="pre">PriceDataProvider</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manages price data and feature calculation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.update_price_history">
+<span class="sig-name descname"><span class="pre">update_price_history</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.update_price_history"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.update_price_history" title="Link to this definition"></a></dt>
+<dd><p>Update cached price history for technical indicators.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.get_current_price">
+<span class="sig-name descname"><span class="pre">get_current_price</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.get_current_price"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.get_current_price" title="Link to this definition"></a></dt>
+<dd><p>Get current price.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_rsi">
+<span class="sig-name descname"><span class="pre">calculate_rsi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.calculate_rsi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_rsi" title="Link to this definition"></a></dt>
+<dd><p>Calculate RSI (Relative Strength Index).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_sma">
+<span class="sig-name descname"><span class="pre">calculate_sma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.calculate_sma"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.calculate_sma" title="Link to this definition"></a></dt>
+<dd><p>Calculate Simple Moving Average.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.compute_live_features">
+<span class="sig-name descname"><span class="pre">compute_live_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.compute_live_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.compute_live_features" title="Link to this definition"></a></dt>
+<dd><p>Compute live technical indicators.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.price_data_manager.PriceDataManager.get_market_features">
+<span class="sig-name descname"><span class="pre">get_market_features</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.floating" title="(in NumPy v2.3)"><span class="pre">floating</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.get_market_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.price_data_manager.PriceDataManager.get_market_features" title="Link to this definition"></a></dt>
+<dd><p>Get current market features for model prediction.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live.data.stream_to_bars">
+<span id="ztb-trading-live-data-stream-to-bars-module"></span><h2>ztb.trading.live.data.stream_to_bars module<a class="headerlink" href="#module-ztb.trading.live.data.stream_to_bars" title="Link to this heading"></a></h2>
+<p>Convert streaming trades to 1-minute bars.</p>
+<p>Reusable utility for aggregating trade data into OHLCV bars.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.stream_to_bars.</span></span><span class="sig-name descname"><span class="pre">StreamToBarsConverter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bar_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1min'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Convert streaming trade data to OHLCV bars.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.add_trade">
+<span class="sig-name descname"><span class="pre">add_trade</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.add_trade"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.add_trade" title="Link to this definition"></a></dt>
+<dd><p>Add a trade to the pending list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trade</strong> – Trade dict with keys: timestamp, price, quantity, side</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.add_trades">
+<span class="sig-name descname"><span class="pre">add_trades</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trades</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.add_trades"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.add_trades" title="Link to this definition"></a></dt>
+<dd><p>Add multiple trades.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.convert_to_bars">
+<span class="sig-name descname"><span class="pre">convert_to_bars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'BTC_JPY'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.convert_to_bars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.convert_to_bars" title="Link to this definition"></a></dt>
+<dd><p>Convert pending trades to OHLCV bars.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>symbol</strong> – Trading symbol for the bars</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with OHLCV columns and datetime index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.get_current_bar">
+<span class="sig-name descname"><span class="pre">get_current_bar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.14)"><span class="pre">datetime</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.get_current_bar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.get_current_bar" title="Link to this definition"></a></dt>
+<dd><p>Get the current incomplete bar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>current_time</strong> – Current time (defaults to now)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current bar dict or None if no trades in current period</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.clear_pending">
+<span class="sig-name descname"><span class="pre">clear_pending</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.clear_pending"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.clear_pending" title="Link to this definition"></a></dt>
+<dd><p>Clear all pending trades.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.get_pending_count">
+<span class="sig-name descname"><span class="pre">get_pending_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.get_pending_count"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.StreamToBarsConverter.get_pending_count" title="Link to this definition"></a></dt>
+<dd><p>Get count of pending trades.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.trading.live.data.stream_to_bars.trades_to_bars">
+<span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.stream_to_bars.</span></span><span class="sig-name descname"><span class="pre">trades_to_bars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trades</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bar_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1min'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'BTC_JPY'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#trades_to_bars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.stream_to_bars.trades_to_bars" title="Link to this definition"></a></dt>
+<dd><p>Convenience function to convert trades to bars in one call.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trades</strong> – List of trade dicts</p></li>
+<li><p><strong>bar_interval</strong> – Bar interval (e.g., ‘1min’)</p></li>
+<li><p><strong>symbol</strong> – Trading symbol</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OHLCV DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live.data.symbols">
+<span id="ztb-trading-live-data-symbols-module"></span><h2>ztb.trading.live.data.symbols module<a class="headerlink" href="#module-ztb.trading.live.data.symbols" title="Link to this heading"></a></h2>
+<p>Symbol normalization utilities for cross-exchange compatibility.</p>
+<p>Handles various symbol formats and normalizes them to standard base/quote pairs.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.Venue">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.symbols.</span></span><span class="sig-name descname"><span class="pre">Venue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#Venue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.symbols.Venue" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<p>Supported trading venues.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.Venue.ZAIF">
+<span class="sig-name descname"><span class="pre">ZAIF</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'zaif'</span></em><a class="headerlink" href="#ztb.trading.live.data.symbols.Venue.ZAIF" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.Venue.COINCHECK">
+<span class="sig-name descname"><span class="pre">COINCHECK</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'coincheck'</span></em><a class="headerlink" href="#ztb.trading.live.data.symbols.Venue.COINCHECK" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.SymbolNormalizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.symbols.</span></span><span class="sig-name descname"><span class="pre">SymbolNormalizer</span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.symbols.SymbolNormalizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Normalizes trading symbols across different exchanges.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.SymbolNormalizer.normalize">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live.data.symbols.Venue" title="ztb.trading.live.data.symbols.Venue"><span class="pre">Venue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.normalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.symbols.SymbolNormalizer.normalize" title="Link to this definition"></a></dt>
+<dd><p>Normalize a symbol for a specific venue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>venue</strong> – Trading venue (Venue enum, e.g., Venue.COINCHECK, Venue.ZAIF)</p></li>
+<li><p><strong>symbol</strong> – Raw symbol string</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (base_currency, quote_currency)</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If symbol cannot be normalized</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.SymbolNormalizer.get_standard_symbol">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_standard_symbol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quote</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.get_standard_symbol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.symbols.SymbolNormalizer.get_standard_symbol" title="Link to this definition"></a></dt>
+<dd><p>Get the standard symbol format for a venue.</p>
+<p>現状はBTC_JPY形式で返却しますが、将来的に変更される可能性があります。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>venue</strong> – Trading venue</p></li>
+<li><p><strong>base</strong> – Base currency</p></li>
+<li><p><strong>quote</strong> – Quote currency</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Standardized symbol string (currently BTC_JPY format)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.symbols.SymbolNormalizer.is_supported_symbol">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_supported_symbol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.is_supported_symbol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.symbols.SymbolNormalizer.is_supported_symbol" title="Link to this definition"></a></dt>
+<dd><p>Check if a symbol is supported for a venue.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.trading.live.data">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.trading.live.data" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.</span></span><span class="sig-name descname"><span class="pre">PriceDataManager</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">price_provider</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live.data.price_data_manager.PriceDataProvider" title="ztb.trading.live.data.price_data_manager.PriceDataProvider"><span class="pre">PriceDataProvider</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Manages price data and feature calculation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.calculate_rsi">
+<span class="sig-name descname"><span class="pre">calculate_rsi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.calculate_rsi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.calculate_rsi" title="Link to this definition"></a></dt>
+<dd><p>Calculate RSI (Relative Strength Index).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.calculate_sma">
+<span class="sig-name descname"><span class="pre">calculate_sma</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.calculate_sma"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.calculate_sma" title="Link to this definition"></a></dt>
+<dd><p>Calculate Simple Moving Average.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.compute_live_features">
+<span class="sig-name descname"><span class="pre">compute_live_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.compute_live_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.compute_live_features" title="Link to this definition"></a></dt>
+<dd><p>Compute live technical indicators.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.get_current_price">
+<span class="sig-name descname"><span class="pre">get_current_price</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.get_current_price"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.get_current_price" title="Link to this definition"></a></dt>
+<dd><p>Get current price.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.get_market_features">
+<span class="sig-name descname"><span class="pre">get_market_features</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.3)"><span class="pre">ndarray</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.dtype.html#numpy.dtype" title="(in NumPy v2.3)"><span class="pre">dtype</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.floating" title="(in NumPy v2.3)"><span class="pre">floating</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.get_market_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.get_market_features" title="Link to this definition"></a></dt>
+<dd><p>Get current market features for model prediction.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataManager.update_price_history">
+<span class="sig-name descname"><span class="pre">update_price_history</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataManager.update_price_history"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataManager.update_price_history" title="Link to this definition"></a></dt>
+<dd><p>Update cached price history for technical indicators.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataProvider">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.</span></span><span class="sig-name descname"><span class="pre">PriceDataProvider</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataProvider" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Protocol" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Protocol</span></code></a></p>
+<p>Protocol for price data providers.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataProvider.get_current_price">
+<span class="sig-name descname"><span class="pre">get_current_price</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider.get_current_price"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataProvider.get_current_price" title="Link to this definition"></a></dt>
+<dd><p>Get current price.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.PriceDataProvider.get_historical_prices">
+<span class="sig-name descname"><span class="pre">get_historical_prices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/price_data_manager.html#PriceDataProvider.get_historical_prices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.PriceDataProvider.get_historical_prices" title="Link to this definition"></a></dt>
+<dd><p>Get historical prices.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.</span></span><span class="sig-name descname"><span class="pre">StreamToBarsConverter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bar_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1min'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Convert streaming trade data to OHLCV bars.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.add_trade">
+<span class="sig-name descname"><span class="pre">add_trade</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.add_trade"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.add_trade" title="Link to this definition"></a></dt>
+<dd><p>Add a trade to the pending list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trade</strong> – Trade dict with keys: timestamp, price, quantity, side</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.add_trades">
+<span class="sig-name descname"><span class="pre">add_trades</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trades</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.add_trades"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.add_trades" title="Link to this definition"></a></dt>
+<dd><p>Add multiple trades.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.clear_pending">
+<span class="sig-name descname"><span class="pre">clear_pending</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.clear_pending"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.clear_pending" title="Link to this definition"></a></dt>
+<dd><p>Clear all pending trades.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.convert_to_bars">
+<span class="sig-name descname"><span class="pre">convert_to_bars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'BTC_JPY'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.convert_to_bars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.convert_to_bars" title="Link to this definition"></a></dt>
+<dd><p>Convert pending trades to OHLCV bars.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>symbol</strong> – Trading symbol for the bars</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with OHLCV columns and datetime index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.get_current_bar">
+<span class="sig-name descname"><span class="pre">get_current_bar</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_time</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime" title="(in Python v3.14)"><span class="pre">datetime</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.get_current_bar"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.get_current_bar" title="Link to this definition"></a></dt>
+<dd><p>Get the current incomplete bar.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>current_time</strong> – Current time (defaults to now)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Current bar dict or None if no trades in current period</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.StreamToBarsConverter.get_pending_count">
+<span class="sig-name descname"><span class="pre">get_pending_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#StreamToBarsConverter.get_pending_count"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.StreamToBarsConverter.get_pending_count" title="Link to this definition"></a></dt>
+<dd><p>Get count of pending trades.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.trading.live.data.trades_to_bars">
+<span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.</span></span><span class="sig-name descname"><span class="pre">trades_to_bars</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trades</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bar_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1min'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'BTC_JPY'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/stream_to_bars.html#trades_to_bars"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.trades_to_bars" title="Link to this definition"></a></dt>
+<dd><p>Convenience function to convert trades to bars in one call.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>trades</strong> – List of trade dicts</p></li>
+<li><p><strong>bar_interval</strong> – Bar interval (e.g., ‘1min’)</p></li>
+<li><p><strong>symbol</strong> – Trading symbol</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>OHLCV DataFrame</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.trading.live.data.SymbolNormalizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.trading.live.data.</span></span><span class="sig-name descname"><span class="pre">SymbolNormalizer</span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.SymbolNormalizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Normalizes trading symbols across different exchanges.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.SymbolNormalizer.get_standard_symbol">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_standard_symbol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">quote</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.get_standard_symbol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.SymbolNormalizer.get_standard_symbol" title="Link to this definition"></a></dt>
+<dd><p>Get the standard symbol format for a venue.</p>
+<p>現状はBTC_JPY形式で返却しますが、将来的に変更される可能性があります。</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>venue</strong> – Trading venue</p></li>
+<li><p><strong>base</strong> – Base currency</p></li>
+<li><p><strong>quote</strong> – Quote currency</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Standardized symbol string (currently BTC_JPY format)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.SymbolNormalizer.is_supported_symbol">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_supported_symbol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.is_supported_symbol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.SymbolNormalizer.is_supported_symbol" title="Link to this definition"></a></dt>
+<dd><p>Check if a symbol is supported for a venue.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.trading.live.data.SymbolNormalizer.normalize">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">venue</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.trading.live.data.symbols.Venue" title="ztb.trading.live.data.symbols.Venue"><span class="pre">Venue</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Tuple" title="(in Python v3.14)"><span class="pre">Tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/trading/live/data/symbols.html#SymbolNormalizer.normalize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.trading.live.data.SymbolNormalizer.normalize" title="Link to this definition"></a></dt>
+<dd><p>Normalize a symbol for a specific venue.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>venue</strong> – Trading venue (Venue enum, e.g., Venue.COINCHECK, Venue.ZAIF)</p></li>
+<li><p><strong>symbol</strong> – Raw symbol string</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tuple of (base_currency, quote_currency)</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If symbol cannot be normalized</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.trading.live.core.html" class="btn btn-neutral float-left" title="ztb.trading.live.core package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.trading.live_trader.html" class="btn btn-neutral float-right" title="ztb.trading.live_trader package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,470 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.trend.donchian_ext &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.trend.donchian_ext</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.trend.donchian_ext</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">donchian_ext.py</span>
+<span class="sd">Extended Donchian Channel analysis with breakout distance and channel width</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+
+
+<div class="viewcode-block" id="compute_donchian_width">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.compute_donchian_width">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Donchian_Width&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_donchian_width</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Donchian Channel Width&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_donchian_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_width&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;donchian_width&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_donchian_price_position">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.compute_donchian_price_position">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Donchian_Price_Position&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_donchian_price_position</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Donchian Channel Price Position (0-1)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_donchian_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_price_position&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;donchian_price_position&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_donchian_breakout_strength">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.compute_donchian_breakout_strength">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Donchian_Breakout_Strength&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_donchian_breakout_strength</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Donchian Channel Breakout Strength&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_donchian_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;donchian_breakout_strength&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_donchian_squeeze_ratio">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.compute_donchian_squeeze_ratio">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Donchian_Squeeze_Ratio&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_donchian_squeeze_ratio</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Donchian Channel Squeeze Ratio&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_donchian_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_squeeze_ratio&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;donchian_squeeze_ratio&quot;</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_donchian_extended">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.calculate_donchian_extended">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_donchian_extended</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">periods</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">include_basic</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate extended Donchian Channel features.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data: DataFrame with OHLCV data</span>
+<span class="sd">        periods: Lookback period for channel calculation</span>
+<span class="sd">        include_basic: Whether to include basic upper/lower lines</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with extended Donchian features.</span>
+<span class="sd">        NaN values are intentionally left as-is for initial periods and cases where calculation is not possible.</span>
+<span class="sd">        This preserves the indicator&#39;s meaning and avoids introducing bias from imputation.</span>
+<span class="sd">        If you need to fill NaN values, do so explicitly for specific columns as needed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">periods</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Basic Donchian Channel</span>
+    <span class="n">high_roll</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span><span class="p">)</span>
+    <span class="n">low_roll</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span><span class="p">)</span>
+
+    <span class="n">upper_channel</span> <span class="o">=</span> <span class="n">high_roll</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">lower_channel</span> <span class="o">=</span> <span class="n">low_roll</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">middle_channel</span> <span class="o">=</span> <span class="p">(</span><span class="n">upper_channel</span> <span class="o">+</span> <span class="n">lower_channel</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+
+    <span class="c1"># Extended features</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">include_basic</span><span class="p">:</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_upper&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">upper_channel</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_lower&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lower_channel</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_middle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">middle_channel</span>
+
+    <span class="c1"># Channel width analysis</span>
+    <span class="n">channel_width</span> <span class="o">=</span> <span class="n">upper_channel</span> <span class="o">-</span> <span class="n">lower_channel</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_width&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel_width</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_width_pct&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel_width</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Channel width percentile (relative to historical width)</span>
+    <span class="c1"># Reduce window size for performance, or compute percentile less frequently</span>
+    <span class="n">reduced_window</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">periods</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>  <span class="c1"># Use a smaller window, e.g., max(periods, 30)</span>
+    <span class="n">width_percentile</span> <span class="o">=</span> <span class="n">channel_width</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">reduced_window</span><span class="p">)</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">pct</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_width_percentile&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">width_percentile</span>
+
+    <span class="c1"># Price position within channel</span>
+    <span class="n">price_position</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">lower_channel</span><span class="p">)</span> <span class="o">/</span> <span class="n">channel_width</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_price_position&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_position</span>
+
+    <span class="c1"># Distance from price to channel boundaries</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_upper_distance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">upper_channel</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span>
+        <span class="s2">&quot;close&quot;</span>
+    <span class="p">]</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_lower_distance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">lower_channel</span><span class="p">)</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span>
+        <span class="s2">&quot;close&quot;</span>
+    <span class="p">]</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_middle_distance&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">middle_channel</span><span class="p">)</span> <span class="o">/</span> <span class="n">data</span><span class="p">[</span>
+        <span class="s2">&quot;close&quot;</span>
+    <span class="p">]</span>
+
+    <span class="c1"># Breakout signals</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_upper_breakout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_lower_breakout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lower_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">breakout_strength_upper</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">breakout_strength_lower</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">lower_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="n">lower_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lower_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_upper&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">breakout_strength_upper</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_lower&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">breakout_strength_lower</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">breakout_strength_upper</span> <span class="o">+</span> <span class="n">breakout_strength_lower</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Channel squeeze detection (narrow width compared to historical)</span>
+    <span class="n">width_ma</span> <span class="o">=</span> <span class="n">channel_width</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">squeeze_ratio</span> <span class="o">=</span> <span class="n">channel_width</span> <span class="o">/</span> <span class="n">width_ma</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_squeeze_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">squeeze_ratio</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_squeeze_signal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">squeeze_ratio</span> <span class="o">&lt;</span> <span class="mf">0.8</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Channel expansion detection</span>
+    <span class="n">width_change</span> <span class="o">=</span> <span class="n">channel_width</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_expansion_rate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">width_change</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_expansion_signal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">width_change</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Price momentum relative to channel</span>
+    <span class="n">price_momentum</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">channel_momentum</span> <span class="o">=</span> <span class="n">middle_channel</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_relative_momentum&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_momentum</span> <span class="o">-</span> <span class="n">channel_momentum</span>
+
+    <span class="c1"># Channel slope (trend direction)</span>
+    <span class="n">upper_slope</span> <span class="o">=</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">/</span> <span class="n">upper_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">lower_slope</span> <span class="o">=</span> <span class="n">lower_channel</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">/</span> <span class="n">lower_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="n">middle_slope</span> <span class="o">=</span> <span class="n">middle_channel</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">periods</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="o">/</span> <span class="n">middle_channel</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_upper_slope&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">upper_slope</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_lower_slope&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lower_slope</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_middle_slope&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">middle_slope</span>
+
+    <span class="c1"># Channel trend consistency</span>
+    <span class="n">slope_consistency</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">upper_slope</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">lower_slope</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_trend_consistency&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">slope_consistency</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Volatility-adjusted features</span>
+    <span class="n">volatility</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_width_vol_adj&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel_width</span> <span class="o">/</span> <span class="n">volatility</span>
+    <span class="n">volatility</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">volatility_safe</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1e-6</span><span class="p">)</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_width_vol_adj&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">channel_width</span> <span class="o">/</span> <span class="n">volatility_safe</span>
+    <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_vol_adj&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">volatility_safe</span>
+    <span class="p">)</span>
+    <span class="c1"># Short-term position within long-term channel</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">periods</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">long_upper</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">long_lower</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">periods</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+        <span class="n">long_position</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">long_lower</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">long_upper</span> <span class="o">-</span> <span class="n">long_lower</span><span class="p">)</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_long_position&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">long_position</span>
+
+        <span class="c1"># Divergence between short and long term positions</span>
+        <span class="n">features</span><span class="p">[</span><span class="s2">&quot;donchian_position_divergence&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_position</span> <span class="o">-</span> <span class="n">long_position</span>
+
+    <span class="c1"># Create result DataFrame</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Leave NaN values as-is to preserve indicator meaning (especially for initial periods)</span>
+    <span class="c1"># If you want to fill only specific columns, do so explicitly, e.g.:</span>
+    <span class="c1"># result_df[&#39;donchian_price_position&#39;] = result_df[&#39;donchian_price_position&#39;].ffill().bfill()</span>
+
+    <span class="k">return</span> <span class="n">result_df</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_donchian_signals">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.donchian_ext.calculate_donchian_signals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_donchian_signals</span><span class="p">(</span>
+    <span class="n">extended_features</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">confidence_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate trading signals from extended Donchian features</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        extended_features: Output from calculate_donchian_extended</span>
+<span class="sd">        confidence_threshold: Minimum confidence for signal generation</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with trading signals</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Basic breakout signals</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_bullish_breakout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_upper_breakout&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_upper&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.01</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_bearish_breakout&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_lower_breakout&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_lower&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.01</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Squeeze and expansion combination</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_squeeze_expansion&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_squeeze_signal&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_expansion_signal&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Trend-following signals</span>
+    <span class="n">trend_up</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_middle_slope&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_trend_consistency&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_price_position&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">trend_down</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_middle_slope&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_trend_consistency&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_price_position&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_trend_bullish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trend_up</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_trend_bearish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trend_down</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># High-confidence composite signal</span>
+    <span class="n">composite_bullish</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_upper_breakout&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_upper&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.005</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_width_percentile&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.3</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_relative_momentum&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">composite_bearish</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_lower_breakout&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_breakout_strength_lower&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.005</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_width_percentile&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.3</span><span class="p">)</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;donchian_relative_momentum&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_composite_bullish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">composite_bullish</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">signals</span><span class="p">[</span><span class="s2">&quot;donchian_composite_bearish&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">composite_bearish</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">signals</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">extended_features</span><span class="o">.</span><span class="n">index</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Test with synthetic data</span>
+
+    <span class="c1"># Generate synthetic OHLCV data</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Create trending price series with volatility</span>
+    <span class="n">base_price</span> <span class="o">=</span> <span class="mi">100</span>
+    <span class="n">trend</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mi">500</span><span class="p">))</span>
+    <span class="n">noise</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+    <span class="n">close_prices</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">trend</span> <span class="o">+</span> <span class="n">noise</span><span class="p">)</span>
+
+    <span class="c1"># Generate OHLC from close prices</span>
+    <span class="n">high_mult</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">,</span> <span class="mi">500</span><span class="p">))</span>
+    <span class="n">low_mult</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.005</span><span class="p">,</span> <span class="mi">500</span><span class="p">))</span>
+
+    <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;open&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.995</span><span class="p">,</span> <span class="mf">1.005</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+            <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">high_mult</span><span class="p">,</span>
+            <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">close_prices</span> <span class="o">*</span> <span class="n">low_mult</span><span class="p">,</span>
+            <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">close_prices</span><span class="p">,</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">500</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing Donchian Extended Features...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data shape: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Date range: </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Calculate extended features</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_donchian_extended</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Extended features shape: </span><span class="si">{</span><span class="n">extended_features</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature columns (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">):&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Calculate signals</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="n">calculate_donchian_signals</span><span class="p">(</span><span class="n">extended_features</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Signals shape: </span><span class="si">{</span><span class="n">signals</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Signal columns:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">signals</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">signal_count</span> <span class="o">=</span> <span class="n">signals</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">signal_count</span><span class="si">}</span><span class="s2"> signals&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Basic statistics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Basic feature statistics:&quot;</span><span class="p">)</span>
+    <span class="n">key_features</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;donchian_width&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;donchian_price_position&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;donchian_breakout_strength&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">key_features</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">extended_features</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">series</span> <span class="o">=</span> <span class="n">extended_features</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Mean: </span><span class="si">{</span><span class="n">series</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Std:  </span><span class="si">{</span><span class="n">series</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;    Range: [</span><span class="si">{</span><span class="n">series</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">series</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Donchian extended features test completed successfully!&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

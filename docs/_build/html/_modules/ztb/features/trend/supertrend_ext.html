@@ -1,0 +1,358 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.trend.supertrend_ext &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.trend.supertrend_ext</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.trend.supertrend_ext</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">supertrend_ext.py</span>
+<span class="sd">Extended Supertrend features with trend strength, reversal signals, and multi-timeframe analysis</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+
+
+<div class="viewcode-block" id="compute_supertrend_strength">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.compute_supertrend_strength">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Supertrend_Strength&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_supertrend_strength</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supertrend Trend Strength (normalized distance from bands)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_supertrend_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;supertrend_strength&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_supertrend_reversal_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.compute_supertrend_reversal_signal">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Supertrend_Reversal_Signal&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_supertrend_reversal_signal</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supertrend Reversal Signal (1=buy, -1=sell, 0=no signal)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_supertrend_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;supertrend_reversal_signal&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_supertrend_trend_duration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.compute_supertrend_trend_duration">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Supertrend_Trend_Duration&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_supertrend_trend_duration</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supertrend Trend Duration (bars since last reversal)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_supertrend_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;supertrend_trend_duration&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_supertrend_volatility_filter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.compute_supertrend_volatility_filter">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Supertrend_Volatility_Filter&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_supertrend_volatility_filter</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supertrend Volatility Filter (ATR-normalized trend strength)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_supertrend_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;supertrend_volatility_filter&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_supertrend_extended">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.calculate_supertrend_extended">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_supertrend_extended</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate extended Supertrend features including:</span>
+<span class="sd">    - Trend strength (normalized distance from bands)</span>
+<span class="sd">    - Reversal signals</span>
+<span class="sd">    - Trend duration</span>
+<span class="sd">    - Volatility-adjusted signals</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: DataFrame with OHLC data and ATR column</span>
+<span class="sd">        period: ATR calculation period (default: 10)</span>
+<span class="sd">        multiplier: ATR multiplier for band calculation (default: 3.0)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with extended Supertrend features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">.supertrend</span><span class="w"> </span><span class="kn">import</span> <span class="n">Supertrend</span>
+
+    <span class="c1"># Ensure ATR is available</span>
+    <span class="n">atr_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;atr_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">if</span> <span class="n">atr_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.volatility.atr</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_atr_simplified</span>
+
+        <span class="n">atr_series</span> <span class="o">=</span> <span class="n">compute_atr_simplified</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">period</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">df</span><span class="p">[</span><span class="n">atr_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">atr_series</span>
+
+    <span class="c1"># Get basic Supertrend calculation</span>
+    <span class="n">st_feature</span> <span class="o">=</span> <span class="n">Supertrend</span><span class="p">()</span>
+    <span class="n">st_result</span> <span class="o">=</span> <span class="n">st_feature</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="n">period</span><span class="p">,</span> <span class="n">multiplier</span><span class="o">=</span><span class="n">multiplier</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st_result</span><span class="p">[</span><span class="s2">&quot;supertrend&quot;</span><span class="p">]</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_direction&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">st_result</span><span class="p">[</span><span class="s2">&quot;supertrend_direction&quot;</span><span class="p">]</span>
+
+    <span class="c1"># Calculate extended features using Numba-optimized function</span>
+    <span class="n">high</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">])</span>
+    <span class="n">low</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">])</span>
+    <span class="n">close</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+    <span class="n">atr_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;atr_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">atr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">atr_col</span><span class="p">])</span>
+
+    <span class="n">strength</span><span class="p">,</span> <span class="n">reversal_signal</span><span class="p">,</span> <span class="n">trend_duration</span> <span class="o">=</span> <span class="n">_compute_supertrend_extended</span><span class="p">(</span>
+        <span class="n">high</span><span class="p">,</span> <span class="n">low</span><span class="p">,</span> <span class="n">close</span><span class="p">,</span> <span class="n">atr</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_direction&quot;</span><span class="p">]),</span> <span class="n">multiplier</span>
+    <span class="p">)</span>
+
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_strength&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">strength</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_reversal_signal&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">reversal_signal</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_trend_duration&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">trend_duration</span>
+
+    <span class="c1"># Volatility filter: strength adjusted by recent ATR changes</span>
+    <span class="n">atr_ma</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">atr</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">atr_ratio</span> <span class="o">=</span> <span class="n">atr</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">atr_ma</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;supertrend_volatility_filter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">strength</span> <span class="o">*</span> <span class="n">atr_ratio</span>
+
+    <span class="c1"># Handle NaN values</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_compute_supertrend_extended</span><span class="p">(</span>
+    <span class="n">high</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+    <span class="n">low</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+    <span class="n">close</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+    <span class="n">atr</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+    <span class="n">direction</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+    <span class="n">multiplier</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate extended Supertrend features using pure numpy (no numba).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">close</span><span class="p">)</span>
+    <span class="n">strength</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">reversal_signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+    <span class="n">trend_duration</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="n">current_trend_start</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Calculate current bands (avoid recalculating in each iteration)</span>
+        <span class="n">hl2</span> <span class="o">=</span> <span class="p">(</span><span class="n">high</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">low</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">upperband</span> <span class="o">=</span> <span class="n">hl2</span> <span class="o">+</span> <span class="p">(</span><span class="n">multiplier</span> <span class="o">*</span> <span class="n">atr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">lowerband</span> <span class="o">=</span> <span class="n">hl2</span> <span class="o">-</span> <span class="p">(</span><span class="n">multiplier</span> <span class="o">*</span> <span class="n">atr</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+        <span class="c1"># Trend strength: normalized distance from current band</span>
+        <span class="k">if</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># Uptrend</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">close</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">lowerband</span><span class="p">)</span>
+            <span class="n">strength</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="p">(</span><span class="n">atr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>  <span class="c1"># Normalize by ATR</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Downtrend</span>
+            <span class="n">distance</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">close</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">upperband</span><span class="p">)</span>
+            <span class="n">strength</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">distance</span> <span class="o">/</span> <span class="p">(</span><span class="n">atr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">)</span>
+
+        <span class="c1"># Trend duration</span>
+        <span class="k">if</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">!=</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]:</span>
+            <span class="n">current_trend_start</span> <span class="o">=</span> <span class="n">i</span>
+        <span class="n">trend_duration</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="n">current_trend_start</span>
+
+        <span class="c1"># Reversal signals (look for 3-bar confirmation)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">prev2_direction</span> <span class="o">=</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span>
+            <span class="n">prev_direction</span> <span class="o">=</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">current_direction</span> <span class="o">=</span> <span class="n">direction</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="c1"># Bullish reversal: downtrend -&gt; uptrend</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">prev2_direction</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="ow">and</span> <span class="n">prev_direction</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+                <span class="ow">and</span> <span class="n">current_direction</span> <span class="o">==</span> <span class="mi">1</span>
+            <span class="p">):</span>
+                <span class="n">reversal_signal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="c1"># Bearish reversal: uptrend -&gt; downtrend</span>
+            <span class="k">elif</span> <span class="p">(</span>
+                <span class="n">prev2_direction</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">prev_direction</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">current_direction</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="p">):</span>
+                <span class="n">reversal_signal</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">strength</span><span class="p">,</span> <span class="n">reversal_signal</span><span class="p">,</span> <span class="n">trend_duration</span>
+
+
+<div class="viewcode-block" id="supertrend_feature_summary">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.supertrend_ext.supertrend_feature_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">supertrend_feature_summary</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a dictionary summarizing each extended Supertrend feature.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;supertrend&quot;</span><span class="p">:</span> <span class="s2">&quot;Basic Supertrend value&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;supertrend_direction&quot;</span><span class="p">:</span> <span class="s2">&quot;Trend direction (1=uptrend, -1=downtrend)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;supertrend_strength&quot;</span><span class="p">:</span> <span class="s2">&quot;Normalized distance from trend bands (higher = stronger trend)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;supertrend_reversal_signal&quot;</span><span class="p">:</span> <span class="s2">&quot;Reversal signals (1=buy, -1=sell, 0=no signal)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;supertrend_trend_duration&quot;</span><span class="p">:</span> <span class="s2">&quot;Bars since last trend reversal&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;supertrend_volatility_filter&quot;</span><span class="p">:</span> <span class="s2">&quot;Volatility-adjusted trend strength&quot;</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Simple test</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="c1"># Generate test OHLC data</span>
+    <span class="n">test_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">75</span><span class="p">,</span> <span class="mi">175</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Ensure high &gt;= close &gt;= low</span>
+    <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">],</span> <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+    <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">],</span> <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+
+    <span class="c1"># Add ATR column (required for Supertrend)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.volatility.atr</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_atr</span>
+
+    <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;atr_10&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">compute_atr</span><span class="p">(</span><span class="n">test_data</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+    <span class="c1"># Calculate extended features</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">calculate_supertrend_extended</span><span class="p">(</span><span class="n">test_data</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Supertrend Extended Features:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Feature columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NaN count per column:</span><span class="se">\n</span><span class="si">{</span><span class="n">features</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Summary</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">supertrend_feature_summary</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Feature summary:</span><span class="se">\n</span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,1135 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.dynamic_hyperparameter_adapter &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.dynamic_hyperparameter_adapter</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.dynamic_hyperparameter_adapter</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Dynamic Hyperparameter Adaptation System</span>
+<span class="sd">動的ハイパーパラメータ適応システム</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">minimize_scalar</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">mean_squared_error</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">cross_val_score</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.monitoring.evaluation_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousEvaluationManager</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="HyperparameterType">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.HyperparameterType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HyperparameterType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ハイパーパラメータタイプ&quot;&quot;&quot;</span>
+    <span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="s2">&quot;learning_rate&quot;</span>  <span class="c1"># 学習率</span>
+    <span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="s2">&quot;batch_size&quot;</span>  <span class="c1"># バッチサイズ</span>
+    <span class="n">REGULARIZATION_STRENGTH</span> <span class="o">=</span> <span class="s2">&quot;regularization_strength&quot;</span>  <span class="c1"># 正則化強度</span>
+    <span class="n">DROPOUT_RATE</span> <span class="o">=</span> <span class="s2">&quot;dropout_rate&quot;</span>  <span class="c1"># ドロップアウト率</span>
+    <span class="n">GRADIENT_CLIP_VALUE</span> <span class="o">=</span> <span class="s2">&quot;gradient_clip_value&quot;</span>  <span class="c1"># 勾配クリッピング値</span>
+    <span class="n">WEIGHT_DECAY</span> <span class="o">=</span> <span class="s2">&quot;weight_decay&quot;</span>  <span class="c1"># 重み減衰</span></div>
+
+
+
+<div class="viewcode-block" id="AdaptationStrategy">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.AdaptationStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdaptationStrategy</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;適応戦略&quot;&quot;&quot;</span>
+    <span class="n">PERFORMANCE_BASED</span> <span class="o">=</span> <span class="s2">&quot;performance_based&quot;</span>  <span class="c1"># パフォーマンスベース</span>
+    <span class="n">VOLATILITY_BASED</span> <span class="o">=</span> <span class="s2">&quot;volatility_based&quot;</span>  <span class="c1"># ボラティリティベース</span>
+    <span class="n">GRADIENT_BASED</span> <span class="o">=</span> <span class="s2">&quot;gradient_based&quot;</span>  <span class="c1"># 勾配ベース</span>
+    <span class="n">CURRICULUM_BASED</span> <span class="o">=</span> <span class="s2">&quot;curriculum_based&quot;</span>  <span class="c1"># カリキュラムベース</span>
+    <span class="n">BAYESIAN_OPTIMIZATION</span> <span class="o">=</span> <span class="s2">&quot;bayesian_optimization&quot;</span>  <span class="c1"># ベイズ最適化</span></div>
+
+
+
+<div class="viewcode-block" id="HyperparameterConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.HyperparameterConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HyperparameterConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ハイパーパラメータ設定&quot;&quot;&quot;</span>
+
+    <span class="c1"># 適応対象パラメータ</span>
+    <span class="n">enabled_parameters</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span>
+    <span class="p">])</span>
+
+    <span class="c1"># 適応戦略</span>
+    <span class="n">enabled_strategies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AdaptationStrategy</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span>
+        <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+        <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span>
+    <span class="p">])</span>
+
+    <span class="c1"># パラメータ範囲設定</span>
+    <span class="n">parameter_ranges</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">),</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">:</span> <span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">512</span><span class="p">),</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">),</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">DROPOUT_RATE</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">GRADIENT_CLIP_VALUE</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">),</span>
+        <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">WEIGHT_DECAY</span><span class="p">:</span> <span class="p">(</span><span class="mf">1e-6</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">)</span>
+    <span class="p">})</span>
+
+    <span class="c1"># 適応間隔設定</span>
+    <span class="n">adaptation_interval_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>  <span class="c1"># 適応間隔</span>
+    <span class="n">min_adaptation_interval_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># 最小適応間隔</span>
+
+    <span class="c1"># パフォーマンス評価設定</span>
+    <span class="n">performance_window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># パフォーマンス評価ウィンドウ</span>
+    <span class="n">performance_improvement_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># パフォーマンス改善閾値</span>
+
+    <span class="c1"># ボラティリティ適応設定</span>
+    <span class="n">volatility_window_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># ボラティリティ評価ウィンドウ</span>
+    <span class="n">high_volatility_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.03</span>  <span class="c1"># 高ボラティリティ閾値</span>
+    <span class="n">low_volatility_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span>  <span class="c1"># 低ボラティリティ閾値</span>
+
+    <span class="c1"># 安全マージン設定</span>
+    <span class="n">safety_margin</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># 安全マージン（パラメータ変更の10%以内に制限）</span>
+    <span class="n">max_parameter_change_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>  <span class="c1"># 最大パラメータ変更率</span>
+
+    <span class="c1"># 履歴保持設定</span>
+    <span class="n">max_history_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># 最大履歴サイズ</span>
+    <span class="n">history_retention_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span>  <span class="c1"># 履歴保持期間</span></div>
+
+
+
+<div class="viewcode-block" id="HyperparameterAdaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.HyperparameterAdaptation">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HyperparameterAdaptation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ハイパーパラメータ適応結果&quot;&quot;&quot;</span>
+
+    <span class="n">parameter_type</span><span class="p">:</span> <span class="n">HyperparameterType</span>
+    <span class="n">old_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">new_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">adaptation_strategy</span><span class="p">:</span> <span class="n">AdaptationStrategy</span>
+    <span class="n">performance_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">volatility_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="AdaptationResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.AdaptationResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdaptationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;適応結果&quot;&quot;&quot;</span>
+
+    <span class="n">adaptations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]</span>
+    <span class="n">overall_performance_improvement</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">adaptation_confidence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicHyperparameterAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;動的ハイパーパラメータ適応マネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">online_learning_pipeline</span><span class="p">:</span> <span class="n">OnlineLearningPipeline</span><span class="p">,</span>
+                 <span class="n">evaluation_manager</span><span class="p">:</span> <span class="n">ContinuousEvaluationManager</span><span class="p">,</span>
+                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">HyperparameterConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span> <span class="o">=</span> <span class="n">online_learning_pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_manager</span> <span class="o">=</span> <span class="n">evaluation_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">HyperparameterConfig</span><span class="p">()</span>
+
+        <span class="c1"># 現在のハイパーパラメータ値</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_current_parameters</span><span class="p">()</span>
+
+        <span class="c1"># パフォーマンス履歴</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_history</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">param</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">HyperparameterType</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 適応履歴</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AdaptationResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 市場状態追跡</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_volatility_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 状態管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># コールバック</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">AdaptationResult</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># スレッド管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_adapter</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;DynamicHyperparameterAdapter initialized&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_current_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在のハイパーパラメータを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># オンライン学習パイプラインから現在の値を設定</span>
+            <span class="c1"># （実際の実装では適切なメソッドを呼び出す）</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">DROPOUT_RATE</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">GRADIENT_CLIP_VALUE</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">WEIGHT_DECAY</span><span class="p">:</span> <span class="mf">1e-4</span>
+            <span class="p">}</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized current parameters: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize current parameters: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_adapter</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アダプターを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 初期パフォーマンスを記録</span>
+            <span class="n">initial_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_current_performance</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">initial_performance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="n">initial_performance</span><span class="p">))</span>
+
+            <span class="c1"># 初期パラメータを履歴に記録</span>
+            <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">param_type</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">parameter_history</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">current_time</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize adapter: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.start_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.start_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を開始&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Adaptation already active&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_adaptation_worker</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Dynamic hyperparameter adaptation started&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start adaptation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.stop_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.stop_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を停止&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Dynamic hyperparameter adaptation stopped&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.adapt_hyperparameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.adapt_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdaptationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ハイパーパラメータを適応&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="c1"># 市場状態を評価</span>
+            <span class="n">market_conditions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_market_conditions</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+            <span class="c1"># 各戦略で適応を計算</span>
+            <span class="n">all_adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_strategies</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_adapt_with_strategy</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">market_conditions</span><span class="p">)</span>
+                    <span class="n">all_adaptations</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">adaptations</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in </span><span class="si">{</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> adaptation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 適応を統合</span>
+            <span class="n">final_adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_adaptations</span><span class="p">(</span><span class="n">all_adaptations</span><span class="p">)</span>
+
+            <span class="c1"># パラメータを適用</span>
+            <span class="n">applied_adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_adaptations</span><span class="p">(</span><span class="n">final_adaptations</span><span class="p">)</span>
+
+            <span class="c1"># パフォーマンスを評価</span>
+            <span class="n">performance_improvement</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_adaptation_performance</span><span class="p">(</span><span class="n">applied_adaptations</span><span class="p">)</span>
+
+            <span class="c1"># 結果を作成</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">AdaptationResult</span><span class="p">(</span>
+                <span class="n">adaptations</span><span class="o">=</span><span class="n">applied_adaptations</span><span class="p">,</span>
+                <span class="n">overall_performance_improvement</span><span class="o">=</span><span class="n">performance_improvement</span><span class="p">,</span>
+                <span class="n">adaptation_confidence</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_adaptation_confidence</span><span class="p">(</span><span class="n">applied_adaptations</span><span class="p">),</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">current_time</span><span class="p">,</span>
+                <span class="n">market_conditions</span><span class="o">=</span><span class="n">market_conditions</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 履歴に追加</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">[</span><span class="o">-</span><span class="mi">100</span><span class="p">:]</span>
+
+            <span class="c1"># コールバックを実行</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_adaptation_callbacks</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adapted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">applied_adaptations</span><span class="p">)</span><span class="si">}</span><span class="s2"> hyperparameters with </span><span class="si">{</span><span class="n">performance_improvement</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> performance improvement&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to adapt hyperparameters: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">AdaptationResult</span><span class="p">(</span>
+                <span class="n">adaptations</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">overall_performance_improvement</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">adaptation_confidence</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Adaptation failed due to error&quot;</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_market_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件を評価&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">conditions</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">if</span> <span class="n">market_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="c1"># 価格データからボラティリティを計算</span>
+                <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">market_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">prices</span> <span class="o">=</span> <span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                    <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">volatility</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.02</span>  <span class="c1"># デフォルト値</span>
+
+                <span class="c1"># トレンド強度を計算</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+                    <span class="n">sma_short</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="n">sma_long</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="n">trend_strength</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sma_short</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;trend_strength&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">trend_strength</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;trend_strength&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+                <span class="c1"># 市場状態を分類</span>
+                <span class="n">volatility</span> <span class="o">=</span> <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">volatility</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">high_volatility_threshold</span><span class="p">:</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;market_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># 高ボラティリティ</span>
+                <span class="k">elif</span> <span class="n">volatility</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">low_volatility_threshold</span><span class="p">:</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;market_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># 低ボラティリティ</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;market_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># 中ボラティリティ</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># デフォルト値</span>
+                <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.02</span>
+                <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;trend_strength&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;market_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="c1"># 履歴に追加</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">market_volatility_history</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">]))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_volatility_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">market_volatility_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_volatility_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1000</span><span class="p">:]</span>
+
+            <span class="k">return</span> <span class="n">conditions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to evaluate market conditions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span> <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adapt_with_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                           <span class="n">strategy</span><span class="p">:</span> <span class="n">AdaptationStrategy</span><span class="p">,</span>
+                           <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;指定された戦略で適応&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_performance_based_adaptation</span><span class="p">(</span><span class="n">market_conditions</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_volatility_based_adaptation</span><span class="p">(</span><span class="n">market_conditions</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">GRADIENT_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gradient_based_adaptation</span><span class="p">(</span><span class="n">market_conditions</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">strategy</span> <span class="o">==</span> <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">CURRICULUM_BASED</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_curriculum_based_adaptation</span><span class="p">(</span><span class="n">market_conditions</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in </span><span class="si">{</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> adaptation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_performance_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスベース適応&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 最近のパフォーマンスを取得</span>
+            <span class="n">recent_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_recent_performance</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance_window_size</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_performance</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">adaptations</span>
+
+            <span class="c1"># パフォーマンストレンドを分析</span>
+            <span class="n">performance_trend</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_performance_trend</span><span class="p">(</span><span class="n">recent_performance</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_parameters</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># パフォーマンスベースの最適化</span>
+                    <span class="n">optimal_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimize_parameter_for_performance</span><span class="p">(</span>
+                        <span class="n">param_type</span><span class="p">,</span> <span class="n">performance_trend</span><span class="p">,</span> <span class="n">market_conditions</span>
+                    <span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">optimal_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">optimal_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">current_value</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance_improvement_threshold</span><span class="p">:</span>
+                            <span class="n">adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                                <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                                <span class="n">old_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">,</span>
+                                <span class="n">new_value</span><span class="o">=</span><span class="n">optimal_value</span><span class="p">,</span>
+                                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+                                <span class="n">performance_score</span><span class="o">=</span><span class="n">performance_trend</span><span class="p">,</span>
+                                <span class="n">volatility_score</span><span class="o">=</span><span class="n">market_conditions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                                <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Performance-based optimization: trend=</span><span class="si">{</span><span class="n">performance_trend</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="n">adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error adapting </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">adaptations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performance-based adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_volatility_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ボラティリティベース適応&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">volatility</span> <span class="o">=</span> <span class="n">market_conditions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">)</span>
+            <span class="n">market_state</span> <span class="o">=</span> <span class="n">market_conditions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;market_state&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_parameters</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># ボラティリティに応じたパラメータ調整</span>
+                    <span class="n">new_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_adjust_parameter_for_volatility</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span> <span class="n">volatility</span><span class="p">,</span> <span class="n">market_state</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">new_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                        <span class="n">change_rate</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">current_value</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="n">change_rate</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance_improvement_threshold</span><span class="p">:</span>
+                            <span class="n">adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                                <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                                <span class="n">old_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">,</span>
+                                <span class="n">new_value</span><span class="o">=</span><span class="n">new_value</span><span class="p">,</span>
+                                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">,</span>
+                                <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>  <span class="c1"># パフォーマンスベースではない</span>
+                                <span class="n">volatility_score</span><span class="o">=</span><span class="n">volatility</span><span class="p">,</span>
+                                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                                <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Volatility-based adaptation: volatility=</span><span class="si">{</span><span class="n">volatility</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="n">adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error adapting </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> for volatility: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">adaptations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Volatility-based adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_gradient_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;勾配ベース適応&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 勾配情報を取得（実際の実装ではモデルから取得）</span>
+            <span class="n">gradient_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_gradient_statistics</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">GRADIENT_CLIP_VALUE</span><span class="p">]:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_parameters</span><span class="p">:</span>
+                        <span class="n">new_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_adjust_parameter_for_gradients</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span> <span class="n">gradient_stats</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="n">new_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">current_value</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>  <span class="c1"># 5%以上の変更</span>
+                                <span class="n">adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                                    <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                                    <span class="n">old_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">,</span>
+                                    <span class="n">new_value</span><span class="o">=</span><span class="n">new_value</span><span class="p">,</span>
+                                    <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">GRADIENT_BASED</span><span class="p">,</span>
+                                    <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                                    <span class="n">volatility_score</span><span class="o">=</span><span class="n">market_conditions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                                    <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                                    <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Gradient-based adaptation&quot;</span>
+                                <span class="p">)</span>
+                                <span class="n">adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error adapting </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> for gradients: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">adaptations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Gradient-based adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_curriculum_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;カリキュラムベース適応&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 学習進捗を取得</span>
+            <span class="n">training_progress</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_training_progress</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_parameters</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">new_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_adjust_parameter_for_curriculum</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span> <span class="n">training_progress</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">new_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">current_value</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>  <span class="c1"># 10%以上の変更</span>
+                            <span class="n">adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                                <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                                <span class="n">old_value</span><span class="o">=</span><span class="n">current_value</span><span class="p">,</span>
+                                <span class="n">new_value</span><span class="o">=</span><span class="n">new_value</span><span class="p">,</span>
+                                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">CURRICULUM_BASED</span><span class="p">,</span>
+                                <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                                <span class="n">volatility_score</span><span class="o">=</span><span class="n">market_conditions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                                <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Curriculum-based adaptation: progress=</span><span class="si">{</span><span class="n">training_progress</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+                            <span class="p">)</span>
+                            <span class="n">adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error adapting </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> for curriculum: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">adaptations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Curriculum-based adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_optimize_parameter_for_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                          <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span>
+                                          <span class="n">performance_trend</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                          <span class="n">market_conditions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスのためのパラメータ最適化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+            <span class="n">param_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">parameter_ranges</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+            <span class="c1"># 最適化関数を定義</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">objective_function</span><span class="p">(</span><span class="n">param_value</span><span class="p">):</span>
+                <span class="c1"># パラメータ変更によるパフォーマンス予測</span>
+                <span class="c1"># （実際の実装ではより洗練されたモデルを使用）</span>
+                <span class="n">change_ratio</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">param_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">current_value</span>
+                <span class="k">if</span> <span class="n">performance_trend</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># パフォーマンスが向上傾向の場合、保守的に</span>
+                    <span class="k">return</span> <span class="n">change_ratio</span> <span class="o">*</span> <span class="mf">0.1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># パフォーマンスが低下傾向の場合、積極的に</span>
+                    <span class="k">return</span> <span class="o">-</span><span class="n">change_ratio</span> <span class="o">*</span> <span class="mf">0.2</span>
+
+            <span class="c1"># 最適化を実行</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">minimize_scalar</span><span class="p">(</span>
+                <span class="n">objective_function</span><span class="p">,</span>
+                <span class="n">bounds</span><span class="o">=</span><span class="n">param_range</span><span class="p">,</span>
+                <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bounded&#39;</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">success</span><span class="p">:</span>
+                <span class="n">optimal_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+                <span class="c1"># 安全マージンを適用</span>
+                <span class="n">max_change</span> <span class="o">=</span> <span class="n">current_value</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_parameter_change_rate</span>
+                <span class="n">optimal_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">optimal_value</span><span class="p">,</span> <span class="n">current_value</span> <span class="o">-</span> <span class="n">max_change</span><span class="p">,</span> <span class="n">current_value</span> <span class="o">+</span> <span class="n">max_change</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="n">optimal_value</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameter optimization failed for </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adjust_parameter_for_volatility</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                       <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span>
+                                       <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                       <span class="n">market_state</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ボラティリティに応じたパラメータ調整&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span>
+                <span class="c1"># 高ボラティリティ時は学習率を下げる</span>
+                <span class="k">if</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">2.0</span><span class="p">:</span>  <span class="c1"># 高ボラティリティ</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">0.7</span>
+                <span class="k">elif</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>  <span class="c1"># 低ボラティリティ</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.2</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">:</span>
+                <span class="c1"># 高ボラティリティ時はバッチサイズを小さく</span>
+                <span class="k">if</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">2.0</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">0.8</span>
+                <span class="k">elif</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.1</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span>
+                <span class="c1"># 高ボラティリティ時は正則化を強める</span>
+                <span class="k">if</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">2.0</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.5</span>
+                <span class="k">elif</span> <span class="n">market_state</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">0.8</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adjustment_factor</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="n">new_value</span> <span class="o">=</span> <span class="n">current_value</span> <span class="o">*</span> <span class="n">adjustment_factor</span>
+
+            <span class="c1"># 範囲内に収める</span>
+            <span class="n">param_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">parameter_ranges</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+            <span class="n">new_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">new_value</span><span class="p">,</span> <span class="n">param_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">new_value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Volatility adjustment failed for </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_adaptations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を統合&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># パラメータタイプごとに統合</span>
+            <span class="n">combined_adaptations</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">strategy_weights</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">GRADIENT_BASED</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+                <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">CURRICULUM_BASED</span><span class="p">:</span> <span class="mf">0.1</span>
+            <span class="p">}</span>
+
+            <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptations</span><span class="p">:</span>
+                <span class="n">param_type</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span>
+
+                <span class="k">if</span> <span class="n">param_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">combined_adaptations</span><span class="p">:</span>
+                    <span class="n">combined_adaptations</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="s1">&#39;weights&#39;</span><span class="p">:</span> <span class="p">[],</span>
+                        <span class="s1">&#39;strategies&#39;</span><span class="p">:</span> <span class="p">[]</span>
+                    <span class="p">}</span>
+
+                <span class="n">combined_adaptations</span><span class="p">[</span><span class="n">param_type</span><span class="p">][</span><span class="s1">&#39;values&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span><span class="p">)</span>
+                <span class="n">combined_adaptations</span><span class="p">[</span><span class="n">param_type</span><span class="p">][</span><span class="s1">&#39;weights&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">strategy_weights</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">adaptation</span><span class="o">.</span><span class="n">adaptation_strategy</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">combined_adaptations</span><span class="p">[</span><span class="n">param_type</span><span class="p">][</span><span class="s1">&#39;strategies&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="o">.</span><span class="n">adaptation_strategy</span><span class="p">)</span>
+
+            <span class="c1"># 重み付き平均を計算</span>
+            <span class="n">final_adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">param_type</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">combined_adaptations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">]:</span>
+                    <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;weights&#39;</span><span class="p">])</span>
+                    <span class="n">weights</span> <span class="o">=</span> <span class="n">weights</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>  <span class="c1"># 正規化</span>
+
+                    <span class="n">combined_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;values&#39;</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">)</span>
+
+                    <span class="c1"># 主要な戦略を選択</span>
+                    <span class="n">main_strategy</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;strategies&#39;</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">weights</span><span class="p">)]</span>
+
+                    <span class="n">final_adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                        <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                        <span class="n">old_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">],</span>
+                        <span class="n">new_value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">combined_value</span><span class="p">),</span>
+                        <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">main_strategy</span><span class="p">,</span>
+                        <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                        <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                        <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                        <span class="n">reason</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Combined adaptation from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;strategies&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> strategies&quot;</span>
+                    <span class="p">)</span>
+                    <span class="n">final_adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">final_adaptation</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">final_adaptations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to combine adaptations: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">adaptations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_adaptations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を適用&quot;&quot;&quot;</span>
+        <span class="n">applied_adaptations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptations</span><span class="p">:</span>
+                <span class="c1"># 安全チェック</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_adaptation_safe</span><span class="p">(</span><span class="n">adaptation</span><span class="p">):</span>
+                    <span class="c1"># パラメータを更新</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span>
+
+                    <span class="c1"># 履歴に記録</span>
+                    <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">parameter_history</span><span class="p">[</span><span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span><span class="n">current_time</span><span class="p">,</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                    <span class="n">applied_adaptations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                    <span class="c1"># オンライン学習パイプラインに適用</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_apply_to_pipeline</span><span class="p">(</span><span class="n">adaptation</span><span class="p">)</span>
+
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applied adaptation: </span><span class="si">{</span><span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply adaptations: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">applied_adaptations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_is_adaptation_safe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptation</span><span class="p">:</span> <span class="n">HyperparameterAdaptation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応が安全かチェック&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">old_value</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">old_value</span>
+            <span class="n">new_value</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span>
+
+            <span class="c1"># 範囲チェック</span>
+            <span class="n">param_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">parameter_ranges</span><span class="p">[</span><span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">param_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">new_value</span> <span class="o">&lt;=</span> <span class="n">param_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 変更率チェック</span>
+            <span class="n">change_rate</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">old_value</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">old_value</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">change_rate</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_parameter_change_rate</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 安全マージンチェック</span>
+            <span class="n">safety_change</span> <span class="o">=</span> <span class="n">old_value</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">safety_margin</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">old_value</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">safety_change</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_to_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptation</span><span class="p">:</span> <span class="n">HyperparameterAdaptation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パイプラインに適応を適用&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># オンライン学習パイプラインにパラメータを適用</span>
+            <span class="c1"># （実際の実装では適切なメソッドを呼び出す）</span>
+            <span class="n">param_name</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">param_value</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">new_value</span>
+
+            <span class="c1"># パイプラインの設定を更新</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="p">,</span> <span class="s1">&#39;update_hyperparameter&#39;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span><span class="o">.</span><span class="n">update_hyperparameter</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param_value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply adaptation to pipeline: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_adaptation_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応のパフォーマンスを評価&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">adaptations</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+
+            <span class="c1"># 適応前のパフォーマンスを取得</span>
+            <span class="n">before_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_recent_performance</span><span class="p">(</span><span class="n">window_size</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+
+            <span class="c1"># 短時間待機して適応効果を評価</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># 5秒待機</span>
+
+            <span class="c1"># 適応後のパフォーマンスを取得</span>
+            <span class="n">after_performance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_evaluate_current_performance</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">before_performance</span> <span class="ow">and</span> <span class="n">after_performance</span><span class="p">:</span>
+                <span class="c1"># パフォーマンス改善を計算</span>
+                <span class="n">avg_before</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">p</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">before_performance</span><span class="p">])</span>
+                <span class="n">improvement</span> <span class="o">=</span> <span class="n">after_performance</span> <span class="o">-</span> <span class="n">avg_before</span>
+                <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">improvement</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to evaluate adaptation performance: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_adaptation_confidence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">HyperparameterAdaptation</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応の確信度を計算&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">adaptations</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+
+            <span class="c1"># 適応の数と変更率に基づいて確信度を計算</span>
+            <span class="n">num_adaptations</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">adaptations</span><span class="p">)</span>
+            <span class="n">avg_change_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span>
+                <span class="nb">abs</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">new_value</span> <span class="o">-</span> <span class="n">a</span><span class="o">.</span><span class="n">old_value</span><span class="p">)</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">old_value</span><span class="p">,</span> <span class="mf">1e-10</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">adaptations</span>
+            <span class="p">])</span>
+
+            <span class="c1"># 適応数が多いほど、変更率が小さいほど確信度が高い</span>
+            <span class="n">confidence</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">num_adaptations</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="nb">min</span><span class="p">(</span><span class="n">avg_change_rate</span> <span class="o">/</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
+
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">confidence</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.5</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_recent_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最近のパフォーマンスを取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">window_size</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">[</span><span class="o">-</span><span class="n">window_size</span><span class="p">:]</span>
+
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">[</span><span class="o">-</span><span class="n">window_size</span><span class="p">:]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_evaluate_current_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在のパフォーマンスを評価&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 評価マネージャーからパフォーマンスを取得</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">evaluation_manager</span><span class="p">,</span> <span class="s1">&#39;get_current_performance&#39;</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="p">()</span>
+
+            <span class="c1"># デフォルト値</span>
+            <span class="k">return</span> <span class="mf">0.5</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to evaluate current performance: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_performance_trend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">performance_data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンストレンドを計算&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">performance_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+
+            <span class="c1"># 線形回帰でトレンドを計算</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="n">t</span> <span class="o">-</span> <span class="n">performance_data</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">performance_data</span><span class="p">])</span>
+            <span class="n">performances</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">performance_data</span><span class="p">])</span>
+
+            <span class="n">slope</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">linregress</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">performances</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_gradient_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;勾配統計を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 実際の実装ではモデルから勾配情報を取得</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;gradient_norm&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s1">&#39;gradient_variance&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+                <span class="s1">&#39;gradient_exploding&#39;</span><span class="p">:</span> <span class="kc">False</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;gradient_norm&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;gradient_variance&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s1">&#39;gradient_exploding&#39;</span><span class="p">:</span> <span class="kc">False</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_training_progress</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;学習進捗を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 実際の実装では学習マネージャーから進捗を取得</span>
+            <span class="k">return</span> <span class="mf">0.5</span>  <span class="c1"># 50%完了</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.5</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adjust_parameter_for_gradients</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">gradient_stats</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;勾配に応じたパラメータ調整&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span>
+                <span class="n">gradient_norm</span> <span class="o">=</span> <span class="n">gradient_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gradient_norm&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="c1"># 勾配が大きい場合は学習率を下げる</span>
+                <span class="k">if</span> <span class="n">gradient_norm</span> <span class="o">&gt;</span> <span class="mf">2.0</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">current_value</span> <span class="o">*</span> <span class="mf">0.9</span>
+                <span class="k">elif</span> <span class="n">gradient_norm</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">current_value</span> <span class="o">*</span> <span class="mf">1.1</span>
+
+            <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">GRADIENT_CLIP_VALUE</span><span class="p">:</span>
+                <span class="n">gradient_norm</span> <span class="o">=</span> <span class="n">gradient_stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gradient_norm&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="c1"># 勾配クリッピング値を適応</span>
+                <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">gradient_norm</span> <span class="o">*</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span> <span class="mf">10.0</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adjust_parameter_for_curriculum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;カリキュラムに応じたパラメータ調整&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span>
+                <span class="c1"># 学習初期は高く、後期は低く</span>
+                <span class="k">if</span> <span class="n">progress</span> <span class="o">&lt;</span> <span class="mf">0.3</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">current_value</span> <span class="o">*</span> <span class="mf">1.2</span>  <span class="c1"># 初期は高い学習率</span>
+                <span class="k">elif</span> <span class="n">progress</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">current_value</span> <span class="o">*</span> <span class="mf">0.8</span>  <span class="c1"># 後期は低い学習率</span>
+
+            <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span>
+                <span class="c1"># 学習後期は正則化を強める</span>
+                <span class="k">if</span> <span class="n">progress</span> <span class="o">&gt;</span> <span class="mf">0.6</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">current_value</span> <span class="o">*</span> <span class="mf">1.5</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adaptation_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応ワーカー&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+                <span class="c1"># 適応間隔をチェック</span>
+                <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span>
+                    <span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">*</span> <span class="mi">60</span><span class="p">):</span>
+
+                    <span class="c1"># 適応を実行</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_adaptation_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>  <span class="c1"># 1分ごとにチェック</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation worker error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>  <span class="c1"># エラー時は5分待機</span>
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.add_adaptation_callback">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.add_adaptation_callback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_adaptation_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">AdaptationResult</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応コールバックを追加&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_adaptation_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">AdaptationResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応コールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation callback failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.get_adaptation_history">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.get_adaptation_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_adaptation_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応履歴を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+            <span class="n">recent_adaptations</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span>
+                <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+            <span class="p">]</span>
+
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="s2">&quot;num_adaptations&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">adaptations</span><span class="p">),</span>
+                    <span class="s2">&quot;performance_improvement&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">overall_performance_improvement</span><span class="p">,</span>
+                    <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">adaptation_confidence</span><span class="p">,</span>
+                    <span class="s2">&quot;market_conditions&quot;</span><span class="p">:</span> <span class="n">a</span><span class="o">.</span><span class="n">market_conditions</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">recent_adaptations</span>
+            <span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get adaptation history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.get_parameter_history">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.get_parameter_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_parameter_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パラメータ履歴を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+            <span class="n">recent_history</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_history</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+            <span class="p">]</span>
+
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="n">v</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">t</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">recent_history</span>
+            <span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get parameter history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+
+
+<div class="viewcode-block" id="DynamicHyperparameterAdapter.get_current_hyperparameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.dynamic_hyperparameter_adapter.DynamicHyperparameterAdapter.get_current_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在のハイパーパラメータを取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">value</span>
+                <span class="k">for</span> <span class="n">param_type</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_parameters</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get current hyperparameters: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

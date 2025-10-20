@@ -1,0 +1,447 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.environment.components.position_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.environment.components.position_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.environment.components.position_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Position Manager - Handles position management for the trading environment.</span>
+
+<span class="sd">This module separates position-related logic from the main environment class,</span>
+<span class="sd">including execution of trades, trade accounting, and position state tracking.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">ACTION_HOLD</span><span class="p">,</span> <span class="n">ACTION_BUY</span><span class="p">,</span> <span class="n">ACTION_SELL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PositionManager">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PositionManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Manages trading positions including opening, closing, and PnL calculation.</span>
+<span class="sd">    </span>
+<span class="sd">    This class handles:</span>
+<span class="sd">    - Position opening and closing</span>
+<span class="sd">    - Entry and exit cost calculation</span>
+<span class="sd">    - Realized and unrealized PnL tracking</span>
+<span class="sd">    - Trade counting and consecutive trade tracking</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>  <span class="c1"># EnvironmentConfig</span>
+        <span class="n">get_price_callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="nb">float</span><span class="p">],</span>  <span class="c1"># Function to get current price</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize PositionManager.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            config: Environment configuration</span>
+<span class="sd">            get_price_callback: Callback function to get current price</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span> <span class="o">=</span> <span class="n">get_price_callback</span>
+        
+        <span class="c1"># Position state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="c1"># PnL tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># For backward compatibility</span>
+        
+        <span class="c1"># Trade tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        
+<div class="viewcode-block" id="PositionManager.execute_action">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.execute_action">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute trading action.</span>
+<span class="sd">        </span>
+<span class="sd">        allow_reverse=True (default): Traditional behavior</span>
+<span class="sd">            - SELL from Long: Close→immediately Short</span>
+<span class="sd">            - BUY from Short: Close→immediately Long</span>
+<span class="sd">        </span>
+<span class="sd">        allow_reverse=False: No reversal mode</span>
+<span class="sd">            - SELL from Long: Close only (back to Flat)</span>
+<span class="sd">            - BUY from Short: Close only (back to Flat)</span>
+<span class="sd">            - SELL/BUY from Flat: Opens normally</span>
+<span class="sd">            </span>
+<span class="sd">        Args:</span>
+<span class="sd">            action: Action to execute (0=HOLD, 1=BUY, 2=SELL)</span>
+<span class="sd">            current_step: Current step number</span>
+<span class="sd">            min_holding_period: Minimum steps to hold position before reversal (prevents allow_reverse during this period)</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            trade_pnl: PnL from this specific trade INCLUDING entry fees (negative for new positions)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        
+        <span class="c1"># Check if we&#39;re within min_holding_period</span>
+        <span class="n">min_holding_period</span> <span class="o">=</span> <span class="n">min_holding_period</span> <span class="ow">or</span> <span class="mi">0</span>  <span class="c1"># Handle None case</span>
+        <span class="n">within_min_holding</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">&gt;=</span> <span class="mi">0</span>
+            <span class="ow">and</span> <span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">&lt;</span> <span class="n">min_holding_period</span>
+        <span class="p">)</span>
+        <span class="n">enforce_reverse_cooldown</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;enforce_reverse_cooldown&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+        
+        <span class="n">trade_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Track PnL from this action (closes + entries)</span>
+            
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_BUY</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Short position held</span>
+                <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># Update last trade step for close</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+                <span class="c1"># Only open Long immediately if allow_reverse=True AND not within min_holding_period</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">allow_reverse</span> <span class="ow">and</span> <span class="p">(</span>
+                    <span class="ow">not</span> <span class="n">enforce_reverse_cooldown</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">within_min_holding</span>
+                <span class="p">):</span>
+                    <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
+                    <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
+                    
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat</span>
+                <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
+                <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># position &gt; 0 (already Long): do nothing</span>
+            
+        <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_SELL</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Long position held</span>
+                <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># Update last trade step for close</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
+                
+                <span class="c1"># Only open Short immediately if allow_reverse=True AND not within min_holding_period</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">allow_reverse</span> <span class="ow">and</span> <span class="p">(</span>
+                    <span class="ow">not</span> <span class="n">enforce_reverse_cooldown</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">within_min_holding</span>
+                <span class="p">):</span>
+                    <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
+                    <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
+                    
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat</span>
+                <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
+                <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="c1"># position &lt; 0 (already Short): do nothing</span>
+        
+        <span class="k">return</span> <span class="n">trade_pnl</span></div>
+
+
+<div class="viewcode-block" id="PositionManager.open_position">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.open_position">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open position (entry cost immediately reflected).</span>
+<span class="sd">        </span>
+<span class="sd">        🔧 CRITICAL FIX: 少額取引対応</span>
+<span class="sd">        - 実口座では1 mBTC (0.001 BTC ≈ 18,000円) 程度の少額取引が必要</span>
+<span class="sd">        - max_position_size は理想的なサイズだが、資金不足の場合は利用可能資金で調整</span>
+<span class="sd">        - これにより、資金がmax_position_size分に満たなくても取引可能になる</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            direction: Position direction (+1 for Long, -1 for Short)</span>
+<span class="sd">            current_step: Current step number</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Entry cost (fee paid to open position)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
+        <span class="n">max_position_size</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        
+        <span class="c1"># 🔧 少額取引対応: 利用可能資金に基づいてポジションサイズを調整</span>
+        <span class="n">initial_portfolio</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span> <span class="mf">200000.0</span><span class="p">)</span>
+        <span class="n">available_funds</span> <span class="o">=</span> <span class="n">initial_portfolio</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
+        <span class="n">transaction_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="p">)</span>
+        
+        <span class="c1"># 理想的なコスト（max_position_size フル購入）</span>
+        <span class="n">ideal_cost</span> <span class="o">=</span> <span class="n">max_position_size</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">)</span>
+        
+        <span class="c1"># 実際に購入可能なサイズ（利用可能資金の90%まで）</span>
+        <span class="n">affordable_funds</span> <span class="o">=</span> <span class="n">available_funds</span> <span class="o">*</span> <span class="mf">0.9</span>
+        <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">affordable_funds</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
+        
+        <span class="c1"># 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）</span>
+        <span class="n">actual_position_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_position_size</span><span class="p">,</span> <span class="n">affordable_size</span><span class="p">)</span>
+        
+        <span class="c1"># 最小取引単位チェック (0.001 BTC = 1 mBTC ≈ 5,000円)</span>
+        <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.001</span>
+        <span class="k">if</span> <span class="n">actual_position_size</span> <span class="o">&lt;</span> <span class="n">min_trade_size</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Insufficient funds for minimum trade size: available=</span><span class="si">%.2f</span><span class="s2">, required=</span><span class="si">%.2f</span><span class="s2"> (min_size=</span><span class="si">%.4f</span><span class="s2"> BTC)&quot;</span><span class="p">,</span>
+                <span class="n">available_funds</span><span class="p">,</span>
+                <span class="n">min_trade_size</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">),</span>
+                <span class="n">min_trade_size</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">actual_position_size</span> <span class="o">=</span> <span class="n">min_trade_size</span>  <span class="c1"># 最小単位で取引試行</span>
+        
+        <span class="c1"># Calculate entry cost based on actual size</span>
+        <span class="n">entry_cost</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">actual_position_size</span><span class="p">))</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="n">transaction_cost</span>
+        
+        <span class="c1"># Check if we have enough funds</span>
+        <span class="k">if</span> <span class="n">available_funds</span> <span class="o">&lt;</span> <span class="n">entry_cost</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">&quot;Insufficient funds for entry cost: available=</span><span class="si">%.2f</span><span class="s2">, required=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">available_funds</span><span class="p">,</span>
+                <span class="n">entry_cost</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+        
+        <span class="c1"># Deduct entry cost from realized PnL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
+        
+        <span class="c1"># Open position with actual size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">actual_position_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Opened </span><span class="si">%s</span><span class="s2"> position: size=</span><span class="si">%.4f</span><span class="s2"> (max=</span><span class="si">%.4f</span><span class="s2">, affordable=</span><span class="si">%.4f</span><span class="s2">), price=</span><span class="si">%.2f</span><span class="s2">, cost=</span><span class="si">%.2f</span><span class="s2">, funds=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Long&quot;</span> <span class="k">if</span> <span class="n">direction</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Short&quot;</span><span class="p">,</span>
+            <span class="n">actual_position_size</span><span class="p">,</span>
+            <span class="n">max_position_size</span><span class="p">,</span>
+            <span class="n">affordable_size</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="n">entry_cost</span><span class="p">,</span>
+            <span class="n">available_funds</span><span class="p">,</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">entry_cost</span></div>
+
+
+<div class="viewcode-block" id="PositionManager.close_position">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.close_position">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">close_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Close current position.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            current_step: Current step number (optional, for trade tracking)</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Realized PnL from closing the position</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+            
+        <span class="c1"># Calculate realized PnL before closing</span>
+        <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
+        <span class="n">price_change</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
+        <span class="n">realized_trade_pnl</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">*</span> <span class="n">price_change</span>
+        
+        <span class="c1"># Deduct transaction cost (exit cost)</span>
+        <span class="n">exit_cost</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="p">)</span>
+        <span class="n">realized_trade_pnl</span> <span class="o">-=</span> <span class="n">exit_cost</span>
+        
+        <span class="c1"># Accumulate realized PnL</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">+=</span> <span class="n">realized_trade_pnl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
+        
+        <span class="c1"># Update trade tracking if step provided</span>
+        <span class="k">if</span> <span class="n">current_step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s2">&quot;Closed </span><span class="si">%s</span><span class="s2"> position: price=</span><span class="si">%.2f</span><span class="s2">, entry=</span><span class="si">%.2f</span><span class="s2">, pnl=</span><span class="si">%.2f</span><span class="s2">, cost=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;Long&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Short&quot;</span><span class="p">,</span>
+            <span class="n">current_price</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">,</span>
+            <span class="n">realized_trade_pnl</span> <span class="o">+</span> <span class="n">exit_cost</span><span class="p">,</span>  <span class="c1"># PnL before cost</span>
+            <span class="n">exit_cost</span><span class="p">,</span>
+        <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">realized_trade_pnl</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PositionManager.calculate_unrealized_pnl">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.calculate_unrealized_pnl">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_unrealized_pnl</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate unrealized PnL for current open position.</span>
+<span class="sd">        </span>
+<span class="sd">        Realized PnL is accumulated in close_position().</span>
+<span class="sd">        This method only returns unrealized PnL for reward calculation.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Unrealized PnL (price change only, no exit cost yet)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
+        <span class="n">price_change</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
+
+        <span class="c1"># Unrealized PnL (price change only, no exit cost yet)</span>
+        <span class="n">unrealized_pnl</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">*</span> <span class="n">price_change</span>
+
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">unrealized_pnl</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PositionManager.get_position_info">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.get_position_info">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_position_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get current position information.</span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with position details</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;position&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+            <span class="s2">&quot;entry_price&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">,</span>
+            <span class="s2">&quot;realized_pnl&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span><span class="p">,</span>
+            <span class="s2">&quot;unrealized_pnl&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_unrealized_pnl</span><span class="p">(),</span>
+            <span class="s2">&quot;total_pnl&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="p">,</span>
+            <span class="s2">&quot;trades_count&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="p">,</span>
+            <span class="s2">&quot;consecutive_trade_steps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span><span class="p">,</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="PositionManager.reset">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.reset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset position state.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">=</span> <span class="mi">0</span></div>
+</div>
+
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;PositionManager&quot;</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,591 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.risk.advanced_auto_stop &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.risk.advanced_auto_stop</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.risk.advanced_auto_stop</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Advanced Auto-Stop System for Live Trading.</span>
+
+<span class="sd">Implements sophisticated risk management with multiple stop mechanisms:</span>
+<span class="sd">- Volatility-based stops</span>
+<span class="sd">- Drawdown-based stops</span>
+<span class="sd">- Time-based stops</span>
+<span class="sd">- Performance-based stops</span>
+<span class="sd">- Market condition-based stops</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="StopReason">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.StopReason">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StopReason</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reasons for stopping trading.&quot;&quot;&quot;</span>
+
+    <span class="n">VOLATILITY_SPIKE</span> <span class="o">=</span> <span class="s2">&quot;volatility_spike&quot;</span>
+    <span class="n">DRAWDOWN_LIMIT</span> <span class="o">=</span> <span class="s2">&quot;drawdown_limit&quot;</span>
+    <span class="n">TIME_LIMIT</span> <span class="o">=</span> <span class="s2">&quot;time_limit&quot;</span>
+    <span class="n">PERFORMANCE_DEGRADATION</span> <span class="o">=</span> <span class="s2">&quot;performance_degradation&quot;</span>
+    <span class="n">MARKET_CONDITION</span> <span class="o">=</span> <span class="s2">&quot;market_condition&quot;</span>
+    <span class="n">CONSECUTIVE_LOSSES</span> <span class="o">=</span> <span class="s2">&quot;consecutive_losses&quot;</span>
+    <span class="n">MANUAL_OVERRIDE</span> <span class="o">=</span> <span class="s2">&quot;manual_override&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="StopCondition">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.StopCondition">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StopCondition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for a stop condition.&quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">window_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># minutes</span>
+    <span class="n">cooldown_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span>  <span class="c1"># seconds</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;warning&quot;</span>  <span class="c1"># warning, critical, emergency</span></div>
+
+
+
+<div class="viewcode-block" id="AdvancedAutoStop">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AdvancedAutoStop</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Advanced automatic stop system for live trading.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the auto-stop system.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Configuration dictionary</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_default_config</span><span class="p">()</span>
+
+        <span class="c1"># Stop conditions</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_conditions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_stop_conditions</span><span class="p">()</span>
+
+        <span class="c1"># State tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_stop_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_reason</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Performance tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Risk metrics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Advanced Auto-Stop system initialized&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_default_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get default configuration.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;volatility_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>  <span class="c1"># 5% volatility</span>
+                <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;drawdown_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.10</span><span class="p">,</span>  <span class="c1"># 10% drawdown</span>
+                <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">1440</span><span class="p">,</span>  <span class="c1"># 1 day</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">3600</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;time_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mi">28800</span><span class="p">,</span>  <span class="c1"># 8 hours</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">7200</span><span class="p">,</span>  <span class="c1"># 2 hours</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;performance_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">,</span>  <span class="c1"># -5% performance degradation</span>
+                <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">240</span><span class="p">,</span>  <span class="c1"># 4 hours</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;market_condition_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;volatility_multiplier&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+                <span class="s2">&quot;trend_strength_threshold&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">3600</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;consecutive_losses_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>  <span class="c1"># 5 consecutive losses</span>
+                <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_stop_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">StopCondition</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize stop conditions from config.&quot;&quot;&quot;</span>
+        <span class="n">conditions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">config</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;enabled&quot;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+                <span class="n">conditions</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">StopCondition</span><span class="p">(</span>
+                    <span class="n">name</span><span class="o">=</span><span class="n">key</span><span class="p">,</span>
+                    <span class="n">enabled</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
+                    <span class="n">threshold</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="n">window_size</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;window_size&quot;</span><span class="p">,</span> <span class="mi">60</span><span class="p">),</span>
+                    <span class="n">cooldown_period</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cooldown_period&quot;</span><span class="p">,</span> <span class="mi">300</span><span class="p">),</span>
+                    <span class="n">severity</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;severity&quot;</span><span class="p">,</span> <span class="s2">&quot;warning&quot;</span><span class="p">),</span>
+                <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">conditions</span>
+
+<div class="viewcode-block" id="AdvancedAutoStop.update_market_data">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop.update_market_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_market_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update market data for analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            timestamp: Current timestamp</span>
+<span class="sd">            price: Current price</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">price</span><span class="p">))</span>
+
+        <span class="c1"># Keep only recent data (last 24 hours)</span>
+        <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">timestamp</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">ts</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">ts</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span> <span class="k">if</span> <span class="n">ts</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Update volatility</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">[</span><span class="o">-</span><span class="mi">60</span><span class="p">:]]</span>  <span class="c1"># Last hour</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">prices</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+                    <span class="mi">60</span>
+                <span class="p">)</span>  <span class="c1"># Annualized hourly volatility</span></div>
+
+
+<div class="viewcode-block" id="AdvancedAutoStop.update_trade_result">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop.update_trade_result">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_trade_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pnl</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">trade_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update trade result for risk analysis.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pnl: Profit/Loss from the trade</span>
+<span class="sd">            trade_info: Additional trade information</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trade_record</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span> <span class="s2">&quot;pnl&quot;</span><span class="p">:</span> <span class="n">pnl</span><span class="p">,</span> <span class="s2">&quot;info&quot;</span><span class="p">:</span> <span class="n">trade_info</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade_record</span><span class="p">)</span>
+
+        <span class="c1"># Update consecutive losses</span>
+        <span class="k">if</span> <span class="n">pnl</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Keep only recent trades (last 24 hours)</span>
+        <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span> <span class="k">if</span> <span class="n">t</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Update drawdown</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_drawdown</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_drawdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update current drawdown calculation.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Calculate running maximum</span>
+        <span class="n">cumulative_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">([</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;pnl&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">])</span>
+        <span class="n">running_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">cumulative_pnl</span><span class="p">)</span>
+
+        <span class="c1"># Current drawdown</span>
+        <span class="n">current_value</span> <span class="o">=</span> <span class="n">cumulative_pnl</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cumulative_pnl</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">peak_value</span> <span class="o">=</span> <span class="n">running_max</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">running_max</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">peak_value</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span> <span class="o">=</span> <span class="p">(</span><span class="n">peak_value</span> <span class="o">-</span> <span class="n">current_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">peak_value</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="AdvancedAutoStop.check_stop_conditions">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop.check_stop_conditions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_stop_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Check all stop conditions.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Tuple of (should_stop, reason, message)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Check cooldown period</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="ow">and</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span><span class="p">:</span>
+            <span class="n">remaining</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Cooldown active: </span><span class="si">{</span><span class="n">remaining</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s remaining&quot;</span>
+
+        <span class="c1"># Check each condition</span>
+        <span class="k">for</span> <span class="n">condition_name</span><span class="p">,</span> <span class="n">condition</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_conditions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">condition</span><span class="o">.</span><span class="n">enabled</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">should_stop</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">message</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_single_condition</span><span class="p">(</span>
+                <span class="n">condition_name</span><span class="p">,</span> <span class="n">condition</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">should_stop</span> <span class="ow">and</span> <span class="n">reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_stop</span><span class="p">(</span><span class="n">reason</span><span class="p">,</span> <span class="n">condition</span><span class="o">.</span><span class="n">cooldown_period</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="n">reason</span><span class="p">,</span> <span class="n">message</span>
+
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;All conditions normal&quot;</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_single_condition</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check a single stop condition.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;volatility_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_volatility_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;drawdown_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_drawdown_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;time_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_time_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;performance_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_performance_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;market_condition_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_market_condition_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;consecutive_losses_stop&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_consecutive_losses_stop</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Unknown condition: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_volatility_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check volatility-based stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">True</span><span class="p">,</span>
+                <span class="n">StopReason</span><span class="o">.</span><span class="n">VOLATILITY_SPIKE</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Volatility </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> exceeds threshold </span><span class="si">{</span><span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Volatility normal&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_drawdown_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check drawdown-based stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span> <span class="o">&gt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">True</span><span class="p">,</span>
+                <span class="n">StopReason</span><span class="o">.</span><span class="n">DRAWDOWN_LIMIT</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Drawdown </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> exceeds threshold </span><span class="si">{</span><span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Drawdown within limits&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_time_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check time-based stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_stop_time</span><span class="p">:</span>
+            <span class="n">elapsed</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_stop_time</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">elapsed</span> <span class="o">&gt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">(</span>
+                    <span class="kc">True</span><span class="p">,</span>
+                    <span class="n">StopReason</span><span class="o">.</span><span class="n">TIME_LIMIT</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;Trading time </span><span class="si">{</span><span class="n">elapsed</span><span class="o">/</span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours exceeds limit </span><span class="si">{</span><span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="o">/</span><span class="mi">3600</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> hours&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Time limit not reached&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_performance_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check performance-based stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Insufficient trade history&quot;</span>
+
+        <span class="n">recent_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">[</span><span class="o">-</span><span class="mi">20</span><span class="p">:]</span>  <span class="c1"># Last 20 trades</span>
+        <span class="n">recent_pnl</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="s2">&quot;pnl&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">recent_trades</span><span class="p">)</span>
+        <span class="n">recent_performance</span> <span class="o">=</span> <span class="n">recent_pnl</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_trades</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">recent_performance</span> <span class="o">&lt;</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">True</span><span class="p">,</span>
+                <span class="n">StopReason</span><span class="o">.</span><span class="n">PERFORMANCE_DEGRADATION</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Recent performance </span><span class="si">{</span><span class="n">recent_performance</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> below threshold </span><span class="si">{</span><span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Performance acceptable&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_market_condition_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check market condition-based stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Insufficient price history&quot;</span>
+
+        <span class="c1"># Check if volatility is abnormally high</span>
+        <span class="n">normal_volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility</span><span class="p">]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span>  <span class="c1"># Simplified</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="n">normal_volatility</span> <span class="o">*</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">True</span><span class="p">,</span>
+                <span class="n">StopReason</span><span class="o">.</span><span class="n">MARKET_CONDITION</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Volatility </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2"> exceeds normal range&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Market conditions normal&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_consecutive_losses_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="n">StopCondition</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">StopReason</span><span class="p">],</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check consecutive losses stop.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span> <span class="o">&gt;=</span> <span class="n">condition</span><span class="o">.</span><span class="n">threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">True</span><span class="p">,</span>
+                <span class="n">StopReason</span><span class="o">.</span><span class="n">CONSECUTIVE_LOSSES</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span><span class="si">}</span><span class="s2"> consecutive losses&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Loss streak within limits&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="n">StopReason</span><span class="p">,</span> <span class="n">cooldown_seconds</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Trigger a stop condition.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_reason</span> <span class="o">=</span> <span class="n">reason</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_stop_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">cooldown_seconds</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trading stopped: </span><span class="si">{</span><span class="n">reason</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cooldown until: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AdvancedAutoStop.resume_trading">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop.resume_trading">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">resume_trading</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Manually resume trading.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="ow">and</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span><span class="p">:</span>
+            <span class="n">remaining</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="o">-</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">())</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Cannot resume - cooldown active: </span><span class="si">{</span><span class="n">remaining</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s remaining&quot;</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_reason</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Trading resumed manually&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="AdvancedAutoStop.get_status">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.AdvancedAutoStop.get_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current status of the auto-stop system.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;is_active&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">,</span>
+            <span class="s2">&quot;stop_reason&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_reason</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_reason</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;cooldown_until&quot;</span><span class="p">:</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cooldown_until</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;current_drawdown&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_drawdown</span><span class="p">,</span>
+            <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span><span class="p">,</span>
+            <span class="s2">&quot;consecutive_losses&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">consecutive_losses</span><span class="p">,</span>
+            <span class="s2">&quot;total_trades&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">),</span>
+            <span class="s2">&quot;active_conditions&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_conditions</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">enabled</span><span class="p">]</span>
+            <span class="p">),</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_production_auto_stop">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.advanced_auto_stop.create_production_auto_stop">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_production_auto_stop</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AdvancedAutoStop</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create production-ready auto-stop system.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;volatility_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.03</span><span class="p">,</span>  <span class="c1"># 3% volatility (conservative)</span>
+            <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">900</span><span class="p">,</span>  <span class="c1"># 15 minutes</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;drawdown_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>  <span class="c1"># 5% drawdown (conservative)</span>
+            <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">720</span><span class="p">,</span>  <span class="c1"># 12 hours</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;time_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mi">21600</span><span class="p">,</span>  <span class="c1"># 6 hours (conservative)</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">3600</span><span class="p">,</span>  <span class="c1"># 1 hour</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;performance_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.02</span><span class="p">,</span>  <span class="c1"># -2% performance (conservative)</span>
+            <span class="s2">&quot;window_size&quot;</span><span class="p">:</span> <span class="mi">120</span><span class="p">,</span>  <span class="c1"># 2 hours</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">900</span><span class="p">,</span>  <span class="c1"># 15 minutes</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;market_condition_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;volatility_multiplier&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+            <span class="s2">&quot;trend_strength_threshold&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">1800</span><span class="p">,</span>  <span class="c1"># 30 minutes</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;warning&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;consecutive_losses_stop&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>  <span class="c1"># 3 consecutive losses (conservative)</span>
+            <span class="s2">&quot;cooldown_period&quot;</span><span class="p">:</span> <span class="mi">900</span><span class="p">,</span>  <span class="c1"># 15 minutes</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="s2">&quot;critical&quot;</span><span class="p">,</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">AdvancedAutoStop</span><span class="p">(</span><span class="n">config</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Example usage</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="n">auto_stop</span> <span class="o">=</span> <span class="n">create_production_auto_stop</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Advanced Auto-Stop system created&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Status: </span><span class="si">{</span><span class="n">auto_stop</span><span class="o">.</span><span class="n">get_status</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

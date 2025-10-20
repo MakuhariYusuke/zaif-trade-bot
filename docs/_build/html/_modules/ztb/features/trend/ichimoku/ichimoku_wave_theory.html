@@ -1,0 +1,224 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.trend.ichimoku.ichimoku_wave_theory &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.trend.ichimoku.ichimoku_wave_theory</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.trend.ichimoku.ichimoku_wave_theory</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Ichimoku Wave Theory feature implementation.</span>
+<span class="sd">Wave Theory analyzes cloud wave patterns and momentum using Senkou Span A and B.</span>
+
+<span class="sd">Output columns:</span>
+<span class="sd">  - ichimoku_wave_theory: Wave pattern analysis score</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">...base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseFeature</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.ichimoku_ext</span><span class="w"> </span><span class="kn">import</span> <span class="n">calculate_ichimoku_extended</span>
+
+
+<div class="viewcode-block" id="compute_ichimoku_wave_theory">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_wave_theory.compute_ichimoku_wave_theory">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Ichimoku_Wave_Theory&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ichimoku_wave_theory</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Ichimoku Wave Theory - cloud wave patterns and momentum&quot;&quot;&quot;</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">IchimokuWaveTheory</span><span class="p">()</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result_df</span><span class="p">[</span><span class="s2">&quot;ichimoku_wave_theory&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="IchimokuWaveTheory">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_wave_theory.IchimokuWaveTheory">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IchimokuWaveTheory</span><span class="p">(</span><span class="n">BaseFeature</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ichimoku Wave Theory feature.</span>
+<span class="sd">    Analyzes cloud wave patterns and momentum using Senkou Span A and B.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s2">&quot;IchimokuWaveTheory&quot;</span><span class="p">,</span> <span class="n">deps</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;close&quot;</span><span class="p">])</span>
+
+<div class="viewcode-block" id="IchimokuWaveTheory.compute">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.features.trend.ichimoku.html#ztb.features.trend.ichimoku.ichimoku_wave_theory.IchimokuWaveTheory.compute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        df columns must include: [&#39;high&#39;, &#39;low&#39;, &#39;close&#39;].</span>
+<span class="sd">        Returns a DataFrame with Wave Theory analysis.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Get Ichimoku components</span>
+        <span class="n">ichimoku_data</span> <span class="o">=</span> <span class="n">calculate_ichimoku_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">senkou_a</span> <span class="o">=</span> <span class="n">ichimoku_data</span><span class="p">[</span><span class="s2">&quot;ichimoku_senkou_a&quot;</span><span class="p">]</span>
+        <span class="n">senkou_b</span> <span class="o">=</span> <span class="n">ichimoku_data</span><span class="p">[</span><span class="s2">&quot;ichimoku_senkou_b&quot;</span><span class="p">]</span>
+        <span class="n">cloud_thickness</span> <span class="o">=</span> <span class="n">ichimoku_data</span><span class="p">[</span><span class="s2">&quot;ichimoku_cloud_thickness&quot;</span><span class="p">]</span>
+
+        <span class="c1"># 1. Cloud wave momentum (rate of change of cloud edges)</span>
+        <span class="n">senkou_a_momentum</span> <span class="o">=</span> <span class="n">senkou_a</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># 5-period momentum</span>
+        <span class="n">senkou_b_momentum</span> <span class="o">=</span> <span class="n">senkou_b</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># 10-period momentum (slower)</span>
+
+        <span class="c1"># 2. Cloud wave direction (which span is leading)</span>
+        <span class="n">wave_direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">senkou_a</span> <span class="o">&gt;</span> <span class="n">senkou_b</span><span class="p">,</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">senkou_a_momentum</span> <span class="o">&gt;</span> <span class="n">senkou_b_momentum</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span>  <span class="c1"># Strong bullish</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">senkou_b_momentum</span> <span class="o">&gt;</span> <span class="n">senkou_a_momentum</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># Strong bearish</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 3. Cloud wave amplitude (normalized thickness change)</span>
+        <span class="n">thickness_change</span> <span class="o">=</span> <span class="n">cloud_thickness</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">wave_amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">thickness_change</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Scale and clip</span>
+
+        <span class="c1"># 5. Cloud wave frequency (how often the cloud changes direction)</span>
+        <span class="n">cloud_color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">senkou_a</span> <span class="o">&gt;</span> <span class="n">senkou_b</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">color_changes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">cloud_color</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="n">cloud_color</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">wave_frequency</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">color_changes</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="c1"># 5. Wave convergence/divergence</span>
+        <span class="n">span_divergence</span> <span class="o">=</span> <span class="p">(</span><span class="n">senkou_a</span> <span class="o">-</span> <span class="n">senkou_b</span><span class="p">)</span> <span class="o">/</span> <span class="n">cloud_thickness</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">span_divergence</span> <span class="o">=</span> <span class="n">span_divergence</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># 6. Composite wave theory score</span>
+        <span class="c1"># Combine momentum, direction, amplitude, and frequency</span>
+        <span class="n">momentum_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">senkou_a_momentum</span> <span class="o">+</span> <span class="n">senkou_b_momentum</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">momentum_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">momentum_score</span> <span class="o">*</span> <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Normalize</span>
+
+        <span class="n">frequency_norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">wave_frequency</span> <span class="o">/</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># 0-1 scale</span>
+
+        <span class="c1"># Wave strength: combination of direction strength and momentum</span>
+        <span class="n">wave_strength</span> <span class="o">=</span> <span class="n">wave_direction</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">momentum_norm</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">wave_amplitude</span><span class="p">)</span>
+
+        <span class="c1"># Apply frequency damping (higher frequency = weaker signal)</span>
+        <span class="n">wave_damping</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">frequency_norm</span><span class="p">)</span>
+
+        <span class="c1"># Final wave theory score</span>
+        <span class="n">wave_theory_score</span> <span class="o">=</span> <span class="n">wave_strength</span> <span class="o">*</span> <span class="n">wave_damping</span>
+
+        <span class="c1"># Add convergence/divergence component</span>
+        <span class="n">convergence_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">span_divergence</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span>
+                                    <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">span_divergence</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.2</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">wave_theory_score</span> <span class="o">+=</span> <span class="n">convergence_factor</span>
+
+        <span class="n">result_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;ichimoku_wave_theory&quot;</span><span class="p">:</span> <span class="n">wave_theory_score</span><span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result_df</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

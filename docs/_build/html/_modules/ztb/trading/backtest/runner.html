@@ -1,0 +1,826 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.backtest.runner &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.backtest.runner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.backtest.runner</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Backtest runner CLI.</span>
+
+<span class="sd">Executes trading strategy backtests with comprehensive metrics and reporting.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.observability</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_correlation_id</span><span class="p">,</span> <span class="n">setup_observability</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.path_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_dir</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.run_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunMetadata</span>
+
+<span class="c1"># Import adapters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">RLPolicyAdapter</span>
+
+<span class="c1"># Import risk management components (optional)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..risk.circuit_breakers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>  <span class="c1"># type: ignore[import-not-found]</span>
+        <span class="n">get_global_kill_switch</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">..risk.position_sizing</span><span class="w"> </span><span class="kn">import</span> <span class="n">PositionSizer</span>  <span class="c1"># type: ignore[import-not-found]</span>
+    <span class="n">RISK_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">RISK_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">get_global_kill_switch</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">PositionSizer</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrategyAdapter</span><span class="p">,</span> <span class="n">create_adapter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricsCalculator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.report</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReportGenerator</span>
+
+<span class="c1"># Import adaptation system</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">...adaptation</span><span class="w"> </span><span class="kn">import</span> <span class="n">HyperparameterAdaptationSystem</span>
+    <span class="n">ADAPTATION_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">ADAPTATION_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">HyperparameterAdaptationSystem</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="BacktestEngine">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.BacktestEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BacktestEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Core backtest execution engine.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">initial_capital</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10000.0</span><span class="p">,</span>
+        <span class="n">slippage_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span>
+        <span class="n">commission_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">enable_risk</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">risk_profile</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;balanced&quot;</span><span class="p">,</span>
+        <span class="n">kill_file</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;/tmp/ztb.stop&quot;</span><span class="p">,</span>
+        <span class="n">target_vol</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">correlation_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">enable_adaptation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">adaptation_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize backtest engine.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_capital</span> <span class="o">=</span> <span class="n">initial_capital</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slippage_bps</span> <span class="o">=</span> <span class="n">slippage_bps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commission_bps</span> <span class="o">=</span> <span class="n">commission_bps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_risk</span> <span class="o">=</span> <span class="n">enable_risk</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">risk_profile</span> <span class="o">=</span> <span class="n">risk_profile</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kill_file</span> <span class="o">=</span> <span class="n">kill_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_vol</span> <span class="o">=</span> <span class="n">target_vol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">correlation_id</span> <span class="o">=</span> <span class="n">correlation_id</span> <span class="ow">or</span> <span class="n">generate_correlation_id</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="o">=</span> <span class="n">enable_adaptation</span> <span class="ow">and</span> <span class="n">ADAPTATION_AVAILABLE</span>
+
+        <span class="c1"># Initialize position sizer</span>
+        <span class="k">if</span> <span class="n">target_vol</span> <span class="ow">and</span> <span class="n">RISK_AVAILABLE</span> <span class="ow">and</span> <span class="n">PositionSizer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_sizer</span> <span class="o">=</span> <span class="n">PositionSizer</span><span class="p">(</span><span class="n">target_volatility</span><span class="o">=</span><span class="n">target_vol</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_sizer</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Initialize kill switch if risk management enabled</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">kill_switch</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">enable_risk</span> <span class="ow">and</span> <span class="n">RISK_AVAILABLE</span> <span class="ow">and</span> <span class="n">get_global_kill_switch</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">kill_switch</span> <span class="o">=</span> <span class="n">get_global_kill_switch</span><span class="p">()</span>
+
+        <span class="c1"># Initialize hyperparameter adaptation system</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="ow">and</span> <span class="n">HyperparameterAdaptationSystem</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Create mock online learning and evaluation components for backtest</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">...adaptation.online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">...adaptation.monitoring.evaluation_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousEvaluationManager</span>
+
+                <span class="c1"># Mock components for backtest environment</span>
+                <span class="n">mock_online_learning</span> <span class="o">=</span> <span class="n">MockOnlineLearningPipeline</span><span class="p">()</span>
+                <span class="n">mock_evaluation_manager</span> <span class="o">=</span> <span class="n">MockEvaluationManager</span><span class="p">()</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="n">HyperparameterAdaptationSystem</span><span class="p">(</span>
+                    <span class="n">mock_online_learning</span><span class="p">,</span>
+                    <span class="n">mock_evaluation_manager</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Apply custom configuration if provided</span>
+                <span class="k">if</span> <span class="n">adaptation_config</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">update_config</span><span class="p">(</span><span class="n">adaptation_config</span><span class="p">)</span>
+
+                <span class="c1"># Start adaptation system</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">start</span><span class="p">():</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: Failed to start hyperparameter adaptation system&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hyperparameter adaptation system started for backtest&quot;</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Failed to initialize adaptation system: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="BacktestEngine.load_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.BacktestEngine.load_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load market data from CSV file.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Load data from CSV file</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="c1"># Try relative to project root</span>
+                <span class="n">data_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="n">dataset_path</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">data_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dataset file not found: </span><span class="si">{</span><span class="n">dataset_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading data from: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+
+            <span class="c1"># Ensure timestamp column exists and is datetime</span>
+            <span class="k">if</span> <span class="s1">&#39;timestamp&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="c1"># Try common timestamp column names</span>
+                <span class="n">timestamp_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;datetime&#39;</span><span class="p">,</span> <span class="s1">&#39;time&#39;</span><span class="p">]</span>
+                <span class="n">timestamp_col</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">timestamp_cols</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                        <span class="n">timestamp_col</span> <span class="o">=</span> <span class="n">col</span>
+                        <span class="k">break</span>
+                <span class="k">if</span> <span class="n">timestamp_col</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">timestamp_col</span><span class="p">:</span> <span class="s1">&#39;timestamp&#39;</span><span class="p">})</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No timestamp column found in dataset&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Convert timestamp to datetime if needed</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_datetime64_any_dtype</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]):</span>
+                <span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Filter to 2023 data only for debugging</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span> <span class="o">==</span> <span class="mi">2023</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2"> data points for 2023&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Ensure required OHLCV columns exist</span>
+            <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+            <span class="n">missing_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">missing_cols</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required columns: </span><span class="si">{</span><span class="n">missing_cols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Set timestamp as index</span>
+            <span class="n">data</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">data</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error loading data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span></div>
+
+
+<div class="viewcode-block" id="BacktestEngine.run_backtest">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.BacktestEngine.run_backtest">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run_backtest</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="n">StrategyAdapter</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run backtest simulation.&quot;&quot;&quot;</span>
+
+        <span class="n">capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">initial_capital</span>
+        <span class="n">position</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># -1, 0, 1 for short, flat, long</span>
+        <span class="n">equity_curve</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">orders</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">adaptation_history</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">timestamp</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()):</span>
+            <span class="n">current_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># All data up to current point</span>
+
+            <span class="c1"># Hyperparameter adaptation step</span>
+            <span class="n">adaptation_result</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># Need some history</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Pass market data to adaptation system</span>
+                    <span class="n">market_data</span> <span class="o">=</span> <span class="n">current_data</span><span class="o">.</span><span class="n">tail</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>  <span class="c1"># Last 50 periods for adaptation</span>
+                    <span class="n">adaptation_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+                    <span class="c1"># Update strategy parameters if available</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;update_hyperparameters&#39;</span><span class="p">):</span>
+                        <span class="n">current_params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">get_current_hyperparameters</span><span class="p">()</span>
+                        <span class="n">strategy</span><span class="o">.</span><span class="n">update_hyperparameters</span><span class="p">(</span><span class="n">current_params</span><span class="p">)</span>
+
+                    <span class="c1"># Log adaptation if parameters changed</span>
+                    <span class="k">if</span> <span class="n">adaptation_result</span> <span class="ow">and</span> <span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;adaptations&#39;</span><span class="p">]:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">] Adapted </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;adaptations&#39;</span><span class="p">])</span><span class="si">}</span><span class="s2"> hyperparameters. &quot;</span>
+                              <span class="sa">f</span><span class="s2">&quot;Performance improvement: </span><span class="si">{</span><span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;performance_improvement&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                        <span class="c1"># Store adaptation result</span>
+                        <span class="k">if</span> <span class="n">adaptation_history</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">adaptation_history</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                                <span class="s1">&#39;adaptations&#39;</span><span class="p">:</span> <span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;adaptations&#39;</span><span class="p">],</span>
+                                <span class="s1">&#39;performance_improvement&#39;</span><span class="p">:</span> <span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;performance_improvement&#39;</span><span class="p">],</span>
+                                <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="n">adaptation_result</span><span class="p">[</span><span class="s1">&#39;confidence&#39;</span><span class="p">],</span>
+                                <span class="s1">&#39;market_conditions&#39;</span><span class="p">:</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;market_conditions&#39;</span><span class="p">,</span> <span class="p">{})</span>
+                            <span class="p">})</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Adaptation failed at </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Check kill switch if risk management enabled</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_risk</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">kill_switch</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">kill_switch</span><span class="o">.</span><span class="n">is_killed</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Kill switch activated at </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">. Stopping new orders.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>  <span class="c1"># Stop processing new signals</span>
+
+            <span class="c1"># Generate signal</span>
+            <span class="n">signal</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">generate_signal</span><span class="p">(</span><span class="n">current_data</span><span class="p">,</span> <span class="n">position</span><span class="p">)</span>
+
+            <span class="c1"># Memory management: clear feature cache periodically to prevent memory leaks</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="s1">&#39;clear_feature_cache&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">strategy</span><span class="o">.</span><span class="n">clear_feature_cache</span><span class="p">()</span>
+
+            <span class="c1"># Execute trade if signal</span>
+            <span class="k">if</span> <span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="s2">&quot;sell&quot;</span><span class="p">]:</span>
+                <span class="n">price</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">slippage_bps</span> <span class="o">/</span> <span class="mi">10000</span><span class="p">)</span>  <span class="c1"># Apply slippage</span>
+
+                <span class="c1"># Calculate position size</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_sizer</span><span class="p">:</span>
+                    <span class="c1"># Use position sizer</span>
+                    <span class="n">signals</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">if</span> <span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;buy&quot;</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">}</span>
+                    <span class="n">current_prices</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">:</span> <span class="n">price</span><span class="p">}</span>
+                    <span class="n">asset_vols</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span>  <span class="c1"># Simplified volatility assumption</span>
+
+                    <span class="n">sizes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_sizer</span><span class="o">.</span><span class="n">calculate_position_sizes</span><span class="p">(</span>
+                        <span class="n">signals</span><span class="p">,</span> <span class="n">current_prices</span><span class="p">,</span> <span class="n">capital</span><span class="p">,</span> <span class="n">asset_vols</span>
+                    <span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">sizes</span><span class="p">:</span>
+                        <span class="n">size</span> <span class="o">=</span> <span class="n">sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                        <span class="n">shares</span> <span class="o">=</span> <span class="n">size</span><span class="o">.</span><span class="n">quantity</span>
+                        <span class="n">sizing_reason</span> <span class="o">=</span> <span class="n">size</span><span class="o">.</span><span class="n">sizing_reason</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Fallback: use available capital, but prevent division by zero</span>
+                        <span class="k">if</span> <span class="n">price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">shares</span> <span class="o">=</span> <span class="n">capital</span> <span class="o">/</span> <span class="n">price</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">shares</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="n">sizing_reason</span> <span class="o">=</span> <span class="s2">&quot;Fallback: full capital&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># Original logic: all-in, but prevent division by zero</span>
+                    <span class="k">if</span> <span class="n">price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">shares</span> <span class="o">=</span> <span class="n">capital</span> <span class="o">/</span> <span class="n">price</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">shares</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">sizing_reason</span> <span class="o">=</span> <span class="s2">&quot;All-in position sizing&quot;</span>
+
+                <span class="c1"># Apply commission</span>
+                <span class="n">commission</span> <span class="o">=</span> <span class="n">shares</span> <span class="o">*</span> <span class="n">price</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commission_bps</span> <span class="o">/</span> <span class="mi">10000</span><span class="p">)</span>
+                <span class="n">effective_price</span> <span class="o">=</span> <span class="n">price</span> <span class="o">+</span> <span class="p">(</span><span class="n">commission</span> <span class="o">/</span> <span class="n">shares</span> <span class="k">if</span> <span class="n">shares</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;buy&quot;</span> <span class="ow">and</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># Buy to long</span>
+                    <span class="k">if</span> <span class="n">shares</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">capital</span> <span class="o">&gt;=</span> <span class="n">effective_price</span> <span class="o">*</span> <span class="n">shares</span><span class="p">:</span>
+                        <span class="n">order</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">effective_price</span><span class="p">,</span>
+                            <span class="s2">&quot;shares&quot;</span><span class="p">:</span> <span class="n">shares</span><span class="p">,</span>
+                            <span class="s2">&quot;notional&quot;</span><span class="p">:</span> <span class="n">shares</span> <span class="o">*</span> <span class="n">effective_price</span><span class="p">,</span>
+                            <span class="s2">&quot;position_before&quot;</span><span class="p">:</span> <span class="n">position</span><span class="p">,</span>
+                            <span class="s2">&quot;position_after&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                            <span class="s2">&quot;sizing_reason&quot;</span><span class="p">:</span> <span class="n">sizing_reason</span><span class="p">,</span>
+                            <span class="s2">&quot;pnl&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>  <span class="c1"># Will be calculated on close</span>
+                        <span class="p">}</span>
+                        <span class="n">position</span> <span class="o">=</span> <span class="mi">1</span>
+                        <span class="n">capital</span> <span class="o">-=</span> <span class="n">shares</span> <span class="o">*</span> <span class="n">effective_price</span>  <span class="c1"># Deduct from capital</span>
+                        <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Insufficient capital for buy order at </span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                <span class="k">elif</span> <span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;sell&quot;</span> <span class="ow">and</span> <span class="n">position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># Sell to short or close long</span>
+                    <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="c1"># Close long position</span>
+                        <span class="n">entry_order</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                            <span class="p">(</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;buy&quot;</span><span class="p">),</span> <span class="kc">None</span>
+                        <span class="p">)</span>
+                        <span class="k">if</span> <span class="n">entry_order</span><span class="p">:</span>
+                            <span class="n">pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">effective_price</span> <span class="o">-</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">])</span> <span class="o">*</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;shares&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">commission</span>
+                            <span class="n">capital</span> <span class="o">+=</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;notional&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="n">pnl</span>  <span class="c1"># Restore capital + pnl</span>
+
+                    <span class="k">if</span> <span class="n">shares</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">order</span> <span class="o">=</span> <span class="p">{</span>
+                            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+                            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">effective_price</span><span class="p">,</span>
+                            <span class="s2">&quot;shares&quot;</span><span class="p">:</span> <span class="n">shares</span><span class="p">,</span>
+                            <span class="s2">&quot;notional&quot;</span><span class="p">:</span> <span class="n">shares</span> <span class="o">*</span> <span class="n">effective_price</span><span class="p">,</span>
+                            <span class="s2">&quot;position_before&quot;</span><span class="p">:</span> <span class="n">position</span><span class="p">,</span>
+                            <span class="s2">&quot;position_after&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                            <span class="s2">&quot;sizing_reason&quot;</span><span class="p">:</span> <span class="n">sizing_reason</span><span class="p">,</span>
+                            <span class="s2">&quot;pnl&quot;</span><span class="p">:</span> <span class="n">pnl</span> <span class="k">if</span> <span class="s2">&quot;pnl&quot;</span> <span class="ow">in</span> <span class="nb">locals</span><span class="p">()</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+                        <span class="p">}</span>
+                        <span class="n">position</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+                        <span class="n">capital</span> <span class="o">+=</span> <span class="n">shares</span> <span class="o">*</span> <span class="n">effective_price</span> <span class="o">-</span> <span class="n">commission</span>  <span class="c1"># Add proceeds minus commission</span>
+                        <span class="n">orders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">order</span><span class="p">)</span>
+
+            <span class="c1"># Record equity</span>
+            <span class="k">if</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span>
+            <span class="k">elif</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Long position: capital + (current_price * shares)</span>
+                <span class="n">entry_order</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;buy&quot;</span><span class="p">),</span> <span class="kc">None</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">entry_order</span><span class="p">:</span>
+                    <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span> <span class="o">+</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;shares&quot;</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span>  <span class="c1"># Fallback if no entry order found</span>
+            <span class="k">elif</span> <span class="n">position</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Short position: capital + (entry_price * shares) - (current_price * shares)</span>
+                <span class="n">entry_order</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                    <span class="p">(</span><span class="n">o</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span> <span class="k">if</span> <span class="n">o</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;sell&quot;</span><span class="p">),</span> <span class="kc">None</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">entry_order</span><span class="p">:</span>
+                    <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span> <span class="o">+</span> <span class="p">(</span><span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;price&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;shares&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="n">entry_order</span><span class="p">[</span><span class="s2">&quot;shares&quot;</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span>  <span class="c1"># Fallback if no entry order found</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">current_equity</span> <span class="o">=</span> <span class="n">capital</span>  <span class="c1"># Fallback for unexpected position</span>
+
+            <span class="c1"># Ensure equity doesn&#39;t go negative (bankruptcy protection)</span>
+            <span class="n">current_equity</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">current_equity</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">timestamp_str</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">timestamp</span><span class="p">,</span> <span class="s2">&quot;isoformat&quot;</span><span class="p">)</span>
+                <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">timestamp</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">equity_curve</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp_str</span><span class="p">,</span>
+                    <span class="s2">&quot;equity&quot;</span><span class="p">:</span> <span class="n">current_equity</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Convert to pandas objects</span>
+        <span class="n">equity_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">)</span>
+        <span class="n">equity_series</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">p</span><span class="p">[</span><span class="s2">&quot;equity&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">equity_curve</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">)]</span>
+        <span class="p">)</span>
+
+        <span class="n">orders_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">orders</span><span class="p">)</span>
+
+        <span class="c1"># Prepare adaptation summary if adaptation was enabled</span>
+        <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">adaptation_history</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">adaptation_history</span><span class="p">:</span>
+            <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;total_adaptations&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">adaptation_history</span><span class="p">),</span>
+                <span class="s1">&#39;adaptation_history&#39;</span><span class="p">:</span> <span class="n">adaptation_history</span><span class="p">,</span>
+                <span class="s1">&#39;final_hyperparameters&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">get_current_hyperparameters</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="k">else</span> <span class="p">{},</span>
+                <span class="s1">&#39;adaptation_statistics&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">get_adaptation_statistics</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="k">else</span> <span class="p">{}</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">equity_series</span><span class="p">,</span> <span class="n">orders_df</span><span class="p">,</span> <span class="n">adaptation_summary</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main CLI entry point.&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Run trading strategy backtest&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--policy&quot;</span><span class="p">,</span>
+        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;rl&quot;</span><span class="p">,</span> <span class="s2">&quot;sma_fast_slow&quot;</span><span class="p">,</span> <span class="s2">&quot;buy_hold&quot;</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Trading strategy to test&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--dataset&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;btc_usd_1m&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dataset to use (default: btc_usd_1m)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--slippage-bps&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Slippage in basis points (default: 5.0)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--initial-capital&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Initial capital (default: 10000.0)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output-dir&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;results/backtest&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output directory (default: results/backtest)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--enable-risk&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable risk management features (kill switches, circuit breakers)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--risk-profile&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;balanced&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;conservative&quot;</span><span class="p">,</span> <span class="s2">&quot;balanced&quot;</span><span class="p">,</span> <span class="s2">&quot;aggressive&quot;</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Risk profile (default: balanced)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--kill-file&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;/tmp/ztb.stop&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Kill switch file path (default: /tmp/ztb.stop)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--target-vol&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Target volatility for position sizing (enables vol targeting)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--enable-adaptation&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Enable dynamic hyperparameter adaptation during backtest&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--adaptation-interval&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Adaptation interval in minutes (default: 15)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--adaptation-safety-margin&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Safety margin for parameter changes (default: 0.15)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--auto-analyze&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Automatically run analyze_backtest after backtest completion&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="c1"># Generate correlation ID for this run</span>
+    <span class="n">correlation_id</span> <span class="o">=</span> <span class="n">generate_correlation_id</span><span class="p">()</span>
+
+    <span class="c1"># Create output directory</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">ensure_dir</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running backtest for </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="si">}</span><span class="s2"> strategy...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Output directory: </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Correlation ID: </span><span class="si">{</span><span class="n">correlation_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Setup observability</span>
+    <span class="n">obs_client</span> <span class="o">=</span> <span class="n">setup_observability</span><span class="p">(</span><span class="s2">&quot;backtest&quot;</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">correlation_id</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Initialize components</span>
+        <span class="n">adaptation_config</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span><span class="p">:</span>
+            <span class="n">adaptation_config</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;hyperparameter_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;adaptation_interval_minutes&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">adaptation_interval</span><span class="p">,</span>
+                    <span class="s1">&#39;safety_margin&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">adaptation_safety_margin</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">BacktestEngine</span><span class="p">(</span>
+            <span class="n">initial_capital</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">,</span>
+            <span class="n">slippage_bps</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">slippage_bps</span><span class="p">,</span>
+            <span class="n">enable_risk</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">enable_risk</span><span class="p">,</span>
+            <span class="n">risk_profile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">risk_profile</span><span class="p">,</span>
+            <span class="n">kill_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">kill_file</span><span class="p">,</span>
+            <span class="n">target_vol</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">target_vol</span><span class="p">,</span>
+            <span class="n">correlation_id</span><span class="o">=</span><span class="n">correlation_id</span><span class="p">,</span>
+            <span class="n">enable_adaptation</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span><span class="p">,</span>
+            <span class="n">adaptation_config</span><span class="o">=</span><span class="n">adaptation_config</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">create_adapter</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">load_data</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dataset</span><span class="p">)</span>
+
+        <span class="c1"># Run backtest</span>
+        <span class="n">equity_curve</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run_backtest</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+        <span class="c1"># Log adaptation summary if available</span>
+        <span class="k">if</span> <span class="n">adaptation_summary</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation Summary:&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Total adaptations: </span><span class="si">{</span><span class="n">adaptation_summary</span><span class="p">[</span><span class="s1">&#39;total_adaptations&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final hyperparameters: </span><span class="si">{</span><span class="n">adaptation_summary</span><span class="p">[</span><span class="s1">&#39;final_hyperparameters&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">adaptation_summary</span><span class="p">[</span><span class="s1">&#39;adaptation_statistics&#39;</span><span class="p">]:</span>
+                <span class="n">stats</span> <span class="o">=</span> <span class="n">adaptation_summary</span><span class="p">[</span><span class="s1">&#39;adaptation_statistics&#39;</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Strategy performance: </span><span class="si">{</span><span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;strategy_performance&#39;</span><span class="p">,</span><span class="w"> </span><span class="p">{})</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Calculate metrics</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">MetricsCalculator</span><span class="o">.</span><span class="n">calculate_all_metrics</span><span class="p">(</span>
+            <span class="n">equity_curve</span><span class="o">=</span><span class="n">equity_curve</span><span class="p">,</span>
+            <span class="n">orders</span><span class="o">=</span><span class="n">orders</span><span class="p">,</span>
+            <span class="n">initial_capital</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">,</span>
+            <span class="n">slippage_bps</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">slippage_bps</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create run metadata</span>
+        <span class="n">run_metadata</span> <span class="o">=</span> <span class="n">RunMetadata</span><span class="p">()</span>
+        <span class="n">run_metadata</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;correlation_id&quot;</span><span class="p">:</span> <span class="n">correlation_id</span><span class="p">,</span>
+                <span class="s2">&quot;run_id&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;backtest_</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;backtest&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span>
+                    <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                    <span class="s2">&quot;slippage_bps&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">slippage_bps</span><span class="p">,</span>
+                    <span class="s2">&quot;initial_capital&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">,</span>
+                    <span class="s2">&quot;enable_risk&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_risk</span><span class="p">,</span>
+                    <span class="s2">&quot;risk_profile&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">risk_profile</span><span class="p">,</span>
+                    <span class="s2">&quot;target_vol&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">target_vol</span><span class="p">,</span>
+                    <span class="s2">&quot;enable_adaptation&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span><span class="p">,</span>
+                    <span class="s2">&quot;adaptation_interval&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">adaptation_interval</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;adaptation_safety_margin&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">adaptation_safety_margin</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;seeds&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;numpy&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>  <span class="c1"># From load_data</span>
+                    <span class="s2">&quot;random&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;package_hashes&quot;</span><span class="p">:</span> <span class="p">{},</span>  <span class="c1"># TODO: Add package hashes</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="c1"># Add system info</span>
+        <span class="n">run_metadata</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;environment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_metadata</span><span class="o">.</span><span class="n">capture_system_info</span><span class="p">()</span>
+
+        <span class="c1"># Save run metadata</span>
+        <span class="n">obs_client</span><span class="o">.</span><span class="n">export_artifact</span><span class="p">(</span><span class="s2">&quot;run_metadata&quot;</span><span class="p">,</span> <span class="n">run_metadata</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
+
+        <span class="c1"># Generate reports</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;strategy&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span>
+            <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="s2">&quot;slippage_bps&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">slippage_bps</span><span class="p">,</span>
+            <span class="s2">&quot;initial_capital&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">,</span>
+            <span class="s2">&quot;adaptation_enabled&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">enable_adaptation</span><span class="p">,</span>
+            <span class="s2">&quot;adaptation_summary&quot;</span><span class="p">:</span> <span class="n">adaptation_summary</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">equity_list</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">ts</span><span class="p">,</span> <span class="s2">&quot;equity&quot;</span><span class="p">:</span> <span class="n">eq</span><span class="p">}</span> <span class="k">for</span> <span class="n">ts</span><span class="p">,</span> <span class="n">eq</span> <span class="ow">in</span> <span class="n">equity_curve</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">]</span>
+        <span class="n">orders_list</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">orders</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(</span><span class="s2">&quot;records&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">orders</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="p">[]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Generate outputs</span>
+        <span class="n">ReportGenerator</span><span class="o">.</span><span class="n">generate_json_report</span><span class="p">(</span>
+            <span class="n">metrics</span><span class="p">,</span>
+            <span class="n">equity_list</span><span class="p">,</span>
+            <span class="n">orders_list</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;metrics.json&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+
+        <span class="n">ReportGenerator</span><span class="o">.</span><span class="n">generate_markdown_report</span><span class="p">(</span>
+            <span class="n">metrics</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;report.md&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">ReportGenerator</span><span class="o">.</span><span class="n">generate_equity_csv</span><span class="p">(</span>
+            <span class="n">equity_list</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;equity_curve.csv&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">ReportGenerator</span><span class="o">.</span><span class="n">generate_orders_csv</span><span class="p">(</span><span class="n">orders_list</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span> <span class="o">/</span> <span class="s2">&quot;orders.csv&quot;</span><span class="p">))</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Backtest completed successfully!&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sharpe Ratio: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Max Drawdown: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">max_drawdown</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total Return: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">total_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Win Rate: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">win_rate</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total Trades: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">total_trades</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Auto-run analyze_backtest if requested</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">auto_analyze</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running automatic backtest analysis...&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Import and run analyze_backtest</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.analysis.unified_analyze</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedAnalysisSuite</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">StringIO</span>
+                
+                <span class="c1"># Create analysis suite</span>
+                <span class="n">suite</span> <span class="o">=</span> <span class="n">UnifiedAnalysisSuite</span><span class="p">()</span>
+                
+                <span class="c1"># Create mock args for analyze_backtest</span>
+                <span class="k">class</span><span class="w"> </span><span class="nc">MockArgs</span><span class="p">:</span>
+                    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backtest_path</span><span class="p">):</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">backtest_path</span> <span class="o">=</span> <span class="n">backtest_path</span>
+                
+                <span class="n">mock_args</span> <span class="o">=</span> <span class="n">MockArgs</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">output_dir</span><span class="p">))</span>
+                
+                <span class="c1"># Run analyze_backtest</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">suite</span><span class="o">.</span><span class="n">run_analyze_backtest</span><span class="p">(</span><span class="n">mock_args</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">result</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Backtest analysis completed successfully!&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Backtest analysis failed!&quot;</span><span class="p">)</span>
+                    
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Automatic backtest analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backtest failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="create_adapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.create_adapter">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_adapter</span><span class="p">(</span><span class="n">policy</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrategyAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create strategy adapter based on policy type.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">policy</span> <span class="o">==</span> <span class="s2">&quot;rl&quot;</span><span class="p">:</span>
+        <span class="c1"># Use the latest trained model</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="s2">&quot;models/sac_v428_ultra_profit_optimized.zip&quot;</span>
+        <span class="k">return</span> <span class="n">RLPolicyAdapter</span><span class="p">(</span><span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">policy</span> <span class="o">==</span> <span class="s2">&quot;sma_fast_slow&quot;</span><span class="p">:</span>
+        <span class="c1"># TODO: Implement SMA crossover adapter</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;SMA crossover strategy not implemented&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">policy</span> <span class="o">==</span> <span class="s2">&quot;buy_hold&quot;</span><span class="p">:</span>
+        <span class="c1"># TODO: Implement buy and hold adapter</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Buy and hold strategy not implemented&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown policy: </span><span class="si">{</span><span class="n">policy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+
+
+<span class="c1"># Mock classes for backtest adaptation integration</span>
+<div class="viewcode-block" id="MockOnlineLearningPipeline">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockOnlineLearningPipeline">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MockOnlineLearningPipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mock online learning pipeline for backtest environment.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
+            <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+            <span class="s2">&quot;regularization_strength&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
+            <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="MockOnlineLearningPipeline.update_hyperparameter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockOnlineLearningPipeline.update_hyperparameter">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_hyperparameter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update hyperparameter value.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated hyperparameter </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MockOnlineLearningPipeline.get_hyperparameters">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockOnlineLearningPipeline.get_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current hyperparameters.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MockEvaluationManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockEvaluationManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MockEvaluationManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mock evaluation manager for backtest environment.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_score</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+<div class="viewcode-block" id="MockEvaluationManager.get_current_performance">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockEvaluationManager.get_current_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current performance score.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_score</span></div>
+
+
+<div class="viewcode-block" id="MockEvaluationManager.update_performance">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.runner.MockEvaluationManager.update_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">score</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update performance score.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_score</span> <span class="o">=</span> <span class="n">score</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

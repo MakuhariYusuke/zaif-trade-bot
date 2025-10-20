@@ -1,0 +1,554 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evaluation Guide &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Evaluation Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/evaluation/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="evaluation-guide">
+<h1>Evaluation Guide<a class="headerlink" href="#evaluation-guide" title="Link to this heading"></a></h1>
+<p>This section covers model evaluation, performance analysis, and backtesting methodologies for Zaif Trade Bot.</p>
+<section id="evaluation-overview">
+<h2>Evaluation Overview<a class="headerlink" href="#evaluation-overview" title="Link to this heading"></a></h2>
+<p>Model evaluation is crucial for understanding trading strategy performance. Zaif Trade Bot provides comprehensive evaluation tools for backtesting, performance metrics, and risk analysis.</p>
+</section>
+<section id="evaluation-workflow">
+<h2>Evaluation Workflow<a class="headerlink" href="#evaluation-workflow" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Backtesting</strong>: Test strategy on historical data</p></li>
+<li><p><strong>Performance Analysis</strong>: Calculate key metrics</p></li>
+<li><p><strong>Risk Assessment</strong>: Evaluate risk-adjusted returns</p></li>
+<li><p><strong>Benchmarking</strong>: Compare against baselines</p></li>
+<li><p><strong>Validation</strong>: Cross-validate results</p></li>
+</ol>
+</section>
+<section id="backtesting">
+<h2>Backtesting<a class="headerlink" href="#backtesting" title="Link to this heading"></a></h2>
+<section id="backtesting-configuration">
+<h3>Backtesting Configuration<a class="headerlink" href="#backtesting-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">evaluation</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">backtest</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">episodes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span><span class="w">                    </span><span class="c1"># Number of backtest episodes</span>
+<span class="w">    </span><span class="nt">deterministic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">             </span><span class="c1"># Use deterministic policy</span>
+<span class="w">    </span><span class="nt">render</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">                    </span><span class="c1"># Render environment</span>
+<span class="w">    </span><span class="nt">save_results</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">               </span><span class="c1"># Save results to file</span>
+<span class="w">    </span><span class="nt">results_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;results/backtest&quot;</span><span class="w"> </span><span class="c1"># Results directory</span>
+</pre></div>
+</div>
+</section>
+<section id="running-backtests">
+<h3>Running Backtests<a class="headerlink" href="#running-backtests" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Backtester</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigManager</span>
+
+<span class="c1"># Load configuration</span>
+<span class="n">config</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="s1">&#39;config/trading.yaml&#39;</span><span class="p">)</span>
+
+<span class="c1"># Create backtester</span>
+<span class="n">backtester</span> <span class="o">=</span> <span class="n">Backtester</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Run backtest</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">backtester</span><span class="o">.</span><span class="n">run_backtest</span><span class="p">(</span>
+    <span class="n">data_path</span><span class="o">=</span><span class="s1">&#39;data/market_data.csv&#39;</span><span class="p">,</span>
+    <span class="n">episodes</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total Return: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">total_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sharpe Ratio: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Max Drawdown: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">max_drawdown</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="backtest-results">
+<h3>Backtest Results<a class="headerlink" href="#backtest-results" title="Link to this heading"></a></h3>
+<p>Backtest results include comprehensive performance metrics:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Access detailed results</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Backtest Results:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Episodes: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">num_episodes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Total Trades: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">total_trades</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Win Rate: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">win_rate</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Profit Factor: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">profit_factor</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Average Trade: </span><span class="si">{</span><span class="n">results</span><span class="o">.</span><span class="n">avg_trade_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-metrics">
+<h2>Performance Metrics<a class="headerlink" href="#performance-metrics" title="Link to this heading"></a></h2>
+<section id="key-performance-indicators">
+<h3>Key Performance Indicators<a class="headerlink" href="#key-performance-indicators" title="Link to this heading"></a></h3>
+<p>Zaif Trade Bot calculates comprehensive performance metrics:</p>
+<p><strong>Return Metrics</strong>
+* Total Return: Overall portfolio return
+* Annualized Return: Return normalized to yearly basis
+* Risk-Adjusted Return: Return adjusted for risk taken</p>
+<p><strong>Risk Metrics</strong>
+* Volatility: Standard deviation of returns
+* Sharpe Ratio: Risk-adjusted return measure
+* Sortino Ratio: Downside risk-adjusted return
+* Maximum Drawdown: Largest peak-to-trough decline
+* Value at Risk (VaR): Potential loss at confidence level</p>
+<p><strong>Trading Metrics</strong>
+* Win Rate: Percentage of profitable trades
+* Profit Factor: Gross profit / Gross loss
+* Average Win/Loss: Average profit/loss per trade
+* Trade Frequency: Number of trades per period
+* Holding Period: Average time in position</p>
+</section>
+<section id="calculating-metrics">
+<h3>Calculating Metrics<a class="headerlink" href="#calculating-metrics" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceAnalyzer</span>
+
+<span class="c1"># Analyze performance</span>
+<span class="n">analyzer</span> <span class="o">=</span> <span class="n">PerformanceAnalyzer</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+<span class="c1"># Calculate all metrics</span>
+<span class="n">metrics</span> <span class="o">=</span> <span class="n">analyzer</span><span class="o">.</span><span class="n">calculate_metrics</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Performance Metrics:&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">metric</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-metrics">
+<h3>Custom Metrics<a class="headerlink" href="#custom-metrics" title="Link to this heading"></a></h3>
+<p>You can define custom performance metrics:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">MetricCalculator</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomMetric</span><span class="p">(</span><span class="n">MetricCalculator</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returns</span><span class="p">):</span>
+        <span class="c1"># Custom calculation logic</span>
+        <span class="k">return</span> <span class="n">custom_value</span>
+
+<span class="c1"># Register custom metric</span>
+<span class="n">analyzer</span><span class="o">.</span><span class="n">add_metric</span><span class="p">(</span><span class="s1">&#39;custom_metric&#39;</span><span class="p">,</span> <span class="n">CustomMetric</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="risk-analysis">
+<h2>Risk Analysis<a class="headerlink" href="#risk-analysis" title="Link to this heading"></a></h2>
+<section id="risk-assessment">
+<h3>Risk Assessment<a class="headerlink" href="#risk-assessment" title="Link to this heading"></a></h3>
+<p>Comprehensive risk analysis includes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskAnalyzer</span>
+
+<span class="c1"># Perform risk analysis</span>
+<span class="n">risk_analyzer</span> <span class="o">=</span> <span class="n">RiskAnalyzer</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+<span class="c1"># Calculate risk metrics</span>
+<span class="n">risk_metrics</span> <span class="o">=</span> <span class="n">risk_analyzer</span><span class="o">.</span><span class="n">calculate_risk_metrics</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Risk Metrics:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;VaR (95%): </span><span class="si">{</span><span class="n">risk_metrics</span><span class="o">.</span><span class="n">var_95</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Expected Shortfall: </span><span class="si">{</span><span class="n">risk_metrics</span><span class="o">.</span><span class="n">expected_shortfall</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tail Risk: </span><span class="si">{</span><span class="n">risk_metrics</span><span class="o">.</span><span class="n">tail_risk</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="stress-testing">
+<h3>Stress Testing<a class="headerlink" href="#stress-testing" title="Link to this heading"></a></h3>
+<p>Test strategy under extreme market conditions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Stress test scenarios</span>
+<span class="n">stress_tests</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;market_crash&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;volatility_multiplier&#39;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span> <span class="s1">&#39;trend&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.05</span><span class="p">},</span>
+    <span class="s1">&#39;high_volatility&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;volatility_multiplier&#39;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">},</span>
+    <span class="s1">&#39;liquidity_crisis&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;spread_multiplier&#39;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">for</span> <span class="n">scenario</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="n">stress_tests</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">stress_results</span> <span class="o">=</span> <span class="n">backtester</span><span class="o">.</span><span class="n">stress_test</span><span class="p">(</span><span class="n">scenario</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">scenario</span><span class="si">}</span><span class="s2">: Return = </span><span class="si">{</span><span class="n">stress_results</span><span class="o">.</span><span class="n">total_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="benchmarking">
+<h2>Benchmarking<a class="headerlink" href="#benchmarking" title="Link to this heading"></a></h2>
+<section id="benchmark-strategies">
+<h3>Benchmark Strategies<a class="headerlink" href="#benchmark-strategies" title="Link to this heading"></a></h3>
+<p>Compare your strategy against common benchmarks:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkComparator</span>
+
+<span class="c1"># Define benchmarks</span>
+<span class="n">benchmarks</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;buy_hold&#39;</span><span class="p">:</span> <span class="s1">&#39;Buy and Hold&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;random&#39;</span><span class="p">:</span> <span class="s1">&#39;Random Trading&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;moving_average&#39;</span><span class="p">:</span> <span class="s1">&#39;Moving Average Crossover&#39;</span>
+<span class="p">}</span>
+
+<span class="c1"># Compare against benchmarks</span>
+<span class="n">comparator</span> <span class="o">=</span> <span class="n">BenchmarkComparator</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+<span class="n">comparison</span> <span class="o">=</span> <span class="n">comparator</span><span class="o">.</span><span class="n">compare_benchmarks</span><span class="p">(</span><span class="n">benchmarks</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">benchmark</span><span class="p">,</span> <span class="n">metrics</span> <span class="ow">in</span> <span class="n">comparison</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">benchmark</span><span class="si">}</span><span class="s2">: Sharpe = </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-benchmarks">
+<h3>Custom Benchmarks<a class="headerlink" href="#custom-benchmarks" title="Link to this heading"></a></h3>
+<p>Create custom benchmark strategies:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.strategies</span><span class="w"> </span><span class="kn">import</span> <span class="n">BenchmarkStrategy</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyBenchmark</span><span class="p">(</span><span class="n">BenchmarkStrategy</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="c1"># Custom benchmark logic</span>
+        <span class="k">return</span> <span class="n">signals</span>
+
+<span class="c1"># Register and compare</span>
+<span class="n">comparator</span><span class="o">.</span><span class="n">add_benchmark</span><span class="p">(</span><span class="s1">&#39;my_benchmark&#39;</span><span class="p">,</span> <span class="n">MyBenchmark</span><span class="p">())</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">comparator</span><span class="o">.</span><span class="n">run_comparison</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="walk-forward-analysis">
+<h2>Walk-Forward Analysis<a class="headerlink" href="#walk-forward-analysis" title="Link to this heading"></a></h2>
+<section id="walk-forward-optimization">
+<h3>Walk-Forward Optimization<a class="headerlink" href="#walk-forward-optimization" title="Link to this heading"></a></h3>
+<p>Prevent overfitting with walk-forward analysis:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">WalkForwardAnalyzer</span>
+
+<span class="c1"># Configure walk-forward analysis</span>
+<span class="n">wf_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;train_window&#39;</span><span class="p">:</span> <span class="mi">252</span><span class="p">,</span>    <span class="c1"># Training window (trading days)</span>
+    <span class="s1">&#39;test_window&#39;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>      <span class="c1"># Test window</span>
+    <span class="s1">&#39;step_size&#39;</span><span class="p">:</span> <span class="mi">21</span>         <span class="c1"># Step size</span>
+<span class="p">}</span>
+
+<span class="c1"># Run walk-forward analysis</span>
+<span class="n">wf_analyzer</span> <span class="o">=</span> <span class="n">WalkForwardAnalyzer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">wf_config</span><span class="p">)</span>
+<span class="n">wf_results</span> <span class="o">=</span> <span class="n">wf_analyzer</span><span class="o">.</span><span class="n">run_analysis</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Walk-Forward Sharpe: </span><span class="si">{</span><span class="n">wf_results</span><span class="o">.</span><span class="n">avg_sharpe</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Out-of-Sample Return: </span><span class="si">{</span><span class="n">wf_results</span><span class="o">.</span><span class="n">oos_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="cross-validation">
+<h3>Cross-Validation<a class="headerlink" href="#cross-validation" title="Link to this heading"></a></h3>
+<p>Time-series cross-validation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSeriesCrossValidator</span>
+
+<span class="c1"># Configure cross-validation</span>
+<span class="n">cv_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;n_splits&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="s1">&#39;test_size&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+    <span class="s1">&#39;gap&#39;</span><span class="p">:</span> <span class="mi">5</span>
+<span class="p">}</span>
+
+<span class="c1"># Run cross-validation</span>
+<span class="n">cv</span> <span class="o">=</span> <span class="n">TimeSeriesCrossValidator</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">cv_config</span><span class="p">)</span>
+<span class="n">cv_results</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">run_cross_validation</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CV Score: </span><span class="si">{</span><span class="n">cv_results</span><span class="o">.</span><span class="n">mean_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> (+/- </span><span class="si">{</span><span class="n">cv_results</span><span class="o">.</span><span class="n">std_score</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="visualization">
+<h2>Visualization<a class="headerlink" href="#visualization" title="Link to this heading"></a></h2>
+<section id="performance-charts">
+<h3>Performance Charts<a class="headerlink" href="#performance-charts" title="Link to this heading"></a></h3>
+<p>Generate comprehensive performance visualizations:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceVisualizer</span>
+
+<span class="c1"># Create visualizer</span>
+<span class="n">visualizer</span> <span class="o">=</span> <span class="n">PerformanceVisualizer</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+<span class="c1"># Generate plots</span>
+<span class="n">visualizer</span><span class="o">.</span><span class="n">plot_equity_curve</span><span class="p">()</span>
+<span class="n">visualizer</span><span class="o">.</span><span class="n">plot_drawdown</span><span class="p">()</span>
+<span class="n">visualizer</span><span class="o">.</span><span class="n">plot_monthly_returns</span><span class="p">()</span>
+<span class="n">visualizer</span><span class="o">.</span><span class="n">plot_trade_analysis</span><span class="p">()</span>
+
+<span class="c1"># Save plots</span>
+<span class="n">visualizer</span><span class="o">.</span><span class="n">save_plots</span><span class="p">(</span><span class="s1">&#39;results/plots/&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-visualizations">
+<h3>Custom Visualizations<a class="headerlink" href="#custom-visualizations" title="Link to this heading"></a></h3>
+<p>Create custom performance charts:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="c1"># Custom equity curve</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">equity_curve</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Strategy&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">results</span><span class="o">.</span><span class="n">benchmark_equity</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Benchmark&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Equity Curve Comparison&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;results/custom_equity.png&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="reporting">
+<h2>Reporting<a class="headerlink" href="#reporting" title="Link to this heading"></a></h2>
+<section id="automated-reports">
+<h3>Automated Reports<a class="headerlink" href="#automated-reports" title="Link to this heading"></a></h3>
+<p>Generate comprehensive evaluation reports:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ReportGenerator</span>
+
+<span class="c1"># Generate report</span>
+<span class="n">report_gen</span> <span class="o">=</span> <span class="n">ReportGenerator</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+<span class="n">report</span> <span class="o">=</span> <span class="n">report_gen</span><span class="o">.</span><span class="n">generate_report</span><span class="p">(</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;html&#39;</span><span class="p">,</span>
+    <span class="n">include_plots</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">benchmark_comparison</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Save report</span>
+<span class="n">report</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s1">&#39;results/evaluation_report.html&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="report-contents">
+<h3>Report Contents<a class="headerlink" href="#report-contents" title="Link to this heading"></a></h3>
+<p>Evaluation reports include:</p>
+<ul class="simple">
+<li><p>Executive Summary</p></li>
+<li><p>Performance Metrics Table</p></li>
+<li><p>Risk Analysis</p></li>
+<li><p>Benchmark Comparison</p></li>
+<li><p>Trade Analysis</p></li>
+<li><p>Visualizations</p></li>
+<li><p>Recommendations</p></li>
+</ul>
+</section>
+<section id="custom-reports">
+<h3>Custom Reports<a class="headerlink" href="#custom-reports" title="Link to this heading"></a></h3>
+<p>Create custom report templates:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomReport</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MyReport</span><span class="p">(</span><span class="n">CustomReport</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_custom_section</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Add custom analysis section</span>
+        <span class="k">pass</span>
+
+<span class="c1"># Generate custom report</span>
+<span class="n">custom_report</span> <span class="o">=</span> <span class="n">MyReport</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+<span class="n">custom_report</span><span class="o">.</span><span class="n">generate</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="model-validation">
+<h2>Model Validation<a class="headerlink" href="#model-validation" title="Link to this heading"></a></h2>
+<section id="validation-techniques">
+<h3>Validation Techniques<a class="headerlink" href="#validation-techniques" title="Link to this heading"></a></h3>
+<p>Comprehensive model validation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelValidator</span>
+
+<span class="c1"># Validate model</span>
+<span class="n">validator</span> <span class="o">=</span> <span class="n">ModelValidator</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">test_data</span><span class="p">)</span>
+
+<span class="c1"># Run validation tests</span>
+<span class="n">validation_results</span> <span class="o">=</span> <span class="n">validator</span><span class="o">.</span><span class="n">run_validation</span><span class="p">()</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Validation Results:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data Drift: </span><span class="si">{</span><span class="n">validation_results</span><span class="o">.</span><span class="n">data_drift</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model Stability: </span><span class="si">{</span><span class="n">validation_results</span><span class="o">.</span><span class="n">model_stability</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Performance Decay: </span><span class="si">{</span><span class="n">validation_results</span><span class="o">.</span><span class="n">performance_decay</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="out-of-sample-testing">
+<h3>Out-of-Sample Testing<a class="headerlink" href="#out-of-sample-testing" title="Link to this heading"></a></h3>
+<p>Test on unseen data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Split data for out-of-sample testing</span>
+<span class="n">train_data</span><span class="p">,</span> <span class="n">oos_data</span> <span class="o">=</span> <span class="n">split_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="c1"># Train on training data</span>
+<span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">train_data</span><span class="p">)</span>
+
+<span class="c1"># Evaluate on out-of-sample data</span>
+<span class="n">oos_results</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">oos_data</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OOS Return: </span><span class="si">{</span><span class="n">oos_results</span><span class="o">.</span><span class="n">total_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;OOS Sharpe: </span><span class="si">{</span><span class="n">oos_results</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="monte-carlo-simulation">
+<h3>Monte Carlo Simulation<a class="headerlink" href="#monte-carlo-simulation" title="Link to this heading"></a></h3>
+<p>Assess strategy robustness:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">MonteCarloSimulator</span>
+
+<span class="c1"># Run Monte Carlo simulation</span>
+<span class="n">simulator</span> <span class="o">=</span> <span class="n">MonteCarloSimulator</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+<span class="n">mc_results</span> <span class="o">=</span> <span class="n">simulator</span><span class="o">.</span><span class="n">run_simulation</span><span class="p">(</span><span class="n">n_simulations</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Monte Carlo Results:&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mean Return: </span><span class="si">{</span><span class="n">mc_results</span><span class="o">.</span><span class="n">mean_return</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Return Std: </span><span class="si">{</span><span class="n">mc_results</span><span class="o">.</span><span class="n">return_std</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;VaR (95%): </span><span class="si">{</span><span class="n">mc_results</span><span class="o">.</span><span class="n">var_95</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Multiple Metrics</strong>: Use multiple performance metrics for comprehensive evaluation</p></li>
+<li><p><strong>Out-of-Sample Testing</strong>: Always test on unseen data</p></li>
+<li><p><strong>Benchmarking</strong>: Compare against relevant benchmarks</p></li>
+<li><p><strong>Walk-Forward Analysis</strong>: Use walk-forward optimization to prevent overfitting</p></li>
+<li><p><strong>Risk Management</strong>: Focus on risk-adjusted returns, not just raw returns</p></li>
+<li><p><strong>Visualization</strong>: Use charts to understand performance patterns</p></li>
+<li><p><strong>Documentation</strong>: Document evaluation methodology and assumptions</p></li>
+</ol>
+</section>
+<section id="common-pitfalls">
+<h2>Common Pitfalls<a class="headerlink" href="#common-pitfalls" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Overfitting</strong>: Testing on the same data used for optimization</p></li>
+<li><p><strong>Data Snooping</strong>: Using future information in backtests</p></li>
+<li><p><strong>Survivorship Bias</strong>: Only testing on currently successful strategies</p></li>
+<li><p><strong>Look-Ahead Bias</strong>: Using information not available at decision time</p></li>
+<li><p><strong>Transaction Costs</strong>: Ignoring realistic trading costs</p></li>
+</ul>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-evaluation-issues">
+<h3>Common Evaluation Issues<a class="headerlink" href="#common-evaluation-issues" title="Link to this heading"></a></h3>
+<p><strong>Inconsistent Results</strong>
+* Check random seeds
+* Verify data preprocessing
+* Ensure deterministic evaluation</p>
+<p><strong>Poor Out-of-Sample Performance</strong>
+* Reduce model complexity
+* Use regularization
+* Implement walk-forward analysis</p>
+<p><strong>High Drawdown</strong>
+* Implement stop-loss rules
+* Reduce position sizes
+* Add risk management</p>
+</section>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../deployment/index.html"><span class="doc">Deployment Guide</span></a> - Learn about model deployment</p></li>
+<li><p><a class="reference internal" href="../api/index.html"><span class="doc">API Reference</span></a> - Explore the API reference</p></li>
+<li><p><a class="reference internal" href="../examples/index.html"><span class="doc">Examples</span></a> - See evaluation examples</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

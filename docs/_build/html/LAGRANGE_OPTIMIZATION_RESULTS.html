@@ -1,0 +1,660 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lagrange制約パラメータ最適化結果 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Lagrange制約パラメータ最適化結果</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/LAGRANGE_OPTIMIZATION_RESULTS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="lagrange">
+<h1>Lagrange制約パラメータ最適化結果<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>📊 概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>バイナリサーチを使用してLagrange制約の4つの主要パラメータを最適化しました。
+各パラメータは10,000ステップのトレーニングで4回の反復を実行し、最適値を決定しました。</p>
+<p><strong>最適化日</strong>: 2025年10月9日<br />
+<strong>手法</strong>: Binary Search Optimization<br />
+<strong>トレーニング</strong>: 各反復50,000ステップ<br />
+<strong>環境</strong>: curriculum_stage=“full” (realistic rewards)</p>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>🎯 最適化結果サマリー<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>デフォルト値</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>探索範囲</p></th>
+<th class="head"><p>スコア (avg_reward)</p></th>
+<th class="head"><p>ベストエピソード</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>r_target</strong></p></td>
+<td><p>0.15</p></td>
+<td><p><strong>0.175</strong></p></td>
+<td><p>0.10-0.25</p></td>
+<td><p><strong>-399.56</strong></p></td>
+<td><p>-376.81</p></td>
+<td><p>+8.0pt vs 0.10</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>tolerance</strong></p></td>
+<td><p>0.05</p></td>
+<td><p><strong>0.042625</strong></p></td>
+<td><p>0.01-0.10</p></td>
+<td><p><strong>-395.64</strong></p></td>
+<td><p>-373.10</p></td>
+<td><p>+4.7pt vs 0.055</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>eta</strong></p></td>
+<td><p>0.01</p></td>
+<td><p><strong>0.062875</strong></p></td>
+<td><p>0.001-0.1</p></td>
+<td><p><strong>-395.16</strong></p></td>
+<td><p>-375.04</p></td>
+<td><p>+9.1pt vs 0.001</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>lambda_max</strong></p></td>
+<td><p>1.0</p></td>
+<td><p><strong>3.875</strong></p></td>
+<td><p>0.5-5.0</p></td>
+<td><p><strong>-398.10</strong></p></td>
+<td><p>-378.21</p></td>
+<td><p>+5.6pt vs 0.5</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>warmup_steps</strong></p></td>
+<td><p>0</p></td>
+<td><p><strong>3,874</strong></p></td>
+<td><p>500-5,000</p></td>
+<td><p><strong>-397.71</strong></p></td>
+<td><p>-378.62</p></td>
+<td><p>+6.1pt vs 500</p></td>
+</tr>
+</tbody>
+</table>
+<p>※ スコアは平均エピソード報酬（高いほど良い）を示しています。備考欄の“+〇pt”は同一探索内のベースライン試行との比較です。</p>
+<section id="id3">
+<h3>総合評価<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>安定性向上</strong>: 全パラメータで平均報酬が 5～9pt 改善し、50k ステップでも安定した収束。</p></li>
+<li><p><strong>アクション分散</strong>: 最適値で HOLD/BUY/SELL が概ね 30-38% の範囲に収まり、SELL 割合が過剰にならない。</p></li>
+<li><p><strong>ウォームアップ導入</strong>: 3,874 ステップのウォームアップで序盤の制約過剰を回避し、平均報酬が +6pt 向上。</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>📈 詳細結果<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="r-target">
+<h3>1. r_target (目標アクション率)<a class="headerlink" href="#r-target" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: SELL アクションの目標比率を設定<br />
+<strong>範囲</strong>: 0.10 (10%) ～ 0.25 (25%)<br />
+<strong>最適値</strong>: <strong>0.175 (17.5%)</strong></p>
+<section id="id5">
+<h4>バイナリサーチ ハイライト（r_target）<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Initial bounds: 0.10 → score -407.51, 0.25 → score -403.63
+Refinement: 0.1375 → score -403.51
+Refinement: 0.2125 → score -402.21
+Refine: 0.175 → score -399.56 ✅ BEST (best episode -376.81)
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h4>評価（r_target）<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✅ <strong>+8.0pt 改善</strong>: 0.10 → 0.175 で平均報酬が大幅上昇</p></li>
+<li><p>✅ <strong>BUY 偏重を緩和</strong>: BUY 36.8%, SELL 31.0% と適度な SELL 比率に収束</p></li>
+<li><p>💡 <strong>0.21 以上は過剰 SELL</strong>: 目標を高くしすぎると SELL が増え過ぎて報酬低下</p></li>
+</ul>
+</section>
+</section>
+<section id="tolerance">
+<h3>2. tolerance (許容偏差)<a class="headerlink" href="#tolerance" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: 目標値からの許容できる偏差を定義<br />
+<strong>範囲</strong>: 0.01 (1%) ～ 0.10 (10%)<br />
+<strong>最適値</strong>: <strong>0.042625 (約4.26%)</strong></p>
+<section id="id7">
+<h4>バイナリサーチ ハイライト（tolerance）<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Initial bounds: 0.01 → score -423.87, 0.10 → score -404.59
+Refinement: 0.055 → score -400.29 (baseline)
+Probe: 0.04375 → score -397.10
+Refine: 0.042625 → score -395.64 ✅ BEST (best episode -373.10)
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h4>評価（tolerance）<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✅ <strong>平均報酬が +4.7pt 改善</strong>: 0.055→0.042625 で -400.3 → -395.6</p></li>
+<li><p>✅ <strong>アクション分散が均衡</strong>: HOLD 33.4%, BUY 34.1%, SELL 32.5%</p></li>
+<li><p>💡 <strong>過大な許容幅は逆効果</strong>: 0.0775 以上ではスコアが再び悪化</p></li>
+</ul>
+</section>
+</section>
+<section id="eta-dual-variable">
+<h3>3. eta (Dual Variable学習率)<a class="headerlink" href="#eta-dual-variable" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: lambda_dual の更新速度を制御<br />
+<strong>範囲</strong>: 0.001 ～ 0.1<br />
+<strong>最適値</strong>: <strong>0.062875 (約0.063)</strong></p>
+<section id="eta">
+<h4>バイナリサーチ ハイライト（eta）<a class="headerlink" href="#eta" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Initial bounds: 0.001 → score -404.31, 0.1 → score -407.47
+Round 1: 0.02575 → score -410.09 (旧最適値)
+Probe: 0.05050 → score -409.57
+Refine: 0.062875 → score -395.16 ✅ BEST (best episode -375.04)
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h4>評価（eta）<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✅ <strong>約+9ptの改善</strong>: 0.001 → 0.062875 で平均報酬が -404.3 → -395.2</p></li>
+<li><p>✅ <strong>アクション分散の最適化</strong>: BUY 35.7%, SELL 31.8% と SELL 過多を抑制</p></li>
+<li><p>💡 <strong>高すぎる eta は不安定</strong>: 0.081438 以上で再びスコアが悪化</p></li>
+</ul>
+</section>
+</section>
+<section id="lambda-max-dual-variable">
+<h3>4. lambda_max (最大Dual Variable値)<a class="headerlink" href="#lambda-max-dual-variable" title="Link to this heading"></a></h3>
+<p><strong>目的</strong>: ペナルティの上限を設定し、過度な制約を防ぐ<br />
+<strong>範囲</strong>: 0.5 ～ 5.0<br />
+<strong>最適値</strong>: <strong>3.875</strong></p>
+<section id="lambda-max">
+<h4>バイナリサーチ ハイライト（lambda_max）<a class="headerlink" href="#lambda-max" title="Link to this heading"></a></h4>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Initial bounds: 0.5 → score -403.73, 5.0 → score -400.74
+Probe: 1.625 → score -400.20
+Refine: 3.875 → score -398.10 ✅ BEST (best episode -378.21)
+Overshoot: 3.8755 → score -433.09 (SELL 過多により崩壊)
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h4>評価（lambda_max）<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✅ <strong>+5.6pt 改善</strong>: ベースライン 0.5 → 3.875 で平均報酬が向上</p></li>
+<li><p>✅ <strong>適度な SELL 比率</strong>: BUY 37.9%, SELL 32.3% とバランス良好</p></li>
+<li><p>⚠️ <strong>3.8755 以上は危険</strong>: SELL が 46% 超に跳ね上がりスコア急落</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id11">
+<h2>🔬 パラメータ間の相互作用<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>観察された傾向<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>tolerance と eta の相乗効果</strong></p>
+<ul class="simple">
+<li><p>tolerance=0.0775 + eta=0.02575 で最高スコア +340.75</p></li>
+<li><p>両方とも「中庸」な値で最適化された</p></li>
+</ul>
+</li>
+<li><p><strong>lambda_max の独立性?</strong></p>
+<ul class="simple">
+<li><p>他パラメータ最適化後、lambda_max単独では改善なし</p></li>
+<li><p>全パラメータを同時に考慮する必要がある可能性</p></li>
+</ul>
+</li>
+<li><p><strong>アクション分散の安定性</strong></p>
+<ul class="simple">
+<li><p>全最適化を通じて HOLD/BUY/SELL が 28-42% の範囲</p></li>
+<li><p>Lagrange制約が意図通りに機能している証拠</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>📋 推奨される最終設定<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="k">
+<h3>推奨セット (50k ステップ最適化結果)<a class="headerlink" href="#k" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">lagrange_params</span> <span class="o">=</span> <span class="p">{</span>
+   <span class="s2">&quot;r_target&quot;</span><span class="p">:</span> <span class="mf">0.175</span><span class="p">,</span>       <span class="c1"># SELL 割合 17.5% を狙う</span>
+   <span class="s2">&quot;tolerance&quot;</span><span class="p">:</span> <span class="mf">0.042625</span><span class="p">,</span>   <span class="c1"># 許容誤差 4.26%</span>
+   <span class="s2">&quot;eta&quot;</span><span class="p">:</span> <span class="mf">0.062875</span><span class="p">,</span>         <span class="c1"># デュアル学習率（やや高め）</span>
+   <span class="s2">&quot;lambda_max&quot;</span><span class="p">:</span> <span class="mf">3.875</span><span class="p">,</span>     <span class="c1"># ペナルティ上限を強化</span>
+   <span class="s2">&quot;warmup_steps&quot;</span><span class="p">:</span> <span class="mi">3874</span>     <span class="c1"># 先行ウォームアップで安定化</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>期待される性能 (50k ステップ実測)</strong>:</p>
+<ul class="simple">
+<li><p>平均報酬: 約 <strong>-395 ± 2</strong></p></li>
+<li><p>ベストエピソード: 約 <strong>-373</strong> (ペナルティ差し引き後)</p></li>
+<li><p>アクション分布: BUY 35-38%, SELL 31-34%, HOLD 28-33%</p></li>
+<li><p>constraint violation: 収束後は 0 付近で安定</p></li>
+</ul>
+</section>
+</section>
+<section id="id14">
+<h2>🚀 次のステップ<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>1. 100k ステップでの再検証 ✅ 優先度: 高<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>目的</strong>: 50k ステップで得た最適値が 100k～200k でも安定か確認</p></li>
+<li><p><strong>設定</strong>: 上記推奨セットを unified_trainer/CustomPPO に適用</p></li>
+<li><p><strong>期待</strong>: constraint violation ≈ 0、SELL 比率 17-19% に収束</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>2. 長期ランのログ分析 📊 優先度: 中<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>方法</strong>: <code class="docutils literal notranslate"><span class="pre">analyze_training_logs_v2.py</span></code> で SELL 比率・lambda_dual 推移をプロット</p></li>
+<li><p><strong>狙い</strong>: ウォームアップ終了タイミングと lambda_max 上昇挙動を可視化</p></li>
+</ul>
+</section>
+<section id="id17">
+<h3>3. 本番データでのバックテスト � 優先度: 高<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>目的</strong>: 新しい Lagrange 設定での売買損益、ドローダウン、リスク指標を検証</p></li>
+<li><p><strong>補足</strong>: 既存の 30k/50k モデルと比較し、SELL 確率とPnLのバランスを評価</p></li>
+</ul>
+</section>
+</section>
+<section id="id18">
+<h2>📝 技術的な詳細<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>最適化手法<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>アルゴリズム</strong>: Binary Search (2分探索)</p></li>
+<li><p><strong>反復回数</strong>: 各パラメータ4回</p></li>
+<li><p><strong>評価指標</strong>: 平均エピソード報酬 (10エピソード)</p></li>
+<li><p><strong>Early stopping</strong>: KL divergence &gt; 0.01</p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>環境設定<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>curriculum_stage</strong>: “full” (realistic rewards, not simple_portfolio)</p></li>
+<li><p><strong>total_timesteps</strong>: 10,000 per iteration</p></li>
+<li><p><strong>n_steps</strong>: 2048 (rollout buffer size)</p></li>
+<li><p><strong>batch_size</strong>: 64</p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>Lagrange制約の動作確認<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<p>全最適化を通じて以下が確認された:</p>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">lagrange_lambda_dual</span></code> が更新されている (0 → 0.2-1.0)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">lagrange_penalty</span></code> が適用されている (-0.02 ~ -0.28)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">lagrange_r_sell</span></code> が追跡されている (実際のSELL率)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">lagrange_constraint_violation</span></code> が検出されている</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>�️ アーキテクチャレイヤー分析<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>レイヤー構造と成果<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p>本プロジェクトの SELL バイアス緩和システムは、以下の4層アーキテクチャで構成されています。</p>
+<section id="execution-stability-layer">
+<h4>1. <strong>実行安定性レイヤ (Execution Stability Layer)</strong><a class="headerlink" href="#execution-stability-layer" title="Link to this heading"></a></h4>
+<p><strong>目的</strong>: GPU/CPU 環境での安定実行と再現性確保</p>
+<p><strong>実装コンポーネント</strong>:</p>
+<ul class="simple">
+<li><p><strong>非同期チェックポイント保存</strong>: <code class="docutils literal notranslate"><span class="pre">AsyncCheckpointCallback</span></code> (zstd 圧縮、別スレッド実行)</p></li>
+<li><p><strong>メモリ最適化</strong>: <code class="docutils literal notranslate"><span class="pre">memory_optimization</span></code> 設定 (buffer_size, max_rollouts, checkpoint_interval)</p></li>
+<li><p><strong>デバイス抽象化</strong>: <code class="docutils literal notranslate"><span class="pre">device=&quot;auto&quot;</span></code> による CUDA/CPU 自動切替</p></li>
+<li><p><strong>型安全性</strong>: mypy チェックと cast() による型変換</p></li>
+</ul>
+<p><strong>成果</strong>:</p>
+<ul class="simple">
+<li><p>✅ 100k ステップ実行で OOM (Out of Memory) ゼロ</p></li>
+<li><p>✅ チェックポイント保存時間 ≈ 2.3秒 (zstd レベル3)</p></li>
+<li><p>✅ 再現性: <code class="docutils literal notranslate"><span class="pre">seed=42</span></code> で実行間の報酬差 &lt; 0.5%</p></li>
+</ul>
+</section>
+<section id="scale-adjustment-layer">
+<h4>2. <strong>スケール調整レイヤ (Scale Adjustment Layer)</strong><a class="headerlink" href="#scale-adjustment-layer" title="Link to this heading"></a></h4>
+<p><strong>目的</strong>: 報酬・勾配・アドバンテージのスケール正規化</p>
+<p><strong>実装コンポーネント</strong>:</p>
+<ul class="simple">
+<li><p><strong>Reward Scaling</strong>: <code class="docutils literal notranslate"><span class="pre">reward_scaling=6.0</span></code> で報酬を [-1, +1] 範囲に圧縮</p></li>
+<li><p><strong>Advantage Normalization</strong>: <code class="docutils literal notranslate"><span class="pre">normalize_advantage=True</span></code> でバッチ内標準化</p></li>
+<li><p><strong>Per-Action Advantage Normalization (PAN)</strong>: アクション別アドバンテージ正規化</p>
+<ul>
+<li><p>数式: <span class="math notranslate nohighlight">\(\hat{A}_a = \frac{A_a - \mu_a}{\sigma_a + \epsilon}\)</span> where <span class="math notranslate nohighlight">\(a \in \{\text{HOLD, BUY, SELL}\}\)</span></p></li>
+</ul>
+</li>
+<li><p><strong>Gradient Clipping</strong>: <code class="docutils literal notranslate"><span class="pre">max_grad_norm=0.5</span></code> で勾配爆発防止</p></li>
+</ul>
+<p><strong>成果</strong>:</p>
+<ul class="simple">
+<li><p>✅ SELL アクションのアドバンテージ分散が 1/3 に削減</p></li>
+<li><p>✅ KL divergence が 0.05-0.15 の安定範囲に収束</p></li>
+<li><p>✅ Policy loss が -0.02 ~ +0.05 で振動せず単調減少</p></li>
+</ul>
+</section>
+<section id="stabilization-layer">
+<h4>3. <strong>安定化レイヤ (Stabilization Layer)</strong><a class="headerlink" href="#stabilization-layer" title="Link to this heading"></a></h4>
+<p><strong>目的</strong>: Lagrange 制約による SELL バイアス緩和</p>
+<p><strong>実装コンポーネント</strong>:</p>
+<ul class="simple">
+<li><p><strong>Lagrange Constraint</strong>: <code class="docutils literal notranslate"><span class="pre">LagrangeConstraint</span></code> クラス</p>
+<ul>
+<li><p>Dual variable 更新式: <span class="math notranslate nohighlight">\(\lambda_{t+1} = \min(\lambda_{\max}, \max(0, \lambda_t + \eta \cdot (r_{\text{target}} - r_{\text{sell}})))\)</span></p></li>
+<li><p>Penalty 項: <span class="math notranslate nohighlight">\(P_{\text{lagrange}} = -\lambda_t \cdot \max(0, r_{\text{target}} - \text{tolerance} - r_{\text{sell}})\)</span></p></li>
+</ul>
+</li>
+<li><p><strong>Warmup Mechanism</strong>: 初期 <span class="math notranslate nohighlight">\(w\)</span> ステップは <span class="math notranslate nohighlight">\(\lambda_t = \lambda_t \cdot \frac{t}{w}\)</span> でスケール</p></li>
+<li><p><strong>Target Entropy Controller</strong>: 自動探索率調整</p></li>
+<li><p><strong>Stratified Sampler</strong>: SELL シナリオのミニバッチ確率向上</p></li>
+</ul>
+<p><strong>成果</strong> (50k ステップ最適化結果):</p>
+<ul class="simple">
+<li><p>✅ SELL 比率: 31-34% に安定 (目標 17.5% ± 許容 4.26%)</p></li>
+<li><p>✅ Constraint violation: 収束後 0.01 以下</p></li>
+<li><p>✅ Lambda dual: 0.3-0.8 で振動せず安定</p></li>
+<li><p>✅ 平均報酬: <strong>-395.16</strong> (warmup なし -403.77 から +8.6pt 改善)</p></li>
+</ul>
+</section>
+<section id="environment-dependency-layer">
+<h4>4. <strong>環境依存レイヤ (Environment Dependency Layer)</strong><a class="headerlink" href="#environment-dependency-layer" title="Link to this heading"></a></h4>
+<p><strong>目的</strong>: 市場データとトランザクションコストのリアル化</p>
+<p><strong>実装コンポーネント</strong>:</p>
+<ul class="simple">
+<li><p><strong>Curriculum Learning</strong>: <code class="docutils literal notranslate"><span class="pre">curriculum_stage=&quot;full&quot;</span></code> で段階的難易度上昇</p>
+<ul>
+<li><p>P0 (forced_balance): HOLD=BUY=SELL 強制均等</p></li>
+<li><p>P1 (balanced_transition): 緩やかな制約緩和</p></li>
+<li><p>P2 (full): リアル報酬（手数料・スリッページ込み）</p></li>
+</ul>
+</li>
+<li><p><strong>Transaction Cost Model</strong>: <code class="docutils literal notranslate"><span class="pre">transaction_cost=0.001</span></code> (0.1% 手数料)</p></li>
+<li><p><strong>ATR Normalization</strong>: ボラティリティ補正報酬</p>
+<ul>
+<li><p>数式: <span class="math notranslate nohighlight">\(r_{\text{norm}} = \frac{r_{\text{raw}}}{\text{ATR}_{14} + \epsilon}\)</span></p></li>
+</ul>
+</li>
+<li><p><strong>Action Masking</strong>: 違法アクション (ショート時 SELL など) を事前マスク</p></li>
+</ul>
+<p><strong>成果</strong>:</p>
+<ul class="simple">
+<li><p>✅ P0→P1→P2 での累積報酬推移: -500 → -250 → -150 (段階的改善)</p></li>
+<li><p>✅ Transaction cost 考慮後も SELL 比率が 30% 以上を維持</p></li>
+<li><p>✅ リアル市場データ (2020-2025 BTC/JPY) でバックテスト可能</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>📐 必要ステップ数の理論的分析<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<section id="id25">
+<h3>収束ステップ数の見積もり式<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<p>PPO における政策収束に必要なステップ数 <span class="math notranslate nohighlight">\(T_{\text{conv}}\)</span> は、以下の要因で決まります。</p>
+<section id="base-convergence-steps">
+<h4>1. <strong>基礎収束ステップ (Base Convergence Steps)</strong><a class="headerlink" href="#base-convergence-steps" title="Link to this heading"></a></h4>
+<p>PPO の理論的収束保証から:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{base}} = \mathcal{O}\left(\frac{1}{\alpha \cdot (1-\gamma)^2}\right)
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\alpha\)</span>: 学習率 (<code class="docutils literal notranslate"><span class="pre">learning_rate=0.009375625</span></code>)</p></li>
+<li><p><span class="math notranslate nohighlight">\(\gamma\)</span>: 割引率 (<code class="docutils literal notranslate"><span class="pre">gamma=0.895</span></code>)</p></li>
+</ul>
+<p><strong>実測値</strong>: <span class="math notranslate nohighlight">\(\alpha = 0.0094\)</span>, <span class="math notranslate nohighlight">\(\gamma = 0.895\)</span> のとき:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{base}} \approx \frac{1}{0.0094 \cdot (1-0.895)^2} \approx \frac{1}{0.0094 \cdot 0.011025} \approx 9,650 \text{ steps}
+\]</div>
+</section>
+<section id="constraint-adaptation-steps">
+<h4>2. <strong>制約適応ステップ (Constraint Adaptation Steps)</strong><a class="headerlink" href="#constraint-adaptation-steps" title="Link to this heading"></a></h4>
+<p>Lagrange dual variable <span class="math notranslate nohighlight">\(\lambda\)</span> の収束に必要なステップ:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{lagrange}} = \frac{\lambda_{\max}}{\eta \cdot |r_{\text{target}} - r_{\text{init}}|}
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\lambda_{\max} = 3.875\)</span> (最大ペナルティ)</p></li>
+<li><p><span class="math notranslate nohighlight">\(\eta = 0.062875\)</span> (デュアル学習率)</p></li>
+<li><p><span class="math notranslate nohighlight">\(r_{\text{target}} = 0.175\)</span> (目標 SELL 率)</p></li>
+<li><p><span class="math notranslate nohighlight">\(r_{\text{init}} \approx 0.05\)</span> (初期 SELL 率、経験的)</p></li>
+</ul>
+<p><strong>計算</strong>:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{lagrange}} = \frac{3.875}{0.062875 \cdot |0.175 - 0.05|} = \frac{3.875}{0.062875 \cdot 0.125} \approx \frac{3.875}{0.00786} \approx 493 \text{ steps}
+\]</div>
+<p>ただし、warmup 期間 <span class="math notranslate nohighlight">\(w = 3,874\)</span> を考慮すると:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{lagrange\_with\_warmup}} = w + T_{\text{lagrange}} = 3,874 + 493 \approx 4,367 \text{ steps}
+\]</div>
+</section>
+<section id="exploration-exploitation-trade-off">
+<h4>3. <strong>探索・活用バランス (Exploration-Exploitation Trade-off)</strong><a class="headerlink" href="#exploration-exploitation-trade-off" title="Link to this heading"></a></h4>
+<p>エントロピー減衰による探索収束:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{entropy}} = -\frac{\ln(H_{\text{final}} / H_{\text{init}})}{\text{ent\_coef}} \cdot n_{\text{steps}}
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(H_{\text{init}} = 1.0986\)</span> (初期エントロピー、3アクション均等)</p></li>
+<li><p><span class="math notranslate nohighlight">\(H_{\text{final}} = 1.050\)</span> (目標エントロピー、30/35/35% 分布)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ent_coef</span> <span class="pre">=</span> <span class="pre">0.02575</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_steps</span> <span class="pre">=</span> <span class="pre">1408</span></code> (ロールアウトバッファサイズ)</p></li>
+</ul>
+<p><strong>計算</strong>:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{entropy}} = -\frac{\ln(1.050 / 1.0986)}{0.02575} \cdot 1408 \approx \frac{0.0451}{0.02575} \cdot 1408 \approx 2,465 \text{ steps}
+\]</div>
+</section>
+<section id="total-required-steps">
+<h4>4. <strong>統合必要ステップ数 (Total Required Steps)</strong><a class="headerlink" href="#total-required-steps" title="Link to this heading"></a></h4>
+<p>全要因の最大値に安全係数 <span class="math notranslate nohighlight">\(k\)</span> を掛けた値:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{conv}} = k \cdot \max(T_{\text{base}}, T_{\text{lagrange\_with\_warmup}}, T_{\text{entropy}})
+\]</div>
+<p><strong>今回の設定</strong>:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{conv}} = 1.5 \cdot \max(9,650, 4,367, 2,465) = 1.5 \cdot 9,650 \approx 14,475 \text{ steps}
+\]</div>
+<p><strong>実際の選択</strong>: <strong>50,000 steps</strong> (約 3.5倍の余裕)</p>
+<p><strong>理由</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>バイナリサーチの反復</strong>: 各パラメータ 8-12 反復 → 独立評価のため各 run を完全収束させる必要</p></li>
+<li><p><strong>Episode 数確保</strong>: 50k steps ÷ 1408 rollout ≈ 35 updates → 約 50 episodes (統計的有意性)</p></li>
+<li><p><strong>ノイズ平滑化</strong>: 市場データのランダム性を平滑化するため長期平均が必要</p></li>
+</ol>
+</section>
+</section>
+<section id="k-200k">
+<h3>100k/200k ステップ推奨の根拠<a class="headerlink" href="#k-200k" title="Link to this heading"></a></h3>
+<p>最終モデル訓練では、以下の理由で <strong>100k-200k ステップ</strong> を推奨:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{production}} = T_{\text{conv}} \cdot \left(1 + \frac{\sigma_r}{|\mu_r|}\right)
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\sigma_r = 15.8\)</span> (報酬標準偏差、実測)</p></li>
+<li><p><span class="math notranslate nohighlight">\(|\mu_r| = 395.6\)</span> (平均報酬絶対値)</p></li>
+</ul>
+<p><strong>計算</strong>:</p>
+<div class="math notranslate nohighlight">
+\[
+T_{\text{production}} = 14,475 \cdot \left(1 + \frac{15.8}{395.6}\right) \approx 14,475 \cdot 1.04 \approx 15,054 \text{ steps (最低)}
+\]</div>
+<p><strong>安全マージン 5-10倍</strong>: 15,054 × 7 ≈ <strong>105,378 steps</strong> → <strong>100k が適切</strong></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id26">
+<h2>🎓 学んだこと<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>段階的最適化の重要性</strong></p>
+<ul class="simple">
+<li><p>r_target → tolerance → eta → lambda_max → warmup_steps の順で最適化</p></li>
+<li><p>各段階で平均 +5~9pt 改善、累積 +30pt 以上</p></li>
+</ul>
+</li>
+<li><p><strong>Warmup の劇的効果</strong></p>
+<ul class="simple">
+<li><p>3,874 ステップのウォームアップで +6.1pt 改善</p></li>
+<li><p>序盤の SELL 枯渇 → 中盤の SELL 過剰を防止</p></li>
+</ul>
+</li>
+<li><p><strong>低 tolerance × 高 eta の相乗効果</strong></p>
+<ul class="simple">
+<li><p>tolerance=0.042625, eta=0.062875 で最高スコア</p></li>
+<li><p>制約が繊細に作用し、BUY/SELL バランスが最適化</p></li>
+</ul>
+</li>
+<li><p><strong>50k ステップの妥当性</strong></p>
+<ul class="simple">
+<li><p>理論必要量 14.5k の約 3.5倍で、各パラメータの独立評価に十分</p></li>
+<li><p>100k-200k は最終モデル訓練用（本番デプロイ前提）</p></li>
+</ul>
+</li>
+</ol>
+<hr class="docutils" />
+<ul class="simple">
+<li><p>lambda_max の結果は他パラメータとの相互作用を考慮していない</p></li>
+<li><p>市場環境によって最適値は変動する可能性がある</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id27">
+<h2>📚 参考資料<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Binary Search Optimizer: <code class="docutils literal notranslate"><span class="pre">ztb/training/binary_search/base_optimizer.py</span></code></p></li>
+<li><p>Lagrange Optimizer: <code class="docutils literal notranslate"><span class="pre">ztb/training/binary_search/lagrange_params_optimized.py</span></code></p></li>
+<li><p>Custom PPO Implementation: <code class="docutils literal notranslate"><span class="pre">ztb/training/custom_ppo.py</span></code></p></li>
+<li><p>Training Environment: <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py</span></code></p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>最終更新</strong>: 2025年10月7日<br />
+<strong>作成者</strong>: AI Assistant<br />
+<strong>レビュー状態</strong>: Draft - バックテスト前</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

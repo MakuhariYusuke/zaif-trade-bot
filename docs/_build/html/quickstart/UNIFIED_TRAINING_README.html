@@ -1,0 +1,654 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unified Training System (v3.5.0) &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Unified Training System (v3.5.0)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/quickstart/UNIFIED_TRAINING_README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="unified-training-system-v3-5-0">
+<h1>Unified Training System (v3.5.0)<a class="headerlink" href="#unified-training-system-v3-5-0" title="Link to this heading"></a></h1>
+<p>このシステムは、Zaif Trade Bot の複数のトレーニングアプローチを統合したものです。様々なアルゴリズムとトレード戦略を統一的なインターフェースで扱えます。</p>
+<section id="v3-4-0">
+<h2>🎯 最新機能 (v3.4.0)<a class="headerlink" href="#v3-4-0" title="Link to this heading"></a></h2>
+<section id="id1">
+<h3>包括的評価フレームワーク統合<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<p>トレーニング完了後のモデル評価に、6つの専門分析モジュールを統合：</p>
+<ul class="simple">
+<li><p><strong>Performance Attribution</strong>: 収益源泉の詳細分解</p></li>
+<li><p><strong>Monte Carlo Simulation</strong>: 確率的リスク評価</p></li>
+<li><p><strong>Strategy Robustness</strong>: 市場変動耐性テスト</p></li>
+<li><p><strong>Benchmark Comparison</strong>: 業界標準との比較</p></li>
+<li><p><strong>Risk Parity Analysis</strong>: ポートフォリオ最適化</p></li>
+<li><p><strong>Cost Sensitivity</strong>: 取引コスト影響分析</p></li>
+</ul>
+</section>
+<section id="id2">
+<h3>評価実行例<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># トレーニング済みモデルの包括的評価</span>
+python<span class="w"> </span>comprehensive_benchmark.py<span class="w"> </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span>--single-model<span class="w"> </span>models/trained_model.zip<span class="w"> </span>--episodes<span class="w"> </span><span class="m">10</span><span class="w"> </span>--output-dir<span class="w"> </span>evaluation_results
+
+<span class="c1"># 進捗バー付きクロスバリデーション</span>
+python<span class="w"> </span>comprehensive_benchmark.py<span class="w"> </span>--data<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span>--single-model<span class="w"> </span>models/trained_model.zip<span class="w"> </span>--cv-folds<span class="w"> </span><span class="m">5</span><span class="w"> </span>--output-dir<span class="w"> </span>cv_results
+</pre></div>
+</div>
+<p>詳細: <a class="reference internal" href="#../comprehensive_benchmark.py"><span class="xref myst">comprehensive_benchmark.py</span></a>, <a class="reference internal" href="#../CHANGELOG.md"><span class="xref myst">CHANGELOG.md</span></a></p>
+</section>
+</section>
+<section id="id3">
+<h2>🚀 実行マニュアル<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>クイックスタート<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<section id="id5">
+<h4>1. 環境準備<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># リポジトリのクローン</span>
+git<span class="w"> </span>clone<span class="w"> </span>https://github.com/MakuhariYusuke/zaif-trade-bot.git
+<span class="nb">cd</span><span class="w"> </span>zaif-trade-bot
+
+<span class="c1"># 依存関係のインストール</span>
+pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h4>2. 設定確認<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<p>現在の設定はスキャルピングモードに最適化されています：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;trading_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;scalping&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timeframe&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;1d&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;iterations&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;steps_per_iteration&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reward_scaling&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_position_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;transaction_cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.002</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;profit_only&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h4>3. トレーニング実行<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<p><strong>ローカル実行（メモリ8GB以上推奨）:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本実行</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force
+
+<span class="c1"># ストリーミング有効化（メモリ節約）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force<span class="w"> </span>--enable-streaming<span class="w"> </span>--stream-batch-size<span class="w"> </span><span class="m">64</span>
+</pre></div>
+</div>
+<p><strong>分割実行（メモリ不足時）:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1Mステップを10kステップ×100チャンクに分割</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>split_training.sh
+./split_training.sh
+</pre></div>
+</div>
+<p><strong>クラウド実行（Google Colab推奨）:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Google Colabで実行</span>
+!git<span class="w"> </span>clone<span class="w"> </span>https://github.com/MakuhariYusuke/zaif-trade-bot.git
+%cd<span class="w"> </span>zaif-trade-bot
+!pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+!python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h3>環境変数設定（メモリ最適化）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># PyTorchメモリ最適化</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTORCH_DISABLE_TORCH_DYNAMO</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">TORCH_USE_CUDA_DSA</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_LAUNCH_BLOCKING</span><span class="o">=</span><span class="m">1</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PYTORCH_CUDA_ALLOC_CONF</span><span class="o">=</span>max_split_size_mb:512
+<span class="nb">export</span><span class="w"> </span><span class="nv">OMP_NUM_THREADS</span><span class="o">=</span><span class="m">4</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">MKL_NUM_THREADS</span><span class="o">=</span><span class="m">4</span>
+
+<span class="c1"># CPU専用モード（メモリ節約）</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="id9">
+<h3>結果確認<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># チェックポイント確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>checkpoints/scalping_training_v2/
+
+<span class="c1"># ログ確認</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/scalping_training_v2.log
+
+<span class="c1"># TensorBoard（オプション）</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>logs/
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id10">
+<h2>� ライブトレーディング<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>準備<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>APIキー設定</strong> (オプション - 設定しない場合はデモモード)</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">COINCHECK_API_KEY</span><span class="o">=</span><span class="s2">&quot;your_api_key&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">COINCHECK_API_SECRET</span><span class="o">=</span><span class="s2">&quot;your_api_secret&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DISCORD_WEBHOOK</span><span class="o">=</span><span class="s2">&quot;your_webhook_url&quot;</span><span class="w">  </span><span class="c1"># 通知用（オプション）</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>クロスプラットフォーム対応<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p>WindowsおよびRaspberry Piで動作可能です。自動的に環境を検知して最適化されます。</p>
+</section>
+<section id="id13">
+<h3>ログ確認<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ライブトレーディングログ</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/live_trading_*.log
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id14">
+<h2>�🔧 トラブルシューティング<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>メモリ不足エラー<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">KeyboardInterrupt</span> <span class="n">during</span> <span class="n">PyTorch</span> <span class="kn">import</span>
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<ol class="arabic simple">
+<li><p><strong>クラウド環境を使用</strong>（推奨）</p></li>
+<li><p><strong>RAMを16GB以上に増設</strong></p></li>
+<li><p><strong>不要プロセスを終了</strong></p></li>
+<li><p><strong>スワップファイル設定</strong>（Linux/Mac）</p></li>
+</ol>
+</section>
+<section id="cuda">
+<h3>CUDA関連エラー<a class="headerlink" href="#cuda" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">CUDA</span> <span class="n">out</span> <span class="n">of</span> <span class="n">memory</span>
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># CPU専用モード</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">CUDA_VISIBLE_DEVICES</span><span class="o">=</span><span class="s2">&quot;&quot;</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="id16">
+<h3>データ読み込みエラー<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">FileNotFoundError</span><span class="p">:</span> <span class="n">ml</span><span class="o">-</span><span class="n">dataset</span><span class="o">-</span><span class="n">enhanced</span><span class="o">.</span><span class="n">csv</span>
+</pre></div>
+</div>
+<p><strong>解決策:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># データファイルの存在確認</span>
+ls<span class="w"> </span>-la<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># またはデータパスを指定</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--data-path<span class="w"> </span>/path/to/data.csv<span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="id17">
+<h3>トレーニング中断時の再開<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 同じセッションIDで再実行（自動的にチェックポイントから再開）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="id18">
+<h3>パフォーマンス監視<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># メモリ使用量監視</span>
+watch<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="s1">&#39;ps aux | grep python&#39;</span>
+
+<span class="c1"># GPU使用量監視（nvidia-smiがある場合）</span>
+watch<span class="w"> </span>-n<span class="w"> </span><span class="m">1</span><span class="w"> </span>nvidia-smi
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id19">
+<h2>📋 コマンドチートシート<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<section id="id20">
+<h3>基本実行<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 通常実行</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force
+
+<span class="c1"># ストリーミング有効</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span>--force<span class="w"> </span>--enable-streaming<span class="w"> </span>--stream-batch-size<span class="w"> </span><span class="m">64</span>
+
+<span class="c1"># 分割実行</span>
+./split_training.sh
+
+<span class="c1"># クラウド実行</span>
+./cloud_training.sh
+</pre></div>
+</div>
+</section>
+<section id="id21">
+<h3>設定変更<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># タイムフレーム変更</span>
+sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/&quot;timeframe&quot;: &quot;1d&quot;/&quot;timeframe&quot;: &quot;5m&quot;/g&#39;</span><span class="w"> </span>unified_training_config.json
+
+<span class="c1"># ステップ数変更</span>
+sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/&quot;total_timesteps&quot;: 10000/&quot;total_timesteps&quot;: 100000/g&#39;</span><span class="w"> </span>unified_training_config.json
+
+<span class="c1"># セッションID変更</span>
+sed<span class="w"> </span>-i<span class="w"> </span><span class="s1">&#39;s/&quot;session_id&quot;: &quot;scalping_training_v2&quot;/&quot;session_id&quot;: &quot;my_training_session&quot;/g&#39;</span><span class="w"> </span>unified_training_config.json
+</pre></div>
+</div>
+</section>
+<section id="id22">
+<h3>結果確認<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 最新チェックポイント</span>
+ls<span class="w"> </span>-lt<span class="w"> </span>checkpoints/scalping_training_v2/checkpoint_*<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-5
+
+<span class="c1"># ログ監視</span>
+tail<span class="w"> </span>-f<span class="w"> </span>logs/scalping_training_v2.log
+
+<span class="c1"># トレーニング進捗</span>
+grep<span class="w"> </span><span class="s2">&quot;Training scalping_training_v2&quot;</span><span class="w"> </span>logs/scalping_training_v2.log<span class="w"> </span><span class="p">|</span><span class="w"> </span>tail<span class="w"> </span>-1
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id23">
+<h2>⚠️ 重要: メモリ要件について<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<p><strong>現在の設定では8GB以上のRAMを推奨します</strong></p>
+<p>ローカル環境でのトレーニング実行時にメモリ不足が発生する場合があります。特に：</p>
+<ul class="simple">
+<li><p>PyTorchの初期化に失敗する</p></li>
+<li><p>大規模データセットの読み込みで中断される</p></li>
+<li><p>CUDA/CPUメモリが不足する</p></li>
+</ul>
+<section id="id24">
+<h3>推奨される解決策<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>クラウド環境の使用</strong>（推奨）</p>
+<ul class="simple">
+<li><p>Google Colab Pro+ (有料、高メモリ)</p></li>
+<li><p>AWS EC2, GCP, Azure VM</p></li>
+<li><p>メモリ16GB以上のインスタンス</p></li>
+</ul>
+</li>
+<li><p><strong>ローカル環境の改善</strong></p>
+<ul class="simple">
+<li><p>RAMを16GB以上に増強</p></li>
+<li><p>スワップファイルの設定</p></li>
+<li><p>不要なプロセスを終了</p></li>
+</ul>
+</li>
+<li><p><strong>設定の最適化</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">timeframe:</span> <span class="pre">&quot;1d&quot;</span></code>（データ量を最小化）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">batch_size:</span> <span class="pre">32</span></code>（メモリ使用量削減）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">n_steps:</span> <span class="pre">1024</span></code>（ステップ数を削減）</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id25">
+<h3>クラウド実行スクリプト<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">cloud_training.sh</span></code> を使用してクラウド環境で実行してください。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># クラウド環境での実行例</span>
+chmod<span class="w"> </span>+x<span class="w"> </span>cloud_training.sh
+./cloud_training.sh
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id26">
+<h2>特徴<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>アルゴリズム選択</strong>: PPO, Base ML, Iterativeトレーニングをサポート</p></li>
+<li><p><strong>トレードモード</strong>: スキャルピングと通常トレードを自動設定</p></li>
+<li><p><strong>長時間実行警告</strong>: 安全な長時間実行のための確認機能</p></li>
+<li><p><strong>柔軟な設定</strong>: JSON設定ファイルによるカスタマイズ</p></li>
+<li><p><strong>メモリ最適化</strong>: 大規模トレーニングに対応</p></li>
+<li><p><strong>チェックポイント管理</strong>: トレーニングの中断・再開が可能</p></li>
+</ul>
+</section>
+<section id="id27">
+<h2>トレードモード<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<section id="trading-mode-scalping">
+<h3>スキャルピングモード (<code class="docutils literal notranslate"><span class="pre">trading_mode:</span> <span class="pre">&quot;scalping&quot;</span></code>)<a class="headerlink" href="#trading-mode-scalping" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>概要</strong>: 高頻度取引向けの最適化設定</p></li>
+<li><p><strong>特徴量セット</strong>: <code class="docutils literal notranslate"><span class="pre">scalping</span></code>（高速取引向け指標）</p></li>
+<li><p><strong>時間枠</strong>: <code class="docutils literal notranslate"><span class="pre">15s</span></code>（短期分析）</p></li>
+<li><p><strong>ポジションサイズ</strong>: 0.3（小規模ポジション）</p></li>
+<li><p><strong>取引コスト</strong>: 0.002（高コスト考慮）</p></li>
+<li><p><strong>学習ステップ</strong>: 1,000,000（長時間トレーニング）</p></li>
+<li><p><strong>ユースケース</strong>: 短期スキャルピング戦略</p></li>
+</ul>
+</section>
+<section id="trading-mode-normal">
+<h3>通常トレードモード (<code class="docutils literal notranslate"><span class="pre">trading_mode:</span> <span class="pre">&quot;normal&quot;</span></code>)<a class="headerlink" href="#trading-mode-normal" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>概要</strong>: 標準的な取引向けの汎用設定</p></li>
+<li><p><strong>特徴量セット</strong>: <code class="docutils literal notranslate"><span class="pre">full</span></code>（全特徴量使用）</p></li>
+<li><p><strong>時間枠</strong>: <code class="docutils literal notranslate"><span class="pre">1m</span></code>（中期分析）</p></li>
+<li><p><strong>ポジションサイズ</strong>: 1.0（フルポジション）</p></li>
+<li><p><strong>取引コスト</strong>: 0.001（標準コスト）</p></li>
+<li><p><strong>学習ステップ</strong>: 100,000（標準トレーニング）</p></li>
+<li><p><strong>ユースケース</strong>: 一般的な取引戦略</p></li>
+</ul>
+</section>
+</section>
+<section id="id28">
+<h2>サポートされるアルゴリズム<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="ppo-training-algorithm-ppo">
+<h3>1. PPO Training (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;ppo&quot;</span></code>)<a class="headerlink" href="#ppo-training-algorithm-ppo" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>概要</strong>: Stable Baselines3 の PPO アルゴリズムを使用した標準的な強化学習トレーニング</p></li>
+<li><p><strong>特徴</strong>:</p>
+<ul>
+<li><p>評価機能付きトレーニング</p></li>
+<li><p>定期的なチェックポイント保存</p></li>
+<li><p>TensorBoard ログ出力</p></li>
+<li><p>メモリ最適化</p></li>
+</ul>
+</li>
+<li><p><strong>ユースケース</strong>: 標準的な強化学習トレーニング</p></li>
+<li><p><strong>基盤</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/trading/ppo_trainer.py</span></code></p></li>
+</ul>
+</section>
+<section id="base-ml-reinforcement-algorithm-base-ml">
+<h3>2. Base ML Reinforcement (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;base_ml&quot;</span></code>)<a class="headerlink" href="#base-ml-reinforcement-algorithm-base-ml" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>概要</strong>: ベース ML 強化学習実験フレームワーク</p></li>
+<li><p><strong>特徴</strong>:</p>
+<ul>
+<li><p>シンプルなステップベースのトレーニングループ</p></li>
+<li><p>実験管理機能（チェックポイント、再開）</p></li>
+<li><p>拡張可能なベースクラス</p></li>
+</ul>
+</li>
+<li><p><strong>ユースケース</strong>: カスタム強化学習実験、プロトタイピング</p></li>
+<li><p><strong>基盤</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/entrypoints/base_ml_reinforcement.py</span></code></p></li>
+<li><p><strong>注意</strong>: <strong>現在はダミー実装（ランダム報酬）</strong> - 開発中</p></li>
+<li><p><strong>ステータス</strong>: 非推奨（PPOを使用してください）</p></li>
+</ul>
+</section>
+<section id="iterative-training-algorithm-iterative">
+<h3>3. Iterative Training (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;iterative&quot;</span></code>)<a class="headerlink" href="#iterative-training-algorithm-iterative" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>概要</strong>: 反復トレーニングセッション（1M timesteps 用）</p></li>
+<li><p><strong>特徴</strong>:</p>
+<ul>
+<li><p>複数イテレーションのトレーニング</p></li>
+<li><p>再開機能</p></li>
+<li><p>データ検証</p></li>
+<li><p>Discord 通知</p></li>
+<li><p>ストリーミングデータ対応</p></li>
+</ul>
+</li>
+<li><p><strong>ユースケース</strong>: 長時間実行トレーニング、本番環境トレーニング</p></li>
+<li><p><strong>基盤</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/run_1m.py</span></code></p></li>
+</ul>
+</section>
+</section>
+<section id="id29">
+<h2>推奨アルゴリズム<a class="headerlink" href="#id29" title="Link to this heading"></a></h2>
+<section id="id30">
+<h3>本番環境での使用<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>PPO</strong> (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;ppo&quot;</span></code>) - <strong>推奨</strong></p>
+<ul class="simple">
+<li><p>安定した学習と高いパフォーマンス</p></li>
+<li><p>メモリ最適化済み</p></li>
+<li><p>TensorBoard統合</p></li>
+</ul>
+</li>
+<li><p><strong>Iterative</strong> (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;iterative&quot;</span></code>) - <strong>本番推奨</strong></p>
+<ul class="simple">
+<li><p>長時間トレーニング対応</p></li>
+<li><p>チェックポイント自動保存</p></li>
+<li><p>Discord通知機能</p></li>
+</ul>
+</li>
+<li><p><strong>Base ML</strong> (<code class="docutils literal notranslate"><span class="pre">algorithm:</span> <span class="pre">&quot;base_ml&quot;</span></code>) - <strong>非推奨</strong></p>
+<ul class="simple">
+<li><p>現在ダミー実装</p></li>
+<li><p>開発・実験用のみ</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id31">
+<h3>ユースケース別推奨<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>新規プロジェクト</strong>: PPOから開始</p></li>
+<li><p><strong>本番デプロイ</strong>: Iterativeを使用</p></li>
+<li><p><strong>研究・実験</strong>: PPOまたはBase ML（開発後）</p></li>
+</ul>
+</section>
+</section>
+<section id="id32">
+<h2>使用方法<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="id33">
+<h3>基本的な使用法<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json
+</pre></div>
+</div>
+</section>
+<section id="id34">
+<h3>トレードモード別の実行<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<section id="id35">
+<h4>スキャルピングトレーニング<a class="headerlink" href="#id35" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config.json
+<span class="c1"># デフォルトでスキャルピングモード</span>
+</pre></div>
+</div>
+</section>
+<section id="id36">
+<h4>通常トレーニング<a class="headerlink" href="#id36" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>unified_training_config_normal.json
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id37">
+<h3>アルゴリズムの指定<a class="headerlink" href="#id37" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--algorithm<span class="w"> </span>ppo
+</pre></div>
+</div>
+</section>
+<section id="id38">
+<h3>設定の上書き<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>unified_training_config.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-path<span class="w"> </span>your_data.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--total-timesteps<span class="w"> </span><span class="m">500000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--session-id<span class="w"> </span>my_training_session
+</pre></div>
+</div>
+</section>
+<section id="id39">
+<h3>追加オプション<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: 長時間実行警告をスキップ</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>: 設定検証のみ実行（トレーニングなし）</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--enable-streaming</span></code>: ストリーミングデータ使用</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--max-features</span> <span class="pre">N</span></code>: 最大特徴量数を制限</p></li>
+</ul>
+</section>
+</section>
+<section id="id40">
+<h2>設定ファイル<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
+<p>設定ファイルは JSON 形式で、以下の構造を持ちます：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;data_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;training_session&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checkpoint_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;checkpoints&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;log_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;logs&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;model_dir&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;models&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;tensorboard_log&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tensorboard&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;verbose&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;seed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">42</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0003</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2048</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gae_lambda&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;reward_scaling&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;transaction_cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.001</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_position_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;eval_freq&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_eval_episodes&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checkpoint_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id41">
+<h2>既存スクリプトの統合<a class="headerlink" href="#id41" title="Link to this heading"></a></h2>
+<p>この統合スクリプトは以下の既存スクリプトを置き換えます：</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/ppo_trainer.py</span></code> (PPO トレーニング)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/entrypoints/base_ml_reinforcement.py</span></code> (ベース ML)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/run_1m.py</span></code> (反復トレーニング)</p></li>
+</ul>
+<p>既存スクリプトは後方互換性のために残されますが、新規開発ではこの統合スクリプトを使用することを推奨します。</p>
+</section>
+<section id="id42">
+<h2>利点<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>単一のインターフェース</strong>: 異なるトレーニングアプローチを統一された方法で実行</p></li>
+<li><p><strong>設定の一元化</strong>: JSON 設定ファイルによる柔軟な構成</p></li>
+<li><p><strong>保守性の向上</strong>: コード重複の削減</p></li>
+<li><p><strong>拡張性</strong>: 新しいアルゴリズムの容易な追加
+�
+�
+�
+�
+�
+�</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

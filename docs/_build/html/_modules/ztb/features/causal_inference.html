@@ -1,0 +1,501 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.causal_inference &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.causal_inference</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.causal_inference</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Causal Inference Feature Selection for SAC v422</span>
+<span class="sd">因果推論ベースの特徴量選択システム</span>
+
+<span class="sd">実装内容:</span>
+<span class="sd">- 因果効果推定による特徴量重要度評価</span>
+<span class="sd">- 介入分析による特徴量選択</span>
+<span class="sd">- メモリ効率的な因果推定</span>
+<span class="sd">- 混同行列除去</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.linear_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">LinearRegression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">r2_score</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.memory.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimize_dtypes</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="CausalFeatureSelector">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalFeatureSelector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CausalFeatureSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;因果推論ベースの特徴量選択器&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">treatment_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+        <span class="n">min_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">max_features</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            treatment_threshold: 治療効果の閾値</span>
+<span class="sd">            min_samples: 最小サンプル数</span>
+<span class="sd">            max_features: 最大特徴量数</span>
+<span class="sd">            memory_manager: メモリマネージャー</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">treatment_threshold</span> <span class="o">=</span> <span class="n">treatment_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_samples</span> <span class="o">=</span> <span class="n">min_samples</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_features</span> <span class="o">=</span> <span class="n">max_features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="o">=</span> <span class="n">memory_manager</span>
+
+        <span class="c1"># 因果推定モデル</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">causal_model</span> <span class="o">=</span> <span class="n">LinearRegression</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scaler</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+
+        <span class="c1"># 結果キャッシュ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">causal_effects</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized CausalFeatureSelector with treatment_threshold=</span><span class="si">{</span><span class="n">treatment_threshold</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CausalFeatureSelector.estimate_causal_effect">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalFeatureSelector.estimate_causal_effect">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate_causal_effect</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">treatment_feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">confounders</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        因果効果を推定</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: データフレーム</span>
+<span class="sd">            treatment_feature: 治療変数（介入する特徴量）</span>
+<span class="sd">            outcome_feature: 結果変数（通常は報酬）</span>
+<span class="sd">            confounders: 交絡因子</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            因果効果推定結果</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># データ準備</span>
+            <span class="n">available_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="p">[</span><span class="n">treatment_feature</span><span class="p">]</span> <span class="o">+</span> <span class="n">confounders</span> <span class="o">+</span> <span class="p">[</span><span class="n">outcome_feature</span><span class="p">]</span>
+                                <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_features</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;effect&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+
+            <span class="n">data</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">available_features</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_samples</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;effect&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+
+            <span class="c1"># スケーリング</span>
+            <span class="n">scaled_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">scaled_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">scaled_data</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+
+            <span class="c1"># 治療変数と結果変数</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">scaled_df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">outcome_feature</span><span class="p">])</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">scaled_df</span><span class="p">[</span><span class="n">outcome_feature</span><span class="p">]</span>
+
+            <span class="c1"># 因果効果推定（単純な線形回帰ベース）</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">causal_model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+            <span class="n">effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">causal_model</span><span class="o">.</span><span class="n">coef_</span><span class="p">[</span><span class="n">X</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">get_loc</span><span class="p">(</span><span class="n">treatment_feature</span><span class="p">)]</span>
+
+            <span class="c1"># R²スコアをconfidenceとして使用</span>
+            <span class="n">r2</span> <span class="o">=</span> <span class="n">r2_score</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">causal_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">))</span>
+            <span class="n">confidence</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">r2</span><span class="p">))</span>
+
+            <span class="c1"># p値の推定（簡易版）</span>
+            <span class="c1"># 実際には統計的検定が必要だが、ここでは効果の絶対値で代用</span>
+            <span class="n">p_value</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">+</span> <span class="nb">abs</span><span class="p">(</span><span class="n">effect</span><span class="p">)</span> <span class="o">*</span> <span class="n">confidence</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;effect&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">effect</span><span class="p">),</span>
+                <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_value</span><span class="p">),</span>
+                <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">confidence</span><span class="p">),</span>
+                <span class="s2">&quot;n_samples&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to estimate causal effect for </span><span class="si">{</span><span class="n">treatment_feature</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;effect&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="CausalFeatureSelector.select_features_causal">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalFeatureSelector.select_features_causal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_features_causal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span><span class="p">,</span>
+        <span class="n">confounders</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        因果推論による特徴量選択</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: 特徴量を含むDataFrame</span>
+<span class="sd">            features: 候補特徴量リスト</span>
+<span class="sd">            outcome_feature: 結果変数名</span>
+<span class="sd">            confounders: 交絡因子リスト</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (選択された特徴量リスト, 因果効果辞書)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">confounders</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># デフォルトの交絡因子（価格、出来高関連）</span>
+            <span class="n">confounders</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">keyword</span> <span class="ow">in</span> <span class="n">col</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">for</span> <span class="n">keyword</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">]):</span>
+                    <span class="n">confounders</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="n">confounders</span> <span class="o">=</span> <span class="n">confounders</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span>  <span class="c1"># 最大5個に制限</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selecting features using causal inference with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> candidates&quot;</span><span class="p">)</span>
+
+        <span class="c1"># メモリ最適化：大規模データの場合はdtype最適化</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">5000</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">optimized_df</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">optimize_dtypes</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+                <span class="n">work_df</span> <span class="o">=</span> <span class="n">optimized_df</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;causal_feature_selection_optimization&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to optimize dtypes: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, using original dataframe&quot;</span><span class="p">)</span>
+                <span class="n">work_df</span> <span class="o">=</span> <span class="n">df</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">work_df</span> <span class="o">=</span> <span class="n">df</span>
+
+        <span class="c1"># 各特徴量の因果効果を推定</span>
+        <span class="n">causal_results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">feature</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">features</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">work_df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">feature</span> <span class="o">!=</span> <span class="n">outcome_feature</span><span class="p">:</span>
+                <span class="n">effect_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">estimate_causal_effect</span><span class="p">(</span>
+                    <span class="n">work_df</span><span class="p">,</span> <span class="n">feature</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">,</span> <span class="n">confounders</span>
+                <span class="p">)</span>
+                <span class="n">causal_results</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="n">effect_result</span>
+
+                <span class="c1"># 定期的なメモリログとGC</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="ow">and</span> <span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;causal_feature_selection_progress&quot;</span><span class="p">)</span>
+                    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="c1"># 因果効果に基づいて特徴量をランク付け</span>
+        <span class="n">feature_scores</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">causal_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">effect</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">confidence</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;confidence&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">p_value</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;p_value&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+            <span class="c1"># スコア計算: 効果 × 信頼性 × (1 - p値)</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">effect</span><span class="p">)</span> <span class="o">*</span> <span class="n">confidence</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">p_value</span><span class="p">)</span>
+            <span class="n">feature_scores</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">feature</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
+
+        <span class="c1"># スコアでソート</span>
+        <span class="n">feature_scores</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># 閾値以上の特徴量を選択</span>
+        <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">selected_results</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">feature_scores</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">treatment_threshold</span><span class="p">:</span>
+                <span class="n">selected_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">feature</span><span class="p">)</span>
+                <span class="n">selected_results</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
+
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_features</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_features</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># 結果をキャッシュ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">causal_effects</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">causal_results</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span> <span class="o">=</span> <span class="n">selected_features</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Selected </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features via causal inference&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">selected_features</span><span class="p">,</span> <span class="n">selected_results</span></div>
+
+
+<div class="viewcode-block" id="CausalFeatureSelector.get_feature_importance">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalFeatureSelector.get_feature_importance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_importance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        特徴量の重要度を取得</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            特徴量名 -&gt; 重要度スコアの辞書</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">importance</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">causal_effects</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">effect</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;effect&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">confidence</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;confidence&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+            <span class="n">importance</span><span class="p">[</span><span class="n">feature</span><span class="p">]</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">effect</span><span class="p">)</span> <span class="o">*</span> <span class="n">confidence</span>
+
+        <span class="k">return</span> <span class="n">importance</span></div>
+
+
+<div class="viewcode-block" id="CausalFeatureSelector.update_causal_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalFeatureSelector.update_causal_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_causal_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        因果モデルを新しいデータで更新</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            new_data: 新しいデータ</span>
+<span class="sd">            outcome_feature: 結果変数名</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># メモリ最適化</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="p">:</span>
+                <span class="n">optimized_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">optimize_dtypes</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;causal_model_update&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">optimized_data</span> <span class="o">=</span> <span class="n">new_data</span>
+
+            <span class="c1"># 既存の因果効果を更新</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">:</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">updated_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">select_features_causal</span><span class="p">(</span>
+                    <span class="n">optimized_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selected_features</span><span class="p">,</span> <span class="n">outcome_feature</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">causal_effects</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">updated_results</span><span class="p">)</span>
+
+            <span class="c1"># メモリ解放</span>
+            <span class="k">del</span> <span class="n">optimized_data</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Updated causal model with new data&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update causal model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CausalInferenceEngine">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalInferenceEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CausalInferenceEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;因果推論エンジン&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            config: 設定辞書</span>
+<span class="sd">            memory_manager: メモリマネージャー</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">CausalFeatureSelector</span><span class="p">(</span>
+            <span class="n">treatment_threshold</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;treatment_threshold&#39;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">),</span>
+            <span class="n">min_samples</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;min_samples&#39;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>
+            <span class="n">max_features</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_features&#39;</span><span class="p">),</span>
+            <span class="n">memory_manager</span><span class="o">=</span><span class="n">memory_manager</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="o">=</span> <span class="n">memory_manager</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Initialized CausalInferenceEngine&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CausalInferenceEngine.analyze_causal_relationships">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalInferenceEngine.analyze_causal_relationships">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_causal_relationships</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        因果関係を分析</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: データフレーム</span>
+<span class="sd">            features: 分析対象特徴量</span>
+<span class="sd">            outcome_feature: 結果変数</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            分析結果</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 特徴量選択</span>
+            <span class="n">selected_features</span><span class="p">,</span> <span class="n">causal_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">select_features_causal</span><span class="p">(</span>
+                <span class="n">df</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">outcome_feature</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 重要度取得</span>
+            <span class="n">importance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">get_feature_importance</span><span class="p">()</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;selected_features&quot;</span><span class="p">:</span> <span class="n">selected_features</span><span class="p">,</span>
+                <span class="s2">&quot;causal_effects&quot;</span><span class="p">:</span> <span class="n">causal_results</span><span class="p">,</span>
+                <span class="s2">&quot;feature_importance&quot;</span><span class="p">:</span> <span class="n">importance</span><span class="p">,</span>
+                <span class="s2">&quot;n_candidates&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">),</span>
+                <span class="s2">&quot;n_selected&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span>
+            <span class="p">}</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Causal analysis completed: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features selected&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Causal analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;selected_features&quot;</span><span class="p">:</span> <span class="p">[],</span>
+                <span class="s2">&quot;causal_effects&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;feature_importance&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="CausalInferenceEngine.update_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.CausalInferenceEngine.update_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;reward&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        モデルを更新</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            new_data: 新しいデータ</span>
+<span class="sd">            outcome_feature: 結果変数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">update_causal_model</span><span class="p">(</span><span class="n">new_data</span><span class="p">,</span> <span class="n">outcome_feature</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_causal_engine">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.causal_inference.create_causal_engine">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_causal_engine</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CausalInferenceEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    因果推論エンジンを作成</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: 設定辞書</span>
+<span class="sd">        memory_manager: メモリマネージャー</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        CausalInferenceEngineインスタンス</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">CausalInferenceEngine</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">memory_manager</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

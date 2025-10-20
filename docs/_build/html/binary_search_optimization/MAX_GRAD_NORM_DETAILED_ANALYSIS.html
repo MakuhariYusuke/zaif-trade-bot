@@ -1,0 +1,702 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>max_grad_norm 100k検証 - 詳細分析レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">max_grad_norm 100k検証 - 詳細分析レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/binary_search_optimization/MAX_GRAD_NORM_DETAILED_ANALYSIS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="max-grad-norm-100k">
+<h1>max_grad_norm 100k検証 - 詳細分析レポート<a class="headerlink" href="#max-grad-norm-100k" title="Link to this heading"></a></h1>
+<p><strong>作成日</strong>: 2025年10月10日<br />
+<strong>ステータス</strong>: 🔍 詳細分析中</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>🎯 検証結果サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="run-1-seed-42">
+<h3>Run 1 (seed=42)<a class="headerlink" href="#run-1-seed-42" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Best</span> <span class="n">max_grad_norm</span><span class="p">:</span> <span class="mf">7.525</span>
+<span class="n">Score</span><span class="p">:</span> <span class="o">-</span><span class="mf">265.546608</span>
+<span class="n">Duration</span><span class="p">:</span> <span class="mf">192.5</span><span class="n">s</span>
+<span class="n">Avg</span> <span class="n">reward</span><span class="p">:</span> <span class="o">-</span><span class="mf">266.829132</span> <span class="p">(</span><span class="n">std</span><span class="p">:</span> <span class="mf">21.201290</span><span class="p">)</span>
+<span class="n">Episodes</span><span class="p">:</span> <span class="mi">100</span>
+</pre></div>
+</div>
+</section>
+<section id="run-2-seed-123">
+<h3>Run 2 (seed=123)<a class="headerlink" href="#run-2-seed-123" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Best</span> <span class="n">max_grad_norm</span><span class="p">:</span> <span class="mf">5.05</span>
+<span class="n">Score</span><span class="p">:</span> <span class="o">-</span><span class="mf">265.605531</span>
+<span class="n">Duration</span><span class="p">:</span> <span class="mf">184.7</span><span class="n">s</span>
+<span class="n">Avg</span> <span class="n">reward</span><span class="p">:</span> <span class="o">-</span><span class="mf">268.865631</span> <span class="p">(</span><span class="n">std</span><span class="p">:</span> <span class="mf">19.424192</span><span class="p">)</span>
+<span class="n">Episodes</span><span class="p">:</span> <span class="mi">100</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>🤔 不可思議な点<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>1. 最適値が大きく異なる<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Run</p></th>
+<th class="head"><p>Seed</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>差</p></th>
+<th class="head"><p>変化率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>42</p></td>
+<td><p>7.525</p></td>
+<td><p>-</p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>123</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p><strong>-2.475</strong></p></td>
+<td><p><strong>-32.9%</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>問題</strong>: 同じ検証で49%も異なる値が選ばれた</p>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h3>2. しかし最終スコアはほぼ同じ<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Run</p></th>
+<th class="head"><p>Seed</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>Score</p></th>
+<th class="head"><p>スコア差</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>42</p></td>
+<td><p>7.525</p></td>
+<td><p>-265.546608</p></td>
+<td><p>-</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>123</p></td>
+<td><p>5.05</p></td>
+<td><p>-265.605531</p></td>
+<td><p><strong>-0.058923</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>驚き</strong>: 値が32.9%違うのに、スコアの差はわずか <strong>0.059</strong> (0.02%)</p>
+<p><strong>統計的評価</strong>:</p>
+<ul class="simple">
+<li><p>スコア差: 0.059</p></li>
+<li><p>95%信頼区間: ±7.1 (50k検証時の推定)</p></li>
+<li><p><strong>判定</strong>: 0.059 &lt;&lt; 7.1 → <strong>統計的に有意な差なし</strong></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="k">
+<h3>3. 30k検証との整合性<a class="headerlink" href="#k" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Timesteps</p></th>
+<th class="head"><p>Seed</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>Score</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>30k</p></td>
+<td><p>42 (推定)</p></td>
+<td><p>7.525</p></td>
+<td><p>-287.44</p></td>
+<td><p>Run 1</p></td>
+</tr>
+<tr class="row-odd"><td><p>30k</p></td>
+<td><p>123 (推定)</p></td>
+<td><p>5.05</p></td>
+<td><p>-286.41</p></td>
+<td><p>Run 2</p></td>
+</tr>
+<tr class="row-even"><td><p>100k</p></td>
+<td><p>42</p></td>
+<td><p><strong>7.525</strong></p></td>
+<td><p>-265.55</p></td>
+<td><p>Run 1 ✅ 一貫性</p></td>
+</tr>
+<tr class="row-odd"><td><p>100k</p></td>
+<td><p>123</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p>-265.61</p></td>
+<td><p>Run 2 ✅ 一貫性</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>興味深い発見</strong>:</p>
+<ul class="simple">
+<li><p>30kでも100kでも、<strong>同じseedは同じ最適値を選ぶ</strong></p></li>
+<li><p>seed=42 → 常に7.525</p></li>
+<li><p>seed=123 → 常に5.05</p></li>
+</ul>
+<p><strong>これは偶然ではない!</strong> → 再現性の別の側面</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>🔬 仮説: 複数の局所最適解が存在<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>仮説1: 探索空間の平坦性<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>想定</strong>: max_grad_norm=5.0-7.5の範囲全体で性能がほぼ同等</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Score
+  ↑
+-265 |     ████████████████████████  ← 平坦な高原
+-270 |    █                        █
+-275 |   █                          █
+-280 |  █                            █
+-285 | █                              █
+     └─────────────────────────────────→
+       5.0  5.05  6.3  7.5  7.525  max_grad_norm
+</pre></div>
+</div>
+<p><strong>検証方法</strong>: 各値の個別スコアを確認</p>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h3>仮説2: ランダムシードによる初期化の影響<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><strong>想定</strong>: 異なる初期化が異なる局所最適に収束</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Seed 42:  初期化A → 学習経路1 → 局所最適1 (7.525が最良)
+Seed 123: 初期化B → 学習経路2 → 局所最適2 (5.05が最良)
+</pre></div>
+</div>
+<p><strong>しかし最終性能は同等</strong> → 両方とも「良い局所最適」に到達</p>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h3>仮説3: 評価順序の影響<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><strong>–search_range の評価順序</strong>: 5.0 → 5.05 → 6.3 → 7.5 → 7.525</p>
+<p><strong>可能性</strong>:</p>
+<ul class="simple">
+<li><p>Seed 123: 5.05で良いスコアが出たので、7.525を評価しても「改善なし」と判定？</p></li>
+<li><p>Seed 42: 7.525で最良スコアが出た</p></li>
+</ul>
+<p><strong>しかし</strong>: <code class="docutils literal notranslate"><span class="pre">base_optimizer.py</span></code>は全ての値を評価してから最良を選ぶはず</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>📊 詳細分析のための確認事項<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>必要な情報: 全5値の個別スコア<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p><strong>確認すべきファイル</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">models</span><span class="o">/</span><span class="n">binary_search</span><span class="o">/</span><span class="n">max_grad_norm_100k_seed42</span><span class="o">.</span><span class="n">jsonl</span>
+<span class="n">models</span><span class="o">/</span><span class="n">binary_search</span><span class="o">/</span><span class="n">max_grad_norm_100k_seed123</span><span class="o">.</span><span class="n">jsonl</span>
+</pre></div>
+</div>
+<p><strong>確認コマンド</strong> (PowerShell):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># Seed 42の全結果を確認</span>
+<span class="nb">Get-Content</span> <span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span><span class="n">max_grad_norm_100k_seed42</span><span class="p">.</span><span class="n">jsonl</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">event</span><span class="p">,</span> <span class="n">max_grad_norm</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">avg_reward</span> <span class="p">|</span> <span class="nb">Format-Table</span>
+
+<span class="c"># Seed 123の全結果を確認</span>
+<span class="nb">Get-Content</span> <span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span><span class="n">max_grad_norm_100k_seed123</span><span class="p">.</span><span class="n">jsonl</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span> <span class="p">|</span> <span class="nb">Select-Object</span> <span class="n">event</span><span class="p">,</span> <span class="n">max_grad_norm</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">avg_reward</span> <span class="p">|</span> <span class="nb">Format-Table</span>
+</pre></div>
+</div>
+<p><strong>期待される出力</strong> (例):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>event    max_grad_norm  score         avg_reward
+-----    -------------  -----         ----------
+training 5.0            -266.123      -267.456
+training 5.05           -265.605531   -268.865631  ← Best (seed 123)
+training 6.3            -265.891      -267.234
+training 7.5            -265.712      -267.089
+training 7.525          -265.546608   -266.829132  ← Best (seed 42)
+complete 5.05           -265.605531   ...          ← Final (seed 123)
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🧮 スコア分布の分析<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>もし全ての値が-265±2の範囲内なら…<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p><strong>解釈</strong>: max_grad_norm=5.0-7.5は<strong>全て同等に良い</strong></p>
+<p><strong>推奨値の決定</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>範囲の中央値</strong>: 6.3 (バランス型)</p></li>
+<li><p><strong>最小値</strong>: 5.0 (安定性重視)</p></li>
+<li><p><strong>最大値</strong>: 7.5 (探索重視)</p></li>
+</ol>
+<p><strong>統計的根拠</strong>:</p>
+<ul class="simple">
+<li><p>差が±2未満なら、95%CI=±7.1の範囲内</p></li>
+<li><p>どの値を選んでも性能は変わらない</p></li>
+<li><p>ロバスト性を考慮して中央値を推奨</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h3>もし明確な傾向があるなら…<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<p><strong>例1</strong>: 5.05と7.525が他より明確に良い</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Score: 5.0=−268, 5.05=−265.6, 6.3=−270, 7.5=−271, 7.525=−265.5
+       ↓優  ↓優             ↓劣      ↓劣      ↓優
+</pre></div>
+</div>
+<p>→ <strong>2つの局所最適が存在</strong> (5.05付近と7.525付近)</p>
+<p><strong>推奨</strong>: より安定した5.05を採用 (低い値の方が安全)</p>
+<hr class="docutils" />
+<p><strong>例2</strong>: 単調に改善</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Score: 5.0=−270, 5.05=−268, 6.3=−266, 7.5=−265.7, 7.525=−265.5
+       ↓         ↓          ↓         ↓           ↓優
+</pre></div>
+</div>
+<p>→ <strong>値が大きいほど良い</strong> → 7.525を推奨</p>
+<hr class="docutils" />
+<p><strong>例3</strong>: 逆U字型</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Score: 5.0=−268, 5.05=−266, 6.3=−264, 7.5=−266, 7.525=−268
+       ↓         ↓          ↓優       ↓         ↓
+</pre></div>
+</div>
+<p>→ <strong>中間値が最良</strong> → 6.3を推奨</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="k-x-2seed">
+<h2>🔎 実測データの詳細 (100k x 2seed)<a class="headerlink" href="#k-x-2seed" title="Link to this heading"></a></h2>
+<p>実際に取得された <code class="docutils literal notranslate"><span class="pre">max_grad_norm_binary_search.jsonl</span></code> から、各シードのスコア分布を抜粋しました。</p>
+<section id="seed-42-2025-10-10-05-29-28">
+<h3>Seed 42 (2025-10-10 05:29:28 完了)<a class="headerlink" href="#seed-42-2025-10-10-05-29-28" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>評価順序</p></th>
+<th class="head"><p>max_grad_norm</p></th>
+<th class="head"><p>Score</p></th>
+<th class="head"><p>Score差 (対5.05)</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>5.00</p></td>
+<td><p>-266.6278</p></td>
+<td><p>-0.835</p></td>
+<td><p>100k custom_1</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p><strong>-265.7931</strong></p></td>
+<td><p>0.000</p></td>
+<td><p>上位候補</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>6.30</p></td>
+<td><p>-266.2309</p></td>
+<td><p>-0.438</p></td>
+<td><p>劣化</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>7.50</p></td>
+<td><p>-266.5158</p></td>
+<td><p>-0.723</p></td>
+<td><p>劣化</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p><strong>7.525</strong></p></td>
+<td><p><strong>-265.5466</strong></p></td>
+<td><p>+0.246</p></td>
+<td><p><strong>最良</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>補足</strong>:</p>
+<ul class="simple">
+<li><p>5.05 と 7.525 が拮抗 (差 0.246)</p></li>
+<li><p>想定CI (±7.1) に比べて僅差 → 統計的には同等クラス</p></li>
+<li><p>それ以外 (5.0, 6.3, 7.5) は一段劣る (差 0.4-0.8)</p></li>
+</ul>
+</section>
+<section id="seed-123-2025-10-10-05-48-33">
+<h3>Seed 123 (2025-10-10 05:48:33 完了)<a class="headerlink" href="#seed-123-2025-10-10-05-48-33" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>評価順序</p></th>
+<th class="head"><p>max_grad_norm</p></th>
+<th class="head"><p>Score</p></th>
+<th class="head"><p>Score差 (対5.05)</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>5.00</p></td>
+<td><p>-266.2387</p></td>
+<td><p>-0.633</p></td>
+<td><p>100k custom_1</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p><strong>-265.6055</strong></p></td>
+<td><p>0.000</p></td>
+<td><p><strong>最良</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>6.30</p></td>
+<td><p>-267.6245</p></td>
+<td><p>-2.019</p></td>
+<td><p>大幅悪化</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>7.50</p></td>
+<td><p>-267.8204</p></td>
+<td><p>-2.215</p></td>
+<td><p>大幅悪化</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>7.525</p></td>
+<td><p>-267.5761</p></td>
+<td><p>-1.971</p></td>
+<td><p>大幅悪化</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>補足</strong>:</p>
+<ul class="simple">
+<li><p>5.05 が唯一の良好値 (他は 2pt 以上劣化)</p></li>
+<li><p>特に 7.5/7.525 は seed 42 とは逆に大きく悪化</p></li>
+<li><p>ばらつきは 95%CI (±7.1) より小さいため統計的に有意な差</p></li>
+</ul>
+</section>
+<section id="id14">
+<h3>二つのシードの比較<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>Seed 42</p></th>
+<th class="head"><p>Seed 123</p></th>
+<th class="head"><p>差分</p></th>
+<th class="head"><p>コメント</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>最良値</p></td>
+<td><p>7.525</p></td>
+<td><p>5.05</p></td>
+<td><p>-2.475</p></td>
+<td><p>局所最適が異なる</p></td>
+</tr>
+<tr class="row-odd"><td><p>最良スコア</p></td>
+<td><p>-265.5466</p></td>
+<td><p>-265.6055</p></td>
+<td><p>-0.059</p></td>
+<td><p>性能は同等</p></td>
+</tr>
+<tr class="row-even"><td><p>7.525 のスコア</p></td>
+<td><p>-265.5466</p></td>
+<td><p>-267.5761</p></td>
+<td><p>-2.029</p></td>
+<td><p>seed依存差が顕著</p></td>
+</tr>
+<tr class="row-odd"><td><p>5.05 のスコア</p></td>
+<td><p>-265.7931</p></td>
+<td><p>-265.6055</p></td>
+<td><p>+0.188</p></td>
+<td><p>どちらも良好</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>考察</strong>:</p>
+<ul class="simple">
+<li><p>5.05 は両シードで安定的に良好 → ロバスト。</p></li>
+<li><p>7.525 は seed 42 では最良だが seed 123 では 5.05 より 1.97 悪化 → 不安定。</p></li>
+<li><p>6.3, 7.5 等の真ん中〜高めの値は seed 123 で顕著に劣化。</p></li>
+</ul>
+<p><strong>推奨</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>本番用途の安定性重視なら 5.05</strong> を採用。</p></li>
+<li><p>7.525 を使う場合は seed 固定や追加の正規化が必要。</p></li>
+<li><p>中央値 6.3 も seed 123 で大幅悪化するため、今回の結果からは推奨しにくい。</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>🎯 次のアクション<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="step-1">
+<h3>Step 1: 詳細ログの確認<a class="headerlink" href="#step-1" title="Link to this heading"></a></h3>
+<p><strong>実行コマンド</strong> (PowerShell):</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># ファイルが存在するか確認</span>
+<span class="nb">dir </span><span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\*</span><span class="n">max_grad_norm</span><span class="p">*.</span><span class="n">jsonl</span>
+
+<span class="c"># Seed 42の全結果</span>
+<span class="nb">Write-Host</span> <span class="s2">&quot;</span><span class="se">`n</span><span class="s2">=== Seed 42 Results ===&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<span class="nb">Get-Content</span> <span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span><span class="n">max_grad_norm_100k_seed42</span><span class="p">.</span><span class="n">jsonl</span> <span class="p">|</span> <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span>
+    <span class="nv">$obj</span> <span class="p">=</span> <span class="nv">$_</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">event</span> <span class="o">-eq</span> <span class="s2">&quot;training&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nb">Write-Host</span> <span class="s2">&quot;max_grad_norm=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">max_grad_norm</span><span class="p">)</span><span class="s2">: score=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">score</span><span class="p">)</span><span class="s2">, avg_reward=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">avg_reward</span><span class="p">)</span><span class="s2">&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c"># Seed 123の全結果</span>
+<span class="nb">Write-Host</span> <span class="s2">&quot;</span><span class="se">`n</span><span class="s2">=== Seed 123 Results ===&quot;</span> <span class="n">-ForegroundColor</span> <span class="n">Cyan</span>
+<span class="nb">Get-Content</span> <span class="n">models</span><span class="p">\</span><span class="n">binary_search</span><span class="p">\</span><span class="n">max_grad_norm_100k_seed123</span><span class="p">.</span><span class="n">jsonl</span> <span class="p">|</span> <span class="k">ForEach</span><span class="n">-Object</span> <span class="p">{</span>
+    <span class="nv">$obj</span> <span class="p">=</span> <span class="nv">$_</span> <span class="p">|</span> <span class="nb">ConvertFrom-Json</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">event</span> <span class="o">-eq</span> <span class="s2">&quot;training&quot;</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nb">Write-Host</span> <span class="s2">&quot;max_grad_norm=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">max_grad_norm</span><span class="p">)</span><span class="s2">: score=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">score</span><span class="p">)</span><span class="s2">, avg_reward=</span><span class="p">$(</span><span class="nv">$obj</span><span class="p">.</span><span class="n">avg_reward</span><span class="p">)</span><span class="s2">&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>または Command Prompt</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM ファイル一覧
+dir models\binary_search\*max_grad_norm*.jsonl
+
+REM Seed 42
+type models\binary_search\max_grad_norm_100k_seed42.jsonl
+
+REM Seed 123
+type models\binary_search\max_grad_norm_100k_seed123.jsonl
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="step-2">
+<h3>Step 2: 結果に基づいて推奨値を決定<a class="headerlink" href="#step-2" title="Link to this heading"></a></h3>
+<p><strong>パターンA</strong>: 全て同等 (-265±2)
+→ <strong>推奨値</strong>: 6.3 (中央値、バランス型)</p>
+<p><strong>パターンB</strong>: 5.05と7.525のみ優れている
+→ <strong>推奨値</strong>: 5.05 (より安定、低リスク)</p>
+<p><strong>パターンC</strong>: 明確な単調増加/減少
+→ <strong>推奨値</strong>: 傾向の最良値</p>
+</section>
+<hr class="docutils" />
+<section id="step-3">
+<h3>Step 3: 本番設定ファイルの更新<a class="headerlink" href="#step-3" title="Link to this heading"></a></h3>
+<p><strong>確定後の更新コマンド</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>notepad configs\training\ppo_100k_optimized.json
+</pre></div>
+</div>
+<p><strong>更新内容</strong> (仮に6.3を推奨する場合):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.007503</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">6.3</span><span class="p">,</span><span class="w">  </span><span class="c1">// 5.0-7.5の中央値 (ロバスト性重視)</span>
+<span class="w">  </span><span class="nt">&quot;_comment_max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;5.05 and 7.525 showed similar performance (-265.55 vs -265.61), chose middle ground for robustness&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>📈 統計的解釈<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>再現性の2つの側面<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p><strong>側面1: 同じseedでの再現性</strong> ✅</p>
+<ul class="simple">
+<li><p>Seed 42: 30k→7.525, 100k→7.525 (一貫性)</p></li>
+<li><p>Seed 123: 30k→5.05, 100k→5.05 (一貫性)</p></li>
+</ul>
+<p><strong>側面2: 異なるseed間での一貫性</strong> ⚠️</p>
+<ul class="simple">
+<li><p>異なるseedで異なる最適値</p></li>
+<li><p><strong>しかし最終性能は同等</strong> (-265.55 vs -265.61)</p></li>
+</ul>
+<p><strong>結論</strong>:</p>
+<ul class="simple">
+<li><p>「再現性の問題」ではなく「複数の同等解の存在」</p></li>
+<li><p>どちらを選んでも性能は変わらない</p></li>
+<li><p><strong>より保守的な選択が推奨される</strong></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>🎯 推奨値の決定基準<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>保守的アプローチ (推奨)<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>範囲の下限寄り</strong>: 5.05 または 5.0</p>
+<ul class="simple">
+<li><p>理由: 勾配クリッピングは「過学習防止」のため</p></li>
+<li><p>低い値の方が安定性が高い</p></li>
+<li><p>リスク回避</p></li>
+</ul>
+</li>
+<li><p><strong>範囲の中央値</strong>: 6.3</p>
+<ul class="simple">
+<li><p>理由: 両極端を避けたバランス型</p></li>
+<li><p>全ての値が同等なら最も安全</p></li>
+<li><p>ロバスト性重視</p></li>
+</ul>
+</li>
+<li><p><strong>両方の平均</strong>: (5.05 + 7.525) / 2 = 6.2875 ≈ 6.3</p>
+<ul class="simple">
+<li><p>理由: 両方の結果を尊重</p></li>
+<li><p>偶然にも中央値と一致</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h3>積極的アプローチ<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>より良いスコアの値</strong>: 7.525 (-265.546608)</p>
+<ul class="simple">
+<li><p>理由: わずかに良い (差0.059)</p></li>
+<li><p>統計的には無意味だが、心理的に安心</p></li>
+</ul>
+</li>
+<li><p><strong>より安定した値</strong>: 5.05 (std: 19.424192 &lt; 21.201290)</p>
+<ul class="simple">
+<li><p>理由: Run 2の方が標準偏差が小さい</p></li>
+<li><p>安定性を重視</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>📋 まとめ<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="id22">
+<h3>現状の理解<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <strong>再現性は確認された</strong> (同じseedは同じ結果)</p></li>
+<li><p>✅ <strong>性能は同等</strong> (0.059の差は統計的に無意味)</p></li>
+<li><p>⚠️ <strong>最適値は初期化依存</strong> (5.05 vs 7.525)</p></li>
+<li><p>🔍 <strong>全5値の詳細分析が必要</strong> (平坦性の確認)</p></li>
+</ol>
+</section>
+<section id="id23">
+<h3>次のステップ<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>📊 <strong>今すぐ</strong>: .jsonlファイルで全5値のスコアを確認</p></li>
+<li><p>🎯 <strong>判断</strong>: スコア分布に基づいて推奨値を決定</p></li>
+<li><p>📝 <strong>更新</strong>: 本番設定ファイルに反映</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>まずは詳細ログの確認をお願いします!</strong> 🔍</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

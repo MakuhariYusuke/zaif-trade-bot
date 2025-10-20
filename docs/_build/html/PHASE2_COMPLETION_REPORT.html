@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phase 2 完了レポート: 特徴量スキーマ管理システム &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Phase 2 完了レポート: 特徴量スキーマ管理システム</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/PHASE2_COMPLETION_REPORT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="phase-2">
+<h1>Phase 2 完了レポート: 特徴量スキーマ管理システム<a class="headerlink" href="#phase-2" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>🎉 実装完了<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p><strong>日時</strong>: 2025年10月10日<br />
+<strong>バージョン</strong>: v385 (Phase 2検証版)</p>
+</section>
+<hr class="docutils" />
+<section id="id2">
+<h2>✅ 実装内容<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="featureschemamanager-phase-1">
+<h3>1. FeatureSchemaManager (Phase 1)<a class="headerlink" href="#featureschemamanager-phase-1" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/feature_schema_manager.py</span></code></p></li>
+<li><p><strong>機能</strong>: モデルごとの特徴量スキーマ管理</p></li>
+<li><p><strong>コード量</strong>: 320+ lines</p></li>
+</ul>
+</section>
+<section id="unifiedtrainer-phase-2">
+<h3>2. UnifiedTrainer統合 (Phase 2)<a class="headerlink" href="#unifiedtrainer-phase-2" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code></p></li>
+<li><p><strong>メソッド</strong>: <code class="docutils literal notranslate"><span class="pre">_save_model_schema()</span></code> (60+ lines)</p></li>
+<li><p><strong>機能</strong>: 訓練完了時の自動スキーマ保存</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>📊 検証結果<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="v385">
+<h3>v385訓練結果<a class="headerlink" href="#v385" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">訓練時間</span><span class="p">:</span> <span class="mi">2</span><span class="n">分11秒</span> <span class="p">(</span><span class="mi">50</span><span class="p">,</span><span class="mi">176</span> <span class="n">timesteps</span><span class="p">)</span>
+<span class="n">特徴量数</span><span class="p">:</span> <span class="mi">68</span><span class="n">個</span> <span class="p">(</span><span class="n">curated</span> <span class="n">features</span><span class="p">)</span>
+<span class="n">モデルサイズ</span><span class="p">:</span> <span class="n">models</span><span class="o">/</span><span class="n">ppo_reward_v385_curated</span><span class="o">.</span><span class="n">zip</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>スキーマ自動生成 ✅<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/schemas/ppo_reward_v385_curated/
+├── metadata.json           ← ✅ 生成成功
+├── features_schema.json    ← ✅ 生成成功
+└── scaler.npz              ← ✅ 生成成功
+</pre></div>
+</div>
+<p><strong>ログ出力</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2025-10-10 17:12:56,426 - FeatureSchemaManager initialized for model: ppo_reward_v385_curated
+2025-10-10 17:12:56,426 - Schema directory: models\schemas\ppo_reward_v385_curated
+2025-10-10 17:12:56,431 - ✅ Saved schema for ppo_reward_v385_curated
+2025-10-10 17:12:56,432 -    Features: 68
+2025-10-10 17:12:56,432 -    Hash: c7a296f3d7c6ece4
+2025-10-10 17:12:56,432 - ✅ Model schema saved: 68 features, hash: c7a296f3d7c6ece4...
+2025-10-10 17:12:56,433 -    Schema directory: models/schemas/ppo_reward_v385_curated/
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>📁 現在のスキーマ一覧<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="ppo-reward-v381-revised-profit-focused">
+<h3>1. ppo_reward_v381_revised_profit_focused<a class="headerlink" href="#ppo-reward-v381-revised-profit-focused" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;model_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v381_revised_profit_focused&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;num_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">110</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-10-10T...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;schema_hash&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;全特徴量モデル（110個）&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>状態</strong>: ✅ レガシー移行済み</p>
+</section>
+<section id="ppo-reward-v384-curated-60">
+<h3>2. ppo_reward_v384_curated_60<a class="headerlink" href="#ppo-reward-v384-curated-60" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;model_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;num_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">68</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-10-10T...&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;schema_hash&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;f7be18533fa61876&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;厳選特徴量モデル（68個）&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>状態</strong>: ✅ レガシー移行済み</p>
+</section>
+<section id="ppo-reward-v385-curated-new">
+<h3>3. ppo_reward_v385_curated ⭐ NEW<a class="headerlink" href="#ppo-reward-v385-curated-new" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;model_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v385_curated&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;num_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">68</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-10-10T17:12:56.427356&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;schema_hash&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c7a296f3d7c6ece4&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;description&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Phase 2検証版（自動スキーマ保存）&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;curated_features_spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_filtering_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>状態</strong>: ✅ 自動生成成功（Phase 2機能検証完了）</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="metadata-json">
+<h2>🔍 metadata.json の内容<a class="headerlink" href="#metadata-json" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>主要フィールド<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;model_name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v385_curated&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;num_features&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">68</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_names&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;rsi&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sma_short&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;sma_long&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;price&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;qty&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;pnl&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;win&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;ADX&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ATR&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Lower&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Middle&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;BB_Upper&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;CCI&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Ichimoku_Chikou&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Ichimoku_Tenkan&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;MACD&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;MFI&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;RSI&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Stochastic&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Supertrend&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;VWAP&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;close&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;open&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;high&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">    </span><span class="s2">&quot;low&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;volume&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ema_5&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;atr_10&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;rolling_mean_20&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="err">...</span><span class="w"> </span><span class="err">(</span><span class="mi">68</span><span class="err">個)</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;schema_hash&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;c7a296f3d7c6ece4&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;created_at&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-10-10T17:12:56.427356&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;training_config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v385_curated&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;algorithm&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;curated_features_list&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;enable_feature_filtering&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;feature_filter_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;whitelist&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;data_path&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50000</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.003</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">      </span><span class="err">...</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;transaction_cost&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0005</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;max_position_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">      </span><span class="err">...</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;reward&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;profit_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;hold_penalty_weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">      </span><span class="err">...</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;curated_features_spec&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_filtering_enabled&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;feature_filter_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;whitelist&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>🎯 達成された目標<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="phase-1-infrastructure">
+<h3>Phase 1 (Infrastructure) ✅<a class="headerlink" href="#phase-1-infrastructure" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> FeatureSchemaManager実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> データクラス定義 (FeatureSchemaMetadata)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> save_schema() / load_schema() メソッド</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> スキーマハッシュ検証</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> migrate_legacy_schema() 関数</p></li>
+</ul>
+</section>
+<section id="phase-2-trainer-integration">
+<h3>Phase 2 (Trainer Integration) ✅<a class="headerlink" href="#phase-2-trainer-integration" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> UnifiedTrainer._save_model_schema() 実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 訓練完了時の自動呼び出し</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> DataFrame自動読み込み</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 特徴量自動検出</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> スケーラーデータ計算</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> エラーハンドリング（非致命的）</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>検証 ✅<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> v385訓練で自動スキーマ保存</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> metadata.json 生成確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> features_schema.json 生成確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> scaler.npz 生成確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 68特徴量の正確性確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> ハッシュ値生成確認</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="phase-3">
+<h2>🚀 次のステップ (Phase 3)<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>実装待ち機能<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>スキーマベース環境作成</strong> (<code class="docutils literal notranslate"><span class="pre">schema_env_factory.py</span></code>)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">create_env_from_schema()</span></code> 関数</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">create_env_from_model_path()</span></code> 関数</p></li>
+<li><p>自動特徴量数調整</p></li>
+</ul>
+</li>
+<li><p><strong>バックテスト対応</strong> (<code class="docutils literal notranslate"><span class="pre">backtest_with_schema.py</span></code>)</p>
+<ul class="simple">
+<li><p>スキーマ自動読み込み</p></li>
+<li><p>v381/v384/v385の統一実行</p></li>
+<li><p>次元不一致エラー解消</p></li>
+</ul>
+</li>
+<li><p><strong>live_trade/paper_trade対応</strong></p>
+<ul class="simple">
+<li><p>スキーマベース環境作成統合</p></li>
+<li><p>リアルタイムデータ対応</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id10">
+<h3>期待される効果<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ 従来（次元不一致エラー）</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># 68特徴量</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/ppo_reward_v381.zip&quot;</span><span class="p">)</span>  <span class="c1"># 110特徴量期待</span>
+<span class="c1"># ValueError: Unexpected observation shape (68,) expected (110,)</span>
+
+<span class="c1"># ✅ Phase 3後（自動対応）</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span><span class="s2">&quot;models/ppo_reward_v381.zip&quot;</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>  <span class="c1"># 110特徴量自動設定</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/ppo_reward_v381.zip&quot;</span><span class="p">)</span>  <span class="c1"># 110特徴量</span>
+<span class="c1"># 正常動作！</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>📝 ドキュメント<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>改革計画</strong>: <code class="docutils literal notranslate"><span class="pre">docs/FEATURE_SCHEMA_MANAGEMENT_REFORM.md</span></code></p></li>
+<li><p><strong>実装サマリー</strong>: <code class="docutils literal notranslate"><span class="pre">docs/FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.md</span></code></p></li>
+<li><p><strong>Phase 3指示書</strong>: <code class="docutils literal notranslate"><span class="pre">docs/PHASE3_IMPLEMENTATION_INSTRUCTIONS.md</span></code> ⭐ 次のCopilot用</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>🎊 結論<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<p><strong>Phase 2 (Trainer Integration) は完全に成功しました！</strong></p>
+<section id="id13">
+<h3>主な成果<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <strong>自動化達成</strong>: 訓練完了時にスキーマが自動保存される</p></li>
+<li><p>✅ <strong>情報保全</strong>: v385の68特徴量情報が永続化された</p></li>
+<li><p>✅ <strong>非破壊的</strong>: 既存の訓練フローを壊していない</p></li>
+<li><p>✅ <strong>拡張可能</strong>: Phase 3への基盤が整った</p></li>
+</ol>
+</section>
+<section id="id14">
+<h3>次のアクション<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p>Phase 3の実装を別のCopilotに引き継ぎ、バックテスト・環境統合を完成させることで、特徴量管理の完全自動化が実現します。</p>
+<hr class="docutils" />
+<p><strong>作成日</strong>: 2025年10月10日<br />
+<strong>作成者</strong>: GitHub Copilot<br />
+<strong>検証モデル</strong>: ppo_reward_v385_curated<br />
+<strong>ステータス</strong>: Phase 2完了 ✅</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

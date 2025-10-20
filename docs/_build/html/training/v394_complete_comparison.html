@@ -1,0 +1,474 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>v394シリーズ完全比較表 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="v394シリーズ最終レポート: エントロピー係数の限界" href="v394_final_report.html" />
+    <link rel="prev" title="v394a訓練結果速報" href="v394a_quick_report.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../guides/index.html">Guides</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Training Documentation</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="V392_TRAINING_REPORT.html">v392訓練・評価レポート（random_startバグ修正版）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="v394a_quick_report.html">v394a訓練結果速報</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">v394シリーズ完全比較表</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">訓練完了状況</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#v394d-100-352-timesteps">v394d詳細分析（100,352 timesteps完了）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#v394f">v394f（超激辛版）の設計</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">次のステップ</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id13">結論</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="v394_final_report.html">v394シリーズ最終レポート: エントロピー係数の限界</a></li>
+<li class="toctree-l3"><a class="reference internal" href="v394_next_steps.html">v394訓練結果と今後の方針</a></li>
+<li class="toctree-l3"><a class="reference internal" href="v394_series_comparison.html">v394シリーズ初期訓練結果比較（2,048 - 5,120 timesteps）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="v394_training_summary.html">v394シリーズ訓練進捗サマリー</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials/index.html">Tutorials</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Training Documentation</a></li>
+      <li class="breadcrumb-item active">v394シリーズ完全比較表</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/training/v394_complete_comparison.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="v394">
+<h1>v394シリーズ完全比較表<a class="headerlink" href="#v394" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>訓練完了状況<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Version</p></th>
+<th class="head"><p>ent_coef</p></th>
+<th class="head"><p>HOLD罰則</p></th>
+<th class="head"><p>取引報酬</p></th>
+<th class="head"><p>訓練状況</p></th>
+<th class="head"><p>初期HOLD</p></th>
+<th class="head"><p>最終HOLD</p></th>
+<th class="head"><p>結果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>v394a</p></td>
+<td><p>0.01</p></td>
+<td><p>0.1 (5x)</p></td>
+<td><p>1.0</p></td>
+<td><p>10k steps</p></td>
+<td><p>48%</p></td>
+<td><p>91%</p></td>
+<td><p>❌ 効果一時的</p></td>
+</tr>
+<tr class="row-odd"><td><p>v394b</p></td>
+<td><p>0.01</p></td>
+<td><p>0.02</p></td>
+<td><p>5.0 (5x)</p></td>
+<td><p>8k steps</p></td>
+<td><p>55%</p></td>
+<td><p>?</p></td>
+<td><p>⏸️ 未完了</p></td>
+</tr>
+<tr class="row-even"><td><p>v394c</p></td>
+<td><p>0.01</p></td>
+<td><p>0.05</p></td>
+<td><p>3.0 (3x)</p></td>
+<td><p>8k steps</p></td>
+<td><p>?</p></td>
+<td><p>?</p></td>
+<td><p>⏸️ 未完了</p></td>
+</tr>
+<tr class="row-odd"><td><p>v394d</p></td>
+<td><p>0.01</p></td>
+<td><p>0.1 (5x)</p></td>
+<td><p>5.0 (5x)</p></td>
+<td><p><strong>100k</strong> ✅</p></td>
+<td><p><strong>50%</strong> ✅</p></td>
+<td><p><strong>89%</strong> 🚨</p></td>
+<td><p>⚠️ 最良だが不十分</p></td>
+</tr>
+<tr class="row-even"><td><p>v394e</p></td>
+<td><p>0.05</p></td>
+<td><p>0.1 (5x)</p></td>
+<td><p>5.0 (5x)</p></td>
+<td><p>8k steps</p></td>
+<td><p>52%</p></td>
+<td><p>83%</p></td>
+<td><p>⏸️ 未完了</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>v394f</strong></p></td>
+<td><p><strong>0.2</strong></p></td>
+<td><p><strong>0.1 (5x)</strong></p></td>
+<td><p><strong>5.0 (5x)</strong></p></td>
+<td><p><strong>準備中</strong></p></td>
+<td><p><strong>?</strong></p></td>
+<td><p><strong>?</strong></p></td>
+<td><p>🚀 <strong>超激辛版！</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="v394d-100-352-timesteps">
+<h2>v394d詳細分析（100,352 timesteps完了）<a class="headerlink" href="#v394d-100-352-timesteps" title="Link to this heading"></a></h2>
+<section id="action">
+<h3>Action分布の推移<a class="headerlink" href="#action" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Timesteps</p></th>
+<th class="head"><p>HOLD</p></th>
+<th class="head"><p>BUY</p></th>
+<th class="head"><p>SELL</p></th>
+<th class="head"><p>HOLD%</p></th>
+<th class="head"><p>BUY+SELL%</p></th>
+<th class="head"><p>エントロピー</p></th>
+<th class="head"><p>評価</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2,048</p></td>
+<td><p>128</p></td>
+<td><p>67</p></td>
+<td><p>61</p></td>
+<td><p>50.0%</p></td>
+<td><p>50.0%</p></td>
+<td><p>~1.00</p></td>
+<td><p>✅ 最良</p></td>
+</tr>
+<tr class="row-odd"><td><p>5,120</p></td>
+<td><p>191</p></td>
+<td><p>34</p></td>
+<td><p>31</p></td>
+<td><p>74.6%</p></td>
+<td><p>25.4%</p></td>
+<td><p>~0.90</p></td>
+<td><p>⚠️ 悪化開始</p></td>
+</tr>
+<tr class="row-even"><td><p>10,240</p></td>
+<td><p>232</p></td>
+<td><p>11</p></td>
+<td><p>13</p></td>
+<td><p>90.6%</p></td>
+<td><p>9.4%</p></td>
+<td><p>~0.65</p></td>
+<td><p>🚨 急悪化</p></td>
+</tr>
+<tr class="row-odd"><td><p>95,232</p></td>
+<td><p>240</p></td>
+<td><p>9</p></td>
+<td><p>7</p></td>
+<td><p>93.8%</p></td>
+<td><p>6.2%</p></td>
+<td><p>0.61</p></td>
+<td><p>🚨 最悪</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>100,352</strong></p></td>
+<td><p><strong>228</strong></p></td>
+<td><p><strong>12</strong></p></td>
+<td><p><strong>16</strong></p></td>
+<td><p><strong>89.1%</strong></p></td>
+<td><p><strong>10.9%</strong></p></td>
+<td><p><strong>0.61</strong></p></td>
+<td><p>🚨 <strong>最終</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id2">
+<h3>重要な発見<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<section id="id3">
+<h4>✅ 成功した点<a class="headerlink" href="#id3" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>初期Action分布が最良</strong>: 2,048 stepsでHOLD 50%達成</p></li>
+<li><p><strong>報酬設定が効果的</strong>: HOLD罰則×5 + 取引報酬×5の組み合わせ</p></li>
+<li><p><strong>訓練完了</strong>: 100,352 timestepsまで完走</p></li>
+</ol>
+</section>
+<section id="id4">
+<h4>🚨 問題点<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>急速なHOLD収束</strong>: 2k→10k stepsで50%→91%に悪化</p></li>
+<li><p><strong>エントロピー減少</strong>: 1.00 → 0.61（探索が失われる）</p></li>
+<li><p><strong>ent_coef不十分</strong>: 0.01では探索を維持できない</p></li>
+</ol>
+</section>
+</section>
+</section>
+<section id="v394f">
+<h2>v394f（超激辛版）の設計<a class="headerlink" href="#v394f" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>設定<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w">  </span><span class="c1">// v394dの20倍！</span>
+<span class="w">  </span><span class="nt">&quot;hold_penalty_weight&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;consecutive_hold_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;successful_trade_bonus&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;profit_reward_multiplier&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">10.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;trading_frequency_bonus&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>仮説<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>エントロピー維持</strong>: ent_coef=0.2でエントロピー&gt;1.0を維持</p></li>
+<li><p><strong>HOLD抑制</strong>: 訓練全期間でHOLD&lt;70%を維持</p></li>
+<li><p><strong>探索継続</strong>: BUY/SELL行動が最後まで保たれる</p></li>
+</ol>
+</section>
+<section id="id7">
+<h3>期待される結果<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Timesteps</p></th>
+<th class="head"><p>期待HOLD%</p></th>
+<th class="head"><p>期待エントロピー</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2,048</p></td>
+<td><p>50-60%</p></td>
+<td><p>1.2-1.5</p></td>
+</tr>
+<tr class="row-odd"><td><p>50,000</p></td>
+<td><p>55-65%</p></td>
+<td><p>1.0-1.3</p></td>
+</tr>
+<tr class="row-even"><td><p>100,352</p></td>
+<td><p><strong>60-70%</strong></p></td>
+<td><p><strong>&gt;1.0</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id8">
+<h3>成功条件<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ 最終HOLD比率 &lt; 70%</p></li>
+<li><p>✅ 最終エントロピー &gt; 1.0</p></li>
+<li><p>✅ Stochasticバックテスト Return &gt; 0%</p></li>
+</ul>
+</section>
+</section>
+<section id="id9">
+<h2>次のステップ<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>1. v394f訓練実行 🚀<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>.venv311<span class="se">\S</span>cripts<span class="se">\p</span>ython.exe<span class="w"> </span>train_v394f.py
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>2. リアルタイム比較<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<p>v394fの各マイルストーンでv394dと比較：</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Timesteps</p></th>
+<th class="head"><p>v394d HOLD%</p></th>
+<th class="head"><p>v394f HOLD% (目標)</p></th>
+<th class="head"><p>v394f エントロピー (目標)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2,048</p></td>
+<td><p>50.0%</p></td>
+<td><p>50-60%</p></td>
+<td><p>&gt;1.2</p></td>
+</tr>
+<tr class="row-odd"><td><p>10,240</p></td>
+<td><p>90.6% 🚨</p></td>
+<td><p>&lt;70% ✅</p></td>
+<td><p>&gt;1.0</p></td>
+</tr>
+<tr class="row-even"><td><p>50,000</p></td>
+<td><p>~92% 🚨</p></td>
+<td><p>&lt;70% ✅</p></td>
+<td><p>&gt;1.0</p></td>
+</tr>
+<tr class="row-odd"><td><p>100,352</p></td>
+<td><p>89.1% 🚨</p></td>
+<td><p><strong>&lt;70%</strong> ✅</p></td>
+<td><p><strong>&gt;1.0</strong> ✅</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="stochastic">
+<h3>3. Stochasticバックテスト<a class="headerlink" href="#stochastic" title="Link to this heading"></a></h3>
+<p>両バージョンで実施（訓練完了後）:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># v394d</span>
+.venv311<span class="se">\S</span>cripts<span class="se">\p</span>ython.exe<span class="w"> </span>stochastic_backtest.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model<span class="w"> </span>checkpoints/ppo_session_11/model.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data<span class="w"> </span>btc_jpy_real_dataset.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--episodes<span class="w"> </span><span class="m">10</span>
+
+<span class="c1"># v394f</span>
+.venv311<span class="se">\S</span>cripts<span class="se">\p</span>ython.exe<span class="w"> </span>stochastic_backtest.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model<span class="w"> </span>checkpoints/ppo_session_12/model.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data<span class="w"> </span>btc_jpy_real_dataset.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--episodes<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>4. 最終判断<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>条件</p></th>
+<th class="head"><p>v394d</p></th>
+<th class="head"><p>v394f</p></th>
+<th class="head"><p>判定</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>最終HOLD%</p></td>
+<td><p>89.1% 🚨</p></td>
+<td><p>&lt;70% ✅</p></td>
+<td><p>v394f優位</p></td>
+</tr>
+<tr class="row-odd"><td><p>エントロピー</p></td>
+<td><p>0.61 🚨</p></td>
+<td><p>&gt;1.0 ✅</p></td>
+<td><p>v394f優位</p></td>
+</tr>
+<tr class="row-even"><td><p>Return (Stochastic)</p></td>
+<td><p>?</p></td>
+<td><p>?</p></td>
+<td><p>要検証</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="id13">
+<h2>結論<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<p><strong>v394d（激辛版）の結果</strong>:</p>
+<ul class="simple">
+<li><p>✅ 初期Action分布は最良（HOLD 50%）</p></li>
+<li><p>🚨 しかし最終的にHOLD 89%に収束</p></li>
+<li><p>⚠️ ent_coef=0.01では探索維持に失敗</p></li>
+</ul>
+<p><strong>v394f（超激辛版）への期待</strong>:</p>
+<ul class="simple">
+<li><p>🔥 ent_coef=0.2で探索を強制維持</p></li>
+<li><p>🎯 最終HOLD&lt;70%を目指す</p></li>
+<li><p>✅ 実用的なAction分布を維持</p></li>
+</ul>
+<p><strong>次のアクション</strong>: v394f訓練開始 → v394d/f比較 → 最良版選定</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="v394a_quick_report.html" class="btn btn-neutral float-left" title="v394a訓練結果速報" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="v394_final_report.html" class="btn btn-neutral float-right" title="v394シリーズ最終レポート: エントロピー係数の限界" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

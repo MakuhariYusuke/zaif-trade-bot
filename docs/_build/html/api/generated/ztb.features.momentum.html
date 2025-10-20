@@ -1,0 +1,360 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.momentum package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.features.time package" href="ztb.features.time.html" />
+    <link rel="prev" title="ztb.features package" href="ztb.features.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.features.html">ztb.features package</a></li>
+      <li class="breadcrumb-item active">ztb.features.momentum package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.features.momentum.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-features-momentum-package">
+<h1>ztb.features.momentum package<a class="headerlink" href="#ztb-features-momentum-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.features.momentum.cci">
+<span id="ztb-features-momentum-cci-module"></span><h2>ztb.features.momentum.cci module<a class="headerlink" href="#module-ztb.features.momentum.cci" title="Link to this heading"></a></h2>
+<p>CCI (Commodity Channel Index) implementation.
+CCIの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.cci.compute_cci">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.cci.</span></span><span class="sig-name descname"><span class="pre">compute_cci</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/cci.html#compute_cci"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.cci.compute_cci" title="Link to this definition"></a></dt>
+<dd><p>Compute CCI (Commodity Channel Index) using Ta-Lib wrapper</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.macd">
+<span id="ztb-features-momentum-macd-module"></span><h2>ztb.features.momentum.macd module<a class="headerlink" href="#module-ztb.features.momentum.macd" title="Link to this heading"></a></h2>
+<p>MACD (Moving Average Convergence Divergence) implementation.
+MACDの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.macd.compute_macd">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.macd.</span></span><span class="sig-name descname"><span class="pre">compute_macd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fast_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slow_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">26</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">signal_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/macd.html#compute_macd"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.macd.compute_macd" title="Link to this definition"></a></dt>
+<dd><p>Compute MACD (Moving Average Convergence Divergence) - Optimized version with Ta-Lib support</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.roc">
+<span id="ztb-features-momentum-roc-module"></span><h2>ztb.features.momentum.roc module<a class="headerlink" href="#module-ztb.features.momentum.roc" title="Link to this heading"></a></h2>
+<p>ROC (Rate of Change) implementation.
+ROCの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.roc.compute_roc">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.roc.</span></span><span class="sig-name descname"><span class="pre">compute_roc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/roc.html#compute_roc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.roc.compute_roc" title="Link to this definition"></a></dt>
+<dd><p>Compute ROC (Rate of Change) using Ta-Lib wrapper</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.rsi">
+<span id="ztb-features-momentum-rsi-module"></span><h2>ztb.features.momentum.rsi module<a class="headerlink" href="#module-ztb.features.momentum.rsi" title="Link to this heading"></a></h2>
+<p>RSI (Relative Strength Index) implementation with multi-timeframe support.
+RSIの実装 - 複数時間軸対応</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeframe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ztb.features.html#ztb.features.timeframe.Timeframe" title="ztb.features.timeframe.Timeframe"><span class="pre">Timeframe</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi" title="Link to this definition"></a></dt>
+<dd><p>Compute RSI (Relative Strength Index) - Optimized version with Ta-Lib support</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_m1">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_m1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_m1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_m1" title="Link to this definition"></a></dt>
+<dd><p>RSI for 1-minute timeframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_m5">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_m5</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_m5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_m5" title="Link to this definition"></a></dt>
+<dd><p>RSI for 5-minute timeframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_m15">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_m15</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_m15"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_m15" title="Link to this definition"></a></dt>
+<dd><p>RSI for 15-minute timeframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_h1">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_h1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_h1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_h1" title="Link to this definition"></a></dt>
+<dd><p>RSI for 1-hour timeframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_h4">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_h4</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_h4"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_h4" title="Link to this definition"></a></dt>
+<dd><p>RSI for 4-hour timeframe</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.rsi.compute_rsi_d1">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.rsi.</span></span><span class="sig-name descname"><span class="pre">compute_rsi_d1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/rsi.html#compute_rsi_d1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.rsi.compute_rsi_d1" title="Link to this definition"></a></dt>
+<dd><p>RSI for daily timeframe</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.stochastic">
+<span id="ztb-features-momentum-stochastic-module"></span><h2>ztb.features.momentum.stochastic module<a class="headerlink" href="#module-ztb.features.momentum.stochastic" title="Link to this heading"></a></h2>
+<p>Stochastic Oscillator implementation.
+Stochastic Oscillatorの実装</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic.compute_stochastic">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic.</span></span><span class="sig-name descname"><span class="pre">compute_stochastic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smooth_k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic.html#compute_stochastic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic.compute_stochastic" title="Link to this definition"></a></dt>
+<dd><p>Compute Stochastic Oscillator with Ta-Lib support</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.stochastic_ext">
+<span id="ztb-features-momentum-stochastic-ext-module"></span><h2>ztb.features.momentum.stochastic_ext module<a class="headerlink" href="#module-ztb.features.momentum.stochastic_ext" title="Link to this heading"></a></h2>
+<p>stochastic_ext.py
+Extended Stochastic Oscillator features with divergence and signal analysis</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic_ext.compute_stochastic_divergence">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic_ext.</span></span><span class="sig-name descname"><span class="pre">compute_stochastic_divergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic_ext.html#compute_stochastic_divergence"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic_ext.compute_stochastic_divergence" title="Link to this definition"></a></dt>
+<dd><p>Stochastic Divergence Signal (1=bullish divergence, -1=bearish divergence, 0=no divergence)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic_ext.compute_stochastic_signal_strength">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic_ext.</span></span><span class="sig-name descname"><span class="pre">compute_stochastic_signal_strength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic_ext.html#compute_stochastic_signal_strength"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic_ext.compute_stochastic_signal_strength" title="Link to this definition"></a></dt>
+<dd><p>Stochastic Signal Strength (normalized momentum)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic_ext.compute_stochastic_trend_alignment">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic_ext.</span></span><span class="sig-name descname"><span class="pre">compute_stochastic_trend_alignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic_ext.html#compute_stochastic_trend_alignment"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic_ext.compute_stochastic_trend_alignment" title="Link to this definition"></a></dt>
+<dd><p>Stochastic Trend Alignment (1=aligned with trend, -1=against trend)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic_ext.calculate_stochastic_extended">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic_ext.</span></span><span class="sig-name descname"><span class="pre">calculate_stochastic_extended</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slowing_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic_ext.html#calculate_stochastic_extended"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic_ext.calculate_stochastic_extended" title="Link to this definition"></a></dt>
+<dd><p>Calculate extended Stochastic features including:
+- Basic %K and %D lines
+- Divergence signals
+- Signal strength
+- Trend alignment</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>df</strong> – DataFrame with OHLC data</p></li>
+<li><p><strong>k_period</strong> – Lookback period for %K calculation</p></li>
+<li><p><strong>d_period</strong> – Smoothing period for %D</p></li>
+<li><p><strong>slowing_period</strong> – Additional smoothing for %K</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>DataFrame with extended Stochastic features</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.stochastic_ext.stochastic_feature_summary">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.stochastic_ext.</span></span><span class="sig-name descname"><span class="pre">stochastic_feature_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/stochastic_ext.html#stochastic_feature_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.stochastic_ext.stochastic_feature_summary" title="Link to this definition"></a></dt>
+<dd><p>Returns a dictionary summarizing each extended Stochastic feature.</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.ultimate_oscillator">
+<span id="ztb-features-momentum-ultimate-oscillator-module"></span><h2>ztb.features.momentum.ultimate_oscillator module<a class="headerlink" href="#module-ztb.features.momentum.ultimate_oscillator" title="Link to this heading"></a></h2>
+<p>Ultimate Oscillator feature implementation.
+The Ultimate Oscillator is a momentum oscillator designed to capture momentum across three different timeframes.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>ultimate_oscillator: Ultimate Oscillator value (0 to 100)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.ultimate_oscillator.compute_ultimate_oscillator">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.ultimate_oscillator.</span></span><span class="sig-name descname"><span class="pre">compute_ultimate_oscillator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/ultimate_oscillator.html#compute_ultimate_oscillator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.ultimate_oscillator.compute_ultimate_oscillator" title="Link to this definition"></a></dt>
+<dd><p>Ultimate Oscillator using Ta-Lib wrapper</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.momentum.ultimate_oscillator.UltimateOscillator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.ultimate_oscillator.</span></span><span class="sig-name descname"><span class="pre">UltimateOscillator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">short_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">medium_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">long_period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">28</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/momentum/ultimate_oscillator.html#UltimateOscillator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.ultimate_oscillator.UltimateOscillator" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Ultimate Oscillator indicator.
+Combines short-term, intermediate-term, and long-term momentum into one oscillator.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.momentum.ultimate_oscillator.UltimateOscillator.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/ultimate_oscillator.html#UltimateOscillator.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.ultimate_oscillator.UltimateOscillator.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’].
+Returns a DataFrame with Ultimate Oscillator values.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum.williams_r">
+<span id="ztb-features-momentum-williams-r-module"></span><h2>ztb.features.momentum.williams_r module<a class="headerlink" href="#module-ztb.features.momentum.williams_r" title="Link to this heading"></a></h2>
+<p>Williams %R feature implementation.
+Williams %R is a momentum indicator that measures overbought and oversold levels.</p>
+<dl class="simple">
+<dt>Output columns:</dt><dd><ul class="simple">
+<li><p>williams_r: Williams %R value (-100 to 0)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.features.momentum.williams_r.compute_williams_r">
+<span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.williams_r.</span></span><span class="sig-name descname"><span class="pre">compute_williams_r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.Series.html#pandas.Series" title="(in pandas v2.3.3)"><span class="pre">Series</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/williams_r.html#compute_williams_r"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.williams_r.compute_williams_r" title="Link to this definition"></a></dt>
+<dd><p>Williams %R (Williams Percent Range) using Ta-Lib wrapper</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.features.momentum.williams_r.WilliamsR">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.features.momentum.williams_r.</span></span><span class="sig-name descname"><span class="pre">WilliamsR</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">period</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">14</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/features/momentum/williams_r.html#WilliamsR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.williams_r.WilliamsR" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.features.html#ztb.features.base.BaseFeature" title="ztb.features.base.BaseFeature"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseFeature</span></code></a></p>
+<p>Williams %R indicator.
+Measures the level of the close relative to the highest high for the look-back period.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.features.momentum.williams_r.WilliamsR.compute">
+<span class="sig-name descname"><span class="pre">compute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/features/momentum/williams_r.html#WilliamsR.compute"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.features.momentum.williams_r.WilliamsR.compute" title="Link to this definition"></a></dt>
+<dd><p>df columns must include: [‘high’, ‘low’, ‘close’].
+Returns a DataFrame with Williams %R values.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.features.momentum">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.features.momentum" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.features.html" class="btn btn-neutral float-left" title="ztb.features package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.features.time.html" class="btn btn-neutral float-right" title="ztb.features.time package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

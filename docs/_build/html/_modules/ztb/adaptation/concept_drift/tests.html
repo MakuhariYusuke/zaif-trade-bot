@@ -1,0 +1,518 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.concept_drift.tests &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.concept_drift.tests</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.concept_drift.tests</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for Concept Drift Detection Module</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.concept_drift.detector</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">KolmogorovSmirnovDetector</span><span class="p">,</span>
+    <span class="n">ADWINDetector</span><span class="p">,</span>
+    <span class="n">DDMDetector</span><span class="p">,</span>
+    <span class="n">EDDMDetector</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.concept_drift.manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptDriftManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.concept_drift.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptDriftConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.concept_drift.drift_types</span><span class="w"> </span><span class="kn">import</span> <span class="n">DriftType</span><span class="p">,</span> <span class="n">DriftSeverity</span>
+
+
+<div class="viewcode-block" id="TestKolmogorovSmirnovDetector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestKolmogorovSmirnovDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestKolmogorovSmirnovDetector</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Kolmogorov-Smirnov検定器のテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestKolmogorovSmirnovDetector.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestKolmogorovSmirnovDetector.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span> <span class="o">=</span> <span class="n">KolmogorovSmirnovDetector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestKolmogorovSmirnovDetector.test_no_drift_same_distribution">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestKolmogorovSmirnovDetector.test_no_drift_same_distribution">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_no_drift_same_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;同じ分布のデータではドリフトを検知しない&quot;&quot;&quot;</span>
+        <span class="c1"># 正規分布のデータ生成</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="c1"># 参照データを設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">update_reference</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
+
+        <span class="c1"># ドリフト検知</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_type</span><span class="p">,</span> <span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span> <span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestKolmogorovSmirnovDetector.test_drift_different_distribution">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestKolmogorovSmirnovDetector.test_drift_different_distribution">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_drift_different_distribution</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;異なる分布のデータでドリフトを検知&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>  <span class="c1"># 平均0, 標準偏差1</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>  <span class="c1"># 平均2, 標準偏差1</span>
+
+        <span class="c1"># 参照データを設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">update_reference</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
+
+        <span class="c1"># ドリフト検知</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data2</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_type</span><span class="p">,</span> <span class="n">DriftType</span><span class="o">.</span><span class="n">CONCEPT_DRIFT</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertNotEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span> <span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestKolmogorovSmirnovDetector.test_empty_data_handling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestKolmogorovSmirnovDetector.test_empty_data_handling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_empty_data_handling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;空のデータに対する処理&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestADWINDetector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestADWINDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestADWINDetector</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ADWIN検定器のテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestADWINDetector.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestADWINDetector.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span> <span class="o">=</span> <span class="n">ADWINDetector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestADWINDetector.test_no_drift_stationary_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestADWINDetector.test_no_drift_stationary_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_no_drift_stationary_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;定常データではドリフトを検知しない（または検知頻度が低い）&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="c1"># 定常データ生成</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="n">drift_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="mi">50</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">50</span><span class="p">]</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">:</span>
+                <span class="n">drift_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># ADWINはスライディングウィンドウのため、完全にドリフトを検知しないとは限らない</span>
+        <span class="c1"># 検知回数が少ないことを確認（全体の10%未満）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">drift_count</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">//</span> <span class="mi">50</span> <span class="o">//</span> <span class="mi">10</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestADWINDetector.test_drift_abrupt_change">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestADWINDetector.test_drift_abrupt_change">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_drift_abrupt_change</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;急激な変化でドリフトを検知&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="c1"># 変化前のデータ</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+        <span class="c1"># 変化後のデータ</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">data1</span><span class="p">,</span> <span class="n">data2</span><span class="p">])</span>
+
+        <span class="n">drift_detected</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="mi">50</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="mi">50</span><span class="p">]</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">:</span>
+                <span class="n">drift_detected</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">break</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">drift_detected</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestDDMDetector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestDDMDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestDDMDetector</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;DDM検定器のテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestDDMDetector.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestDDMDetector.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span> <span class="o">=</span> <span class="n">DDMDetector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDDMDetector.test_no_drift_low_error_rate">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestDDMDetector.test_no_drift_low_error_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_no_drift_low_error_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;低いエラー率ではドリフトを検知しない&quot;&quot;&quot;</span>
+        <span class="c1"># 低いエラー率のデータ</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>  <span class="c1"># すべて正解</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span> <span class="n">errors</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span> <span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDDMDetector.test_drift_high_error_rate">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestDDMDetector.test_drift_high_error_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_drift_high_error_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;高いエラー率でドリフトを検知&quot;&quot;&quot;</span>
+        <span class="c1"># 高いエラー率のデータ</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>  <span class="c1"># すべてエラー</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span> <span class="n">errors</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertNotEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">severity</span><span class="p">,</span> <span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestEDDMDetector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestEDDMDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestEDDMDetector</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EDDM検定器のテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestEDDMDetector.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestEDDMDetector.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detector</span> <span class="o">=</span> <span class="n">EDDMDetector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestEDDMDetector.test_no_drift_consistent_performance">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestEDDMDetector.test_no_drift_consistent_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_no_drift_consistent_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;一貫した性能ではドリフトを検知しない&quot;&quot;&quot;</span>
+        <span class="c1"># 一貫したエラー率</span>
+        <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span> <span class="n">errors</span><span class="p">)</span>
+
+        <span class="c1"># EDDMは距離ベースなので、必ずしもドリフトを検知しない</span>
+        <span class="c1"># テストはエラーが発生しないことを確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestConceptDriftManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestConceptDriftManager</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ConceptDriftManagerのテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestConceptDriftManager.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="c1"># テストでは並列処理をデフォルトで無効化して安定性を確保</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">detection_interval_seconds</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 検知間隔を無効化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span> <span class="o">=</span> <span class="n">ConceptDriftManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detectors</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detectors</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;ks_test&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detectors</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_detect_drift_no_drift">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_detect_drift_no_drift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_detect_drift_no_drift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ドリフトなしの検知テスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_type</span><span class="p">,</span> <span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_detect_drift_with_drift">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_detect_drift_with_drift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_detect_drift_with_drift</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ドリフトありの検知テスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>
+        <span class="n">data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>  <span class="c1"># 分布変化</span>
+
+        <span class="c1"># 参照データを設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">update_reference_data</span><span class="p">(</span><span class="n">data1</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data2</span><span class="p">)</span>
+
+        <span class="c1"># 複数の検知器の投票によりドリフトを検知する可能性あり</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_dataframe_input">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_dataframe_input">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_dataframe_input</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;DataFrame入力のテスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+            <span class="s1">&#39;feature1&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+            <span class="s1">&#39;feature2&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span>
+            <span class="s1">&#39;category&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;A&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">50</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;B&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">50</span>
+        <span class="p">})</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">,</span> <span class="nb">bool</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_empty_dataframe_error">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_empty_dataframe_error">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_empty_dataframe_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;空のDataFrameでのエラーテスト&quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">df</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_parallel_detection">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_parallel_detection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_parallel_detection</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;並列検知のテスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 小さなデータセットを使用</span>
+
+        <span class="c1"># まず順次実行で参照データを設定</span>
+        <span class="n">result_sequential</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># 並列実行をテスト（小さいデータセットなのでタイムアウトしない）</span>
+        <span class="n">result_parallel</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># 結果は同じタイプであるべき</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">result_sequential</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">),</span>
+                        <span class="nb">type</span><span class="p">(</span><span class="n">result_parallel</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_history_management">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_history_management">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_history_management</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;履歴管理のテスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+
+        <span class="c1"># 複数の検知を実行</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_drift_history</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="p">),</span> <span class="mi">5</span><span class="p">)</span>
+
+        <span class="c1"># 履歴サイズ制限のテスト</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="n">manager_small</span> <span class="o">=</span> <span class="n">ConceptDriftManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="n">manager_small</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="n">history_small</span> <span class="o">=</span> <span class="n">manager_small</span><span class="o">.</span><span class="n">get_drift_history</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLessEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">history_small</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_detector_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_detector_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_detector_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;検知器統計のテスト&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_detector_stats</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">stats</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">detector_name</span><span class="p">,</span> <span class="n">detector_stats</span> <span class="ow">in</span> <span class="n">stats</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_detections&#39;</span><span class="p">,</span> <span class="n">detector_stats</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;avg_score&#39;</span><span class="p">,</span> <span class="n">detector_stats</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_reset_functionality">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_reset_functionality">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reset_functionality</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;リセット機能のテスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+
+        <span class="c1"># 検知を実行</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">drift_history</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># リセット</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">reset_detectors</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">drift_history</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">last_detection_time</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_error_handling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_error_handling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_error_handling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;エラーハンドリングのテスト&quot;&quot;&quot;</span>
+        <span class="c1"># 無効なデータを渡す</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]))</span></div>
+
+
+<div class="viewcode-block" id="TestConceptDriftManager.test_parallel_error_handling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.concept_drift.tests.TestConceptDriftManager.test_parallel_error_handling">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.adaptation.concept_drift.manager.ThreadPoolExecutor&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_parallel_error_handling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_executor</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;並列実行時のエラーハンドリングテスト&quot;&quot;&quot;</span>
+        <span class="c1"># モックでエラーをシミュレート</span>
+        <span class="n">mock_future</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+        <span class="n">mock_future</span><span class="o">.</span><span class="n">result</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Test error&quot;</span><span class="p">)</span>
+        <span class="n">mock_executor</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="fm">__enter__</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">submit</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_future</span>
+
+        <span class="c1"># as_completedを適切にモック化</span>
+        <span class="n">mock_completed</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+        <span class="n">mock_completed</span><span class="o">.</span><span class="fm">__iter__</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">[</span><span class="n">mock_future</span><span class="p">]</span>
+        <span class="n">mock_executor</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="fm">__enter__</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">as_completed</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_completed</span>
+
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">parallel</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># エラーが発生しても結果が返される</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">object</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

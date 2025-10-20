@@ -1,0 +1,287 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.utils.feature_testing &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.utils.feature_testing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.utils.feature_testing</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Feature testing utilities for ZTB.</span>
+
+<span class="sd">This module provides functions for evaluating and testing trading features</span>
+<span class="sd">against various strategies and calculating performance metrics.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">=</span> <span class="mi">252</span>
+
+<div class="viewcode-block" id="calculate_trading_metrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_testing.calculate_trading_metrics">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_trading_metrics</span><span class="p">(</span>
+    <span class="n">signals</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate comprehensive trading metrics from signals and returns.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        signals: Trading signals (-1, 0, 1)</span>
+<span class="sd">        returns: Asset returns</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary of trading metrics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">valid_idx</span> <span class="o">=</span> <span class="n">signals</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="n">returns</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">signals</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">valid_idx</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;sortino_ratio&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;calmar_ratio&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;sample_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="n">strategy_returns</span> <span class="o">=</span> <span class="n">signals</span><span class="p">[</span><span class="n">valid_idx</span><span class="p">]</span> <span class="o">*</span> <span class="n">returns</span><span class="p">[</span><span class="n">valid_idx</span><span class="p">]</span>
+    <span class="n">cumulative</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">strategy_returns</span><span class="p">)</span><span class="o">.</span><span class="n">cumprod</span><span class="p">()</span>
+
+    <span class="c1"># Win rate</span>
+    <span class="n">win_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">strategy_returns</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+    <span class="c1"># Max drawdown</span>
+    <span class="n">peak</span> <span class="o">=</span> <span class="n">cumulative</span><span class="o">.</span><span class="n">expanding</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">drawdown</span> <span class="o">=</span> <span class="p">(</span><span class="n">cumulative</span> <span class="o">-</span> <span class="n">peak</span><span class="p">)</span> <span class="o">/</span> <span class="n">peak</span>
+    <span class="n">max_drawdown</span> <span class="o">=</span> <span class="n">drawdown</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+
+    <span class="c1"># Sharpe ratio</span>
+    <span class="k">if</span> <span class="n">strategy_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="n">strategy_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">strategy_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Sortino ratio</span>
+    <span class="n">downside_returns</span> <span class="o">=</span> <span class="n">strategy_returns</span><span class="p">[</span><span class="n">strategy_returns</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">downside_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">downside_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">sortino_ratio</span> <span class="o">=</span> <span class="n">strategy_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">/</span> <span class="n">downside_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">sortino_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># Calmar ratio</span>
+    <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">max_drawdown</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">calmar_ratio</span> <span class="o">=</span> <span class="n">strategy_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">*</span> <span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">/</span> <span class="nb">abs</span><span class="p">(</span><span class="n">max_drawdown</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">calmar_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="n">win_rate</span><span class="p">,</span>
+        <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="n">max_drawdown</span><span class="p">,</span>
+        <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="n">sharpe_ratio</span><span class="p">,</span>
+        <span class="s2">&quot;sortino_ratio&quot;</span><span class="p">:</span> <span class="n">sortino_ratio</span><span class="p">,</span>
+        <span class="s2">&quot;calmar_ratio&quot;</span><span class="p">:</span> <span class="n">calmar_ratio</span><span class="p">,</span>
+        <span class="s2">&quot;sample_count&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">valid_idx</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="generate_feature_signals">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_testing.generate_feature_signals">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_feature_signals</span><span class="p">(</span><span class="n">feature_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generate trading signals based on feature values using feature-specific strategies.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        feature_data: Feature values</span>
+<span class="sd">        feature_name: Name of the feature</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Trading signals (-1, 0, 1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">feature_data</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Feature-specific strategies</span>
+    <span class="k">if</span> <span class="n">feature_name</span> <span class="o">==</span> <span class="s2">&quot;RSI&quot;</span><span class="p">:</span>
+        <span class="c1"># RSI strategy: buy when RSI &lt; 30, sell when RSI &gt; 70</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="mi">30</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Buy signal</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">70</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># Sell signal</span>
+    <span class="k">elif</span> <span class="n">feature_name</span> <span class="o">==</span> <span class="s2">&quot;ROC&quot;</span><span class="p">:</span>
+        <span class="c1"># ROC strategy: buy when ROC &gt; 5, sell when ROC &lt; -5</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">feature_name</span> <span class="o">==</span> <span class="s2">&quot;OBV&quot;</span><span class="p">:</span>
+        <span class="c1"># OBV strategy: buy when OBV increasing, sell when decreasing</span>
+        <span class="n">obv_change</span> <span class="o">=</span> <span class="n">feature_data</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="c1"># Type ignore for pandas boolean indexing</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">obv_change</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># type: ignore</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">obv_change</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># type: ignore</span>
+    <span class="k">elif</span> <span class="n">feature_name</span> <span class="o">==</span> <span class="s2">&quot;ZScore&quot;</span><span class="p">:</span>
+        <span class="c1"># ZScore strategy: buy when ZScore &lt; -1, sell when ZScore &gt; 1 (mean reversion)</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">elif</span> <span class="s2">&quot;MACD&quot;</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="p">:</span>
+        <span class="c1"># MACD strategy: buy when MACD &gt; signal, sell when MACD &lt; signal</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Simplified: assume signal is 0</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">elif</span> <span class="s2">&quot;Stochastic&quot;</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="p">:</span>
+        <span class="c1"># Stochastic strategy: buy when %K &lt; 20, sell when %K &gt; 80</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">80</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">elif</span> <span class="s2">&quot;CCI&quot;</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="p">:</span>
+        <span class="c1"># CCI strategy: buy when CCI &lt; -100, sell when CCI &gt; 100</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">100</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">elif</span> <span class="s2">&quot;Bollinger&quot;</span> <span class="ow">in</span> <span class="n">feature_name</span><span class="p">:</span>
+        <span class="c1"># Bollinger strategy: buy when price &lt; lower band, sell when price &gt; upper band</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># Simplified band position</span>
+        <span class="n">signals</span><span class="p">[</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Default strategy: buy when feature &gt; 0, sell when feature &lt; 0</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="p">(</span><span class="n">feature_data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">feature_data</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">signals</span></div>
+
+
+
+<div class="viewcode-block" id="evaluate_feature_performance">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_testing.evaluate_feature_performance">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_feature_performance</span><span class="p">(</span>
+    <span class="n">feature_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">price_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">feature_name</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate feature performance using appropriate trading strategy.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        feature_data: Feature values</span>
+<span class="sd">        price_data: Price data for calculating returns</span>
+<span class="sd">        feature_name: Name of the feature</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary containing signals and performance metrics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Generate signals</span>
+    <span class="n">signals</span> <span class="o">=</span> <span class="n">generate_feature_signals</span><span class="p">(</span><span class="n">feature_data</span><span class="p">,</span> <span class="n">feature_name</span><span class="p">)</span>
+
+    <span class="c1"># Calculate returns</span>
+    <span class="n">returns</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># Next period returns</span>
+
+    <span class="c1"># Calculate metrics</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="n">calculate_trading_metrics</span><span class="p">(</span><span class="n">signals</span><span class="p">,</span> <span class="n">returns</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;feature_name&quot;</span><span class="p">:</span> <span class="n">feature_name</span><span class="p">,</span> <span class="s2">&quot;signals&quot;</span><span class="p">:</span> <span class="n">signals</span><span class="p">,</span> <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">}</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

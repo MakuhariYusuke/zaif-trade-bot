@@ -1,0 +1,621 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.ab_test.executor &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.ab_test.executor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.ab_test.executor</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">A/B Test Execution Engine</span>
+<span class="sd">処理時間短縮・メモリ効率を考慮したストリーミング処理実装</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">queue</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ABTestConfiguration</span><span class="p">,</span> <span class="n">ABTestState</span><span class="p">,</span> <span class="n">ABTestStatus</span><span class="p">,</span> <span class="n">ABTestResult</span><span class="p">,</span>
+    <span class="n">SampleData</span><span class="p">,</span> <span class="n">ABTestResultSummary</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">,</span>
+    <span class="n">SampleProcessorCallback</span><span class="p">,</span> <span class="n">TestCompletionCallback</span><span class="p">,</span> <span class="n">RiskAlertCallback</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestAnalyzer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestConfig</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ABTestExecutor">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ABTestExecutor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A/Bテスト実行エンジン（メモリ効率・処理時間最適化）&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ABTestConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ABTestState</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">test_callbacks</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># パフォーマンス最適化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processing_threads</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># メモリ管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_memory_monitor</span><span class="p">()</span>
+
+        <span class="c1"># 統計分析器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">ABTestAnalyzer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;ABTestExecutor initialized with performance optimizations&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ABTestExecutor.start_test">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.start_test">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;A/Bテストを開始（メモリ効率的なストリーミング処理）&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_concurrent_tests</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Maximum concurrent tests (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_concurrent_tests</span><span class="si">}</span><span class="s2">) reached&quot;</span><span class="p">)</span>
+
+        <span class="c1"># テスト状態の初期化</span>
+        <span class="n">test_state</span> <span class="o">=</span> <span class="n">ABTestState</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">ABTestStatus</span><span class="o">.</span><span class="n">CREATED</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">[</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">[</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">(</span>
+            <span class="n">maxsize</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">stream_buffer_size</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 処理スレッドの開始</span>
+        <span class="n">processing_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_process_test_stream</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">),</span>
+            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="n">processing_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">processing_threads</span><span class="p">[</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">processing_thread</span>
+
+        <span class="c1"># テスト開始</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">RUNNING</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Started A/B test: </span><span class="si">{</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span></div>
+
+
+<div class="viewcode-block" id="ABTestExecutor.add_sample">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.add_sample">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="n">SampleData</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルを追加（非同期・メモリ効率的なキューイング）&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># タイムアウト付きでキューに追加（ブロックしない）</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Full</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Sample queue full for test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="ABTestExecutor.add_samples_batch">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.add_samples_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_samples_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SampleData</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルをバッチで追加（処理時間短縮）&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">added_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">add_sample</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
+                <span class="n">added_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">break</span>  <span class="c1"># キューが満杯になったら停止</span>
+
+        <span class="k">return</span> <span class="n">added_count</span></div>
+
+
+<div class="viewcode-block" id="ABTestExecutor.stop_test">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.stop_test">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ABTestResultSummary</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストを停止&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">test_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="c1"># 結果の生成</span>
+        <span class="n">result_summary</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_test_result</span><span class="p">(</span><span class="n">test_id</span><span class="p">)</span>
+
+        <span class="c1"># クリーンアップ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_test</span><span class="p">(</span><span class="n">test_id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stopped A/B test: </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result_summary</span></div>
+
+
+<div class="viewcode-block" id="ABTestExecutor.get_test_status">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.get_test_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_test_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ABTestState</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テスト状態を取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">test_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ABTestExecutor.list_active_tests">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.list_active_tests">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">list_active_tests</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アクティブなテストIDを取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_test_stream</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span> <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストストリームを処理（メモリ効率的なメインループ）&quot;&quot;&quot;</span>
+        <span class="n">sample_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">[</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">]</span>
+        <span class="n">batch_buffer</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">last_analysis_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">last_risk_check_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">while</span> <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">RUNNING</span><span class="p">:</span>
+                <span class="c1"># サンプルをバッチで収集（処理時間短縮）</span>
+                <span class="n">batch_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect_sample_batch</span><span class="p">(</span><span class="n">sample_queue</span><span class="p">,</span> <span class="n">batch_buffer</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">batch_buffer</span><span class="p">:</span>
+                    <span class="c1"># バッチ処理を実行</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_process_sample_batch</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">,</span> <span class="n">batch_buffer</span><span class="p">)</span>
+                    <span class="n">batch_buffer</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+                    <span class="c1"># 定期的な分析実行</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">last_analysis_time</span><span class="p">)</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">check_interval_minutes</span> <span class="o">*</span> <span class="mi">60</span><span class="p">:</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_perform_periodic_analysis</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">)</span>
+                        <span class="n">last_analysis_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+                    <span class="c1"># リスクチェック</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">last_risk_check_time</span><span class="p">)</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&gt;=</span> <span class="mi">60</span><span class="p">:</span>  <span class="c1"># 1分ごと</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_check_risks</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">)</span>
+                        <span class="n">last_risk_check_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+                    <span class="c1"># 完了条件チェック</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_completion_conditions</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">):</span>
+                        <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+                        <span class="k">break</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># サンプルがない場合は少し待機</span>
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test processing failed for </span><span class="si">{</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">FAILED</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># 最終分析を実行</span>
+            <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_perform_final_analysis</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collect_sample_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sample_queue</span><span class="p">:</span> <span class="n">queue</span><span class="o">.</span><span class="n">Queue</span><span class="p">,</span>
+        <span class="n">buffer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SampleData</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">SampleData</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルをバッチで収集（メモリ効率的）&quot;&quot;&quot;</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">batch_size</span>
+
+        <span class="c1"># バッファが十分なサイズになるまで収集</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">batch_size</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">sample_queue</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+                <span class="n">buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">queue</span><span class="o">.</span><span class="n">Empty</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span> <span class="n">buffer</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_sample_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">,</span>
+        <span class="n">batch</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SampleData</span><span class="p">]</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルバッチを処理（並列処理対応）&quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># バリアントごとにグループ化</span>
+        <span class="n">variant_samples</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;A&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sample</span><span class="o">.</span><span class="n">variant_id</span> <span class="ow">in</span> <span class="n">variant_samples</span><span class="p">:</span>
+                <span class="n">variant_samples</span><span class="p">[</span><span class="n">sample</span><span class="o">.</span><span class="n">variant_id</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+        <span class="c1"># 並列処理でメトリクス更新</span>
+        <span class="n">futures</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">variant_id</span><span class="p">,</span> <span class="n">samples</span> <span class="ow">in</span> <span class="n">variant_samples</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">samples</span><span class="p">:</span>
+                <span class="n">future</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_update_metrics_batch</span><span class="p">,</span>
+                    <span class="n">test_state</span><span class="p">,</span>
+                    <span class="n">variant_id</span><span class="p">,</span>
+                    <span class="n">samples</span>
+                <span class="p">)</span>
+                <span class="n">futures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">future</span><span class="p">)</span>
+
+        <span class="c1"># 結果を待機</span>
+        <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">as_completed</span><span class="p">(</span><span class="n">futures</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Batch processing failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># パフォーマンス監視</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">processing_time_ms</span> <span class="o">+=</span> <span class="n">processing_time</span>
+
+        <span class="c1"># サンプルカウント更新</span>
+        <span class="n">test_state</span><span class="o">.</span><span class="n">current_sample_count</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_metrics_batch</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">,</span>
+        <span class="n">variant_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">samples</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SampleData</span><span class="p">]</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクスをバッチ更新（メモリ効率的）&quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span> <span class="k">if</span> <span class="n">variant_id</span> <span class="o">==</span> <span class="s2">&quot;A&quot;</span> <span class="k">else</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span>
+
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="n">metrics</span><span class="o">.</span><span class="n">add_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_periodic_analysis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;定期的な統計分析を実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 統計分析を実行</span>
+            <span class="n">statistical_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_comparison</span><span class="p">(</span>
+                <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="p">,</span>
+                <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="p">,</span>
+                <span class="n">test_config</span><span class="o">.</span><span class="n">statistical_test</span>
+            <span class="p">)</span>
+
+            <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span> <span class="o">=</span> <span class="n">statistical_result</span>
+
+            <span class="c1"># 早期停止チェック</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">enable_early_stopping</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_early_stopping</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">):</span>
+                    <span class="n">test_state</span><span class="o">.</span><span class="n">early_stop_triggered</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">COMPLETED</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Periodic analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_early_stopping</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;早期停止条件をチェック&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span>
+
+        <span class="c1"># サンプルサイズが最小値を超え、有意差が明確な場合</span>
+        <span class="n">min_samples</span> <span class="o">=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">minimum_sample_size</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&gt;=</span> <span class="n">min_samples</span> <span class="ow">and</span>
+            <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&gt;=</span> <span class="n">min_samples</span><span class="p">):</span>
+
+            <span class="c1"># p値が非常に小さく、効果量が十分な場合</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.01</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">effect_size</span> <span class="o">&gt;</span> <span class="n">test_config</span><span class="o">.</span><span class="n">minimum_effect_size</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_risks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;リスクをチェック&quot;&quot;&quot;</span>
+        <span class="c1"># 回帰検知</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_regression</span><span class="p">(</span><span class="n">test_state</span><span class="p">):</span>
+            <span class="n">test_state</span><span class="o">.</span><span class="n">regression_detected</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Regression detected in test </span><span class="si">{</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 自動ロールバック設定の場合</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">risk</span><span class="o">.</span><span class="n">enable_automatic_rollback</span><span class="p">:</span>
+                <span class="n">test_state</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="n">ABTestStatus</span><span class="o">.</span><span class="n">CANCELLED</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_regression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回帰を検知&quot;&quot;&quot;</span>
+        <span class="c1"># 簡易的な回帰検知（実際にはより複雑なロジック）</span>
+        <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&lt;</span> <span class="mi">100</span> <span class="ow">or</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&lt;</span> <span class="mi">100</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Bバリアントのパフォーマンスが大幅に低下した場合</span>
+        <span class="n">perf_a</span> <span class="o">=</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">get_rmse</span><span class="p">()</span>
+        <span class="n">perf_b</span> <span class="o">=</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">get_rmse</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">perf_b</span> <span class="o">&gt;</span> <span class="n">perf_a</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">risk</span><span class="o">.</span><span class="n">max_regression_rate</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_completion_conditions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;完了条件をチェック&quot;&quot;&quot;</span>
+        <span class="c1"># 最大サンプルサイズ到達</span>
+        <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">current_sample_count</span> <span class="o">&gt;=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">maximum_sample_size</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># 最大時間経過</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">start_time</span> <span class="ow">and</span>
+            <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">test_state</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">test_config</span><span class="o">.</span><span class="n">max_duration_hours</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># 統計的有意性到達</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span> <span class="ow">and</span>
+            <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="n">test_config</span><span class="o">.</span><span class="n">confidence_level</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_final_analysis</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最終分析を実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 最終統計分析</span>
+            <span class="n">final_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_comparison</span><span class="p">(</span>
+                <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="p">,</span>
+                <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="p">,</span>
+                <span class="n">test_config</span><span class="o">.</span><span class="n">statistical_test</span>
+            <span class="p">)</span>
+
+            <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span> <span class="o">=</span> <span class="n">final_result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_test_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ABTestResultSummary</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テスト結果を生成&quot;&quot;&quot;</span>
+        <span class="n">test_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">test_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">test_state</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="n">test_state</span><span class="o">.</span><span class="n">latest_statistical_result</span>
+
+        <span class="c1"># 勝者を決定</span>
+        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">statistics</span><span class="o">.</span><span class="n">alpha</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">statistics</span> <span class="k">else</span> <span class="mf">0.05</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">mean_a</span> <span class="o">&lt;</span> <span class="n">result</span><span class="o">.</span><span class="n">mean_b</span><span class="p">:</span>  <span class="c1"># RMSEが小さい方が良い</span>
+                <span class="n">winner</span> <span class="o">=</span> <span class="s2">&quot;A&quot;</span>
+                <span class="n">ab_result</span> <span class="o">=</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_A</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">winner</span> <span class="o">=</span> <span class="s2">&quot;B&quot;</span>
+                <span class="n">ab_result</span> <span class="o">=</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">winner</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">ab_result</span> <span class="o">=</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">INCONCLUSIVE</span>
+
+        <span class="k">return</span> <span class="n">ABTestResultSummary</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="n">test_id</span><span class="p">,</span>
+            <span class="n">result</span><span class="o">=</span><span class="n">ab_result</span><span class="p">,</span>
+            <span class="n">winner_variant_id</span><span class="o">=</span><span class="n">winner</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">confidence_interval</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">result</span><span class="o">.</span><span class="n">confidence_interval</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">statistical_result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
+            <span class="n">risk_assessment</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_assess_risks</span><span class="p">(</span><span class="n">test_state</span><span class="p">),</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_recommendations</span><span class="p">(</span><span class="n">test_state</span><span class="p">,</span> <span class="n">ab_result</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assess_risks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;リスクを評価&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;regression_detected&quot;</span><span class="p">:</span> <span class="n">test_state</span><span class="o">.</span><span class="n">regression_detected</span><span class="p">,</span>
+            <span class="s2">&quot;early_stop_triggered&quot;</span><span class="p">:</span> <span class="n">test_state</span><span class="o">.</span><span class="n">early_stop_triggered</span><span class="p">,</span>
+            <span class="s2">&quot;sample_balance&quot;</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">-</span> <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">sample_count</span><span class="p">),</span>
+            <span class="s2">&quot;processing_efficiency&quot;</span><span class="p">:</span> <span class="n">test_state</span><span class="o">.</span><span class="n">processing_time_ms</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">current_sample_count</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_recommendations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">,</span>
+        <span class="n">result</span><span class="p">:</span> <span class="n">ABTestResult</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;推奨事項を生成&quot;&quot;&quot;</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="n">result</span> <span class="o">==</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_A</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Deploy variant A - shows statistically significant improvement&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">result</span> <span class="o">==</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Deploy variant B - shows statistically significant improvement&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Continue testing - no clear winner yet&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">regression_detected</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;WARNING: Regression detected - monitor closely after deployment&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">early_stop_triggered</span><span class="p">:</span>
+            <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Test stopped early due to clear results&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">recommendations</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_cleanup_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストのクリーンアップ&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">active_tests</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample_queues</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">processing_threads</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">processing_threads</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+
+        <span class="c1"># メモリクリーンアップ</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_start_memory_monitor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ監視を開始&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_memory_mb</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitor_memory_usage</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_monitor_memory_usage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ使用量を監視&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">memory_mb</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+                <span class="k">if</span> <span class="n">memory_mb</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_memory_mb</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory usage high: </span><span class="si">{</span><span class="n">memory_mb</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB&quot;</span><span class="p">)</span>
+                    <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>  <span class="c1"># 強制ガベージコレクション</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">cleanup_interval_seconds</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memory monitoring failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ABTestExecutor.__del__">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.executor.ABTestExecutor.__del__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;クリーンアップ&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;executor&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;memory_monitor_thread&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor_thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_monitor_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

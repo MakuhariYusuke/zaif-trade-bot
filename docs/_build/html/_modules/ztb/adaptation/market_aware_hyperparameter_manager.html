@@ -1,0 +1,880 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.market_aware_hyperparameter_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.market_aware_hyperparameter_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.market_aware_hyperparameter_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Market-Aware Hyperparameter Adaptation Manager</span>
+<span class="sd">市場対応ハイパーパラメータ適応マネージャー</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">RandomForestRegressor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.dynamic_hyperparameter_adapter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DynamicHyperparameterAdapter</span><span class="p">,</span>
+    <span class="n">HyperparameterConfig</span><span class="p">,</span>
+    <span class="n">AdaptationResult</span><span class="p">,</span>
+    <span class="n">HyperparameterType</span><span class="p">,</span>
+    <span class="n">AdaptationStrategy</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.monitoring.evaluation_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContinuousEvaluationManager</span>
+<span class="c1"># from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional component</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="MarketAwareConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarketAwareConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;市場対応設定&quot;&quot;&quot;</span>
+
+    <span class="c1"># 市場適応設定</span>
+    <span class="n">market_regime_adaptation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">volatility_based_scaling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">trend_adaptive_parameters</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># 学習設定</span>
+    <span class="n">online_learning_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">meta_learning_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">transfer_learning_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># 予測モデル設定</span>
+    <span class="n">use_performance_prediction</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">prediction_model_update_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 分単位</span>
+    <span class="n">prediction_history_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
+
+    <span class="c1"># 適応戦略設定</span>
+    <span class="n">adaptive_strategy_selection</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">strategy_performance_tracking</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">strategy_switching_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.05</span>
+
+    <span class="c1"># リスク管理設定</span>
+    <span class="n">risk_aware_adaptation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">max_risk_adjustment</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">risk_sensitivity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>
+
+    <span class="c1"># 履歴と学習設定</span>
+    <span class="n">history_retention_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">model_retraining_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1440</span>  <span class="c1"># 分単位（24時間）</span>
+    <span class="n">min_training_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span></div>
+
+
+
+<div class="viewcode-block" id="MarketCondition">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketCondition">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarketCondition</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;市場条件&quot;&quot;&quot;</span>
+
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trend_strength</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">market_regime</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">volume_profile</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">liquidity_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sentiment_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="MarketCondition.to_features">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketCondition.to_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;特徴量ベクトルに変換&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">volatility</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trend_strength</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">volume_profile</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">liquidity_score</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sentiment_score</span><span class="p">,</span>
+            <span class="c1"># 市場レジームをワンホットエンコーディング</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;bull&#39;</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;bear&#39;</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;sideways&#39;</span> <span class="k">else</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">1.0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;volatile&#39;</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">])</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PerformancePrediction">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.PerformancePrediction">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformancePrediction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;パフォーマンス予測&quot;&quot;&quot;</span>
+
+    <span class="n">parameter_type</span><span class="p">:</span> <span class="n">HyperparameterType</span>
+    <span class="n">predicted_performance</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">optimal_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">feature_importance</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarketAwareHyperparameterManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;市場対応ハイパーパラメータマネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">online_learning_pipeline</span><span class="p">:</span> <span class="n">OnlineLearningPipeline</span><span class="p">,</span>
+                 <span class="n">evaluation_manager</span><span class="p">:</span> <span class="n">ContinuousEvaluationManager</span><span class="p">,</span>
+                 <span class="n">market_regime_detector</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># Optional component</span>
+                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketAwareConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_learning</span> <span class="o">=</span> <span class="n">online_learning_pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">evaluation_manager</span> <span class="o">=</span> <span class="n">evaluation_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_detector</span> <span class="o">=</span> <span class="n">market_regime_detector</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">MarketAwareConfig</span><span class="p">()</span>
+
+        <span class="c1"># 動的適応アダプター</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span> <span class="o">=</span> <span class="n">DynamicHyperparameterAdapter</span><span class="p">(</span>
+            <span class="n">online_learning_pipeline</span><span class="p">,</span>
+            <span class="n">evaluation_manager</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 市場条件履歴</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># パフォーマンス予測モデル</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_predictors</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">RandomForestRegressor</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 適応履歴と学習データ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">,</span> <span class="n">AdaptationResult</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">param</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">HyperparameterType</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 戦略パフォーマンス追跡</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">AdaptationStrategy</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">strategy</span><span class="p">:</span> <span class="p">[]</span> <span class="k">for</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">AdaptationStrategy</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 状態管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_prediction_update</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_model_training</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="c1"># スレッド管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_predictors</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_manager</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;MarketAwareHyperparameterManager initialized&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_predictors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス予測モデルを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="n">HyperparameterType</span><span class="p">:</span>
+                <span class="c1"># ランダムフォレスト回帰モデル</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">performance_predictors</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">RandomForestRegressor</span><span class="p">(</span>
+                    <span class="n">n_estimators</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                    <span class="n">max_depth</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+                    <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span>
+                <span class="p">)</span>
+
+                <span class="c1"># 特徴量スケーラー</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Performance predictors initialized&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize predictors: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;マネージャーを初期化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 初期市場条件を取得</span>
+            <span class="n">initial_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">initial_condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">initial_condition</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize manager: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.start_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.start_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を開始&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Market-aware adaptation already active&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="c1"># 動的適応を開始</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">start_adaptation</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to start hyperparameter adapter&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_adaptation_worker</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Market-aware hyperparameter adaptation started&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start adaptation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.stop_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.stop_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応を停止&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">stop_adaptation</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">worker_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Market-aware hyperparameter adaptation stopped&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.adapt_hyperparameters_market_aware">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.adapt_hyperparameters_market_aware">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">adapt_hyperparameters_market_aware</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                         <span class="n">market_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                         <span class="n">force_adaptation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AdaptationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場対応ハイパーパラメータ適応&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="c1"># 市場条件を評価</span>
+            <span class="n">market_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">market_condition</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">[</span><span class="o">-</span><span class="mi">1000</span><span class="p">:]</span>
+
+            <span class="c1"># 適応が必要かチェック</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">force_adaptation</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_adapt_now</span><span class="p">(</span><span class="n">market_condition</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">AdaptationResult</span><span class="p">(</span>
+                    <span class="n">adaptations</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">overall_performance_improvement</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                    <span class="n">adaptation_confidence</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">current_time</span><span class="p">,</span>
+                    <span class="n">recommendations</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;No adaptation needed at this time&quot;</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="c1"># パフォーマンス予測を取得</span>
+            <span class="n">performance_predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_predict_optimal_parameters</span><span class="p">(</span><span class="n">market_condition</span><span class="p">)</span>
+
+            <span class="c1"># 適応戦略を選択</span>
+            <span class="n">selected_strategies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_select_adaptation_strategies</span><span class="p">(</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">performance_predictions</span><span class="p">)</span>
+
+            <span class="c1"># ハイパーパラメータ設定を更新</span>
+            <span class="n">updated_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_adaptive_config</span><span class="p">(</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">selected_strategies</span><span class="p">)</span>
+
+            <span class="c1"># 動的適応を実行</span>
+            <span class="n">adaptation_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+            <span class="c1"># 結果を学習データに追加</span>
+            <span class="k">if</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">adaptation_result</span><span class="p">))</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_update_training_data</span><span class="p">(</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">adaptation_result</span><span class="p">)</span>
+
+            <span class="c1"># 戦略パフォーマンスを更新</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_strategy_performance</span><span class="p">(</span><span class="n">adaptation_result</span><span class="p">)</span>
+
+            <span class="c1"># モデルを更新（定期的に）</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_model_training</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">model_retraining_interval</span> <span class="o">*</span> <span class="mi">60</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_retrain_prediction_models</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">last_model_training</span> <span class="o">=</span> <span class="n">current_time</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Market-aware adaptation completed with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">adaptation_result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">)</span><span class="si">}</span><span class="s2"> parameter changes&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">adaptation_result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Market-aware adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">AdaptationResult</span><span class="p">(</span>
+                <span class="n">adaptations</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">overall_performance_improvement</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">adaptation_confidence</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">recommendations</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Adaptation failed due to error&quot;</span><span class="p">]</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_current_market_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在の市場条件を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 市場データから条件を抽出</span>
+            <span class="k">if</span> <span class="n">market_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="c1"># ボラティリティ計算</span>
+                <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">market_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">prices</span> <span class="o">=</span> <span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+                    <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">volatility</span> <span class="o">=</span> <span class="mf">0.02</span>
+
+                <span class="c1"># トレンド強度</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+                    <span class="n">sma_short</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="n">sma_long</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                    <span class="n">trend_strength</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sma_short</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">trend_strength</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+                <span class="c1"># 出来高プロファイル</span>
+                <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">market_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">volume_profile</span> <span class="o">=</span> <span class="n">market_data</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">volume_profile</span> <span class="o">=</span> <span class="mf">1000.0</span>
+
+                <span class="c1"># 流動性スコア（仮定）</span>
+                <span class="n">liquidity_score</span> <span class="o">=</span> <span class="mf">0.8</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># デフォルト値</span>
+                <span class="n">volatility</span> <span class="o">=</span> <span class="mf">0.02</span>
+                <span class="n">trend_strength</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">volume_profile</span> <span class="o">=</span> <span class="mf">1000.0</span>
+                <span class="n">liquidity_score</span> <span class="o">=</span> <span class="mf">0.8</span>
+
+            <span class="c1"># 市場レジームを取得</span>
+            <span class="n">market_regime</span> <span class="o">=</span> <span class="s2">&quot;neutral&quot;</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_detector</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">regime_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_detector</span><span class="o">.</span><span class="n">detect_regime</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+                    <span class="n">market_regime</span> <span class="o">=</span> <span class="n">regime_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;regime&#39;</span><span class="p">,</span> <span class="s1">&#39;neutral&#39;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="k">return</span> <span class="n">MarketCondition</span><span class="p">(</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">volatility</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">volatility</span><span class="p">),</span>
+                <span class="n">trend_strength</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">trend_strength</span><span class="p">),</span>
+                <span class="n">market_regime</span><span class="o">=</span><span class="n">market_regime</span><span class="p">,</span>
+                <span class="n">volume_profile</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">volume_profile</span><span class="p">),</span>
+                <span class="n">liquidity_score</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">liquidity_score</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get market condition: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_should_adapt_now</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応が必要かチェック&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 最終適応からの時間をチェック</span>
+            <span class="n">last_adaptation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">last_adaptation_time</span>
+            <span class="k">if</span> <span class="n">last_adaptation</span><span class="p">:</span>
+                <span class="n">time_since_adaptation</span> <span class="o">=</span> <span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">last_adaptation</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="mi">60</span>
+                <span class="k">if</span> <span class="n">time_since_adaptation</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">min_adaptation_interval_minutes</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 市場条件の大きな変化をチェック</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">prev_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+
+                <span class="n">volatility_change</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">-</span> <span class="n">prev_condition</span><span class="o">.</span><span class="n">volatility</span><span class="p">)</span>
+                <span class="n">trend_change</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">market_condition</span><span class="o">.</span><span class="n">trend_strength</span> <span class="o">-</span> <span class="n">prev_condition</span><span class="o">.</span><span class="n">trend_strength</span><span class="p">)</span>
+
+                <span class="c1"># 閾値を超える変化があれば適応</span>
+                <span class="k">if</span> <span class="n">volatility_change</span> <span class="o">&gt;</span> <span class="mf">0.01</span> <span class="ow">or</span> <span class="n">trend_change</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="c1"># 定期適応</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_predict_optimal_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">PerformancePrediction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最適パラメータを予測&quot;&quot;&quot;</span>
+        <span class="n">predictions</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">market_condition</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">use_performance_prediction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">predictions</span>
+
+            <span class="n">features</span> <span class="o">=</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">to_features</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="n">HyperparameterType</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">predictor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_predictors</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+                    <span class="n">scaler</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+                    <span class="c1"># 特徴量をスケーリング</span>
+                    <span class="n">scaled_features</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+
+                    <span class="c1"># パフォーマンスを予測</span>
+                    <span class="n">predicted_performance</span> <span class="o">=</span> <span class="n">predictor</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">scaled_features</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+                    <span class="c1"># 最適値を推定（予測モデルに基づく）</span>
+                    <span class="n">optimal_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_estimate_optimal_value</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span> <span class="n">predicted_performance</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">)</span>
+
+                    <span class="c1"># 特徴量重要度を取得</span>
+                    <span class="n">feature_importance</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">predictor</span><span class="p">,</span> <span class="s1">&#39;feature_importances_&#39;</span><span class="p">):</span>
+                        <span class="n">feature_names</span> <span class="o">=</span> <span class="p">[</span>
+                            <span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="s1">&#39;trend_strength&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_profile&#39;</span><span class="p">,</span> <span class="s1">&#39;liquidity_score&#39;</span><span class="p">,</span> <span class="s1">&#39;sentiment_score&#39;</span><span class="p">,</span>
+                            <span class="s1">&#39;regime_bull&#39;</span><span class="p">,</span> <span class="s1">&#39;regime_bear&#39;</span><span class="p">,</span> <span class="s1">&#39;regime_sideways&#39;</span><span class="p">,</span> <span class="s1">&#39;regime_volatile&#39;</span>
+                        <span class="p">]</span>
+                        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">importance</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">feature_names</span><span class="p">,</span> <span class="n">predictor</span><span class="o">.</span><span class="n">feature_importances_</span><span class="p">):</span>
+                            <span class="n">feature_importance</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">importance</span><span class="p">)</span>
+
+                    <span class="n">predictions</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">PerformancePrediction</span><span class="p">(</span>
+                        <span class="n">parameter_type</span><span class="o">=</span><span class="n">param_type</span><span class="p">,</span>
+                        <span class="n">predicted_performance</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">predicted_performance</span><span class="p">),</span>
+                        <span class="n">confidence</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>  <span class="c1"># 仮定値</span>
+                        <span class="n">optimal_value</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">optimal_value</span><span class="p">),</span>
+                        <span class="n">feature_importance</span><span class="o">=</span><span class="n">feature_importance</span>
+                    <span class="p">)</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to predict for </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">predictions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameter prediction failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">predictions</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_estimate_optimal_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_type</span><span class="p">:</span> <span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">predicted_performance</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最適値を推定&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">current_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+            <span class="n">param_range</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">parameter_ranges</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+            <span class="c1"># 市場条件に基づいて調整</span>
+            <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>  <span class="c1"># 高ボラティリティ</span>
+                <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">0.8</span>  <span class="c1"># 学習率を下げる</span>
+                <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">0.9</span>  <span class="c1"># バッチサイズを小さく</span>
+                <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.2</span>  <span class="c1"># 正則化を強める</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">elif</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>  <span class="c1"># 低ボラティリティ</span>
+                <span class="k">if</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.1</span>  <span class="c1"># 学習率を上げる</span>
+                <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">BATCH_SIZE</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.1</span>  <span class="c1"># バッチサイズを大きく</span>
+                <span class="k">elif</span> <span class="n">param_type</span> <span class="o">==</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">REGULARIZATION_STRENGTH</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">0.9</span>  <span class="c1"># 正則化を弱める</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.0</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">adjustment</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+            <span class="n">optimal_value</span> <span class="o">=</span> <span class="n">current_value</span> <span class="o">*</span> <span class="n">adjustment</span>
+
+            <span class="c1"># 範囲内に収める</span>
+            <span class="n">optimal_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">optimal_value</span><span class="p">,</span> <span class="n">param_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">optimal_value</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">current_value</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_select_adaptation_strategies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                    <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">],</span>
+                                    <span class="n">predictions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="p">,</span> <span class="n">PerformancePrediction</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">AdaptationStrategy</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応戦略を選択&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">adaptive_strategy_selection</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="p">)</span>
+
+            <span class="n">strategies</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="c1"># 市場条件に基づいて戦略を選択</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="mf">0.03</span><span class="p">:</span>
+                    <span class="n">strategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">trend_strength</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
+                    <span class="n">strategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">)</span>
+
+            <span class="c1"># パフォーマンス予測がある場合は追加</span>
+            <span class="k">if</span> <span class="n">predictions</span><span class="p">:</span>
+                <span class="n">strategies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">)</span>
+
+            <span class="c1"># デフォルト戦略</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">strategies</span><span class="p">:</span>
+                <span class="n">strategies</span> <span class="o">=</span> <span class="p">[</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span> <span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">]</span>
+
+            <span class="k">return</span> <span class="n">strategies</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Strategy selection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_adaptive_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                              <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">],</span>
+                              <span class="n">strategies</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">AdaptationStrategy</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">HyperparameterConfig</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応設定を作成&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">HyperparameterConfig</span><span class="p">()</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">enabled_strategies</span> <span class="o">=</span> <span class="n">strategies</span>
+
+            <span class="k">if</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="c1"># 市場条件に基づいて設定を調整</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>
+                    <span class="c1"># 高ボラティリティ時はより頻繁に適応</span>
+                    <span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span>
+                    <span class="n">config</span><span class="o">.</span><span class="n">max_parameter_change_rate</span> <span class="o">=</span> <span class="mf">0.15</span>  <span class="c1"># 変更率を制限</span>
+                <span class="k">elif</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>
+                    <span class="c1"># 低ボラティリティ時は安定した適応</span>
+                    <span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">adaptation_interval_minutes</span> <span class="o">*</span> <span class="mi">2</span>
+                    <span class="n">config</span><span class="o">.</span><span class="n">max_parameter_change_rate</span> <span class="o">=</span> <span class="mf">0.25</span>  <span class="c1"># 変更率を緩和</span>
+
+            <span class="k">return</span> <span class="n">config</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">HyperparameterConfig</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_training_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">MarketCondition</span><span class="p">,</span> <span class="n">adaptation_result</span><span class="p">:</span> <span class="n">AdaptationResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;学習データを更新&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">to_features</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">:</span>
+                <span class="n">param_type</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span>
+                <span class="n">performance_score</span> <span class="o">=</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">overall_performance_improvement</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">features</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">performance_score</span><span class="p">))</span>
+
+                <span class="c1"># データサイズを制限</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">])</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">prediction_history_window</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">][</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">prediction_history_window</span><span class="p">:]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update training data: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_strategy_performance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">adaptation_result</span><span class="p">:</span> <span class="n">AdaptationResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;戦略パフォーマンスを更新&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">strategy_performance_tracking</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="n">performance_score</span> <span class="o">=</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">overall_performance_improvement</span>
+
+            <span class="c1"># 各適応に使用された戦略のパフォーマンスを更新</span>
+            <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">:</span>
+                <span class="n">strategy</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">adaptation_strategy</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">performance_score</span><span class="p">)</span>
+
+                <span class="c1"># 履歴サイズを制限</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="p">[</span><span class="n">strategy</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="p">[</span><span class="n">strategy</span><span class="p">][</span><span class="o">-</span><span class="mi">100</span><span class="p">:]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to update strategy performance: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_retrain_prediction_models</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;予測モデルを再学習&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="n">HyperparameterType</span><span class="p">:</span>
+                <span class="n">training_samples</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span>
+
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">training_samples</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">min_training_samples</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="c1"># データを準備</span>
+                <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">features</span> <span class="k">for</span> <span class="n">features</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">training_samples</span><span class="p">])</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">performance</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">performance</span> <span class="ow">in</span> <span class="n">training_samples</span><span class="p">])</span>
+
+                <span class="c1"># スケーラーをフィット</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+                <span class="c1"># 特徴量をスケーリング</span>
+                <span class="n">X_scaled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+                <span class="c1"># モデルを学習</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">performance_predictors</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retrained prediction model for </span><span class="si">{</span><span class="n">param_type</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">training_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_model_training</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model retraining failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_adaptation_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応ワーカー&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 市場対応適応を実行</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">adapt_hyperparameters_market_aware</span><span class="p">()</span>
+
+                <span class="c1"># 予測モデル更新をチェック</span>
+                <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_prediction_update</span><span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">prediction_model_update_interval</span> <span class="o">*</span> <span class="mi">60</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_retrain_prediction_models</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">last_prediction_update</span> <span class="o">=</span> <span class="n">current_time</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">300</span><span class="p">)</span>  <span class="c1"># 5分ごとに実行</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation worker error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">600</span><span class="p">)</span>  <span class="c1"># エラー時は10分待機</span>
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.get_adaptation_recommendations">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.get_adaptation_recommendations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_adaptation_recommendations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_condition</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MarketCondition</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応推奨を取得&quot;&quot;&quot;</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="n">market_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="c1"># ボラティリティに基づく推奨</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="mf">0.05</span><span class="p">:</span>
+                    <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;High volatility detected - consider reducing learning rate and increasing regularization&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>
+                    <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Low volatility detected - consider increasing learning rate for faster adaptation&quot;</span><span class="p">)</span>
+
+                <span class="c1"># トレンドに基づく推奨</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">trend_strength</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
+                    <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Strong trend detected - performance-based adaptation recommended&quot;</span><span class="p">)</span>
+
+                <span class="c1"># 市場レジームに基づく推奨</span>
+                <span class="k">if</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;volatile&#39;</span><span class="p">:</span>
+                    <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Volatile market regime - focus on stability and risk management&quot;</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">market_regime</span> <span class="o">==</span> <span class="s1">&#39;bull&#39;</span><span class="p">:</span>
+                    <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Bull market regime - consider more aggressive parameter updates&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 戦略パフォーマンスに基づく推奨</span>
+            <span class="n">best_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_best_performing_strategy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">best_strategy</span><span class="p">:</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best performing strategy: </span><span class="si">{</span><span class="n">best_strategy</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">recommendations</span><span class="p">:</span>
+                <span class="n">recommendations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;Market conditions stable - no specific recommendations&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">recommendations</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get recommendations: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;Unable to generate recommendations due to error&quot;</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_best_performing_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AdaptationStrategy</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最高パフォーマンスの戦略を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">strategy_scores</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">performances</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">performances</span><span class="p">:</span>
+                    <span class="n">avg_performance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">performances</span><span class="p">)</span>
+                    <span class="n">strategy_scores</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span> <span class="o">=</span> <span class="n">avg_performance</span>
+
+            <span class="k">if</span> <span class="n">strategy_scores</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">strategy_scores</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">strategy_scores</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.get_performance_predictions">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.get_performance_predictions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_performance_predictions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス予測を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">market_condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">()</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">market_condition</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">{}</span>
+
+            <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_predict_optimal_parameters</span><span class="p">(</span><span class="n">market_condition</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;market_condition&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;volatility&quot;</span><span class="p">:</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">volatility</span><span class="p">,</span>
+                    <span class="s2">&quot;trend_strength&quot;</span><span class="p">:</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">trend_strength</span><span class="p">,</span>
+                    <span class="s2">&quot;market_regime&quot;</span><span class="p">:</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">market_regime</span><span class="p">,</span>
+                    <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">timestamp</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;predictions&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="n">param</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;predicted_performance&quot;</span><span class="p">:</span> <span class="n">pred</span><span class="o">.</span><span class="n">predicted_performance</span><span class="p">,</span>
+                        <span class="s2">&quot;optimal_value&quot;</span><span class="p">:</span> <span class="n">pred</span><span class="o">.</span><span class="n">optimal_value</span><span class="p">,</span>
+                        <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">pred</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+                        <span class="s2">&quot;feature_importance&quot;</span><span class="p">:</span> <span class="n">pred</span><span class="o">.</span><span class="n">feature_importance</span>
+                    <span class="p">}</span>
+                    <span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">pred</span> <span class="ow">in</span> <span class="n">predictions</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get performance predictions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span></div>
+
+
+<div class="viewcode-block" id="MarketAwareHyperparameterManager.get_adaptation_statistics">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.market_aware_hyperparameter_manager.MarketAwareHyperparameterManager.get_adaptation_statistics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_adaptation_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応統計を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;total_adaptations&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">),</span>
+                <span class="s2">&quot;market_conditions_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">market_conditions</span><span class="p">),</span>
+                <span class="s2">&quot;strategy_performance&quot;</span><span class="p">:</span> <span class="p">{},</span>
+                <span class="s2">&quot;parameter_adaptation_count&quot;</span><span class="p">:</span> <span class="p">{}</span>
+            <span class="p">}</span>
+
+            <span class="c1"># 戦略パフォーマンス</span>
+            <span class="k">for</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">performances</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy_performance</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">performances</span><span class="p">:</span>
+                    <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;strategy_performance&quot;</span><span class="p">][</span><span class="n">strategy</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;average_performance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">performances</span><span class="p">)),</span>
+                        <span class="s2">&quot;total_adaptations&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">performances</span><span class="p">),</span>
+                        <span class="s2">&quot;best_performance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">performances</span><span class="p">)),</span>
+                        <span class="s2">&quot;worst_performance&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">performances</span><span class="p">))</span>
+                    <span class="p">}</span>
+
+            <span class="c1"># パラメータ適応数</span>
+            <span class="n">param_counts</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">adaptation_result</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_history</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptation_result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">:</span>
+                    <span class="n">param_type</span> <span class="o">=</span> <span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="o">.</span><span class="n">value</span>
+                    <span class="n">param_counts</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param_type</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+            <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;parameter_adaptation_count&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_counts</span>
+
+            <span class="k">return</span> <span class="n">stats</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get adaptation statistics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,684 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC v421 高度な機能調査・実装ドキュメント &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Observation Update Verification Report" href="observation_update_verification.html" />
+    <link rel="prev" title="Action Constants and Continuous Action Mapping" href="action_constants.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_IMPLEMENTATION_SUMMARY.html">大規模機能実装サマリー - 2025年10月7日</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.html">Feature Schema Management Reform - 実装完了サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_MANAGEMENT_REFORM.html">Feature Schema Management Reform - 改修計画書</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_SCHEMA_REFORM_COMPLETE.html">特徴量スキーマ管理改革 - 完全版サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_CONTROL.html">ログレベル制御ガイド</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_INTEGRATION_SUMMARY.html">ログレベル制御機能 統合サマリー</a></li>
+<li class="toctree-l2"><a class="reference internal" href="action_bias_implementation_guide.html">Action Bias Fix - Detailed Implementation Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="action_constants.html">Action Constants and Continuous Action Mapping</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">SAC v421 高度な機能調査・実装ドキュメント</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">概要</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">会話履歴と調査背景</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#sac-v421-improvement-plan-md">初期調査 (SAC_V421_IMPROVEMENT_PLAN.md)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">高度な機能調査フェーズ</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">実装状況調査結果</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id5">実装済み機能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">部分実装機能</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id9">未実装機能</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">新規実装の詳細</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id11">効率的ネットワークアーキテクチャ</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id13">改善提案と優先順位</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#phase-1-1-2">Phase 1 (1-2週間): 即時実装推奨</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#phase-2-2-4">Phase 2 (2-4週間): 中期実装</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#phase-3-1">Phase 3 (1+ヶ月): 長期拡張</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id14">技術的洞察</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id15">ネットワーク効率化の効果</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id16">説明可能性の実装課題</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id17">学習手法のギャップ</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">結論と次のステップ</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id19">完了した作業</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id20">推奨される次のステップ</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id21">長期的なビジョン</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">実装完了記録 (2025年10月19日)</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#ml">✅ 高度ML機能実装完了</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id26">継続学習実装完了 (2025年10月19日)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#few-shot-learning-sac-v422">🔄 次の実装対象: Few-shot Learning (少数ショット学習) - SAC v422</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="observation_update_verification.html">Observation Update Verification Report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Features</a></li>
+      <li class="breadcrumb-item active">SAC v421 高度な機能調査・実装ドキュメント</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/advanced_features_audit.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-v421">
+<h1>SAC v421 高度な機能調査・実装ドキュメント<a class="headerlink" href="#sac-v421" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>このドキュメントは、Zaif Trade BotプロジェクトにおけるSAC (Soft Actor-Critic) v421の高度な機能に関する調査、実装、改善提案の包括的な記録です。会話履歴に基づき、データ処理、特徴量エンジニアリング、学習手法、説明可能性などの高度な機能を調査し、一部を実装しました。</p>
+<p><strong>プロジェクト</strong>: Zaif Trade Bot (仮想通貨取引システム)<br />
+<strong>アルゴリズム</strong>: SAC (Soft Actor-Critic) RL<br />
+<strong>期間</strong>: 2025年10月18日時点の調査・実装作業<br />
+<strong>担当者</strong>: GitHub Copilot / ユーザー</p>
+</section>
+<section id="id2">
+<h2>会話履歴と調査背景<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="sac-v421-improvement-plan-md">
+<h3>初期調査 (SAC_V421_IMPROVEMENT_PLAN.md)<a class="headerlink" href="#sac-v421-improvement-plan-md" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>報酬関数、学習パラメータ、バックテスト強化の改善を検討</p></li>
+<li><p>高度な機能（データ処理、特徴量エンジニアリング、学習手法、ネットワーク効率化）の追加調査を開始</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>高度な機能調査フェーズ<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p>以下の高度な機能を調査・実装状況確認：</p>
+<ul class="simple">
+<li><p>データ拡張 (Data Augmentation)</p></li>
+<li><p>アノマリー検知 (Anomaly Detection)</p></li>
+<li><p>アダプティブ特徴量選択 (Adaptive Feature Selection)</p></li>
+<li><p>因果推論 (Causal Inference)</p></li>
+<li><p>メタ学習 (Meta-Learning)</p></li>
+<li><p>多様学習 (Multimodal Learning)</p></li>
+<li><p>リアルタイム適応 (Real-time Adaptation)</p></li>
+<li><p>説明可能性 (Explainability)</p></li>
+<li><p>連合学習 (Federated Learning)</p></li>
+<li><p>混合精度 (Mixed Precision)</p></li>
+<li><p>量子化 (Quantization)</p></li>
+<li><p>ネットワーク効率化 (Network Efficiency)</p></li>
+</ul>
+</section>
+</section>
+<section id="id4">
+<h2>実装状況調査結果<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>実装済み機能<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="data-augmentation">
+<h4>1. データ拡張 (Data Augmentation)<a class="headerlink" href="#data-augmentation" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/data/data_augmentation.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: ノイズ付加、スケーリング、時間シフトなどのデータ拡張手法</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（未テスト）</p></li>
+<li><p><strong>備考</strong>: トレーニング時のデータ多様性向上に貢献。実際の動作確認が必要</p></li>
+</ul>
+</section>
+<section id="adaptive-feature-selection">
+<h4>2. アダプティブ特徴量選択 (Adaptive Feature Selection)<a class="headerlink" href="#adaptive-feature-selection" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/features/adaptive_selection.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: 動的特徴量重要度計算と選択</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（未テスト）</p></li>
+<li><p><strong>備考</strong>: 市場状況に応じた特徴量適応。統合テスト未実施</p></li>
+</ul>
+</section>
+<section id="causal-inference">
+<h4>3. 因果推論 (Causal Inference)<a class="headerlink" href="#causal-inference" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/features/causal_inference.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: 特徴量間の因果関係分析</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（未テスト）</p></li>
+<li><p><strong>備考</strong>: 取引決定の因果的根拠提供。実際の取引データでの検証が必要</p></li>
+</ul>
+</section>
+<section id="explainability">
+<h4>4. 説明可能性 (Explainability)<a class="headerlink" href="#explainability" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/explainability/analyzer.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: SHAPベースの特徴量重要度分析、自然言語説明生成</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（未テスト）</p></li>
+<li><p><strong>備考</strong>: モデル決定の解釈性向上。ファイル分割化検討中。SHAP統合の動作確認が必要</p></li>
+</ul>
+</section>
+<section id="mixed-precision-quantization">
+<h4>5. 混合精度・量子化 (Mixed Precision &amp; Quantization)<a class="headerlink" href="#mixed-precision-quantization" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/quantization/</span></code></p></li>
+<li><p><strong>実装内容</strong>: 動的/静的量子化、混合精度トレーニング</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（未テスト）</p></li>
+<li><p><strong>備考</strong>: メモリ使用量削減と推論速度向上。実際のトレーニングでの効果測定が必要</p></li>
+</ul>
+</section>
+<section id="network-efficiency">
+<h4>6. ネットワーク効率化 (Network Efficiency)<a class="headerlink" href="#network-efficiency" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/models/advanced_networks.py</span></code></p></li>
+<li><p><strong>実装内容</strong>:</p>
+<ul>
+<li><p>Depthwise Separable Convolutions</p></li>
+<li><p>Efficient Attention (Linformer/Performer)</p></li>
+<li><p>Dynamic Networks with Conditional Computation</p></li>
+<li><p>Efficient Feature Extractor</p></li>
+</ul>
+</li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み（基本テスト済み）</p></li>
+<li><p><strong>備考</strong>: パラメータ削減と計算効率向上。Unified Trainer統合での動作確認が必要</p></li>
+</ul>
+</section>
+<section id="multimodal-learning">
+<h4>7. 多様学習 (Multimodal Learning) ⭐ <strong>新規実装</strong><a class="headerlink" href="#multimodal-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/multimodal/models/architectures/multimodal_architecture.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: 価格データ、テキスト感情、経済指標の統合アーキテクチャ</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装完了、trainer統合済み、ユニットテスト実装済み</p></li>
+<li><p><strong>備考</strong>: <code class="docutils literal notranslate"><span class="pre">MultimodalSACTrainer</span></code> でSACアルゴリズムと統合、Unified Trainerで利用可能</p></li>
+<li><p><strong>テスト</strong>: <code class="docutils literal notranslate"><span class="pre">tests/test_multimodal_core.py::TestMultimodalSACTrainer</span></code> (初期化・設定テスト)</p></li>
+<li><p><strong>ドキュメント</strong>: README.mdにトレーナー固有テストコマンド追加</p></li>
+</ul>
+</section>
+<section id="real-time-adaptation">
+<h4>8. リアルタイム適応 (Real-time Adaptation) ⭐ <strong>新規実装</strong><a class="headerlink" href="#real-time-adaptation" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/online_learning/pipeline.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: インクリメンタル学習、ストリーミングデータ処理、適応制御</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装完了、trainer統合済み、ユニットテスト実装済み</p></li>
+<li><p><strong>備考</strong>: <code class="docutils literal notranslate"><span class="pre">OnlineLearningSACTrainer</span></code> でSACアルゴリズムと統合、Unified Trainerで利用可能</p></li>
+<li><p><strong>テスト</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/online_learning/tests.py::TestOnlineLearningSACTrainer</span></code> (初期化・設定テスト)</p></li>
+<li><p><strong>ドキュメント</strong>: README.mdにトレーナー固有テストコマンド追加</p></li>
+</ul>
+</section>
+<section id="transfer-learning">
+<h4>9. 転移学習 (Transfer Learning)<a class="headerlink" href="#transfer-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/algorithms/sac/sac_algorithm.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: 事前学習モデルの転移学習適用</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み</p></li>
+<li><p><strong>備考</strong>: 学習効率向上</p></li>
+</ul>
+</section>
+<section id="curriculum-learning">
+<h4>10. カリキュラム学習 (Curriculum Learning)<a class="headerlink" href="#curriculum-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/trainers/curriculum_trainer.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: P0→P2段階的学習アプローチ</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み</p></li>
+<li><p><strong>備考</strong>: 安定した学習進行</p></li>
+</ul>
+</section>
+<section id="gan">
+<h4>9. GANベース合成データ生成<a class="headerlink" href="#gan" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/multimodal/utils/helpers/synthetic_data_generator.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: GANを使用した合成データ生成</p></li>
+<li><p><strong>ステータス</strong>: ✅ 実装済み</p></li>
+<li><p><strong>備考</strong>: データ拡張の高度化</p></li>
+</ul>
+</section>
+<section id="continual-learning">
+<h4>10. 継続学習 (Continual Learning) ⭐ <strong>新規実装完了</strong><a class="headerlink" href="#continual-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/continual_learning.py</span></code></p></li>
+<li><p><strong>実装内容</strong>: EWC + Rehearsal + Progressive Networks、長期知識蓄積</p></li>
+<li><p><strong>ステータス</strong>: ✅ 完全実装済み、Unified Trainer統合、包括的テスト実装</p></li>
+<li><p><strong>備考</strong>: Unified Trainerの<code class="docutils literal notranslate"><span class="pre">enable_continual_learning</span></code>設定で利用可能</p></li>
+<li><p><strong>実装詳細</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">ContinualLearner</span></code>: 3つの継続学習手法統合</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ElasticWeightConsolidation</span></code>: 重要なパラメータ保護</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RehearsalBuffer</span></code>: 過去データ保存と再学習</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ProgressiveNetwork</span></code>: ネットワーク拡張アプローチ</p></li>
+<li><p>設定統合: <code class="docutils literal notranslate"><span class="pre">unified_trainer/config.py</span></code> にパラメータ追加</p></li>
+<li><p>テスト実装: 各手法の単体テスト + 統合テスト</p></li>
+<li><p>メモリ管理: MemoryTracker活用、リーク防止</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<section id="id6">
+<h3>部分実装機能<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<section id="id7">
+<h4>1. 多様学習 (Multimodal Learning) ⭐ <strong>実装完了</strong><a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/multimodal/</span></code></p></li>
+<li><p><strong>実装内容</strong>: 複数モダリティの統合学習（アーキテクチャ、trainer、統合済み）</p></li>
+<li><p><strong>ステータス</strong>: ✅ 完全実装済み、Unified Trainer統合、ユニットテスト実装</p></li>
+<li><p><strong>備考</strong>: Unified Trainerの”multimodal”アルゴリズムで利用可能</p></li>
+<li><p><strong>実装詳細</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">MultimodalSACTrainer</span></code>: SACアルゴリズム拡張</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MultiModalTradingAgent</span></code>: クロスモーダル・アテンション統合</p></li>
+<li><p>設定統合: <code class="docutils literal notranslate"><span class="pre">unified_trainer/config.py</span></code> にパラメータ追加</p></li>
+<li><p>テスト実装: 初期化・設定検証テスト</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id8">
+<h4>2. リアルタイム適応 (Real-time Adaptation) ⭐ <strong>実装完了</strong><a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/online_learning/</span></code></p></li>
+<li><p><strong>実装内容</strong>: オンライン学習と適応（pipeline、trainer、統合済み）</p></li>
+<li><p><strong>ステータス</strong>: ✅ 完全実装済み、Unified Trainer統合、ユニットテスト実装</p></li>
+<li><p><strong>備考</strong>: Unified Trainerの”online_learning”アルゴリズムで利用可能</p></li>
+<li><p><strong>実装詳細</strong>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">OnlineLearningSACTrainer</span></code>: スレッドベース適応学習</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OnlineLearningPipeline</span></code>: ストリーミングデータ処理</p></li>
+<li><p>設定統合: <code class="docutils literal notranslate"><span class="pre">unified_trainer/config.py</span></code> にパラメータ追加</p></li>
+<li><p>テスト実装: 初期化・設定検証テスト</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<section id="id9">
+<h3>未実装機能<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<section id="anomaly-detection">
+<h4>1. アノマリー検知 (Anomaly Detection)<a class="headerlink" href="#anomaly-detection" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: データ品質管理と異常検知</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 高</p></li>
+</ul>
+</section>
+<section id="meta-learning">
+<h4>2. メタ学習 (Meta-Learning)<a class="headerlink" href="#meta-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 迅速な適応学習</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 中</p></li>
+</ul>
+</section>
+<section id="federated-learning">
+<h4>3. 連合学習 (Federated Learning)<a class="headerlink" href="#federated-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 分散環境でのプライバシー保護学習</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 低</p></li>
+</ul>
+</section>
+<section id="active-learning">
+<h4>4. Active Learning (能動学習)<a class="headerlink" href="#active-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 効率的なデータ収集</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 中</p></li>
+</ul>
+</section>
+<section id="few-shot-learning">
+<h4>5. Few-shot Learning (少数ショット学習)<a class="headerlink" href="#few-shot-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 限られたデータでの学習</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 高</p></li>
+</ul>
+</section>
+<section id="zero-shot-learning">
+<h4>6. Zero-shot Learning (ゼロショット学習)<a class="headerlink" href="#zero-shot-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 学習データなしでの適応</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 中</p></li>
+</ul>
+</section>
+<section id="semi-supervised-learning">
+<h4>7. Semi-supervised Learning (半教師あり学習)<a class="headerlink" href="#semi-supervised-learning" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: ラベル付き/なしデータの活用</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 高</p></li>
+</ul>
+</section>
+<section id="rlhf-reinforcement-learning-from-human-feedback">
+<h4>8. RLHF (Reinforcement Learning from Human Feedback)<a class="headerlink" href="#rlhf-reinforcement-learning-from-human-feedback" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>場所</strong>: 未実装</p></li>
+<li><p><strong>必要性</strong>: 人間のフィードバックによる学習改善</p></li>
+<li><p><strong>ステータス</strong>: ❌ 未実装</p></li>
+<li><p><strong>優先度</strong>: 中</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id10">
+<h2>新規実装の詳細<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>効率的ネットワークアーキテクチャ<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="efficientfeatureextractor">
+<h4>EfficientFeatureExtractor<a class="headerlink" href="#efficientfeatureextractor" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">EfficientFeatureExtractor</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observation_space</span><span class="p">,</span> <span class="n">features_dim</span><span class="p">,</span> <span class="n">use_depthwise_conv</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">use_efficient_attention</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">use_dynamic_network</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">attention_method</span><span class="o">=</span><span class="s1">&#39;linformer&#39;</span><span class="p">,</span> <span class="n">sequence_length</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="c1"># 実装: Depthwise Separable Conv + Efficient Attention + Dynamic Network</span>
+</pre></div>
+</div>
+<p><strong>特徴</strong>:</p>
+<ul class="simple">
+<li><p><strong>Depthwise Separable Convolutions</strong>: パラメータ数を大幅削減</p></li>
+<li><p><strong>Efficient Attention</strong>: Linformer/PerformerでO(n²)→O(n log n)</p></li>
+<li><p><strong>Dynamic Networks</strong>: 入力複雑度に応じた条件付き計算</p></li>
+</ul>
+<p><strong>テスト結果</strong>:</p>
+<ul class="simple">
+<li><p>入力: (32, 80) → 出力: (32, 256)</p></li>
+<li><p>処理時間: 効率的</p></li>
+<li><p>メモリ使用量: 最適化済み</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>統合設定<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer/config.py</span></code>: 効率的ネットワーク設定追加</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/algorithms/sac/sac_algorithm.py</span></code>: SACアルゴリズム統合</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id13">
+<h2>改善提案と優先順位<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="phase-1-1-2">
+<h3>Phase 1 (1-2週間): 即時実装推奨<a class="headerlink" href="#phase-1-1-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>アノマリー検知の実装</strong> (高優先度)</p>
+<ul class="simple">
+<li><p>統計的手法とMLベースの異常検知</p></li>
+<li><p>データ品質管理の強化</p></li>
+</ul>
+</li>
+<li><p><strong>説明可能性のファイル分割化</strong> (中優先度)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">analyzer.py</span></code>の分割: 特徴量分析、決定説明、可視化を別ファイル化</p></li>
+<li><p>保守性向上</p></li>
+</ul>
+</li>
+<li><p><strong>効率的ネットワークの統合</strong> (高優先度)</p>
+<ul class="simple">
+<li><p>Unified Trainerへの完全統合</p></li>
+<li><p>トレーニングパイプライン最適化</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="phase-2-2-4">
+<h3>Phase 2 (2-4週間): 中期実装<a class="headerlink" href="#phase-2-2-4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>メタ学習の実装</strong></p></li>
+<li><p><strong>連合学習フレームワーク</strong></p></li>
+<li><p><strong>リアルタイム適応の完成</strong></p></li>
+</ol>
+</section>
+<section id="phase-3-1">
+<h3>Phase 3 (1+ヶ月): 長期拡張<a class="headerlink" href="#phase-3-1" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>多様学習の拡張</strong></p></li>
+<li><p><strong>量子化・圧縮の最適化</strong></p></li>
+<li><p><strong>継続学習の実装</strong></p></li>
+</ol>
+</section>
+</section>
+<section id="id14">
+<h2>技術的洞察<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>ネットワーク効率化の効果<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Depthwise Separable Conv</strong>: 標準Conv2d比でパラメータ数70-80%削減</p></li>
+<li><p><strong>Efficient Attention</strong>: シーケンス長増加時の計算コスト抑制</p></li>
+<li><p><strong>Dynamic Computation</strong>: 入力複雑度に応じた計算量適応</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>説明可能性の実装課題<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>自然言語生成が複雑化</p></li>
+<li><p>ファイル分割化により保守性向上予定</p></li>
+<li><p>SHAP統合で信頼性の高い説明提供</p></li>
+</ul>
+</section>
+<section id="id17">
+<h3>学習手法のギャップ<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>現代的な学習手法（メタ学習、継続学習）の未実装</p></li>
+<li><p>実世界適応性の向上が期待される</p></li>
+</ul>
+</section>
+</section>
+<section id="id18">
+<h2>結論と次のステップ<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>完了した作業<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>高度な機能の包括的調査</p></li>
+<li><p>ネットワーク効率化の実装とテスト</p></li>
+<li><p><strong>多様学習の完全実装</strong>（アーキテクチャ、trainer、統合）</p></li>
+<li><p><strong>リアルタイム適応の完全実装</strong>（pipeline、trainer、統合）</p></li>
+<li><p><strong>Unified Trainerへの統合</strong>（アルゴリズム選択、設定管理）</p></li>
+<li><p><strong>包括的ユニットテスト実装</strong>（初期化・設定・基本機能テスト）</p></li>
+<li><p><strong>ドキュメント更新</strong>（<a class="reference external" href="http://README.md">README.md</a>、<a class="reference external" href="http://CHANGELOG.md">CHANGELOG.md</a>）</p></li>
+<li><p>機能テストと動作確認</p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>推奨される次のステップ<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Phase 1 (1-2週間)</strong>: アノマリー検知実装、説明可能性ファイル分割化、効率的ネットワーク統合</p></li>
+<li><p><strong>Phase 2 (2-4週間)</strong>: メタ学習、連合学習、リアルタイム適応完成</p></li>
+<li><p><strong>Phase 3 (1+ヶ月)</strong>: 多様学習拡張、継続学習実装</p></li>
+</ol>
+</section>
+<section id="id21">
+<h3>長期的なビジョン<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>完全な多様学習システムの実現</p></li>
+<li><p>分散・連合学習によるスケーラビリティ向上</p></li>
+<li><p>人間-AI協調学習の実装</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>ドキュメント作成日</strong>: 2025年10月18日<br />
+<strong>最終更新</strong>: 2025年10月19日 (高度なSACトレーナー実装完了、ユニットテスト追加、CHANGELOG更新)<br />
+<strong>バージョン</strong>: 1.1</p>
+</section>
+</section>
+<section id="id22">
+<h2>実装完了記録 (2025年10月19日)<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="ml">
+<h3>✅ 高度ML機能実装完了<a class="headerlink" href="#ml" title="Link to this heading"></a></h3>
+<p>以下の3つの高度な機能をSAC v421に実装：</p>
+<section id="id23">
+<h4>1. 異常検知システム (Anomaly Detection)<a class="headerlink" href="#id23" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>実装場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/data/anomaly_detection.py</span></code></p></li>
+<li><p><strong>機能</strong>: 統計的手法(Z-score/IQR/MAD) + ML手法(IsolationForest/EllipticEnvelope) + オートエンコーダー</p></li>
+<li><p><strong>統合</strong>: UnifiedTrainerに<code class="docutils literal notranslate"><span class="pre">enable_anomaly_detection</span></code>設定で統合</p></li>
+<li><p><strong>メモリ管理</strong>: 履歴バッファサイズ制限、効率的なnumpy/torchテンソル管理</p></li>
+</ul>
+</section>
+<section id="id24">
+<h4>2. メタラーニング (Meta Learning)<a class="headerlink" href="#id24" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>実装場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/adaptation/meta_learning.py</span></code></p></li>
+<li><p><strong>機能</strong>: MAML + Reptileアルゴリズム、市場特化適応</p></li>
+<li><p><strong>統合</strong>: UnifiedTrainerに<code class="docutils literal notranslate"><span class="pre">enable_meta_learning</span></code>設定で統合</p></li>
+<li><p><strong>メモリ管理</strong>: モデルコピー最適化、タスクバッファ管理</p></li>
+</ul>
+</section>
+<section id="id25">
+<h4>3. フェデレーテッドラーニング (Federated Learning)<a class="headerlink" href="#id25" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>実装場所</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/federated_learning.py</span></code></p></li>
+<li><p><strong>機能</strong>: FedAvg + 差分プライバシー(Opacus)、市場ベース分散学習</p></li>
+<li><p><strong>統合</strong>: UnifiedTrainerに<code class="docutils literal notranslate"><span class="pre">enable_federated</span></code> + <code class="docutils literal notranslate"><span class="pre">federated_markets</span></code>設定で統合</p></li>
+<li><p><strong>メモリ管理</strong>: クライアントモデル管理、勾配蓄積最適化</p></li>
+</ul>
+</section>
+</section>
+<section id="id26">
+<h3>継続学習実装完了 (2025年10月19日)<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>EWC (Elastic Weight Consolidation)</strong>: 重要なパラメータ保護によるモデル劣化防止</p></li>
+<li><p><strong>Rehearsal手法</strong>: 過去データ保存と再学習による知識維持</p></li>
+<li><p><strong>Progressive Neural Networks</strong>: ネットワーク拡張によるタスク間知識共有</p></li>
+<li><p><strong>UnifiedTrainer統合</strong>: <code class="docutils literal notranslate"><span class="pre">enable_continual_learning</span></code>設定でSACトレーニングに統合</p></li>
+<li><p><strong>メモリ管理</strong>: MemoryTracker活用、バッファサイズ制限、GPUメモリ最適化</p></li>
+<li><p><strong>包括的テスト</strong>: 各手法のテスト、統合テスト、メモリリーク防止検証</p></li>
+</ul>
+</section>
+<section id="few-shot-learning-sac-v422">
+<h3>🔄 次の実装対象: Few-shot Learning (少数ショット学習) - SAC v422<a class="headerlink" href="#few-shot-learning-sac-v422" title="Link to this heading"></a></h3>
+<p><strong>優先度</strong>: 高 - 限られたデータでの高速適応のため
+<strong>実装予定手法</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Prototypical Networks</strong>: クラスプロトタイプベースの分類</p></li>
+<li><p><strong>Matching Networks</strong>: アテンションによる類似度マッチング</p></li>
+<li><p><strong>MAML (Model-Agnostic Meta-Learning)</strong>: 勾配ベースメタ学習</p></li>
+<li><p><strong>Reptile</strong>: シンプルなメタ学習アルゴリズム</p></li>
+</ol>
+<p><strong>実装計画</strong> (SAC v422):</p>
+<ul class="simple">
+<li><p>Phase 1: Prototypical Networksの実装</p></li>
+<li><p>Phase 2: Matching Networksの実装</p></li>
+<li><p>Phase 3: MAML統合</p></li>
+<li><p>Phase 4: UnifiedTrainer統合とメモリ管理最適化</p></li>
+<li><p>Phase 5: テストとドキュメント更新</p></li>
+</ul>
+<p><strong>メモリ管理重点事項</strong>:</p>
+<ul class="simple">
+<li><p>エピソードバッファの効率的管理</p></li>
+<li><p>メタ学習時のモデルコピー最適化</p></li>
+<li><p>GPUメモリのリーク防止</p></li>
+<li><p>既存MemoryTracker/MemoryOptimizerの活用</p></li>
+</ul>
+<p><strong>設定JSON作成予定</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/sac_v422_fewshot.json</span></code>: Few-shot学習設定</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/sac_v422b_prototypical.json</span></code>: Prototypical Networks専用設定</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/sac_v422c_matching.json</span></code>: Matching Networks専用設定</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="action_constants.html" class="btn btn-neutral float-left" title="Action Constants and Continuous Action Mapping" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="observation_update_verification.html" class="btn btn-neutral float-right" title="Observation Update Verification Report" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,362 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.trainers.iterative_trainer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.training.trainers.iterative_trainer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.trainers.iterative_trainer</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Iterative Algorithm Trainer for Unified Training.</span>
+
+<span class="sd">Handles iterative training logic using run_1m.py.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="IterativeAlgorithmTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.trainers.html#ztb.training.trainers.iterative_trainer.IterativeAlgorithmTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">IterativeAlgorithmTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Handles iterative algorithm training.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_manager</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize iterative trainer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config_manager: ConfigManager instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span> <span class="o">=</span> <span class="n">config_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_trading_mode_presets</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unified_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply trading mode presets to config.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            unified_config: Unified configuration</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Updated unified config</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">trading_mode</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trading_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;normal&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trading_mode</span> <span class="o">==</span> <span class="s2">&quot;scalping&quot;</span><span class="p">:</span>
+            <span class="c1"># Scalping mode presets</span>
+            <span class="n">scalping_defaults</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;feature_set&quot;</span><span class="p">:</span> <span class="s2">&quot;scalping&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;timeframe&quot;</span><span class="p">:</span> <span class="s2">&quot;15s&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.002</span><span class="p">,</span>
+                <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">1_000_000</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">scalping_defaults</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">unified_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="c1"># Update session IDs for scalping</span>
+            <span class="k">if</span> <span class="s2">&quot;scalping&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;scalping_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;session&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;correlation_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;scalping_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;correlation_id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;correlation&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="n">unified_config</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;session_id&quot;</span><span class="p">]</span>
+                <span class="n">unified_config</span><span class="p">[</span><span class="s2">&quot;correlation_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;correlation_id&quot;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Normal trading mode presets</span>
+            <span class="n">normal_defaults</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;feature_set&quot;</span><span class="p">:</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;timeframe&quot;</span><span class="p">:</span> <span class="s2">&quot;1m&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span>
+                <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">100_000</span><span class="p">,</span>
+            <span class="p">}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">normal_defaults</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+                <span class="n">unified_config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">unified_config</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_run_1m_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unified_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Build command line arguments for run_1m.py.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            unified_config: Unified configuration</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of command line arguments</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;run_1m.py&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;--data-path&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_path&quot;</span><span class="p">,</span> <span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--correlation-id&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;iterative_session&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--total-timesteps&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)),</span>
+            <span class="s2">&quot;--iterations&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;iterations&quot;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)),</span>
+            <span class="s2">&quot;--steps-per-iteration&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;steps_per_iteration&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)),</span>
+            <span class="s2">&quot;--feature-set&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_set&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--timeframe&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;timeframe&quot;</span><span class="p">,</span> <span class="s2">&quot;1m&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--checkpoint-dir&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;checkpoints&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--checkpoint-interval&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint_interval&quot;</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)),</span>
+            <span class="s2">&quot;--log-dir&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;log_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;logs&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--model-dir&quot;</span><span class="p">,</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;models&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;--reward-trade-frequency-penalty&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_trade_frequency_penalty&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)),</span>
+            <span class="s2">&quot;--reward-trade-frequency-halflife&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_trade_frequency_halflife&quot;</span><span class="p">,</span> <span class="mf">12.0</span><span class="p">)),</span>
+            <span class="s2">&quot;--reward-trade-cooldown-steps&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_trade_cooldown_steps&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+            <span class="s2">&quot;--reward-trade-cooldown-penalty&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_trade_cooldown_penalty&quot;</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)),</span>
+            <span class="s2">&quot;--reward-max-consecutive-trades&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_max_consecutive_trades&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+            <span class="s2">&quot;--reward-consecutive-trade-penalty&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_consecutive_trade_penalty&quot;</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)),</span>
+            <span class="s2">&quot;--transaction-cost&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)),</span>
+            <span class="s2">&quot;--max-position-size&quot;</span><span class="p">,</span>
+            <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)),</span>
+        <span class="p">]</span>
+
+        <span class="c1"># Add optional arguments</span>
+        <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dry_run&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--dry-run&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;force&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--force&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_streaming&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+                <span class="s2">&quot;--enable-streaming&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;--stream-batch-size&quot;</span><span class="p">,</span>
+                <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;stream_batch_size&quot;</span><span class="p">,</span> <span class="mi">256</span><span class="p">)),</span>
+            <span class="p">])</span>
+
+        <span class="n">max_features</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_features&quot;</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_optimization&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_features&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_features</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--max-features&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">max_features</span><span class="p">)])</span>
+
+        <span class="n">data_rows_limit</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_rows_limit&quot;</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_optimization&quot;</span><span class="p">,</span> <span class="p">{})</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_rows_limit&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">data_rows_limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="s2">&quot;--data-rows-limit&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">data_rows_limit</span><span class="p">)])</span>
+
+        <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;offline_mode&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;--offline-mode&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">args</span>
+
+<div class="viewcode-block" id="IterativeAlgorithmTrainer.train">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.trainers.html#ztb.training.trainers.iterative_trainer.IterativeAlgorithmTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unified_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Execute iterative training.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            unified_config: Unified configuration</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Training result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Apply trading mode presets</span>
+        <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_trading_mode_presets</span><span class="p">(</span><span class="n">unified_config</span><span class="p">)</span>
+
+        <span class="c1"># Long-running operation confirmation</span>
+        <span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">total_timesteps</span> <span class="o">&gt;=</span> <span class="mi">100_000</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;force&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.long_running_confirm</span><span class="w"> </span><span class="kn">import</span> <span class="n">confirm_long_running_operation</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">confirm_long_running_operation</span><span class="p">(</span>
+                <span class="n">operation_name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;PPO Training (</span><span class="si">{</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;iterative_session&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                <span class="n">estimated_time</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;~</span><span class="si">{</span><span class="n">total_timesteps</span><span class="w"> </span><span class="o">//</span><span class="w"> </span><span class="mi">1000</span><span class="si">}</span><span class="s2">k steps, several hours&quot;</span><span class="p">,</span>
+                <span class="n">risk_description</span><span class="o">=</span><span class="s2">&quot;High CPU/memory usage, large log files, potential system slowdown&quot;</span><span class="p">,</span>
+                <span class="n">message</span><span class="o">=</span><span class="s2">&quot;This will train a PPO model for a long time. Continue?&quot;</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Training cancelled by user&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Dry run mode</span>
+        <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dry_run&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Dry run: would train with session_id </span><span class="si">{</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;iterative_session&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Data path: </span><span class="si">{</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;data_path&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ml-dataset-enhanced.csv&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total timesteps: </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Setup validation complete&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># Import and use run_1m logic</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.scripts.run_1m</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span> <span class="k">as</span> <span class="n">run_1m_main</span>
+
+        <span class="c1"># Set up arguments for run_1m</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">argv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_run_1m_args</span><span class="p">(</span><span class="n">unified_config</span><span class="p">)</span>
+
+        <span class="c1"># DEBUG: Print sys.argv</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sys.argv = </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;feature-set value = </span><span class="si">{</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;feature_set&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;full&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># DEBUG: Print final config and sys.argv before calling run_1m_main</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final config feature_set = </span><span class="si">{</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;feature_set&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final sys.argv = </span><span class="si">{</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_json_default</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Path</span><span class="p">):</span>
+                <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">value</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="n">serialized_config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">unified_config</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">_json_default</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ZTB_UNIFIED_ITERATIVE_CONFIG&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">serialized_config</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">run_1m_main</span><span class="p">()</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;ZTB_UNIFIED_ITERATIVE_CONFIG&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

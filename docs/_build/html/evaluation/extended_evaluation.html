@@ -1,0 +1,544 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extended Evaluation Framework &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Extended Evaluation Framework</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/evaluation/extended_evaluation.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="extended-evaluation-framework">
+<h1>Extended Evaluation Framework<a class="headerlink" href="#extended-evaluation-framework" title="Link to this heading"></a></h1>
+<p>このドキュメントでは、取引戦略の包括的な評価を行うための拡張評価モジュールを説明します。これらのモジュールは、基本的なバックテスト結果を超えて、戦略の堅牢性、安定性、リスク特性を多角的に分析します。</p>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>拡張評価フレームワークは以下の7つの評価モジュールで構成されています：</p>
+<ol class="arabic simple">
+<li><p><strong>Regime Evaluation</strong> - 市場レジーム別のパフォーマンス分析</p></li>
+<li><p><strong>Walkforward Analysis</strong> - 時系列クロスバリデーション</p></li>
+<li><p><strong>Cost Sensitivity Analysis</strong> - 取引コスト感度分析</p></li>
+<li><p><strong>Drawdown Recovery Analysis</strong> - ドローダウン回復分析</p></li>
+<li><p><strong>Feature Importance Analysis</strong> - 特徴量重要度分析</p></li>
+<li><p><strong>Bootstrap Confidence Intervals</strong> - 統計的信頼区間推定</p></li>
+<li><p><strong>Stress Testing</strong> - 極端な市場条件での耐性テスト</p></li>
+</ol>
+</section>
+<section id="id2">
+<h2>各モジュールの詳細<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="regime-evaluation-regime-evaluation-py">
+<h3>1. Regime Evaluation (<code class="docutils literal notranslate"><span class="pre">regime_evaluation.py</span></code>)<a class="headerlink" href="#regime-evaluation-regime-evaluation-py" title="Link to this heading"></a></h3>
+<p>市場の状態（トレンド、レンジ、高ボラティリティ、低ボラティリティ）別に戦略のパフォーマンスを分析します。</p>
+<section id="id3">
+<h4>主な機能<a class="headerlink" href="#id3" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>市場レジームの自動分類</p></li>
+<li><p>レジーム別パフォーマンス指標計算</p></li>
+<li><p>レジーム遷移分析</p></li>
+<li><p>適応性評価</p></li>
+</ul>
+</section>
+<section id="id4">
+<h4>使用例<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>regime_evaluation.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/regime
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h4>出力<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>レジーム別Sharpe Ratio、勝率、最大ドローダウン</p></li>
+<li><p>レジーム遷移確率行列</p></li>
+<li><p>パフォーマンス比較チャート</p></li>
+</ul>
+</section>
+</section>
+<section id="walkforward-analysis-walkforward-analysis-py">
+<h3>2. Walkforward Analysis (<code class="docutils literal notranslate"><span class="pre">walkforward_analysis.py</span></code>)<a class="headerlink" href="#walkforward-analysis-walkforward-analysis-py" title="Link to this heading"></a></h3>
+<p>時系列データを尊重したクロスバリデーションを行い、戦略の安定性を評価します。</p>
+<section id="id6">
+<h4>主な機能<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>ローリングウィンドウ分析</p></li>
+<li><p>パフォーマンスの時系列安定性評価</p></li>
+<li><p>過学習検出</p></li>
+<li><p>アンカーリングバイアス回避</p></li>
+</ul>
+</section>
+<section id="id7">
+<h4>使用例<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>walkforward_analysis.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--window-size<span class="w"> </span><span class="m">252</span><span class="w"> </span>--step-size<span class="w"> </span><span class="m">21</span><span class="w"> </span>--output-dir<span class="w"> </span>results/walkforward
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h4>出力<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>各ウィンドウのパフォーマンス指標</p></li>
+<li><p>安定性指標（標準偏差、変動係数）</p></li>
+<li><p>時系列パフォーマンスチャート</p></li>
+</ul>
+</section>
+</section>
+<section id="cost-sensitivity-analysis-cost-sensitivity-py">
+<h3>3. Cost Sensitivity Analysis (<code class="docutils literal notranslate"><span class="pre">cost_sensitivity.py</span></code>)<a class="headerlink" href="#cost-sensitivity-analysis-cost-sensitivity-py" title="Link to this heading"></a></h3>
+<p>取引コスト（スプレッド、手数料、市場影響）が戦略パフォーマンスに与える影響を分析します。</p>
+<section id="id9">
+<h4>主な機能<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>コスト感度曲線の生成</p></li>
+<li><p>ブレークイーブンポイント計算</p></li>
+<li><p>コスト最適化推奨</p></li>
+<li><p>スケーラビリティ評価</p></li>
+</ul>
+</section>
+<section id="id10">
+<h4>使用例<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>cost_sensitivity.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--trades-path<span class="w"> </span>data/trades.csv<span class="w"> </span>--cost-range<span class="w"> </span><span class="m">0</span>.0001<span class="w"> </span><span class="m">0</span>.01<span class="w"> </span>--output-dir<span class="w"> </span>results/cost
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h4>出力<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>コスト vs パフォーマンス曲線</p></li>
+<li><p>感度指標（1bpsあたりの影響）</p></li>
+<li><p>最適コスト範囲推奨</p></li>
+</ul>
+</section>
+</section>
+<section id="drawdown-recovery-analysis-drawdown-recovery-py">
+<h3>4. Drawdown Recovery Analysis (<code class="docutils literal notranslate"><span class="pre">drawdown_recovery.py</span></code>)<a class="headerlink" href="#drawdown-recovery-analysis-drawdown-recovery-py" title="Link to this heading"></a></h3>
+<p>ドローダウンからの回復パターンとリスク特性を分析します。</p>
+<section id="id12">
+<h4>主な機能<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>ドローダウン期間の特定</p></li>
+<li><p>回復時間と効率の計算</p></li>
+<li><p>リスク指標（Pain Index、Recovery Ratio）</p></li>
+<li><p>回復パターン分析</p></li>
+</ul>
+</section>
+<section id="id13">
+<h4>使用例<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>drawdown_recovery.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--min-drawdown<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span>--output-dir<span class="w"> </span>results/drawdown
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h4>出力<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>ドローダウン統計（頻度、深度、回復時間）</p></li>
+<li><p>回復効率指標</p></li>
+<li><p>リスクメトリクスサマリー</p></li>
+</ul>
+</section>
+</section>
+<section id="feature-importance-analysis-feature-importance-py">
+<h3>5. Feature Importance Analysis (<code class="docutils literal notranslate"><span class="pre">feature_importance.py</span></code>)<a class="headerlink" href="#feature-importance-analysis-feature-importance-py" title="Link to this heading"></a></h3>
+<p>機械学習モデルの特徴量重要度をSHAPとPermutation Importanceで分析します。</p>
+<section id="id15">
+<h4>主な機能<a class="headerlink" href="#id15" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>SHAP値計算</p></li>
+<li><p>Permutation Importance分析</p></li>
+<li><p>特徴量安定性評価</p></li>
+<li><p>モデル解釈可能性向上</p></li>
+</ul>
+</section>
+<section id="id16">
+<h4>使用例<a class="headerlink" href="#id16" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>feature_importance.py<span class="w"> </span>--model-path<span class="w"> </span>models/trained_model.pkl<span class="w"> </span>--data-path<span class="w"> </span>data/features.csv<span class="w"> </span>--target-column<span class="w"> </span>target<span class="w"> </span>--output-dir<span class="w"> </span>results/features
+</pre></div>
+</div>
+</section>
+<section id="id17">
+<h4>出力<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>SHAP重要度ランキング</p></li>
+<li><p>Permutation重要度比較</p></li>
+<li><p>特徴量安定性指標</p></li>
+</ul>
+</section>
+</section>
+<section id="bootstrap-confidence-intervals-bootstrap-confidence-py">
+<h3>6. Bootstrap Confidence Intervals (<code class="docutils literal notranslate"><span class="pre">bootstrap_confidence.py</span></code>)<a class="headerlink" href="#bootstrap-confidence-intervals-bootstrap-confidence-py" title="Link to this heading"></a></h3>
+<p>ブートストラップ法により、パフォーマンス指標の統計的信頼区間を推定します。</p>
+<section id="id18">
+<h4>主な機能<a class="headerlink" href="#id18" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>パフォーマンス指標の信頼区間計算</p></li>
+<li><p>BCa法によるバイアス補正</p></li>
+<li><p>統計的有意性評価</p></li>
+<li><p>不確実性定量化</p></li>
+</ul>
+</section>
+<section id="id19">
+<h4>使用例<a class="headerlink" href="#id19" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>bootstrap_confidence.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--trades-path<span class="w"> </span>data/trades.csv<span class="w"> </span>--n-bootstrap<span class="w"> </span><span class="m">1000</span><span class="w"> </span>--output-dir<span class="w"> </span>results/bootstrap
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h4>出力<a class="headerlink" href="#id20" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>各指標の信頼区間（パーセンタイル法/BCa法）</p></li>
+<li><p>標準誤差とバイアス推定</p></li>
+<li><p>ブートストラップ分布ヒストグラム</p></li>
+</ul>
+</section>
+</section>
+<section id="stress-testing-stress-test-py">
+<h3>7. Stress Testing (<code class="docutils literal notranslate"><span class="pre">stress_test.py</span></code>)<a class="headerlink" href="#stress-testing-stress-test-py" title="Link to this heading"></a></h3>
+<p>極端な市場条件での戦略耐性を評価します。</p>
+<section id="id21">
+<h4>主な機能<a class="headerlink" href="#id21" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>複数ストレスシナリオ実行</p></li>
+<li><p>生存確率計算</p></li>
+<li><p>極端イベント耐性評価</p></li>
+<li><p>リスク限界点特定</p></li>
+</ul>
+</section>
+<section id="id22">
+<h4>デフォルトシナリオ<a class="headerlink" href="#id22" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Market Crash</strong>: 突然の市場暴落と回復</p></li>
+<li><p><strong>Volatility Spike</strong>: ボラティリティ急上昇</p></li>
+<li><p><strong>Liquidity Crisis</strong>: 流動性枯渇</p></li>
+<li><p><strong>Black Swan</strong>: 5σ以上の極端イベント</p></li>
+<li><p><strong>Correlation Breakdown</strong>: 相関崩壊</p></li>
+</ul>
+</section>
+<section id="id23">
+<h4>使用例<a class="headerlink" href="#id23" title="Link to this heading"></a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>stress_test.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/stress
+</pre></div>
+</div>
+</section>
+<section id="id24">
+<h4>出力<a class="headerlink" href="#id24" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>各シナリオでのパフォーマンス劣化</p></li>
+<li><p>生存確率分析</p></li>
+<li><p>ストレス耐性ランキング</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id25">
+<h2>統合評価ワークフロー<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>基本ワークフロー<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. 市場適応性評価</span>
+python<span class="w"> </span>regime_evaluation.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 2. 安定性検証</span>
+python<span class="w"> </span>walkforward_analysis.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 3. コスト影響評価</span>
+python<span class="w"> </span>cost_sensitivity.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--trades-path<span class="w"> </span>data/trades.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 4. 回復力分析</span>
+python<span class="w"> </span>drawdown_recovery.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 5. モデル解釈（ML戦略の場合）</span>
+python<span class="w"> </span>feature_importance.py<span class="w"> </span>--model-path<span class="w"> </span>models/model.pkl<span class="w"> </span>--data-path<span class="w"> </span>data/features.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 6. 統計的信頼性</span>
+python<span class="w"> </span>bootstrap_confidence.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="c1"># 7. 極端条件耐性</span>
+python<span class="w"> </span>stress_test.py<span class="w"> </span>--returns-path<span class="w"> </span>data/returns.csv<span class="w"> </span>--output-dir<span class="w"> </span>results/
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>自動化スクリプト<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1"># run_full_evaluation.sh</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Starting comprehensive strategy evaluation...&quot;</span>
+
+<span class="c1"># 並列実行可能な評価</span>
+python<span class="w"> </span>regime_evaluation.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--output-dir<span class="w"> </span>results/<span class="w"> </span><span class="p">&amp;</span>
+python<span class="w"> </span>walkforward_analysis.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--output-dir<span class="w"> </span>results/<span class="w"> </span><span class="p">&amp;</span>
+python<span class="w"> </span>drawdown_recovery.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--output-dir<span class="w"> </span>results/<span class="w"> </span><span class="p">&amp;</span>
+<span class="nb">wait</span>
+
+<span class="c1"># 順次実行が必要な評価</span>
+python<span class="w"> </span>cost_sensitivity.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--trades-path<span class="w"> </span><span class="nv">$2</span><span class="w"> </span>--output-dir<span class="w"> </span>results/
+python<span class="w"> </span>bootstrap_confidence.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--output-dir<span class="w"> </span>results/
+python<span class="w"> </span>stress_test.py<span class="w"> </span>--returns-path<span class="w"> </span><span class="nv">$1</span><span class="w"> </span>--output-dir<span class="w"> </span>results/
+
+<span class="k">if</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-f<span class="w"> </span><span class="s2">&quot;models/model.pkl&quot;</span><span class="w"> </span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="k">then</span>
+<span class="w">    </span>python<span class="w"> </span>feature_importance.py<span class="w"> </span>--model-path<span class="w"> </span>models/model.pkl<span class="w"> </span>--data-path<span class="w"> </span><span class="nv">$3</span><span class="w"> </span>--output-dir<span class="w"> </span>results/
+<span class="k">fi</span>
+
+<span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;Evaluation complete. Check results/ directory for detailed reports.&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id28">
+<h2>評価指標の解釈<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="id29">
+<h3>パフォーマンス指標<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Sharpe Ratio</strong>: リスク調整後リターン。&gt;1.0が良好</p></li>
+<li><p><strong>Win Rate</strong>: 勝ちトレードの割合。&gt;50%が最低基準</p></li>
+<li><p><strong>Profit Factor</strong>: 総利益/総損失。&gt;1.2が良好</p></li>
+<li><p><strong>Maximum Drawdown</strong>: 最大損失割合。&lt;20%が理想</p></li>
+</ul>
+</section>
+<section id="id30">
+<h3>リスク指標<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>VaR (95%)</strong>: 95%信頼区間での最大損失</p></li>
+<li><p><strong>CVaR (95%)</strong>: VaRを超える損失の期待値</p></li>
+<li><p><strong>Tail Ratio</strong>: 分布の裾の比率。正規分布では1.0</p></li>
+</ul>
+</section>
+<section id="id31">
+<h3>安定性指標<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Regime Stability</strong>: 異なる市場条件での一貫性</p></li>
+<li><p><strong>Walkforward Consistency</strong>: 時系列安定性</p></li>
+<li><p><strong>Bootstrap CI Width</strong>: 推定の不確実性</p></li>
+</ul>
+</section>
+</section>
+<section id="id32">
+<h2>カスタム評価モジュールの作成<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="id33">
+<h3>基本構造<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomAnalysisResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;カスタム分析結果&quot;&quot;&quot;</span>
+    <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">confidence_interval</span><span class="p">:</span> <span class="nb">tuple</span>
+    <span class="n">additional_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomAnalyzer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;カスタム分析クラス&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CustomAnalysisResult</span><span class="p">:</span>
+        <span class="c1"># 分析ロジックを実装</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">CustomAnalysisResult</span><span class="p">):</span>
+        <span class="c1"># 可視化を実装</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">export_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">CustomAnalysisResult</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="c1"># エクスポートを実装</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</section>
+<section id="id34">
+<h3>統合方法<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>分析クラスを実装</p></li>
+<li><p>コマンドラインインターフェースを追加</p></li>
+<li><p>ドキュメントを更新</p></li>
+<li><p>ワークフローに組み込み</p></li>
+</ol>
+</section>
+</section>
+<section id="id35">
+<h2>結果の統合レポート<a class="headerlink" href="#id35" title="Link to this heading"></a></h2>
+<section id="id36">
+<h3>総合評価ダッシュボード<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># evaluation_dashboard.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">EvaluationDashboard</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">results_dir</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_all_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;全評価結果を読み込み&quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">json_file</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*_results.json&quot;</span><span class="p">):</span>
+            <span class="n">module_name</span> <span class="o">=</span> <span class="n">json_file</span><span class="o">.</span><span class="n">stem</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_results&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">results</span><span class="p">[</span><span class="n">module_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_summary_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;総合評価レポート生成&quot;&quot;&quot;</span>
+        <span class="n">report</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;# Strategy Evaluation Summary Report</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">]</span>
+
+        <span class="c1"># 各モジュールのサマリー</span>
+        <span class="k">for</span> <span class="n">module</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;## </span><span class="si">{</span><span class="n">module</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39; &#39;</span><span class="p">)</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># 主要指標の抽出とレポート</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_extract_key_metrics</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 総合評価</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;## Overall Assessment</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_generate_overall_assessment</span><span class="p">(</span><span class="n">results</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id37">
+<h2>トラブルシューティング<a class="headerlink" href="#id37" title="Link to this heading"></a></h2>
+<section id="id38">
+<h3>よくある問題<a class="headerlink" href="#id38" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>メモリ不足</strong>: 大規模データセットではチャンク処理を検討</p></li>
+<li><p><strong>計算時間</strong>: ブートストラップサンプル数を減らすか並列処理を検討</p></li>
+<li><p><strong>依存関係</strong>: SHAPなどのオプションライブラリはpip installでインストール</p></li>
+<li><p><strong>データ形式</strong>: CSV/JSON形式の統一を確保</p></li>
+</ol>
+</section>
+<section id="id39">
+<h3>パフォーマンス最適化<a class="headerlink" href="#id39" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>計算集約的な分析は並列実行</p></li>
+<li><p>大規模データはサンプリング</p></li>
+<li><p>結果のキャッシュを活用</p></li>
+<li><p>メモリ使用量の監視</p></li>
+</ul>
+</section>
+</section>
+<section id="id40">
+<h2>拡張性<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
+<p>このフレームワークは以下の点で拡張可能です：</p>
+<ul class="simple">
+<li><p><strong>新しい評価指標</strong>: ドメイン固有の指標追加</p></li>
+<li><p><strong>カスタムストレスシナリオ</strong>: 業界特化のリスク要因</p></li>
+<li><p><strong>機械学習統合</strong>: 自動化された戦略最適化</p></li>
+<li><p><strong>リアルタイム監視</strong>: ライブ取引での継続評価</p></li>
+<li><p><strong>マルチアセット対応</strong>: 複数資産クラスの統合分析</p></li>
+</ul>
+<p>各モジュールの詳細なAPIドキュメントは、各Pythonファイルのdocstringを参照してください。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

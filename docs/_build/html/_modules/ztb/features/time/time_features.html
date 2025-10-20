@@ -1,0 +1,392 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.time.time_features &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../features.html">ztb.features</a></li>
+          <li class="breadcrumb-item"><a href="../time.html">ztb.features.time</a></li>
+      <li class="breadcrumb-item active">ztb.features.time.time_features</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.time.time_features</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">time_features.py</span>
+<span class="sd">Time-based features for intraday and interday analysis</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+
+
+<div class="viewcode-block" id="compute_time_monthly_cycle">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_monthly_cycle">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Monthly_Cycle&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_monthly_cycle</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Monthly cycle progress (0-1, where 1 is end of month)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_monthly_cycle&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_time_quarterly_cycle">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_quarterly_cycle">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Quarterly_Cycle&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_quarterly_cycle</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Quarterly cycle progress (0-1, where 1 is end of quarter)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_quarterly_cycle&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_time_session">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_session">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Session&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_session</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Market Session (0=pre-market, 1=regular, 2=after-hours)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_session&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_time_day_of_week">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_day_of_week">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Day_of_Week&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_day_of_week</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Day of Week (0=Monday, 6=Sunday)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_day_of_week&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_time_hour_of_day">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_hour_of_day">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Hour_of_Day&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_hour_of_day</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Hour of Day (0-23)&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_time_volatility_adjustment">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.compute_time_volatility_adjustment">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;Time_Volatility_Adjustment&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_time_volatility_adjustment</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Time-based Volatility Adjustment Factor&quot;&quot;&quot;</span>
+    <span class="n">extended_features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">extended_features</span><span class="p">[</span><span class="s2">&quot;time_volatility_adjustment&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_time_features_extended">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.calculate_time_features_extended">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_time_features_extended</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate extended time-based features including:</span>
+<span class="sd">    - Market session identification</span>
+<span class="sd">    - Day of week effects</span>
+<span class="sd">    - Hour of day patterns</span>
+<span class="sd">    - Time-based volatility adjustments</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: DataFrame with datetime index</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with time-based features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="c1"># Extract time components</span>
+    <span class="n">datetime_index</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="n">datetime_index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span>
+    <span class="k">elif</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">datetime_index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Create synthetic time patterns</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="c1"># Create synthetic datetime index (daily data)</span>
+        <span class="n">base_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">)</span>
+        <span class="n">datetime_index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span>
+            <span class="n">base_date</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">365</span> <span class="o">*</span> <span class="mi">10</span><span class="p">),</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;D&quot;</span>
+        <span class="p">)</span>  <span class="c1"># Limit to 10 years</span>
+
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_day_of_week&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">datetime_index</span><span class="o">.</span><span class="n">dayofweek</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">datetime_index</span><span class="p">,</span> <span class="s2">&quot;dayofweek&quot;</span><span class="p">)</span>
+        <span class="k">else</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">dayofweek</span>
+    <span class="p">)</span>  <span class="c1"># 0=Monday, 6=Sunday</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">hour</span>  <span class="c1"># 0-23</span>
+
+    <span class="c1"># Market session identification (assuming 9:30-16:00 is regular hours)</span>
+    <span class="c1"># For crypto/stocks, adjust these hours as needed</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datetime_index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="n">minutes_since_midnight</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">minute</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">minutes_since_midnight</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">minute</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Define session boundaries (adjust for your market)</span>
+    <span class="n">pre_market_start</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 00:00</span>
+    <span class="n">regular_start</span> <span class="o">=</span> <span class="mi">9</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="mi">30</span>  <span class="c1"># 09:30</span>
+    <span class="n">regular_end</span> <span class="o">=</span> <span class="mi">16</span> <span class="o">*</span> <span class="mi">60</span>  <span class="c1"># 16:00</span>
+
+    <span class="c1"># Vectorized session identification using np.select for better performance</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_session&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="n">minutes_since_midnight</span> <span class="o">&gt;=</span> <span class="n">pre_market_start</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">minutes_since_midnight</span> <span class="o">&lt;</span> <span class="n">regular_start</span><span class="p">),</span>
+            <span class="p">(</span><span class="n">minutes_since_midnight</span> <span class="o">&gt;=</span> <span class="n">regular_start</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">minutes_since_midnight</span> <span class="o">&lt;=</span> <span class="n">regular_end</span><span class="p">),</span>
+        <span class="p">],</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>  <span class="c1"># Pre-market, Regular hours</span>
+        <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>  <span class="c1"># After hours</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Time-based volatility adjustment</span>
+    <span class="c1"># Higher volatility often occurs at market open/close and certain days</span>
+    <span class="n">day_volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_day_of_week&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">]),</span>  <span class="c1"># Monday, Friday</span>
+        <span class="mf">1.2</span><span class="p">,</span>  <span class="c1"># Higher volatility</span>
+        <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># Normal volatility</span>
+    <span class="p">)</span>
+
+    <span class="n">hour_volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">]),</span>  <span class="c1"># Market open/close hours</span>
+        <span class="mf">1.3</span><span class="p">,</span>  <span class="c1"># Higher volatility</span>
+        <span class="mf">1.0</span><span class="p">,</span>  <span class="c1"># Normal volatility</span>
+    <span class="p">)</span>
+
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_volatility_adjustment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">day_volatility</span> <span class="o">*</span> <span class="n">hour_volatility</span>
+
+    <span class="c1"># Additional time features</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datetime_index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_month&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">month</span>  <span class="c1"># 1-12</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">quarter</span>  <span class="c1"># 1-4</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># For Series, use dt accessor</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_month&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span>  <span class="c1"># 1-12</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarter&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">quarter</span>  <span class="c1"># 1-4</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_is_weekend&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_day_of_week&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+    <span class="c1"># Business day vs weekend</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_is_business_day&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_day_of_week&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+        <span class="nb">int</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Time since market open (normalized 0-1 within session)</span>
+    <span class="n">session_minutes</span> <span class="o">=</span> <span class="n">minutes_since_midnight</span> <span class="o">-</span> <span class="n">regular_start</span>
+    <span class="n">session_length</span> <span class="o">=</span> <span class="n">regular_end</span> <span class="o">-</span> <span class="n">regular_start</span>
+    <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_session_progress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_session&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># Regular session</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">session_minutes</span> <span class="o">/</span> <span class="n">session_length</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="mi">0</span><span class="p">,</span>  <span class="c1"># Outside regular session</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Monthly cycle progress (0-1, where 1 is end of month)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datetime_index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="n">days_in_month</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">days_in_month</span>
+        <span class="n">day_of_month</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">day</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_monthly_cycle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">day_of_month</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">days_in_month</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Fallback for non-DatetimeIndex</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_monthly_cycle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="c1"># Quarterly cycle progress (0-1, where 1 is end of quarter)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">datetime_index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="n">quarter_start_month</span> <span class="o">=</span> <span class="p">((</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarter&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">quarter_end_month</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarter&quot;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">3</span>
+
+        <span class="c1"># Calculate approximate days in quarter (simplified)</span>
+        <span class="c1"># Q1: 90-91 days, Q2: 91 days, Q3: 92 days, Q4: 92 days</span>
+        <span class="n">quarter_days</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarter&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">map</span><span class="p">({</span><span class="mi">1</span><span class="p">:</span> <span class="mi">91</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="mi">91</span><span class="p">,</span> <span class="mi">3</span><span class="p">:</span> <span class="mi">92</span><span class="p">,</span> <span class="mi">4</span><span class="p">:</span> <span class="mi">92</span><span class="p">})</span>
+
+        <span class="c1"># Calculate day of quarter (simplified approximation)</span>
+        <span class="n">month_in_quarter</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_month&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">quarter_start_month</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">days_before_current_month</span> <span class="o">=</span> <span class="p">(</span><span class="n">month_in_quarter</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mf">30.44</span>  <span class="c1"># Average days per month</span>
+        <span class="n">day_of_month</span> <span class="o">=</span> <span class="n">datetime_index</span><span class="o">.</span><span class="n">day</span>
+        <span class="n">day_of_quarter</span> <span class="o">=</span> <span class="n">days_before_current_month</span> <span class="o">+</span> <span class="n">day_of_month</span>
+
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarterly_cycle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">day_of_quarter</span> <span class="o">/</span> <span class="n">quarter_days</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Fallback for non-DatetimeIndex</span>
+        <span class="n">result</span><span class="p">[</span><span class="s2">&quot;time_quarterly_cycle&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="time_feature_summary">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.time.html#ztb.features.time.time_features.time_feature_summary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">time_feature_summary</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a dictionary summarizing each time-based feature.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;time_session&quot;</span><span class="p">:</span> <span class="s2">&quot;Market session (0=pre-market, 1=regular, 2=after-hours)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_day_of_week&quot;</span><span class="p">:</span> <span class="s2">&quot;Day of week (0=Monday, 6=Sunday)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_hour_of_day&quot;</span><span class="p">:</span> <span class="s2">&quot;Hour of day (0-23)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_month&quot;</span><span class="p">:</span> <span class="s2">&quot;Month of year (1-12)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_quarter&quot;</span><span class="p">:</span> <span class="s2">&quot;Quarter of year (1-4)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_monthly_cycle&quot;</span><span class="p">:</span> <span class="s2">&quot;Monthly cycle progress (0-1, where 1 is end of month)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_quarterly_cycle&quot;</span><span class="p">:</span> <span class="s2">&quot;Quarterly cycle progress (0-1, where 1 is end of quarter)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_is_weekend&quot;</span><span class="p">:</span> <span class="s2">&quot;Is weekend (1=yes, 0=no)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_is_business_day&quot;</span><span class="p">:</span> <span class="s2">&quot;Is business day (1=yes, 0=no)&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_volatility_adjustment&quot;</span><span class="p">:</span> <span class="s2">&quot;Time-based volatility multiplier&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;time_session_progress&quot;</span><span class="p">:</span> <span class="s2">&quot;Progress through trading session (0-1)&quot;</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Simple test</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">500</span>
+
+    <span class="c1"># Create datetime index</span>
+    <span class="n">base_date</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s2">&quot;2023-01-01&quot;</span><span class="p">)</span>
+    <span class="n">datetime_index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">base_date</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;H&quot;</span><span class="p">)</span>  <span class="c1"># Hourly data</span>
+
+    <span class="c1"># Generate test OHLC data</span>
+    <span class="n">test_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;high&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;low&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">75</span><span class="p">,</span> <span class="mi">175</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+            <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
+        <span class="p">},</span>
+        <span class="n">index</span><span class="o">=</span><span class="n">datetime_index</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Ensure high &gt;= close &gt;= low</span>
+    <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;high&quot;</span><span class="p">],</span> <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+    <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">],</span> <span class="n">test_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">])</span>
+
+    <span class="c1"># Calculate features</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">calculate_time_features_extended</span><span class="p">(</span><span class="n">test_data</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Time-based Features:&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Feature columns: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NaN count per column:</span><span class="se">\n</span><span class="si">{</span><span class="n">features</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Summary</span>
+    <span class="n">summary</span> <span class="o">=</span> <span class="n">time_feature_summary</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Feature summary:</span><span class="se">\n</span><span class="si">{</span><span class="n">summary</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

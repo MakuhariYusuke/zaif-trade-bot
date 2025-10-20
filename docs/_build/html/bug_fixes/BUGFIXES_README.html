@@ -1,0 +1,741 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐛 Bug Fixes Documentation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🐛 Bug Fixes Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bug_fixes/BUGFIXES_README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="bug-fixes-documentation">
+<h1>🐛 Bug Fixes Documentation<a class="headerlink" href="#bug-fixes-documentation" title="Link to this heading"></a></h1>
+<p>このディレクトリには、zaif-trade-botプロジェクトで発見された全バグの詳細ドキュメントが含まれています。</p>
+<hr class="docutils" />
+<section id="overview">
+<h2>📊 Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p><strong>Total Bugs Discovered:</strong> 45<br />
+<strong>Review Cycles Completed:</strong> 10 (+ 1 self-review)<br />
+<strong>Production Blockers:</strong> 0 (all fixed!) 🎉<br />
+<strong>All Bugs Fixed:</strong> 43/45 (96%)<br />
+<strong>Open Issues:</strong> 2/45 (4%) - Bug #27 has workaround, Bug #46 is technical debt</p>
+</section>
+<hr class="docutils" />
+<section id="review-cycle-history">
+<h2>🔍 Review Cycle History<a class="headerlink" href="#review-cycle-history" title="Link to this heading"></a></h2>
+<section id="cycle-1-first-external-review">
+<h3>Cycle 1: First External Review<a class="headerlink" href="#cycle-1-first-external-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Reviewer:</strong> External Coding Agent #1<br />
+<strong>Bugs Found:</strong> 4</p>
+<ol class="arabic simple">
+<li><p><strong>Bug #1:</strong> <code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code> not enforced in action masking ✅ FIXED</p></li>
+<li><p><strong>Bug #2:</strong> Ensemble <code class="docutils literal notranslate"><span class="pre">mask_provider</span></code> not enforced ✅ FIXED</p></li>
+<li><p><strong>Bug #3:</strong> Missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks()</span></code> helper utility ✅ FIXED</p></li>
+<li><p><strong>Bug #4:</strong> Training memory not cleaned up ✅ FIXED</p></li>
+</ol>
+<p><strong>Status:</strong> All fixed and tested</p>
+</section>
+<hr class="docutils" />
+<section id="cycle-2-second-external-review">
+<h3>Cycle 2: Second External Review<a class="headerlink" href="#cycle-2-second-external-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Reviewer:</strong> External Coding Agent #2<br />
+<strong>Bugs Found:</strong> 4</p>
+<ol class="arabic simple" start="5">
+<li><p><strong>Bug #5:</strong> EnsemblePredictor mask enforcement incomplete ✅ FIXED</p></li>
+<li><p><strong>Bug #6:</strong> <code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code> + <code class="docutils literal notranslate"><span class="pre">allow_reverse</span></code> interaction bug ✅ FIXED</p></li>
+<li><p><strong>Bug #7:</strong> Trainer memory leak in error paths ✅ FIXED</p></li>
+<li><p><strong>Bug #8:</strong> Test effectiveness issues ✅ FIXED</p></li>
+</ol>
+<p><strong>Status:</strong> All fixed and tested</p>
+</section>
+<hr class="docutils" />
+<section id="cycle-3-deep-investigation-post-8-bugs">
+<h3>Cycle 3: Deep Investigation (Post-8-Bugs)<a class="headerlink" href="#cycle-3-deep-investigation-post-8-bugs" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Context:</strong> User requested deeper review after finding 8 bugs<br />
+<strong>Bugs Found:</strong> 5</p>
+<ol class="arabic simple" start="9">
+<li><p><strong>Bug #9:</strong> <code class="docutils literal notranslate"><span class="pre">simple_backtest.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #10:</strong> <code class="docutils literal notranslate"><span class="pre">debug_model_predictions.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #11:</strong> <code class="docutils literal notranslate"><span class="pre">regime_evaluation.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #12:</strong> <code class="docutils literal notranslate"><span class="pre">test_paper_trading.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #13:</strong> Reward calculation uses <code class="docutils literal notranslate"><span class="pre">unrealized_pnl</span></code> instead of <code class="docutils literal notranslate"><span class="pre">trade_pnl</span></code> ✅ FIXED</p></li>
+</ol>
+<p><strong>Key Discovery:</strong> Critical reward calculation bug found</p>
+<p><strong>Status:</strong> All fixed</p>
+</section>
+<hr class="docutils" />
+<section id="cycle-4-fourth-external-review">
+<h3>Cycle 4: Fourth External Review<a class="headerlink" href="#cycle-4-fourth-external-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Reviewer:</strong> External Coding Agent #3<br />
+<strong>Context:</strong> User requested thoroughness (“徹底的にバグを潰しましょう”)<br />
+<strong>Bugs Found:</strong> 7</p>
+<ol class="arabic simple" start="14">
+<li><p><strong>Bug #14:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #15:</strong> <code class="docutils literal notranslate"><span class="pre">evaluate.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #16:</strong> <code class="docutils literal notranslate"><span class="pre">backtest_adapters.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #17:</strong> <code class="docutils literal notranslate"><span class="pre">perm_importance.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #18:</strong> <code class="docutils literal notranslate"><span class="pre">rolling_evaluation.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #19:</strong> <code class="docutils literal notranslate"><span class="pre">ensemble_aggregator.py</span></code> missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code> ✅ FIXED</p></li>
+<li><p><strong>Bug #20:</strong> Architectural issues with <code class="docutils literal notranslate"><span class="pre">env=None</span></code> pattern ✅ DOCUMENTED</p></li>
+</ol>
+<p><strong>Critical:</strong> Found bugs in PRODUCTION code (<code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code>)</p>
+<p><strong>Status:</strong> All fixed</p>
+</section>
+<hr class="docutils" />
+<section id="self-review-while-preparing-fifth-review">
+<h3>Self-Review: While Preparing Fifth Review<a class="headerlink" href="#self-review-while-preparing-fifth-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Context:</strong> Agent conducted self-review while preparing external review request<br />
+<strong>Bugs Found:</strong> 3</p>
+<ol class="arabic simple" start="21">
+<li><p><strong>Bug #21:</strong> Stop-loss forced close PnL not captured for reward ✅ FIXED</p></li>
+<li><p><strong>Bug #22:</strong> NaN/Inf observation values not validated ✅ FIXED</p></li>
+<li><p><strong>Bug #23:</strong> All-false action mask edge case not handled ✅ FIXED</p></li>
+</ol>
+<p><strong>Status:</strong> All fixed</p>
+</section>
+<hr class="docutils" />
+<section id="cycle-5-dual-external-review">
+<h3>Cycle 5: Dual External Review<a class="headerlink" href="#cycle-5-dual-external-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2024<br />
+<strong>Strategy:</strong> User sent same review request to TWO independent AI agents simultaneously<br />
+<strong>Reviewers:</strong> Reviewer A (state synchronization focus), Reviewer B (business logic focus)<br />
+<strong>Bugs Found:</strong> 3 CRITICAL production blockers</p>
+<ol class="arabic simple" start="24">
+<li><p><strong>Bug #24:</strong> ✅ Stop-loss forced close doesn’t update trade timestamp → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #25:</strong> ✅ Live trading PnL calculation always returns zero → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #26:</strong> ✅ Live trading cannot achieve flat position → <strong>FIXED</strong></p></li>
+</ol>
+<p><strong>Status:</strong> ✅ ALL FIXED + Architectural Improvements Implemented</p>
+<p><strong>Improvements:</strong> <a class="reference internal" href="#REVIEW_IMPROVEMENTS.md"><span class="xref myst">REVIEW_IMPROVEMENTS.md</span></a></p>
+</section>
+<hr class="docutils" />
+<section id="cycle-6-dual-external-review">
+<h3>Cycle 6: Dual External Review<a class="headerlink" href="#cycle-6-dual-external-review" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2025-10-08<br />
+<strong>Strategy:</strong> Same dual review approach as Cycle 5<br />
+<strong>Reviewers:</strong> Two independent AI agents<br />
+<strong>Bugs Found:</strong> 5 new bugs (4 CRITICAL, 1 HIGH)</p>
+<ol class="arabic simple" start="27">
+<li><p><strong>Bug #27:</strong> ⚠️ LiveTrader bypasses action masks → <strong>PARTIAL FIX</strong> (workaround documented)</p></li>
+<li><p><strong>Bug #28:</strong> ✅ LivePositionManager position size mismatch → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #29:</strong> ✅ Live PnL drops entry fees → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #30:</strong> ✅ Entry fees not reflected in reward → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #31:</strong> ✅ Live trading blocks short position opening → <strong>FIXED</strong></p></li>
+</ol>
+<p><strong>Status:</strong> ✅ 4/5 FIXED, 1 with documented workaround</p>
+<p><strong>Fixes:</strong> <a class="reference internal" href="#SIXTH_REVIEW_FIXES.md"><span class="xref myst">SIXTH_REVIEW_FIXES.md</span></a></p>
+</section>
+<hr class="docutils" />
+<section id="cycle-7-9-incremental-bug-fixes">
+<h3>Cycle 7-9: Incremental Bug Fixes<a class="headerlink" href="#cycle-7-9-incremental-bug-fixes" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2025<br />
+<strong>Context:</strong> Post-Cycle 6 follow-up fixes<br />
+<strong>Bugs Found:</strong> 12 new bugs</p>
+<p>32-43. <strong>Various fixes:</strong> Memory management, configuration consistency, test improvements ✅ FIXED</p>
+<p><strong>Status:</strong> All fixed</p>
+<p><strong>Fixes:</strong> <a class="reference internal" href="#SEVENTH_TO_NINTH_REVIEW_FIXES.md"><span class="xref myst">SEVENTH_TO_NINTH_REVIEW_FIXES.md</span></a></p>
+</section>
+<hr class="docutils" />
+<section id="cycle-10-final-dual-external-review-most-recent">
+<h3>Cycle 10: Final Dual External Review (MOST RECENT)<a class="headerlink" href="#cycle-10-final-dual-external-review-most-recent" title="Link to this heading"></a></h3>
+<p><strong>Date:</strong> 2025-10-08<br />
+<strong>Strategy:</strong> Comprehensive final review with dual reviewers (Codex + Copilot)<br />
+<strong>Reviewers:</strong> Codex (syntax/functionality), Copilot (architecture/maintainability)<br />
+<strong>Bugs Found:</strong> 4 new bugs (1 CRITICAL, 1 HIGH, 2 MEDIUM)</p>
+<ol class="arabic simple" start="44">
+<li><p><strong>Bug #44:</strong> ✅ Test coverage gap in <code class="docutils literal notranslate"><span class="pre">test_live_trade.py</span></code> → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #45:</strong> ✅ Configuration inconsistency in nested <code class="docutils literal notranslate"><span class="pre">env_config</span></code> → <strong>FIXED</strong></p></li>
+<li><p><strong>Bug #46:</strong> ⚠️ Floating-point comparison patterns → <strong>TECHNICAL DEBT</strong> (documented)</p></li>
+<li><p><strong>Bug #47:</strong> ✅ Magic numbers for trading actions → <strong>FIXED</strong></p></li>
+</ol>
+<p><strong>Status:</strong> ✅ 3/4 FIXED, 1 documented as technical debt</p>
+<p><strong>Fixes:</strong> <a class="reference internal" href="#TENTH_REVIEW_FIXES.md"><span class="xref myst">TENTH_REVIEW_FIXES.md</span></a></p>
+<p><strong>Additional Work:</strong></p>
+<ul class="simple">
+<li><p>Created <code class="docutils literal notranslate"><span class="pre">ztb/trading/constants.py</span></code> for action constants</p></li>
+<li><p>Updated 3 core files to use named constants</p></li>
+<li><p>Improved test quality with actual logic testing</p></li>
+<li><p>Version bump: 3.5.0 → 3.6.0</p></li>
+</ul>
+<p><strong>Follow-up (v3.6.1):</strong></p>
+<ul class="simple">
+<li><p>Extended magic number elimination to 3 additional files:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">stratified_sampler.py</span></code>: 5 locations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">adv_norm.py</span></code>: 10 locations</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">decode.py</span></code>: 1 location</p></li>
+</ul>
+</li>
+<li><p>Total: 6 files updated, 27+ magic numbers eliminated</p></li>
+<li><p>Version bump: 3.6.0 → 3.6.1</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="recent-bug-fixes-2025-10-08">
+<h2>✅ Recent Bug Fixes (2025-10-08)<a class="headerlink" href="#recent-bug-fixes-2025-10-08" title="Link to this heading"></a></h2>
+<section id="bug-44-test-coverage-gap-fixed">
+<h3>Bug #44: Test Coverage Gap ✅ FIXED<a class="headerlink" href="#bug-44-test-coverage-gap-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">tests/unit/trading/live/test_live_trade.py</span></code></p></li>
+<li><p><strong>Severity:</strong> HIGH</p></li>
+<li><p><strong>Impact:</strong> Tests contained only <code class="docutils literal notranslate"><span class="pre">assert</span> <span class="pre">True</span></code> - no actual logic verification</p></li>
+<li><p><strong>Discovered By:</strong> Codex (Tenth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="#TENTH_REVIEW_FIXES.md"><span class="xref myst">TENTH_REVIEW_FIXES.md</span></a></p></li>
+<li><p><strong>Fix:</strong> Replaced documentation tests with actual logic tests using <code class="docutils literal notranslate"><span class="pre">unittest.mock</span></code></p></li>
+<li><p><strong>Test:</strong> ✅ 7/7 tests passing with real assertions</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+Tests now verify actual <code class="docutils literal notranslate"><span class="pre">_should_trade_sell_bias()</span></code> behavior with mock dependencies.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-45-configuration-inconsistency-fixed">
+<h3>Bug #45: Configuration Inconsistency ✅ FIXED<a class="headerlink" href="#bug-45-configuration-inconsistency-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">configs/training/ppo_balanced_mem_optimized.json</span></code></p></li>
+<li><p><strong>Severity:</strong> HIGH</p></li>
+<li><p><strong>Impact:</strong> Nested <code class="docutils literal notranslate"><span class="pre">env_config</span></code> had stale values (transaction_cost: 0.0005, reward_scaling: 1.0)</p></li>
+<li><p><strong>Discovered By:</strong> Codex (Tenth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="#TENTH_REVIEW_FIXES.md"><span class="xref myst">TENTH_REVIEW_FIXES.md</span></a></p></li>
+<li><p><strong>Fix:</strong> Updated <code class="docutils literal notranslate"><span class="pre">env_config</span></code> to match top-level settings (0.001, 6.0)</p></li>
+<li><p><strong>Test:</strong> ✅ Configuration consistency verified</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+All training configs now have consistent parameters across top-level and nested fields.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-47-magic-numbers-eliminated-fixed">
+<h3>Bug #47: Magic Numbers Eliminated ✅ FIXED<a class="headerlink" href="#bug-47-magic-numbers-eliminated-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Files:</strong> <code class="docutils literal notranslate"><span class="pre">position_manager.py</span></code>, <code class="docutils literal notranslate"><span class="pre">reward_calculator.py</span></code>, <code class="docutils literal notranslate"><span class="pre">environment.py</span></code></p></li>
+<li><p><strong>Severity:</strong> LOW (Code Quality)</p></li>
+<li><p><strong>Impact:</strong> Hard-coded 0, 1, 2 for trading actions reduced maintainability</p></li>
+<li><p><strong>Discovered By:</strong> Copilot (Tenth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="#TENTH_REVIEW_FIXES.md"><span class="xref myst">TENTH_REVIEW_FIXES.md</span></a></p></li>
+<li><p><strong>Fix:</strong> Created <code class="docutils literal notranslate"><span class="pre">ztb/trading/constants.py</span></code> with <code class="docutils literal notranslate"><span class="pre">ACTION_HOLD</span></code>, <code class="docutils literal notranslate"><span class="pre">ACTION_BUY</span></code>, <code class="docutils literal notranslate"><span class="pre">ACTION_SELL</span></code></p></li>
+<li><p><strong>Test:</strong> ✅ All files updated successfully</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+Named constants improve code readability and make index order changes safer.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-24-forced-close-timestamp-not-updated-fixed">
+<h3>Bug #24: Forced Close Timestamp Not Updated ✅ FIXED<a class="headerlink" href="#bug-24-forced-close-timestamp-not-updated-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py:669-684,</span> <span class="pre">783,</span> <span class="pre">789-791</span></code></p></li>
+<li><p><strong>Severity:</strong> CRITICAL</p></li>
+<li><p><strong>Impact:</strong> <code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code> bypassed after stop-loss</p></li>
+<li><p><strong>Discovered By:</strong> Reviewer A (Fifth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="BUG_24_FORCED_CLOSE_TIMESTAMP.html"><span class="std std-doc">BUG_24_FORCED_CLOSE_TIMESTAMP.md</span></a></p></li>
+<li><p><strong>Fix:</strong> Created <code class="docutils literal notranslate"><span class="pre">_sync_from_position_manager()</span></code> method to centralize state synchronization</p></li>
+<li><p><strong>Test:</strong> ✅ Test 6: Forced close timestamp sync</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+Stop-loss forced closes now correctly sync <code class="docutils literal notranslate"><span class="pre">_last_trade_step</span></code> using centralized synchronization method.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-25-live-trading-pnl-always-zero-fixed">
+<h3>Bug #25: Live Trading PnL Always Zero ✅ FIXED<a class="headerlink" href="#bug-25-live-trading-pnl-always-zero-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:880-953</span></code></p></li>
+<li><p><strong>Severity:</strong> CRITICAL - PRODUCTION BLOCKER</p></li>
+<li><p><strong>Impact:</strong> ALL PnL calculations return 0, risk controls non-functional</p></li>
+<li><p><strong>Discovered By:</strong> Reviewer B (Fifth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="BUG_25_LIVE_TRADE_PNL.html"><span class="std std-doc">BUG_25_LIVE_TRADE_PNL.md</span></a></p></li>
+<li><p><strong>Fix:</strong> Integrated PositionManager into LiveTrader + added PnL validation</p></li>
+<li><p><strong>Test:</strong> ✅ Test 7: Live trader PnL calculation</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+PositionManager integration eliminates entry_price overwrite bug. PnL validation detects calculation errors.</p>
+</section>
+<hr class="docutils" />
+<section id="bug-26-live-trading-cant-go-flat-fixed">
+<h3>Bug #26: Live Trading Can’t Go Flat ✅ FIXED<a class="headerlink" href="#bug-26-live-trading-cant-go-flat-fixed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:880-953</span></code></p></li>
+<li><p><strong>Severity:</strong> CRITICAL - PRODUCTION BLOCKER</p></li>
+<li><p><strong>Impact:</strong> Emergency stops don’t work, positions always reverse instead of closing</p></li>
+<li><p><strong>Discovered By:</strong> Reviewer B (Fifth Review)</p></li>
+<li><p><strong>Document:</strong> <a class="reference internal" href="BUG_26_LIVE_TRADE_FLAT_POSITION.html"><span class="std std-doc">BUG_26_LIVE_TRADE_FLAT_POSITION.md</span></a></p></li>
+<li><p><strong>Fix:</strong> PositionManager integration ensures correct position closure behavior</p></li>
+<li><p><strong>Test:</strong> ✅ Test 8: Live trader position closure</p></li>
+</ul>
+<p><strong>Quick Summary:</strong>
+PositionManager integration fixes position reversal bug. Positions now correctly close to flat.</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="updated-statistics">
+<h2>📊 Updated Statistics<a class="headerlink" href="#updated-statistics" title="Link to this heading"></a></h2>
+<p><strong>Total Bugs Discovered:</strong> 26<br />
+<strong>Review Cycles Completed:</strong> 5 (+ 1 self-review)<br />
+<strong>Production Blockers:</strong> 0 (all fixed!)<br />
+<strong>All Bugs Fixed:</strong> 26/26 (100%) ✅<br />
+<strong>Open Critical Bugs:</strong> 0/26 (0%) 🎉</p>
+<p><strong>Test Coverage:</strong> 8/8 tests passing (100%)</p>
+</section>
+<hr class="docutils" />
+<section id="file-index">
+<h2>📁 File Index<a class="headerlink" href="#file-index" title="Link to this heading"></a></h2>
+<section id="analysis-documents">
+<h3>Analysis Documents<a class="headerlink" href="#analysis-documents" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong><a class="reference internal" href="#FIFTH_REVIEW_DUAL_ANALYSIS.md"><span class="xref myst">FIFTH_REVIEW_DUAL_ANALYSIS.md</span></a></strong> - Comprehensive analysis of dual external review findings</p></li>
+<li><p><strong><a class="reference internal" href="#REVIEWER_A_FINDINGS.md"><span class="xref myst">REVIEWER_A_FINDINGS.md</span></a></strong> - Detailed findings from Reviewer A (state synchronization expert)</p></li>
+<li><p><strong><a class="reference internal" href="#REVIEWER_B_FINDINGS.md"><span class="xref myst">REVIEWER_B_FINDINGS.md</span></a></strong> - Detailed findings from Reviewer B (business logic expert)</p></li>
+</ul>
+</section>
+<section id="individual-bug-reports">
+<h3>Individual Bug Reports<a class="headerlink" href="#individual-bug-reports" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong><a class="reference internal" href="BUG_24_FORCED_CLOSE_TIMESTAMP.html"><span class="std std-doc">BUG_24_FORCED_CLOSE_TIMESTAMP.md</span></a></strong> - 🔴 OPEN - Stop-loss timestamp sync bug</p></li>
+<li><p><strong><a class="reference internal" href="BUG_25_LIVE_TRADE_PNL.html"><span class="std std-doc">BUG_25_LIVE_TRADE_PNL.md</span></a></strong> - 🔴 OPEN - Live trading PnL calculation bug</p></li>
+<li><p><strong><a class="reference internal" href="BUG_26_LIVE_TRADE_FLAT_POSITION.html"><span class="std std-doc">BUG_26_LIVE_TRADE_FLAT_POSITION.md</span></a></strong> - 🔴 OPEN - Live trading position management bug</p></li>
+</ul>
+</section>
+<section id="historical-documents">
+<h3>Historical Documents<a class="headerlink" href="#historical-documents" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">../SELF_REVIEW_BUGS.md</span></code></strong> - Bugs #21-23 found during self-review</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">../FIFTH_REVIEW_REQUEST.md</span></code></strong> - Review request document sent to external agents</p></li>
+<li><p><strong>Previous review cycles documented in main repo</strong></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="bug-statistics">
+<h2>📈 Bug Statistics<a class="headerlink" href="#bug-statistics" title="Link to this heading"></a></h2>
+<section id="by-category">
+<h3>By Category<a class="headerlink" href="#by-category" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>State Synchronization:</strong> 4 bugs (Bugs #1, #6, #13, #24)</p></li>
+<li><p><strong>Action Masking:</strong> 11 bugs (Bugs #2, #3, #5, #9-12, #14-19)</p></li>
+<li><p><strong>Position Management:</strong> 3 bugs (Bugs #21, #25, #26)</p></li>
+<li><p><strong>Memory Management:</strong> 2 bugs (Bugs #4, #7)</p></li>
+<li><p><strong>Data Validation:</strong> 2 bugs (Bugs #22, #23)</p></li>
+<li><p><strong>Architecture:</strong> 4 bugs (Bugs #8, #20, and implicit in #25, #26)</p></li>
+</ul>
+</section>
+<section id="by-severity">
+<h3>By Severity<a class="headerlink" href="#by-severity" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>CRITICAL:</strong> 6 bugs (Bugs #13, #14, #21, #24, #25, #26)</p></li>
+<li><p><strong>HIGH:</strong> 12 bugs (Bugs #1-12, #15-20)</p></li>
+<li><p><strong>MEDIUM:</strong> 8 bugs (Bugs #22, #23, others)</p></li>
+</ul>
+</section>
+<section id="by-discovery-source">
+<h3>By Discovery Source<a class="headerlink" href="#by-discovery-source" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>External Reviews:</strong> 23 bugs (88%)</p></li>
+<li><p><strong>Self-Review:</strong> 3 bugs (12%)</p></li>
+<li><p><strong>User Reports:</strong> 0 bugs (0%)</p></li>
+</ul>
+</section>
+<section id="by-status">
+<h3>By Status<a class="headerlink" href="#by-status" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Fixed:</strong> 26 bugs (100%) ✅</p></li>
+<li><p><strong>Open:</strong> 0 bugs (0%) 🎉</p></li>
+<li><p><strong>Production Blockers:</strong> 0 bugs (all fixed!)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="root-causes-analysis">
+<h2>🎯 Root Causes Analysis<a class="headerlink" href="#root-causes-analysis" title="Link to this heading"></a></h2>
+<section id="primary-root-cause-incomplete-ppo-maskableppo-migration">
+<h3>Primary Root Cause: Incomplete PPO → MaskablePPO Migration<a class="headerlink" href="#primary-root-cause-incomplete-ppo-maskableppo-migration" title="Link to this heading"></a></h3>
+<p><strong>Affected Bugs:</strong> #2, #3, #5, #9-12, #14-20 (15 bugs = 58%)</p>
+<p>The project migrated from Stable-Baselines3 PPO to sb3-contrib MaskablePPO but didn’t update all code paths:</p>
+<ul class="simple">
+<li><p>Created <code class="docutils literal notranslate"><span class="pre">predict_with_masks()</span></code> utility during bug fixing</p></li>
+<li><p>11 evaluation/backtest scripts were using raw <code class="docutils literal notranslate"><span class="pre">model.predict()</span></code></p></li>
+<li><p>Production code (<code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code>) was using raw <code class="docutils literal notranslate"><span class="pre">model.predict()</span></code></p></li>
+<li><p>Ensemble predictor wasn’t enforcing mask providers</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="secondary-root-cause-state-duplication">
+<h3>Secondary Root Cause: State Duplication<a class="headerlink" href="#secondary-root-cause-state-duplication" title="Link to this heading"></a></h3>
+<p><strong>Affected Bugs:</strong> #1, #6, #13, #21, #24 (5 bugs = 19%)</p>
+<p>Environment and PositionManager both track position state:</p>
+<ul class="simple">
+<li><p>Manual synchronization is error-prone</p></li>
+<li><p>Easy to forget new properties (timestamp tracking, PnL)</p></li>
+<li><p>Synchronization happens in multiple places</p></li>
+<li><p>No centralized sync method</p></li>
+</ul>
+<p><strong>Fix Strategy:</strong> See Reviewer A recommendations (centralized sync or eliminate duplication)</p>
+</section>
+<hr class="docutils" />
+<section id="tertiary-root-cause-code-duplication">
+<h3>Tertiary Root Cause: Code Duplication<a class="headerlink" href="#tertiary-root-cause-code-duplication" title="Link to this heading"></a></h3>
+<p><strong>Affected Bugs:</strong> #25, #26 (2 bugs = 8%, but CRITICAL)</p>
+<p>Live trading reimplements position management instead of reusing PositionManager:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">live_trade.py._update_position()</span></code> has different semantics than <code class="docutils literal notranslate"><span class="pre">PositionManager.execute_action()</span></code></p></li>
+<li><p>PnL calculation duplicated with bugs</p></li>
+<li><p>Position transition logic duplicated with bugs</p></li>
+<li><p>No shared test suite</p></li>
+</ul>
+<p><strong>Fix Strategy:</strong> See Reviewer B recommendations (reuse PositionManager)</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="recommended-fix-priority">
+<h2>🔧 Recommended Fix Priority<a class="headerlink" href="#recommended-fix-priority" title="Link to this heading"></a></h2>
+<section id="sprint-1-immediate-this-week">
+<h3>Sprint 1 (IMMEDIATE - This Week)<a class="headerlink" href="#sprint-1-immediate-this-week" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P0 - Production Blockers</p>
+<ol class="arabic simple">
+<li><p><strong>Fix Bug #25</strong> (live trading PnL)</p>
+<ul class="simple">
+<li><p>Implement Option 1 (save old_entry_price) as quick fix</p></li>
+<li><p>Add regression test</p></li>
+<li><p>Verify PnL calculations work</p></li>
+</ul>
+</li>
+<li><p><strong>Fix Bug #26</strong> (live trading flat position)</p>
+<ul class="simple">
+<li><p>Implement Option 2 (reuse PositionManager) - also fixes #25 permanently</p></li>
+<li><p>Add regression tests for all position transitions</p></li>
+<li><p>Test emergency stop functionality</p></li>
+</ul>
+</li>
+<li><p><strong>Fix Bug #24</strong> (forced close timestamp)</p>
+<ul class="simple">
+<li><p>Add two missing synchronization lines</p></li>
+<li><p>Add regression test</p></li>
+<li><p>Verify min_holding_period enforced after forced closes</p></li>
+</ul>
+</li>
+<li><p><strong>Integration Testing</strong></p>
+<ul class="simple">
+<li><p>Test all three fixes together</p></li>
+<li><p>Paper trading simulation</p></li>
+<li><p>Manual testing of all scenarios</p></li>
+</ul>
+</li>
+</ol>
+<p><strong>Deliverable:</strong> Production-ready live trading code</p>
+</section>
+<hr class="docutils" />
+<section id="sprint-2-short-term-next-sprint">
+<h3>Sprint 2 (SHORT-TERM - Next Sprint)<a class="headerlink" href="#sprint-2-short-term-next-sprint" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P1 - Architecture</p>
+<ol class="arabic simple">
+<li><p><strong>Centralize State Synchronization</strong></p>
+<ul class="simple">
+<li><p>Implement <code class="docutils literal notranslate"><span class="pre">_sync_from_position_manager()</span></code> helper</p></li>
+<li><p>Refactor all sync points to use helper</p></li>
+<li><p>Add integration tests</p></li>
+</ul>
+</li>
+<li><p><strong>Eliminate Code Duplication</strong></p>
+<ul class="simple">
+<li><p>Ensure all trading surfaces use PositionManager</p></li>
+<li><p>Create shared test suite for position management</p></li>
+<li><p>Document PositionManager as universal component</p></li>
+</ul>
+</li>
+<li><p><strong>Add Comprehensive Testing</strong></p>
+<ul class="simple">
+<li><p>Property-based tests for PnL calculations</p></li>
+<li><p>Integration tests for all trading surfaces</p></li>
+<li><p>Emergency stop tests</p></li>
+<li><p>Position transition matrix tests</p></li>
+</ul>
+</li>
+</ol>
+<p><strong>Deliverable:</strong> Robust, maintainable position management architecture</p>
+</section>
+<hr class="docutils" />
+<section id="sprint-3-long-term-future">
+<h3>Sprint 3+ (LONG-TERM - Future)<a class="headerlink" href="#sprint-3-long-term-future" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P2 - Quality &amp; Prevention</p>
+<ol class="arabic simple">
+<li><p><strong>Eliminate State Duplication</strong></p>
+<ul class="simple">
+<li><p>Remove Environment’s shadow state</p></li>
+<li><p>Use PositionManager as single source of truth</p></li>
+<li><p>Large refactoring, comprehensive testing</p></li>
+</ul>
+</li>
+<li><p><strong>Implement ActionMaskProvider Architecture</strong></p>
+<ul class="simple">
+<li><p>Create lightweight mask service</p></li>
+<li><p>Enable production/backtest code to provide real masks</p></li>
+<li><p>Eliminate <code class="docutils literal notranslate"><span class="pre">env=None</span></code> pattern</p></li>
+</ul>
+</li>
+<li><p><strong>Add Production Safety Layers</strong></p>
+<ul class="simple">
+<li><p>PnL validation middleware</p></li>
+<li><p>Position state consistency checks</p></li>
+<li><p>Automated integration testing</p></li>
+<li><p>CI/CD improvements</p></li>
+</ul>
+</li>
+</ol>
+<p><strong>Deliverable:</strong> Production-grade, bulletproof trading system</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="verification-checklist">
+<h2>✅ Verification Checklist<a class="headerlink" href="#verification-checklist" title="Link to this heading"></a></h2>
+<p>Before marking bugs as fixed:</p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Code changes implemented</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Regression tests added</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> All existing tests pass</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Manual testing completed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Code review by 2+ developers</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Documentation updated</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Integration tests pass</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> No performance regression</p></li>
+</ul>
+<p>Before production deployment:</p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> All 3 critical bugs fixed (Bugs #24, #25, #26)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> All regression tests passing</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Integration tests passing</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Paper trading simulation successful</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Emergency stop procedures tested</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Monitoring/alerting configured</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Production deployment plan reviewed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Rollback plan prepared</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="key-lessons-learned">
+<h2>📚 Key Lessons Learned<a class="headerlink" href="#key-lessons-learned" title="Link to this heading"></a></h2>
+<section id="multiple-independent-reviews-are-essential">
+<h3>1. Multiple Independent Reviews Are Essential<a class="headerlink" href="#multiple-independent-reviews-are-essential" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Single review found 4 bugs</p></li>
+<li><p>Second review found 4 more bugs</p></li>
+<li><p><strong>Total across 5 reviews:</strong> 26 bugs</p></li>
+<li><p>Dual simultaneous reviews found complementary bugs</p></li>
+</ul>
+<p><strong>Takeaway:</strong> User’s “石橋を叩いて渡る” (extreme caution) approach was correct</p>
+</section>
+<hr class="docutils" />
+<section id="different-reviewers-find-different-bugs">
+<h3>2. Different Reviewers Find Different Bugs<a class="headerlink" href="#different-reviewers-find-different-bugs" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Reviewer A:</strong> State synchronization expert → Found Bug #24</p></li>
+<li><p><strong>Reviewer B:</strong> Business logic expert → Found Bugs #25, #26</p></li>
+<li><p>Complementary expertise essential</p></li>
+</ul>
+<p><strong>Takeaway:</strong> Seek reviewers with diverse backgrounds</p>
+</section>
+<hr class="docutils" />
+<section id="production-code-had-most-severe-bugs">
+<h3>3. Production Code Had Most Severe Bugs<a class="headerlink" href="#production-code-had-most-severe-bugs" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Simulation/training code mostly worked</p></li>
+<li><p>Evaluation scripts had mechanical bugs (missing <code class="docutils literal notranslate"><span class="pre">predict_with_masks</span></code>)</p></li>
+<li><p><strong>Production code (<code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code>) completely broken</strong></p></li>
+</ul>
+<p><strong>Takeaway:</strong> Production code deserves extra scrutiny</p>
+</section>
+<hr class="docutils" />
+<section id="architectural-debt-creates-systematic-vulnerabilities">
+<h3>4. Architectural Debt Creates Systematic Vulnerabilities<a class="headerlink" href="#architectural-debt-creates-systematic-vulnerabilities" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>State duplication → 5 synchronization bugs</p></li>
+<li><p>Code duplication → 2 critical PnL/position bugs</p></li>
+<li><p>Incomplete migration → 15 action masking bugs</p></li>
+</ul>
+<p><strong>Takeaway:</strong> Pay down architectural debt before it multiplies</p>
+</section>
+<hr class="docutils" />
+<section id="silent-bugs-are-most-dangerous">
+<h3>5. Silent Bugs Are Most Dangerous<a class="headerlink" href="#silent-bugs-are-most-dangerous" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Bugs #24, #25, #26 throw no errors</p></li>
+<li><p>Training appears to work normally</p></li>
+<li><p>Only detectable by inspection</p></li>
+<li><p>Could run for extended periods undetected</p></li>
+</ul>
+<p><strong>Takeaway:</strong> Add comprehensive validation and assertions</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="related-resources">
+<h2>🔗 Related Resources<a class="headerlink" href="#related-resources" title="Link to this heading"></a></h2>
+<section id="code-files">
+<h3>Code Files<a class="headerlink" href="#code-files" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/environment.py</span></code> - Main trading environment</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/components/position_manager.py</span></code> - Position management</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/policy_utils.py</span></code> - <code class="docutils literal notranslate"><span class="pre">predict_with_masks()</span></code> utility</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> - Production trading (HAS CRITICAL BUGS)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_bugfixes.py</span></code> - Comprehensive bug fix test suite</p></li>
+</ul>
+</section>
+<section id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">CHANGELOG.md</span></code> - Project changelog</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">README.md</span></code> - Project overview</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BACKLOG.md</span></code> - Future work</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DISCLAIMER.md</span></code> - Project disclaimers</p></li>
+</ul>
+</section>
+<section id="external-resources">
+<h3>External Resources<a class="headerlink" href="#external-resources" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>Stable-Baselines3 Documentation: <a class="reference external" href="https://stable-baselines3.readthedocs.io/">https://stable-baselines3.readthedocs.io/</a></p></li>
+<li><p>sb3-contrib MaskablePPO: <a class="reference external" href="https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html">https://sb3-contrib.readthedocs.io/en/master/modules/ppo_mask.html</a></p></li>
+<li><p>Gymnasium Environments: <a class="reference external" href="https://gymnasium.farama.org/">https://gymnasium.farama.org/</a></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="contact-support">
+<h2>📞 Contact &amp; Support<a class="headerlink" href="#contact-support" title="Link to this heading"></a></h2>
+<p>For questions about these bugs:</p>
+<ol class="arabic simple">
+<li><p>Read individual bug documentation (BUG_XX_*.md)</p></li>
+<li><p>Read reviewer findings (REVIEWER_A/B_FINDINGS.md)</p></li>
+<li><p>Read dual analysis (FIFTH_REVIEW_DUAL_ANALYSIS.md)</p></li>
+<li><p>Check test_bugfixes.py for test coverage</p></li>
+</ol>
+<p>For production deployment:</p>
+<ol class="arabic simple">
+<li><p><strong>DO NOT DEPLOY</strong> until Bugs #24, #25, #26 are fixed</p></li>
+<li><p>Follow verification checklist</p></li>
+<li><p>Complete all testing requirements</p></li>
+<li><p>Get sign-off from technical leads</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="document-status">
+<h2>📝 Document Status<a class="headerlink" href="#document-status" title="Link to this heading"></a></h2>
+<p><strong>Last Updated:</strong> 2024 (Fifth Review Cycle)<br />
+<strong>Next Review:</strong> After implementing fixes for Bugs #24-26<br />
+<strong>Maintained By:</strong> Development Team<br />
+<strong>Status:</strong> 🔴 ACTIVE - Critical bugs open, production blocked</p>
+<hr class="docutils" />
+<p><strong>⚠️ WARNING: PRODUCTION DEPLOYMENT CURRENTLY BLOCKED ⚠️</strong></p>
+<p>Live trading (<code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code>) has 3 critical bugs that make it completely unusable with real money. Do not attempt production deployment until all bugs are fixed and verified.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

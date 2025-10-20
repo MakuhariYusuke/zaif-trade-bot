@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SELL回避問題の緊急修正レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SELL回避問題の緊急修正レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bug_fixes/SELL_AVOIDANCE_EMERGENCY_FIX.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sell">
+<h1>SELL回避問題の緊急修正レポート<a class="headerlink" href="#sell" title="Link to this heading"></a></h1>
+<p><strong>日時:</strong> 2025-10-08<br />
+<strong>問題:</strong> SELL rate 1.6% → 極めて深刻なSELL回避<br />
+<strong>バージョン:</strong> 3.6.1 → 3.6.2（緊急パッチ）</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>📊 問題の詳細<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>学習結果<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>SELL Rate (avg): 1.6%  （目標: 33%）
+Lambda (final): 2.000000  （上限に張り付き）
+Constraint Active: True
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3>推定アクション分布<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>HOLD:</strong> 68.88% （推定）</p></li>
+<li><p><strong>BUY:</strong> 29.52% （推定）</p></li>
+<li><p><strong>SELL:</strong> 1.60% （実測）</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>診断結果<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>推定エントロピー:</strong> 0.6831 / 1.0986 (62.2%)</p></li>
+<li><p><strong>重症度:</strong> CRITICAL（極めて深刻）</p></li>
+<li><p><strong>状態:</strong> Lagrange制約が完全に飽和、SELL誘導に失敗</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>🔍 根本原因の分析<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="lagrange">
+<h3>1. Lagrange制約の設計問題<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Lambda上限:</strong> 2.0 → <strong>完全に飽和</strong></p></li>
+<li><p><strong>学習率η:</strong> 0.05 → 遅すぎる可能性</p></li>
+<li><p><strong>制約の強さ不足:</strong> SELL誘導に失敗</p></li>
+</ul>
+</section>
+<section id="id6">
+<h3>2. 報酬関数の問題<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>SELLアクション時に以下のペナルティが累積:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action_penalty_scale:</span> <span class="pre">0.01</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">trade_frequency_penalty:</span> <span class="pre">0.01</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">consecutive_trade_penalty:</span> <span class="pre">0.05</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">transaction_cost:</span> <span class="pre">0.001</span></code></p></li>
+</ul>
+<p>→ <strong>これらが合わさってSELLが著しく不利</strong></p>
+</section>
+<section id="action-masking">
+<h3>3. Action Maskingの影響<a class="headerlink" href="#action-masking" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">min_holding_period:</span> <span class="pre">5?</span></code> （推定）</p></li>
+<li><p>ポジション保持期間中はSELLがブロック</p></li>
+<li><p>過度に制限的な可能性</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>4. データセット/環境の問題<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>データセットの価格変動パターンがSELL不利？</p></li>
+<li><p>報酬計算でSELL時のPnLが常にマイナス？</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>🔧 適用した緊急修正<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="ppo-balanced-mem-optimized-json">
+<h3>ppo_balanced_mem_optimized.json への変更<a class="headerlink" href="#ppo-balanced-mem-optimized-json" title="Link to this heading"></a></h3>
+<section id="id9">
+<h4>1. Lagrange制約の大幅強化 ⭐最重要<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_eta&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w">           </span><span class="c1">// 学習率を2倍に</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_lambda_max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2.0</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">20.0</span><span class="p">,</span><span class="w">    </span><span class="c1">// 上限を10倍に（飽和を解消）</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_warmup_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mi">500</span><span class="w">   </span><span class="c1">// ウォームアップを短縮</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>理由:</strong></p>
+<ul class="simple">
+<li><p>Lambda=2.0で完全に飽和していた</p></li>
+<li><p>制約が弱すぎてSELLを誘導できていなかった</p></li>
+<li><p>上限を20.0にすることで十分な制約強度を確保</p></li>
+</ul>
+</section>
+<section id="id10">
+<h4>2. 報酬関数の調整（SELLインセンティブ強化）⭐最重要<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;reward_settings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">]</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">],</span><span class="w">  </span><span class="c1">// SELL報酬を2倍</span>
+<span class="w">    </span><span class="nt">&quot;action_penalty_scale&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.001</span><span class="p">,</span><span class="w">          </span><span class="c1">// ペナルティを1/10に</span>
+<span class="w">    </span><span class="nt">&quot;trade_frequency_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w">         </span><span class="c1">// 一時的に無効化</span>
+<span class="w">    </span><span class="nt">&quot;trade_cooldown_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.01</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w">          </span><span class="c1">// 一時的に無効化</span>
+<span class="w">    </span><span class="nt">&quot;consecutive_trade_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.0</span><span class="w">        </span><span class="c1">// 一時的に無効化</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>理由:</strong></p>
+<ul class="simple">
+<li><p>SELL時の報酬を2倍にしてインセンティブを強化</p></li>
+<li><p>取引ペナルティを全て無効化してSELLの障壁を除去</p></li>
+<li><p>まずSELL率を改善し、その後ペナルティを段階的に復活</p></li>
+</ul>
+</section>
+<section id="id11">
+<h4>3. 多様性の強制 ⭐重要<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span><span class="w">                    </span><span class="c1">// エントロピー係数を5倍に</span>
+<span class="w">  </span><span class="nt">&quot;enable_stratified_sampling&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="err">→</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="c1">// 層別サンプリング有効化</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>理由:</strong></p>
+<ul class="simple">
+<li><p>エントロピー係数を大幅に増やして探索を強化</p></li>
+<li><p>層別サンプリングでアクション分布を強制的にバランス</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>4. その他の設定<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;forced_balance&quot;</span><span class="p">,</span><span class="w">  </span><span class="c1">// カリキュラム維持</span>
+<span class="w">  </span><span class="nt">&quot;enable_pan&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">                    </span><span class="c1">// PAN有効</span>
+<span class="w">  </span><span class="nt">&quot;enable_probes&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">                 </span><span class="c1">// Probes有効</span>
+<span class="w">  </span><span class="nt">&quot;enable_lagrange&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">                </span><span class="c1">// Lagrange有効</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>📋 期待される効果<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="steps">
+<h3>短期目標（5000-10000 steps）<a class="headerlink" href="#steps" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ SELL rate: 1.6% → <strong>15%以上</strong></p></li>
+<li><p>✅ Lambda: 上限に張り付かない（&lt; 10.0）</p></li>
+<li><p>✅ エントロピー: 0.68 → <strong>0.8以上</strong></p></li>
+</ul>
+</section>
+<section id="id14">
+<h3>中期目標（30000 steps）<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ SELL rate: <strong>30-35%</strong> （理想の33%前後）</p></li>
+<li><p>✅ HOLD/BUY/SELL: <strong>均等分布（33/33/33）</strong></p></li>
+<li><p>✅ Lambda: 安定（1.0-5.0範囲内）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>🧪 検証手順<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="id16">
+<h3>1. 短期学習セッション実行<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 10000 stepsで効果を確認</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span>
+</pre></div>
+</div>
+</section>
+<section id="id17">
+<h3>2. 確認すべきメトリクス<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>SELL rate:</strong> 15%以上に改善されているか？</p></li>
+<li><p><strong>Lambda値:</strong> 上限（20.0）に張り付いていないか？</p></li>
+<li><p><strong>エントロピー:</strong> 0.8以上に改善されているか？</p></li>
+<li><p><strong>各アクションのadvantage:</strong> SELLが極端にマイナスになっていないか？</p></li>
+</ul>
+</section>
+<section id="id18">
+<h3>3. ログで確認すべき項目<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Final Lagrange Statistics:
+  SELL Rate (avg): ??%  ← 15%以上が目標
+  Lambda (final): ??    ← 20.0未満が目標
+  Constraint Active: True
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h3>4. デバッグ出力の追加（推奨）<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<p>以下の値をログに出力して詳細分析:</p>
+<ul class="simple">
+<li><p>SELL時の実際の報酬値</p></li>
+<li><p>アクション別のadvantage値</p></li>
+<li><p>min_holding_periodによるブロック頻度</p></li>
+<li><p>各ペナルティの寄与度</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>🔄 次のステップ<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>ステップ1: 短期検証（今すぐ実行）<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span>
+</pre></div>
+</div>
+</section>
+<section id="id22">
+<h3>ステップ2: 結果分析<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ログを分析ツールに入力</span>
+python<span class="w"> </span>scripts/analyze_training_logs_v2.py<span class="w"> </span>&lt;ログファイル&gt;
+</pre></div>
+</div>
+</section>
+<section id="id23">
+<h3>ステップ3: 段階的な調整<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p><strong>もしSELL率が改善されたら:</strong></p>
+<ol class="arabic simple">
+<li><p>ペナルティを段階的に復活</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">trade_frequency_penalty:</span> <span class="pre">0.0</span> <span class="pre">→</span> <span class="pre">0.005</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">consecutive_trade_penalty:</span> <span class="pre">0.0</span> <span class="pre">→</span> <span class="pre">0.02</span></code></p></li>
+</ul>
+</li>
+<li><p>SELL bonus を微調整</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">profit_bonus_multipliers:</span> <span class="pre">[1.0,</span> <span class="pre">1.0,</span> <span class="pre">2.0]</span> <span class="pre">→</span> <span class="pre">[1.0,</span> <span class="pre">1.0,</span> <span class="pre">1.5]</span></code></p></li>
+</ul>
+</li>
+<li><p>エントロピー係数を徐々に下げる</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ent_coef:</span> <span class="pre">0.5</span> <span class="pre">→</span> <span class="pre">0.3</span> <span class="pre">→</span> <span class="pre">0.2</span></code></p></li>
+</ul>
+</li>
+</ol>
+<p><strong>もしSELL率が改善されなかったら:</strong></p>
+<ol class="arabic simple">
+<li><p>Lambda上限をさらに引き上げ</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange_lambda_max:</span> <span class="pre">20.0</span> <span class="pre">→</span> <span class="pre">50.0</span></code></p></li>
+</ul>
+</li>
+<li><p>SELL bonusをさらに増加</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">profit_bonus_multipliers:</span> <span class="pre">[1.0,</span> <span class="pre">1.0,</span> <span class="pre">2.0]</span> <span class="pre">→</span> <span class="pre">[1.0,</span> <span class="pre">1.0,</span> <span class="pre">3.0]</span></code></p></li>
+</ul>
+</li>
+<li><p>環境設定を確認</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">min_holding_period</span></code>を1に削減</p></li>
+<li><p>データセットのSELL時PnLを調査</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>📊 適用前後の設定比較<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>Before</p></th>
+<th class="head"><p>After</p></th>
+<th class="head"><p>変更率</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lagrange_eta</span></code></p></td>
+<td><p>0.05</p></td>
+<td><p>0.1</p></td>
+<td><p><strong>+100%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lagrange_lambda_max</span></code></p></td>
+<td><p>2.0</p></td>
+<td><p>20.0</p></td>
+<td><p><strong>+900%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lagrange_warmup_steps</span></code></p></td>
+<td><p>1000</p></td>
+<td><p>500</p></td>
+<td><p>-50%</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ent_coef</span></code></p></td>
+<td><p>0.1</p></td>
+<td><p>0.5</p></td>
+<td><p><strong>+400%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">profit_bonus_multipliers[2]</span></code></p></td>
+<td><p>1.0</p></td>
+<td><p>2.0</p></td>
+<td><p><strong>+100%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">action_penalty_scale</span></code></p></td>
+<td><p>0.01</p></td>
+<td><p>0.001</p></td>
+<td><p><strong>-90%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">trade_frequency_penalty</span></code></p></td>
+<td><p>0.01</p></td>
+<td><p>0.0</p></td>
+<td><p><strong>-100%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">consecutive_trade_penalty</span></code></p></td>
+<td><p>0.05</p></td>
+<td><p>0.0</p></td>
+<td><p><strong>-100%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">enable_stratified_sampling</span></code></p></td>
+<td><p>false</p></td>
+<td><p>true</p></td>
+<td><p><strong>NEW</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>⚠️ 注意事項<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>1. 過度な矯正のリスク<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>逆にSELL biasになる可能性あり</p></li>
+<li><p>10000 stepsごとに分布を確認し、調整が必要</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>2. 学習の不安定化<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>エントロピー係数0.5は非常に高い値</p></li>
+<li><p>学習が発散する可能性に注意</p></li>
+<li><p>loss値、policy gradient normを監視</p></li>
+</ul>
+</section>
+<section id="id28">
+<h3>3. ペナルティの完全無効化<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>一時的な措置（SELL率改善まで）</p></li>
+<li><p>改善後は段階的に復活させる必要あり</p></li>
+</ul>
+</section>
+<section id="id29">
+<h3>4. 本番デプロイ前の再調整<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>現在の設定は<strong>診断用の極端な設定</strong></p></li>
+<li><p>SELL率が改善したら、バランスの取れた設定に戻す</p></li>
+<li><p>本番デプロイ前に必ず再検証</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id30">
+<h2>📝 ログ監視コマンド<a class="headerlink" href="#id30" title="Link to this heading"></a></h2>
+<section id="id31">
+<h3>リアルタイム監視<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 学習中のログをリアルタイム監視</span>
+Get-Content<span class="w"> </span>-Path<span class="w"> </span><span class="s2">&quot;training.log&quot;</span><span class="w"> </span>-Wait<span class="w"> </span><span class="p">|</span><span class="w"> </span>Select-String<span class="w"> </span><span class="s2">&quot;SELL Rate&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="tensorboard">
+<h3>TensorBoard起動<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tensorboard<span class="w"> </span>--logdir<span class="w"> </span>tensorboard
+</pre></div>
+</div>
+<p>確認すべきグラフ:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">rollout/action_dist_sell</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange/lambda</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange/sell_rate_error</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">diversity/action_entropy</span></code></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id32">
+<h2>🎯 成功基準<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="id33">
+<h3>最低限の成功基準（10000 steps）<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ SELL rate ≥ 15%</p></li>
+<li><p>✅ Lambda &lt; 15.0（上限に張り付いていない）</p></li>
+<li><p>✅ エントロピー ≥ 0.8</p></li>
+</ul>
+</section>
+<section id="id34">
+<h3>理想的な成功基準（30000 steps）<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ SELL rate: 30-35%</p></li>
+<li><p>✅ HOLD rate: 30-35%</p></li>
+<li><p>✅ BUY rate: 30-35%</p></li>
+<li><p>✅ Lambda: 1.0-5.0（安定）</p></li>
+<li><p>✅ エントロピー ≥ 0.95（ほぼ均等分布）</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>次のアクション:</strong> 短期学習セッション（10000 steps）を実行し、SELL率の改善を確認してください。</p>
+<p><strong>実行コマンド:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

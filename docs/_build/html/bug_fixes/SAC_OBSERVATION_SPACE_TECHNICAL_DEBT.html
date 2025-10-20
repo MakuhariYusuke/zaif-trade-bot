@@ -1,0 +1,194 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC Observation Space Mismatch - Technical Debt &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SAC Observation Space Mismatch - Technical Debt</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bug_fixes/SAC_OBSERVATION_SPACE_TECHNICAL_DEBT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-observation-space-mismatch-technical-debt">
+<h1>SAC Observation Space Mismatch - Technical Debt<a class="headerlink" href="#sac-observation-space-mismatch-technical-debt" title="Link to this heading"></a></h1>
+<section id="problem-description">
+<h2>Problem Description<a class="headerlink" href="#problem-description" title="Link to this heading"></a></h2>
+<p>SAC (Soft Actor-Critic) models trained in this project expect a 5-dimensional observation space, but the <code class="docutils literal notranslate"><span class="pre">TradingEnvironment</span></code> outputs 21-dimensional observations when <code class="docutils literal notranslate"><span class="pre">correlation_reduction=True</span></code> (default).</p>
+</section>
+<section id="root-cause">
+<h2>Root Cause<a class="headerlink" href="#root-cause" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>SAC models were trained with <code class="docutils literal notranslate"><span class="pre">correlation_reduction=True</span></code> in the environment configuration</p></li>
+<li><p>However, the actual observation space after correlation reduction results in 5 features</p></li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code> script uses the same environment configuration as training, but the correlation reduction logic may not be properly applied or the feature reduction results in different dimensions</p></li>
+</ul>
+</section>
+<section id="impact">
+<h2>Impact<a class="headerlink" href="#impact" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Cannot run paper trading evaluation for SAC models using <code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code></p></li>
+<li><p>SAC models cannot be properly validated in the unified paper trading framework</p></li>
+<li><p>Limits the ability to compare PPO and SAC performance on the same evaluation setup</p></li>
+</ul>
+</section>
+<section id="current-status">
+<h2>Current Status<a class="headerlink" href="#current-status" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code> has been refactored to support both PPO and SAC algorithms</p></li>
+<li><p>SAC-specific environment creation (<code class="docutils literal notranslate"><span class="pre">_create_env_sac</span></code>) attempts to disable correlation reduction with <code class="docutils literal notranslate"><span class="pre">&quot;enable_correlation_reduction&quot;:</span> <span class="pre">False</span></code></p></li>
+<li><p>However, the environment still outputs 21-dimensional observations, indicating the configuration is not taking effect</p></li>
+<li><p>Logs show <code class="docutils literal notranslate"><span class="pre">correlation_reduction:</span> <span class="pre">True</span></code> even when explicitly set to <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
+</ul>
+</section>
+<section id="investigation-notes">
+<h2>Investigation Notes<a class="headerlink" href="#investigation-notes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>The <code class="docutils literal notranslate"><span class="pre">enable_correlation_reduction</span></code> setting in environment config is not properly disabling correlation reduction</p></li>
+<li><p>Environment initialization logs show correlation reduction as enabled despite config settings</p></li>
+<li><p>Need to investigate the environment initialization flow and config processing in <code class="docutils literal notranslate"><span class="pre">HeavyTradingEnv</span></code></p></li>
+</ul>
+</section>
+<section id="required-solution">
+<h2>Required Solution<a class="headerlink" href="#required-solution" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Fix the correlation reduction configuration handling in <code class="docutils literal notranslate"><span class="pre">TradingEnvironment</span></code></p></li>
+<li><p>Ensure SAC models can use environments with matching observation spaces</p></li>
+<li><p>Verify that <code class="docutils literal notranslate"><span class="pre">correlation_reduction=False</span></code> actually results in 21-dimensional observations for SAC compatibility</p></li>
+</ul>
+</section>
+<section id="priority">
+<h2>Priority<a class="headerlink" href="#priority" title="Link to this heading"></a></h2>
+<p>Medium - Affects SAC model evaluation capabilities but does not break existing PPO functionality.</p>
+</section>
+<section id="related-files">
+<h2>Related Files<a class="headerlink" href="#related-files" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/training/scripts/paper_trade.py</span></code> - Main paper trading script</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/heavy_env/core.py</span></code> - Trading environment implementation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/trading/environment/utils/config.py</span></code> - Environment configuration</p></li>
+<li><p>Models: <code class="docutils literal notranslate"><span class="pre">models/sac_v*.zip</span></code> - Affected SAC models</p></li>
+</ul>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Investigate why <code class="docutils literal notranslate"><span class="pre">enable_correlation_reduction=False</span></code> doesn’t disable correlation reduction</p></li>
+<li><p>Fix environment config processing for correlation reduction</p></li>
+<li><p>Test SAC paper trading with corrected observation space</p></li>
+<li><p>Validate both PPO and SAC work correctly in unified framework</content>
+<parameter name="filePath">c:\Users\Admin\dev\zaif-trade-bot\bug_fixes\SAC_OBSERVATION_SPACE_TECHNICAL_DEBT.md</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

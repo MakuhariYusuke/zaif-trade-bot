@@ -1,0 +1,385 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.environment.utils.config &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.environment.utils.config</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.environment.utils.config</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Environment Configuration - EnvironmentConfig and RewardSettings.</span>
+
+<span class="sd">This module contains configuration classes for the Heavy Trading Environment.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TypedDict</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.curated_features</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_feature_set</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.config.ppo_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DEFAULT_REWARD_SCALING</span><span class="p">,</span>
+    <span class="n">DEFAULT_RISK_FREE_RATE</span><span class="p">,</span>
+    <span class="n">DEFAULT_STOP_LOSS_THRESHOLD</span><span class="p">,</span>
+    <span class="n">DEFAULT_MAX_CONSECUTIVE_TRADES</span><span class="p">,</span>
+    <span class="n">DEFAULT_MIN_HOLDING_PERIOD</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_POSITION_SOFT_CAP</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_POSITION_PENALTY_SCALE</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_POSITION_PENALTY_EXPONENT</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_INVENTORY_WINDOW</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_INVENTORY_PENALTY_SCALE</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_TRADE_COOLDOWN_STEPS</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_VOLATILITY_WINDOW</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_SHARPE_BONUS_SCALE</span><span class="p">,</span>
+    <span class="n">DEFAULT_REWARD_CLIP_VALUE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC_CONTINUOUS_THRESHOLD</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="RewardSettings">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.utils.html#ztb.trading.environment.environment.RewardSettings">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RewardSettings</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Type-safe reward settings configuration.&quot;&quot;&quot;</span>
+
+    <span class="n">position_soft_cap</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">position_penalty_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">position_penalty_exp</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">inventory_window</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">inventory_penalty_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trade_frequency_penalty</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trade_frequency_halflife</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trade_cooldown_steps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">trade_cooldown_penalty</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_consecutive_trades</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">consecutive_trade_penalty</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">volatility_window</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">volatility_penalty_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sharpe_bonus_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sortino_bonus_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">calmar_bonus_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">reward_clip_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">profit_bonus_multipliers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">enable_forced_diversity</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">custom_reward_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">balance_penalty</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">balance_penalty_tolerance</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="c1"># Optimized reward function parameters</span>
+    <span class="n">profit_weight</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">risk_weight</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">consistency_weight</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ultra_profit_multiplier</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">ultra_risk_multiplier</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="EnvironmentConfig">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.utils.html#ztb.trading.environment.environment.EnvironmentConfig">[docs]</a>
+<span class="nd">@dataclasses</span><span class="o">.</span><span class="n">dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnvironmentConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for HeavyTradingEnv with proper typing.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Core settings</span>
+    <span class="n">reward_scaling</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_SCALING</span>
+    <span class="n">transaction_cost</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">max_position_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">risk_free_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_RISK_FREE_RATE</span>
+    <span class="n">timeframe</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1m&quot;</span>
+    <span class="n">feature_set</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;full&quot;</span>
+    <span class="n">feature_names</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Explicit feature list (overrides feature_set)</span>
+    <span class="n">correlation_reduction</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">curriculum_stage</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;forced_balance&quot;</span>
+    <span class="n">feature_storage_dtype</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;float16&quot;</span>
+    <span class="n">precision_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">,</span> <span class="s2">&quot;open&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">,</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;volume&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">exchange</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;coincheck&quot;</span>
+    <span class="n">stop_loss_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_STOP_LOSS_THRESHOLD</span>
+    <span class="n">max_consecutive_trades</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_MAX_CONSECUTIVE_TRADES</span>
+    <span class="n">min_holding_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_MIN_HOLDING_PERIOD</span>
+
+    <span class="c1"># Reward settings</span>
+    <span class="n">reward_position_soft_cap</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_POSITION_SOFT_CAP</span>
+    <span class="n">reward_position_penalty_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_POSITION_PENALTY_SCALE</span>
+    <span class="n">reward_position_penalty_exponent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_POSITION_PENALTY_EXPONENT</span>
+    <span class="n">reward_inventory_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_INVENTORY_WINDOW</span>
+    <span class="n">reward_inventory_penalty_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_INVENTORY_PENALTY_SCALE</span>
+    <span class="n">reward_trade_frequency_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_TRADE_FREQUENCY_PENALTY</span>
+    <span class="n">reward_trade_frequency_halflife</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_TRADE_FREQUENCY_HALFLIFE</span>
+    <span class="n">reward_trade_cooldown_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_TRADE_COOLDOWN_STEPS</span>
+    <span class="n">reward_trade_cooldown_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_TRADE_COOLDOWN_PENALTY</span>
+    <span class="n">reward_max_consecutive_trades</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_MAX_CONSECUTIVE_TRADES</span>
+    <span class="n">reward_consecutive_trade_penalty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_CONSECUTIVE_TRADE_PENALTY</span>
+    <span class="n">reward_volatility_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_VOLATILITY_WINDOW</span>
+    <span class="n">reward_volatility_penalty_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_VOLATILITY_PENALTY_SCALE</span>
+    <span class="n">reward_sharpe_bonus_scale</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_SHARPE_BONUS_SCALE</span>
+    <span class="n">reward_clip_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_REWARD_CLIP_VALUE</span>
+    <span class="n">enable_forced_diversity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    
+    <span class="c1"># 🔧 CRITICAL FIX: 現実的な資金設定</span>
+    <span class="c1"># Bitcoin価格 ≈ 18,000,000円 を考慮した設定</span>
+    <span class="c1"># - 訓練用: 200,000円 (0.01 BTC程度購入可能、実口座の10-20倍で学習)</span>
+    <span class="c1"># - 実取引用: 少額対応可能 (1 mBTC = 0.001 BTC ≈ 18,000円)</span>
+    <span class="c1"># - 旧デフォルト: 1,000,000円では max_position_size=1.0 (1800万円) で取引不可能だった</span>
+    <span class="n">initial_portfolio_value</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">200_000.0</span>
+    
+    <span class="n">reward_profit_bonus_multipliers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">default_factory</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]</span>
+    <span class="p">)</span>
+    <span class="n">reward_settings</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+        <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]]</span>
+    <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># Memory and performance settings</span>
+    <span class="n">memory_logging_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">memory_log_interval_steps</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_action_history</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span>
+    
+    <span class="c1"># Observation normalization</span>
+    <span class="n">use_standardized_observations</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># Use StandardScaler for feature normalization</span>
+    
+    <span class="c1"># Action space configuration</span>
+    <span class="n">use_continuous_actions</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># True for SAC, False for PPO</span>
+    <span class="n">target_feature_count</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Desired observation feature count when reducing correlations</span>
+    <span class="n">enable_action_masking</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>   <span class="c1"># Only for discrete actions (PPO)</span>
+    <span class="n">continuous_to_discrete_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">SAC_CONTINUOUS_THRESHOLD</span>  <span class="c1"># Threshold for SAC continuous→discrete conversion</span>
+
+    <span class="c1"># Trading behavior settings</span>
+    <span class="n">allow_reverse</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>  <span class="c1"># If False, SELL from Long/BUY from Short only closes position (no immediate reverse)</span>
+    <span class="n">enforce_reverse_cooldown</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># If True, min_holding_period also applies to reversal entries</span>
+    <span class="n">random_start</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># If True, episodes start at random positions in the data</span>
+
+<div class="viewcode-block" id="EnvironmentConfig.from_dict">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.utils.html#ztb.trading.environment.environment.EnvironmentConfig.from_dict">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dict</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">config_dict</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span>
+            <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]]</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;EnvironmentConfig&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create config from dictionary, with defaults for missing values.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">config_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="p">()</span>
+
+        <span class="c1"># Convert dictionary to config, handling type conversions</span>
+        <span class="n">config_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">fields</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">config_dict</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">config_dict</span><span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+                <span class="c1"># Basic type conversion for common cases</span>
+                <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="s2">&quot;enable_forced_diversity&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;allow_reverse&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;enforce_reverse_cooldown&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;random_start&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;use_continuous_actions&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;enable_action_masking&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;use_standardized_observations&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;correlation_reduction&quot;</span><span class="p">,</span>
+                <span class="p">]</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+                    <span class="n">value</span><span class="p">,</span> <span class="nb">bool</span>
+                <span class="p">):</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_as_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="k">elif</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="s2">&quot;max_consecutive_trades&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_inventory_window&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_trade_cooldown_steps&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_max_consecutive_trades&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_volatility_window&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;target_feature_count&quot;</span><span class="p">,</span>
+                <span class="p">]</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                        <span class="k">pass</span>  <span class="c1"># Keep original value</span>
+                <span class="k">elif</span> <span class="n">field</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="p">[</span>
+                    <span class="s2">&quot;reward_scaling&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;stop_loss_threshold&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_position_soft_cap&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_position_penalty_scale&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_position_penalty_exponent&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_inventory_penalty_scale&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_trade_frequency_penalty&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_trade_frequency_halflife&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_trade_cooldown_penalty&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_consecutive_trade_penalty&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_volatility_penalty_scale&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_sharpe_bonus_scale&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;reward_clip_value&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;continuous_to_discrete_threshold&quot;</span><span class="p">,</span>
+                <span class="p">]</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+                        <span class="k">pass</span>  <span class="c1"># Keep original value</span>
+                <span class="n">config_kwargs</span><span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="c1"># Field will use default if not in config_dict</span>
+
+        <span class="c1"># Apply curated feature set if specified</span>
+        <span class="n">feature_set</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_set&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">feature_set</span> <span class="o">==</span> <span class="s2">&quot;curated&quot;</span> <span class="ow">and</span> <span class="s2">&quot;feature_names&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config_dict</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">curated_features</span> <span class="o">=</span> <span class="n">get_feature_set</span><span class="p">(</span><span class="s2">&quot;curated&quot;</span><span class="p">)</span>
+                <span class="n">config_kwargs</span><span class="p">[</span><span class="s2">&quot;feature_names&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curated_features</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applied curated feature set with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">curated_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load curated features: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">config_kwargs</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_as_bool</span><span class="p">(</span>
+        <span class="n">value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="n">default</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert various types to boolean.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">bool</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">value</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">default</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">value_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">value_str</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;on&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">value_str</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">&quot;false&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;off&quot;</span><span class="p">}:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">default</span>
+
+<div class="viewcode-block" id="EnvironmentConfig.as_dict">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.utils.html#ztb.trading.environment.environment.EnvironmentConfig.as_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert config back to dictionary for compatibility.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;EnvironmentConfig&quot;</span><span class="p">,</span> <span class="s2">&quot;RewardSettings&quot;</span><span class="p">]</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,379 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.integration.test_canary_harness &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.integration.test_canary_harness</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.integration.test_canary_harness</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Canary Harness Tests with Failure Injection</span>
+
+<span class="sd">Tests system resilience using table-driven failure injection scenarios.</span>
+<span class="sd">Runs in paper/replay mode to ensure safe testing.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.fault_injection</span><span class="w"> </span><span class="kn">import</span> <span class="n">FaultInjectionConfig</span><span class="p">,</span> <span class="n">get_fault_injector</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.file_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_json_load</span>
+
+
+<div class="viewcode-block" id="TestCanaryHarness">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestCanaryHarness</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test canary harness with failure injection.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestCanaryHarness.canary_cases">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.canary_cases">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">canary_cases</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load canary test cases from JSON.&quot;&quot;&quot;</span>
+        <span class="n">cases_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;canary_cases.json&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">FaultInjectionConfig</span><span class="p">(</span><span class="o">**</span><span class="n">case</span><span class="p">)</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">safe_json_load</span><span class="p">(</span><span class="n">cases_path</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.fault_injector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.fault_injector">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fault_injector</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get fault injector instance.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">get_fault_injector</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.test_fault_injection_scenario">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.test_fault_injection_scenario">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span>
+        <span class="s2">&quot;case&quot;</span><span class="p">,</span>
+        <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;ws_disconnect_transient&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;ws_disconnect&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;network_delay_spike&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;network_delay&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;pause&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;data_gap_short&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;data_gap&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;duplicate_ticks_burst&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;duplicate_ticks&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;slow_disk_checkpoint&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;slow_disk&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;pause&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu_pause_brief&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;cpu_pause&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;corrupted_checkpoint_retry&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;corrupted_checkpoint&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;resume&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;stream_throttle_high&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;stream_throttle&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;duration_s&quot;</span><span class="p">:</span> <span class="mf">4.0</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span>
+                <span class="s2">&quot;expected_action&quot;</span><span class="p">:</span> <span class="s2">&quot;pause&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">],</span>
+        <span class="n">ids</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_fault_injection_scenario</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">case</span><span class="p">,</span> <span class="n">fault_injector</span><span class="p">,</span> <span class="n">caplog</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test individual fault injection scenario.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">FaultInjectionConfig</span><span class="p">(</span><span class="o">**</span><span class="n">case</span><span class="p">)</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Inject fault</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">inject_fault</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+            <span class="c1"># Simulate some work during fault</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># Verify fault was active</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="p">)</span>  <span class="c1"># Should be deactivated</span>
+
+        <span class="c1"># Check duration is reasonable (within 10% of expected)</span>
+        <span class="n">expected_min</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">*</span> <span class="mf">0.9</span>
+        <span class="n">expected_max</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">*</span> <span class="mf">1.1</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">expected_min</span> <span class="o">&lt;=</span> <span class="n">duration</span> <span class="o">&lt;=</span> <span class="n">expected_max</span>
+        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;Duration </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span><span class="s2"> not in range [</span><span class="si">{</span><span class="n">expected_min</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">expected_max</span><span class="si">}</span><span class="s2">]&quot;</span>
+
+        <span class="c1"># Check logs contain correlation ID</span>
+        <span class="n">log_messages</span> <span class="o">=</span> <span class="p">[</span><span class="n">record</span><span class="o">.</span><span class="n">message</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">caplog</span><span class="o">.</span><span class="n">records</span><span class="p">]</span>
+        <span class="n">fault_start_logs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">msg</span>
+            <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">log_messages</span>
+            <span class="k">if</span> <span class="s2">&quot;FAULT_INJECTION_START&quot;</span> <span class="ow">in</span> <span class="n">msg</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">msg</span>
+        <span class="p">]</span>
+        <span class="n">fault_end_logs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">msg</span>
+            <span class="k">for</span> <span class="n">msg</span> <span class="ow">in</span> <span class="n">log_messages</span>
+            <span class="k">if</span> <span class="s2">&quot;FAULT_INJECTION_END&quot;</span> <span class="ow">in</span> <span class="n">msg</span> <span class="ow">and</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">msg</span>
+        <span class="p">]</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">fault_start_logs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Should have exactly one fault start log&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">fault_end_logs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Should have exactly one fault end log&quot;</span>
+
+        <span class="c1"># Check correlation ID is present</span>
+        <span class="n">start_log</span> <span class="o">=</span> <span class="n">fault_start_logs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">end_log</span> <span class="o">=</span> <span class="n">fault_end_logs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="s2">&quot;correlation_id=&quot;</span> <span class="ow">in</span> <span class="n">start_log</span>
+        <span class="k">assert</span> <span class="s2">&quot;correlation_id=&quot;</span> <span class="ow">in</span> <span class="n">end_log</span>
+
+        <span class="c1"># Extract correlation IDs and verify they match</span>
+        <span class="n">start_cid</span> <span class="o">=</span> <span class="n">start_log</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;correlation_id=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">end_cid</span> <span class="o">=</span> <span class="n">end_log</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;correlation_id=&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">start_cid</span> <span class="o">==</span> <span class="n">end_cid</span><span class="p">,</span> <span class="s2">&quot;Correlation IDs should match&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.test_canary_suite_execution_time">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.test_canary_suite_execution_time">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_canary_suite_execution_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">canary_cases</span><span class="p">,</span> <span class="n">fault_injector</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that the full canary suite executes within time limit.&quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Run all cases sequentially</span>
+        <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">canary_cases</span><span class="p">:</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">inject_fault</span><span class="p">(</span><span class="n">case</span><span class="p">):</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Minimal work</span>
+
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">total_duration</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># Suite should complete in under 90 seconds</span>
+        <span class="k">assert</span> <span class="n">total_duration</span> <span class="o">&lt;</span> <span class="mf">90.0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Suite took </span><span class="si">{</span><span class="n">total_duration</span><span class="si">}</span><span class="s2">s, exceeds 90s limit&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.test_fault_isolation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.test_fault_isolation">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_fault_isolation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fault_injector</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that faults don&#39;t interfere with each other.&quot;&quot;&quot;</span>
+        <span class="n">config1</span> <span class="o">=</span> <span class="n">FaultInjectionConfig</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;fault1&quot;</span><span class="p">,</span>
+            <span class="n">fault_type</span><span class="o">=</span><span class="s2">&quot;network_delay&quot;</span><span class="p">,</span>
+            <span class="n">duration_s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">severity</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">expected_action</span><span class="o">=</span><span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">config2</span> <span class="o">=</span> <span class="n">FaultInjectionConfig</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;fault2&quot;</span><span class="p">,</span>
+            <span class="n">fault_type</span><span class="o">=</span><span class="s2">&quot;data_gap&quot;</span><span class="p">,</span>
+            <span class="n">duration_s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">severity</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">expected_action</span><span class="o">=</span><span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Start first fault</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">inject_fault</span><span class="p">(</span><span class="n">config1</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault1&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault2&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Start second fault</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">inject_fault</span><span class="p">(</span><span class="n">config2</span><span class="p">):</span>
+                <span class="k">assert</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault1&quot;</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault2&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Second fault ended</span>
+            <span class="k">assert</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault1&quot;</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="ow">not</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault2&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Both faults ended</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault1&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">is_fault_active</span><span class="p">(</span><span class="s2">&quot;fault2&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.test_json_cases_load">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.test_json_cases_load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_json_cases_load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">canary_cases</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that canary cases can be loaded from JSON.&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">canary_cases</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">8</span><span class="p">,</span> <span class="s2">&quot;Should have at least 8 test cases&quot;</span>
+
+        <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">canary_cases</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">fault_type</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">case</span><span class="o">.</span><span class="n">duration_s</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+            <span class="k">assert</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">case</span><span class="o">.</span><span class="n">severity</span> <span class="o">&lt;=</span> <span class="mf">1.0</span>
+            <span class="k">assert</span> <span class="n">case</span><span class="o">.</span><span class="n">expected_action</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;pause&quot;</span><span class="p">,</span> <span class="s2">&quot;resume&quot;</span><span class="p">,</span> <span class="s2">&quot;continue&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestCanaryHarness.test_fault_handler_registration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_canary_harness.TestCanaryHarness.test_fault_handler_registration">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">asyncio</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_fault_handler_registration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fault_injector</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that fault handlers can be registered and called.&quot;&quot;&quot;</span>
+        <span class="n">call_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_handler</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">FaultInjectionConfig</span><span class="p">):</span>
+            <span class="k">nonlocal</span> <span class="n">call_count</span>
+            <span class="n">call_count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">assert</span> <span class="n">config</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;test_fault&quot;</span>
+
+        <span class="n">fault_injector</span><span class="o">.</span><span class="n">register_handler</span><span class="p">(</span><span class="s2">&quot;test_type&quot;</span><span class="p">,</span> <span class="n">test_handler</span><span class="p">)</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">FaultInjectionConfig</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_fault&quot;</span><span class="p">,</span>
+            <span class="n">fault_type</span><span class="o">=</span><span class="s2">&quot;test_type&quot;</span><span class="p">,</span>
+            <span class="n">duration_s</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">severity</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">expected_action</span><span class="o">=</span><span class="s2">&quot;continue&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">async</span> <span class="k">with</span> <span class="k">await</span> <span class="n">fault_injector</span><span class="o">.</span><span class="n">inject_fault</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">assert</span> <span class="n">call_count</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Handler should have been called once&quot;</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

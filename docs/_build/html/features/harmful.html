@@ -1,0 +1,271 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harmful Features Documentation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Harmful Features Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/harmful.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="harmful-features-documentation">
+<h1>Harmful Features Documentation<a class="headerlink" href="#harmful-features-documentation" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>このドキュメントは、Wave3評価で <code class="docutils literal notranslate"><span class="pre">harmful</span></code> と判定された特徴量について、その理由と再評価条件を明文化したものです。</p>
+<p><code class="docutils literal notranslate"><span class="pre">harmful</span></code> フラグは「永久追放」ではなく「一時隔離」を意味します。条件が整えば再評価・再有効化が可能です。</p>
+</section>
+<section id="harmful">
+<h2>Harmful特徴量一覧<a class="headerlink" href="#harmful" title="Link to this heading"></a></h2>
+<section id="ichimoku">
+<h3>Ichimoku (一目均衡表)<a class="headerlink" href="#ichimoku" title="Link to this heading"></a></h3>
+<p><strong>判定時期</strong>: Wave3評価
+<strong>Status</strong>: isolated
+<strong>Reason</strong>: high_multicollinearity, misinterpretation
+<strong>Last Eval</strong>: 2025-09-25
+<strong>Note</strong>: 基準線・転換線のみで評価。雲の厚み・抵抗帯距離・遅行スパン確認が未考慮</p>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>VIF (Variance Inflation Factor) &gt; 10: 多重共線性の問題</p></li>
+<li><p>MI (Mutual Information) ≈ 0: ターゲット変数との関連性が低い</p></li>
+<li><p>アブレーション分析で Sharpe ratio 大幅低下</p></li>
+</ul>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> で registry から除外</p>
+</section>
+<section id="regimeclustering">
+<h3>RegimeClustering (レジームクラスタリング)<a class="headerlink" href="#regimeclustering" title="Link to this heading"></a></h3>
+<p><strong>判定時期</strong>: Wave3評価
+<strong>Status</strong>: isolated
+<strong>Reason</strong>: weak_effect_size, unstable_output
+<strong>Last Eval</strong>: 2025-09-25
+<strong>Note</strong>: クラスタリングの安定性とパフォーマンス問題。代替手法検討要</p>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>アブレーション分析で Sharpe ratio 大幅低下</p></li>
+<li><p>計算コストが高く、実用的でない</p></li>
+<li><p>クラスタリングの安定性が低い</p></li>
+</ul>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> で registry から除外</p>
+</section>
+<section id="donchian">
+<h3>Donchian<a class="headerlink" href="#donchian" title="Link to this heading"></a></h3>
+<p><strong>判定時期</strong>: Wave3評価
+<strong>Status</strong>: isolated
+<strong>Reason</strong>: high_multicollinearity
+<strong>Last Eval</strong>: 2025-09-25
+<strong>Note</strong>: 他トレンド指標との重複。独自性再検証要</p>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>VIF &gt; 10: 多重共線性の問題</p></li>
+<li><p>他のトレンド指標との重複が高い</p></li>
+</ul>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> で registry から除外</p>
+</section>
+<section id="adx-average-directional-index">
+<h3>ADX (Average Directional Index)<a class="headerlink" href="#adx-average-directional-index" title="Link to this heading"></a></h3>
+<p><strong>判定時期</strong>: Wave3評価
+<strong>Status</strong>: isolated
+<strong>Reason</strong>: high_multicollinearity, weak_signal
+<strong>Last Eval</strong>: 2025-09-25
+<strong>Note</strong>: 方向性指数だが、他のトレンド指標との重複が高く、シグナルが弱い</p>
+<p><strong>JSON Metadata</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;feature&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ADX&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;harmful_reasons&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;high_multicollinearity&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;weak_signal&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;vif_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">12.5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sharpe_impact&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.08</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;correlation_with&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;DOW&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;RegimeClustering&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;recommended_action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;consider_directional_components_only&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>VIF &gt; 10: 多重共線性の問題</p></li>
+<li><p>アブレーション分析で Sharpe ratio 低下</p></li>
+<li><p>他のトレンド指標との重複が高い</p></li>
+</ul>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> で registry から除外</p>
+</section>
+<section id="kama-kaufmans-adaptive-moving-average">
+<h3>KAMA (Kaufman’s Adaptive Moving Average)<a class="headerlink" href="#kama-kaufmans-adaptive-moving-average" title="Link to this heading"></a></h3>
+<p><strong>判定時期</strong>: Wave3評価
+<strong>Status</strong>: isolated
+<strong>Reason</strong>: high_computation_cost, unstable_output
+<strong>Last Eval</strong>: 2025-09-25
+<strong>Note</strong>: 適応型移動平均だが、計算コストが高く出力が不安定</p>
+<p><strong>JSON Metadata</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;feature&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;KAMA&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;category&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;trend&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;harmful_reasons&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;high_computation_cost&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;unstable_output&quot;</span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;avg_computation_time_ms&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">1850.0</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;memory_usage_mb&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">45.2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sharpe_impact&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;stability_score&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.65</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;recommended_action&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;optimize_implementation_or_remove&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>計算コストが非常に高い (平均 1.8秒)</p></li>
+<li><p>パラメータ依存性が高く出力が不安定</p></li>
+<li><p>メモリ使用量が多い</p></li>
+</ul>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> で registry から除外</p>
+</section>
+</section>
+<section id="id2">
+<h2>再評価条件<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>harmful と判定された特徴量も、以下の条件を満たした場合には再評価を行い、
+必要に応じて stable セットへ復帰させる可能性があります。</p>
+<ul class="simple">
+<li><p><strong>Wave間の補完効果</strong><br />
+単独では無効でも、Wave1/2 の特徴量と組み合わせた場合に相関低下や補完効果が確認された場合。</p></li>
+<li><p><strong>特徴変換の導入</strong><br />
+差分化・正規化・次元削減（PCA/Autoencoder など）によって多重共線性や冗長性が解消された場合。</p></li>
+<li><p><strong>Ablationの定量基準</strong><br />
+再評価アブレーションで <strong>delta_sharpe &gt; +0.05</strong> の改善が確認された場合は harmful 解除候補とする。<br />
+改善幅が +0.01 未満の場合は harmful 維持。</p></li>
+<li><p><strong>局面依存性の確認</strong><br />
+上昇局面・下落局面・レンジ市場など特定の Regime で有効性が示された場合。</p></li>
+<li><p><strong>軽量化後の見直し</strong><br />
+実装改善により計算負荷やメモリ効率が大幅に改善し、トレードオフが解消された場合。</p></li>
+</ul>
+</section>
+<section id="id3">
+<h2>再評価手順<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>条件確認</strong>: 上記再評価条件のいずれかを満たす</p></li>
+<li><p><strong>実験的特徴として追加</strong>: <code class="docutils literal notranslate"><span class="pre">src/trading/features/experimental.py</span></code> に実装</p></li>
+<li><p><strong>評価実行</strong>: <code class="docutils literal notranslate"><span class="pre">experimental_evaluator.py</span></code> で性能評価</p></li>
+<li><p><strong>アブレーション分析</strong>: <code class="docutils literal notranslate"><span class="pre">benchmarks/ablation_runner.py</span></code> で影響度測定</p></li>
+<li><p><strong>成熟度更新</strong>: <code class="docutils literal notranslate"><span class="pre">feature_maturity.yaml</span></code> で <code class="docutils literal notranslate"><span class="pre">stable</span></code> に移行</p></li>
+<li><p><strong>自動移行</strong>: <code class="docutils literal notranslate"><span class="pre">migrate_experimental.py</span></code> で本番コードに統合</p></li>
+<li><p><strong>harmfulフラグ解除</strong>: <code class="docutils literal notranslate"><span class="pre">features.yaml</span></code> から <code class="docutils literal notranslate"><span class="pre">harmful:</span> <span class="pre">true</span></code> を削除</p></li>
+</ol>
+</section>
+<section id="id4">
+<h2>注意事項<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>harmful特徴量は <code class="docutils literal notranslate"><span class="pre">feature_sets.yaml</span></code> の <code class="docutils literal notranslate"><span class="pre">extended</span></code> セットにコメント付きで残されています</p></li>
+<li><p>CI/CDでは自動的に除外されます</p></li>
+<li><p>再評価時は必ずアブレーション分析を実施してください</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

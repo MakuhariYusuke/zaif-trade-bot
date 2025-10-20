@@ -1,0 +1,416 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>メモリ最適化計画 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">メモリ最適化計画</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/memory/MEMORY_OPTIMIZATION_PLAN.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>メモリ最適化計画<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>現状の問題<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>1. 学習中のメモリ不足<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>30,000ステップ目付近で学習が停止</p></li>
+<li><p>メモリ関連のクラッシュと推測</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>2. モデル学習の問題<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>学習時</strong>: SELL率 26.9% (rollout統計)</p></li>
+<li><p><strong>評価時</strong>: SELL率 98.0% (決定的推論)</p></li>
+<li><p><strong>根本原因</strong>: Lagrange制約が学習中のみ適用され、モデル自体は学習できていない</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2>メモリ最適化戦略<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="phase-1">
+<h3>Phase 1: 即座に実装可能な最適化<a class="headerlink" href="#phase-1" title="Link to this heading"></a></h3>
+<section id="gradient-checkpointing">
+<h4>1.1 Gradient Checkpointing<a class="headerlink" href="#gradient-checkpointing" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ztb/training/custom_ppo.py に追加</span>
+<span class="n">policy_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">net_arch</span><span class="o">=</span><span class="p">[</span><span class="mi">256</span><span class="p">,</span> <span class="mi">256</span><span class="p">],</span>
+    <span class="n">activation_fn</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">,</span>
+    <span class="n">ortho_init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="c1"># Gradient checkpointing for memory efficiency</span>
+    <span class="n">use_gradient_checkpointing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約30-40% メモリ削減
+<strong>トレードオフ</strong>: 約20% 学習速度低下</p>
+</section>
+<section id="batch-size">
+<h4>1.2 Batch Size削減<a class="headerlink" href="#batch-size" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="c1">// ppo_balanced_test.json</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span><span class="w">     </span><span class="c1">// 現状</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span><span class="w">    </span><span class="c1">// 現状</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="c1">// 最適化後</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">512</span><span class="p">,</span><span class="w">      </span><span class="c1">// 半分に削減</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span><span class="w">    </span><span class="c1">// 半分に削減</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約50% メモリ削減
+<strong>トレードオフ</strong>: 学習安定性が若干低下、収束までの時間増加</p>
+</section>
+<section id="id6">
+<h4>1.3 データローディング最適化<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># environment.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+        <span class="c1"># メモリ効率の良いデータ型に変換</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        
+        <span class="c1"># float64 → float32 変換</span>
+        <span class="n">float_cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;float64&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">float_cols</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">float_cols</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float32&#39;</span><span class="p">)</span>
+        
+        <span class="c1"># 不要なカラムを削除</span>
+        <span class="n">essential_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="n">essential_cols</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約20-30% データメモリ削減</p>
+</section>
+<section id="id7">
+<h4>1.4 環境ベクトル化の最適化<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># n_envs を削減</span>
+<span class="s2">&quot;n_envs&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># 現状: 複数環境でメモリ消費増</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約40% メモリ削減（並列環境数による）
+<strong>トレードオフ</strong>: サンプリング効率低下</p>
+</section>
+</section>
+<section id="phase-2">
+<h3>Phase 2: 構造的最適化<a class="headerlink" href="#phase-2" title="Link to this heading"></a></h3>
+<section id="id8">
+<h4>2.1 特徴量の動的計算<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 全ての特徴量を事前計算せず、必要時に計算</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">LazyFeatureCalculator</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df_base</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_base</span> <span class="o">=</span> <span class="n">df_base</span>  <span class="c1"># 基本データのみ保持</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">step</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">step</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_features</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            
+            <span class="c1"># キャッシュサイズ制限</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+                <span class="n">oldest</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+                <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">oldest</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">step</span><span class="p">]</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約50-60% メモリ削減（大規模データセット）</p>
+</section>
+<section id="id9">
+<h4>2.2 チェックポイント圧縮<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ztb/training/base_trainer.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+    <span class="c1"># モデルを圧縮保存</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">zipfile</span>
+    
+    <span class="n">temp_path</span> <span class="o">=</span> <span class="n">path</span> <span class="o">+</span> <span class="s2">&quot;.tmp&quot;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">temp_path</span><span class="p">)</span>
+    
+    <span class="c1"># 圧縮</span>
+    <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZIP_DEFLATED</span><span class="p">)</span> <span class="k">as</span> <span class="n">zf</span><span class="p">:</span>
+        <span class="n">zf</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">temp_path</span><span class="p">)</span>
+    
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">temp_path</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: ディスク容量50-70%削減、メモリへの影響は限定的</p>
+</section>
+</section>
+<section id="phase-3">
+<h3>Phase 3: アルゴリズム改善<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h3>
+<section id="policy-regularization-action-diversity">
+<h4>3.1 Policy Regularization (Action Diversity)<a class="headerlink" href="#policy-regularization-action-diversity" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># CustomPPO に追加</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomPPO</span><span class="p">(</span><span class="n">PPO</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Action entropy regularization</span>
+        <span class="n">action_probs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">get_distribution</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">probs</span>
+        <span class="n">entropy</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">action_probs</span> <span class="o">*</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">action_probs</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        
+        <span class="c1"># Entropy bonus (diversity encouragement)</span>
+        <span class="n">policy_loss</span> <span class="o">=</span> <span class="n">policy_loss</span> <span class="o">-</span> <span class="mf">0.05</span> <span class="o">*</span> <span class="n">entropy</span>  <span class="c1"># ent_coef を強化</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: モデル自体が多様な行動を学習</p>
+</section>
+<section id="behavior-cloning-from-balanced-policy">
+<h4>3.2 Behavior Cloning from Balanced Policy<a class="headerlink" href="#behavior-cloning-from-balanced-policy" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 事前にバランスの取れた行動をサンプリング</span>
+<span class="c1"># それらから模倣学習</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.evaluation</span><span class="w"> </span><span class="kn">import</span> <span class="n">evaluate_policy</span>
+
+<span class="c1"># ステップ1: ランダムバランスポリシーでデータ収集</span>
+<span class="n">balanced_policy</span> <span class="o">=</span> <span class="n">BalancedRandomPolicy</span><span class="p">()</span>  <span class="c1"># 33/33/33 の確率</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">collect_demonstrations</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">balanced_policy</span><span class="p">,</span> <span class="n">n_steps</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+
+<span class="c1"># ステップ2: Behavior Cloning</span>
+<span class="n">bc_model</span> <span class="o">=</span> <span class="n">BC</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+<span class="n">bc_model</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">n_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># ステップ3: Fine-tuning with PPO</span>
+<span class="n">ppo_model</span> <span class="o">=</span> <span class="n">PPO</span><span class="o">.</span><span class="n">load_from_bc</span><span class="p">(</span><span class="n">bc_model</span><span class="p">)</span>
+<span class="n">ppo_model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="mi">100000</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 初期からバランスの取れた行動を学習</p>
+</section>
+</section>
+</section>
+<section id="id10">
+<h2>実装優先順位<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h3>🚨 緊急 (即座に実装)<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <strong>Batch Size削減</strong>: <code class="docutils literal notranslate"><span class="pre">n_steps=512,</span> <span class="pre">batch_size=32</span></code></p></li>
+<li><p>✅ <strong>データ型最適化</strong>: float64 → float32</p></li>
+<li><p>✅ <strong>n_envs削減</strong>: 複数環境 → 1環境</p></li>
+</ol>
+</section>
+<section id="id12">
+<h3>📊 高優先度 (1-2日以内)<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="4">
+<li><p><strong>Gradient Checkpointing</strong>: メモリ30-40%削減</p></li>
+<li><p><strong>Policy Regularization</strong>: モデルの学習品質向上</p></li>
+<li><p><strong>動的特徴量計算</strong>: 大幅メモリ削減</p></li>
+</ol>
+</section>
+<section id="id13">
+<h3>🔧 中優先度 (1週間以内)<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="7">
+<li><p><strong>Behavior Cloning</strong>: バランスの取れた初期ポリシー</p></li>
+<li><p><strong>チェックポイント圧縮</strong>: ディスク容量削減</p></li>
+<li><p><strong>環境プーリング</strong>: メモリ再利用</p></li>
+</ol>
+</section>
+</section>
+<section id="id14">
+<h2>メモリ使用量の目標<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>現状 (推定)<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>データ</strong>: ~500MB (float64, 全特徴量)</p></li>
+<li><p><strong>モデル</strong>: ~200MB (ポリシー + バリュー)</p></li>
+<li><p><strong>Rollout Buffer</strong>: ~800MB (n_steps=1024, n_envs=複数)</p></li>
+<li><p><strong>Gradient計算</strong>: ~600MB (バックプロパゲーション)</p></li>
+<li><p><strong>合計</strong>: ~2.1GB</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>最適化後 (目標)<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>データ</strong>: ~250MB (float32, 必要な特徴量のみ)</p></li>
+<li><p><strong>モデル</strong>: ~200MB (変更なし)</p></li>
+<li><p><strong>Rollout Buffer</strong>: ~200MB (n_steps=512, n_envs=1)</p></li>
+<li><p><strong>Gradient計算</strong>: ~360MB (checkpointing使用)</p></li>
+<li><p><strong>合計</strong>: ~1.0GB (-52%削減)</p></li>
+</ul>
+</section>
+</section>
+<section id="id17">
+<h2>検証計画<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>メモリ使用量測定<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">tracemalloc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">monitor_memory_usage</span><span class="p">():</span>
+    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">())</span>
+    
+    <span class="c1"># 学習前</span>
+    <span class="n">mem_before</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span>
+    
+    <span class="c1"># 学習実行</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+    
+    <span class="c1"># 学習後</span>
+    <span class="n">mem_after</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">current</span><span class="p">,</span> <span class="n">peak</span> <span class="o">=</span> <span class="n">tracemalloc</span><span class="o">.</span><span class="n">get_traced_memory</span><span class="p">()</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;メモリ使用量: </span><span class="si">{</span><span class="n">mem_after</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mem_before</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ピークメモリ: </span><span class="si">{</span><span class="n">peak</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
+    
+    <span class="n">tracemalloc</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h3>パフォーマンス測定<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+<span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;学習時間: </span><span class="si">{</span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">秒&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;FPS: </span><span class="si">{</span><span class="mi">10000</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">elapsed</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id20">
+<h2>次のステップ<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>即座の対応</strong>: メモリ最適化設定で再学習</p></li>
+<li><p><strong>検証</strong>: メモリ使用量とパフォーマンスを測定</p></li>
+<li><p><strong>改善</strong>: Behavior Cloning or Policy Regularization実装</p></li>
+<li><p><strong>再検証</strong>: バランスの取れたモデルが学習できるか確認</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="sell-bias">
+<h2>補足: SELL Bias問題の根本原因<a class="headerlink" href="#sell-bias" title="Link to this heading"></a></h2>
+<p>Lagrange制約は<strong>学習プロセス</strong>に適用されるもので、<strong>学習済みモデル</strong>には影響しません:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 学習時</span>
+<span class="n">rollout_actions</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">collect_rollouts</span><span class="p">()</span>  <span class="c1"># ← Lagrange制約が適用</span>
+<span class="n">sell_rate</span> <span class="o">=</span> <span class="n">calculate_sell_rate</span><span class="p">(</span><span class="n">rollout_actions</span><span class="p">)</span>  <span class="c1"># 26.9%</span>
+
+<span class="c1"># 評価時  </span>
+<span class="n">action</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># ← 制約なし、純粋な推論</span>
+<span class="c1"># → モデルが実際に学習した行動: 98% SELL</span>
+</pre></div>
+</div>
+<p><strong>解決策</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Action diversity penalty</strong>をlossに直接追加</p></li>
+<li><p><strong>Behavior Cloning</strong>でバランスの取れた初期ポリシー</p></li>
+<li><p><strong>Custom reward shaping</strong>で多様な行動に報酬</p></li>
+</ol>
+<p>これらは<strong>モデル自体を変える</strong>ので、評価時にも効果が持続します。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,414 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>本番設定ファイル更新コマンド &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">本番設定ファイル更新コマンド</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/binary_search_optimization/CONFIG_UPDATE_COMMANDS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>本番設定ファイル更新コマンド<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>作成日</strong>: 2025年10月10日<br />
+<strong>対象</strong>: 検証済みパラメータの本番適用</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>🎯 目的<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>2025年10月10日に完了した検証結果を本番設定ファイルに反映します。</p>
+<p><strong>検証済みパラメータ</strong>:</p>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">batch_size</span></code>: 256 (高信頼度)</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">learning_rate</span></code>: 0.007503 (高信頼度)</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">max_grad_norm</span></code>: 5.05 (暫定、追加検証推奨)</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>📋 更新対象ファイル<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/training/ppo_100k_optimized.json</span></code> - メイン設定ファイル</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">configs/training/ppo_binary_search_validated.json</span></code> - 検証済み設定 (存在する場合)</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h2>🔄 更新方法<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>方法1: 手動更新 (推奨)<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p><strong>ステップ1</strong>: 設定ファイルを開く</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>notepad configs\training\ppo_100k_optimized.json
+</pre></div>
+</div>
+<p><strong>ステップ2</strong>: 以下の行を変更</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;_comment_ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optimized PPO hyperparameters from 2025-10-10 binary search validation&quot;</span><span class="p">,</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.007503</span><span class="p">,</span><span class="w">     </span><span class="c1">// 旧: 0.009375625 → 新: 0.007503</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w">             </span><span class="c1">// 旧: 64 → 新: 256</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.05</span><span class="p">,</span><span class="w">         </span><span class="c1">// 旧: 0.5 → 新: 5.05 (暫定)</span>
+<span class="w">  </span>
+<span class="w">  </span><span class="c1">// 以下は既存の最適化済み値 (変更なし)</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8475</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>ステップ3</strong>: ファイルを保存</p>
+<p><strong>ステップ4</strong>: 設定ファイルの検証</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>python -c &quot;import json; print(json.load(open(&#39;configs/training/ppo_100k_optimized.json&#39;)))&quot;
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h3>方法2: バックアップ付き更新 (安全)<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>ステップ1</strong>: バックアップを作成</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 現在の設定をバックアップ
+copy configs\training\ppo_100k_optimized.json configs\training\ppo_100k_optimized_backup_20251010.json
+
+REM バックアップ確認
+dir configs\training\ppo_100k_optimized*.json
+</pre></div>
+</div>
+<p><strong>ステップ2</strong>: 設定ファイルを開いて更新</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>notepad configs\training\ppo_100k_optimized.json
+</pre></div>
+</div>
+<p><strong>変更内容</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;_comment_ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Optimized PPO hyperparameters from 2025-10-10 binary search validation&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.007503</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1024</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">16</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8475</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.02575</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">5.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;gae_lambda&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;target_kl&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>ステップ3</strong>: 設定ファイルの検証</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>python -c &quot;import json; config = json.load(open(&#39;configs/training/ppo_100k_optimized.json&#39;)); print(&#39;learning_rate:&#39;, config[&#39;learning_rate&#39;]); print(&#39;batch_size:&#39;, config[&#39;batch_size&#39;]); print(&#39;max_grad_norm:&#39;, config[&#39;max_grad_norm&#39;])&quot;
+</pre></div>
+</div>
+<p><strong>期待される出力</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">learning_rate</span><span class="p">:</span> <span class="mf">0.007503</span>
+<span class="n">batch_size</span><span class="p">:</span> <span class="mi">256</span>
+<span class="n">max_grad_norm</span><span class="p">:</span> <span class="mf">5.05</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="python">
+<h3>方法3: Python スクリプトで自動更新<a class="headerlink" href="#python" title="Link to this heading"></a></h3>
+<p><strong>更新スクリプト</strong> (<code class="docutils literal notranslate"><span class="pre">update_config.py</span></code>):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="c1"># 設定ファイルのパス</span>
+<span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;configs/training/ppo_100k_optimized.json&quot;</span><span class="p">)</span>
+<span class="n">backup_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;configs/training/ppo_100k_optimized_backup_20251010.json&quot;</span><span class="p">)</span>
+
+<span class="c1"># バックアップ作成</span>
+<span class="k">if</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">backup_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Backup created: </span><span class="si">{</span><span class="n">backup_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># 検証済みパラメータで更新</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.007503</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">256</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_grad_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">5.05</span>
+    <span class="n">config</span><span class="p">[</span><span class="s1">&#39;_comment_ppo&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;Optimized PPO hyperparameters from 2025-10-10 binary search validation&quot;</span>
+    
+    <span class="c1"># 更新を保存</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Config updated: </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   learning_rate: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   batch_size: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   max_grad_norm: </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;max_grad_norm&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Config file not found: </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>実行方法</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM スクリプトを保存して実行
+python update_config.py
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>📊 更新前後の比較<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>旧値</p></th>
+<th class="head"><p>新値</p></th>
+<th class="head"><p>変化</p></th>
+<th class="head"><p>根拠</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">learning_rate</span></code></p></td>
+<td><p>0.009375625</p></td>
+<td><p><strong>0.007503</strong></p></td>
+<td><p>-20%</p></td>
+<td><p>50k検証、improvement 37.36</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code></p></td>
+<td><p>64</p></td>
+<td><p><strong>256</strong></p></td>
+<td><p>+300%</p></td>
+<td><p>50k検証、improvement 27.71</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">max_grad_norm</span></code></p></td>
+<td><p>0.5</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p>+910%</p></td>
+<td><p>30k検証、暫定値 (追加検証推奨)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code></p></td>
+<td><p>1024</p></td>
+<td><p>1024</p></td>
+<td><p>変更なし</p></td>
+<td><p>既存最適化済み</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gamma</span></code></p></td>
+<td><p>0.8475</p></td>
+<td><p>0.8475</p></td>
+<td><p>変更なし</p></td>
+<td><p>既存最適化済み</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">n_epochs</span></code></p></td>
+<td><p>16</p></td>
+<td><p>16</p></td>
+<td><p>変更なし</p></td>
+<td><p>既存最適化済み</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">vf_coef</span></code></p></td>
+<td><p>0.1</p></td>
+<td><p>0.1</p></td>
+<td><p>変更なし</p></td>
+<td><p>既存最適化済み</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>✅ 更新後の検証<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>1. 設定ファイルの妥当性チェック<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM JSON構文チェック
+python -c &quot;import json; json.load(open(&#39;configs/training/ppo_100k_optimized.json&#39;)); print(&#39;✅ JSON valid&#39;)&quot;
+
+REM パラメータ値確認
+python -c &quot;import json; config = json.load(open(&#39;configs/training/ppo_100k_optimized.json&#39;)); assert config[&#39;batch_size&#39;] == 256, &#39;batch_size mismatch&#39;; assert config[&#39;learning_rate&#39;] == 0.007503, &#39;learning_rate mismatch&#39;; assert config[&#39;max_grad_norm&#39;] == 5.05, &#39;max_grad_norm mismatch&#39;; print(&#39;✅ All parameters correct&#39;)&quot;
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h3>2. ドライラン (実行テスト)<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 設定ファイルでドライラン実行
+python run_training.py --config configs/training/ppo_100k_optimized.json --dry-run
+
+REM エラーがなければ成功
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>3. 短時間トレーニングテスト (推奨)<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 1000ステップのテスト実行
+python run_training.py --config configs/training/ppo_100k_optimized.json --force
+
+REM または、設定ファイルを一時的にコピーしてtotal_timestepsを1000に変更
+copy configs\training\ppo_100k_optimized.json configs\training\ppo_test.json
+REM ppo_test.json の total_timesteps を 1000 に変更
+python run_training.py --config configs/training/ppo_test.json --force
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>🔄 ロールバック方法<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<p>更新後に問題が発生した場合:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM バックアップから復元
+copy configs\training\ppo_100k_optimized_backup_20251010.json configs\training\ppo_100k_optimized.json
+
+REM 復元確認
+python -c &quot;import json; print(json.load(open(&#39;configs/training/ppo_100k_optimized.json&#39;))[&#39;learning_rate&#39;])&quot;
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>📝 更新履歴の記録<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<p><strong><a class="reference external" href="http://CHANGELOG.md">CHANGELOG.md</a></strong> または設定ファイル内のコメントに記録:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;_comment_history&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s2">&quot;2025-10-10: Updated batch_size (64→256), learning_rate (0.0094→0.0075), max_grad_norm (0.5→5.05) based on binary search validation&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;Previous: Binary search optimization (n_steps, gamma, vf_coef)&quot;</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>📚 関連ドキュメント<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>検証結果</strong>: <a class="reference internal" href="VALIDATION_RESULTS_2025-10-10.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">VALIDATION_RESULTS_2025-10-10.md</span></code></span></a></p></li>
+<li><p><strong>次のステップ</strong>: <a class="reference internal" href="NEXT_STEPS_COMMANDS.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">NEXT_STEPS_COMMANDS.md</span></code></span></a></p></li>
+<li><p><strong>進捗管理</strong>: <a class="reference internal" href="PARAMETER_VALIDATION_TRACKING.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">PARAMETER_VALIDATION_TRACKING.md</span></code></span></a></p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>⚠️ 注意事項<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="max-grad-norm">
+<h3>max_grad_norm について<a class="headerlink" href="#max-grad-norm" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>現在の推奨値</strong>: 5.05 (暫定)</p></li>
+<li><p><strong>理由</strong>: 30k検証で再現性に課題 (7.525 vs 5.05)</p></li>
+<li><p><strong>推奨アクション</strong>: 100k×2シード検証完了後、確定値に更新</p></li>
+</ul>
+<p><strong>100k検証完了後の再更新</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 検証結果に基づいて再度更新
+notepad configs\training\ppo_100k_optimized.json
+REM max_grad_norm を確定値に変更
+</pre></div>
+</div>
+<hr class="docutils" />
+<p><strong>準備ができたら、バックアップを取ってから更新してください!</strong> 📝</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

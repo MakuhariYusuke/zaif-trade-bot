@@ -1,0 +1,601 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.ab_test.tests &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.ab_test.tests</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.ab_test.tests</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for A/B Testing Framework</span>
+<span class="sd">処理時間短縮・メモリ効率を考慮したテスト実装</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">weakref</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.ab_test.analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestAnalyzer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.ab_test.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestConfig</span><span class="p">,</span> <span class="n">ABTestPerformanceConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.ab_test.selector</span><span class="w"> </span><span class="kn">import</span> <span class="n">ModelSelector</span><span class="p">,</span> <span class="n">TrafficManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.ab_test.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">StatisticalResult</span><span class="p">,</span> <span class="n">ABTestMetrics</span><span class="p">,</span> <span class="n">StatisticalTest</span><span class="p">,</span>
+    <span class="n">ABTestConfiguration</span><span class="p">,</span> <span class="n">ABTestVariant</span><span class="p">,</span> <span class="n">ABTestState</span><span class="p">,</span> <span class="n">ABTestStatus</span><span class="p">,</span>
+    <span class="n">ABTestResultSummary</span><span class="p">,</span> <span class="n">ABTestResult</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestABTestAnalyzer</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ABTestAnalyzerのテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestABTestAnalyzer.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ABTestConfig</span><span class="p">()</span>
+        <span class="c1"># テスト用にパフォーマンス設定を調整</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="mi">100</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span> <span class="o">=</span> <span class="n">ABTestAnalyzer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.tearDown">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.tearDown">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">tearDown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テスト後のクリーンアップ&quot;&quot;&quot;</span>
+        <span class="c1"># メモリリーク防止のため明示的にクリーンアップ</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="p">,</span> <span class="s1">&#39;executor&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">ABTestConfig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">executor</span><span class="p">,</span> <span class="n">ThreadPoolExecutor</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_parallel_analysis_basic">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_parallel_analysis_basic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_parallel_analysis_basic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;基本的な並列分析テスト&quot;&quot;&quot;</span>
+        <span class="c1"># テストデータ生成</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># 結果の検証</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">effect_size</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">sample_size_a</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">sample_size_b</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># p値は1以下</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>  <span class="c1"># p値は0以上</span>
+
+        <span class="c1"># 処理時間が妥当か確認（並列処理で高速化されているはず）</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">processing_time</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 1秒以内に完了すべき</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_effect_size_calculation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_effect_size_calculation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_effect_size_calculation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;効果量計算テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 明確な差があるデータ（標準偏差があるデータ）</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 平均1.0, 標準偏差0.1</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>  <span class="c1"># 平均1.2, 標準偏差0.1</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+
+        <span class="c1"># 効果量が正の値であることを確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">effect_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># 逆の場合</span>
+        <span class="n">result_reverse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_b</span><span class="p">,</span> <span class="n">data_a</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">result_reverse</span><span class="o">.</span><span class="n">effect_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_bootstrap_analysis">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_bootstrap_analysis">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_bootstrap_analysis</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ブートストラップ分析テスト&quot;&quot;&quot;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">200</span><span class="p">)</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">calculate_bootstrap_ci</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">,</span> <span class="n">n_bootstrap</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># 結果の検証</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">confidence_interval</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">confidence_interval</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># 処理時間が妥当か確認</span>
+        <span class="n">processing_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertLess</span><span class="p">(</span><span class="n">processing_time</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>  <span class="c1"># 2秒以内に完了すべき</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_memory_efficiency_large_dataset">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_memory_efficiency_large_dataset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_memory_efficiency_large_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;大規模データセットでのメモリ効率テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 大規模データ生成</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+
+        <span class="c1"># メモリ使用量を監視しながら分析（簡易的な方法）</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+        <span class="n">memory_before</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">data_a</span><span class="p">)</span> <span class="o">+</span> <span class="n">sys</span><span class="o">.</span><span class="n">getsizeof</span><span class="p">(</span><span class="n">data_b</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+
+        <span class="c1"># データがメモリ上に存在することを確認（大規模データでも処理可能）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">sample_size_a</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">sample_size_b</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
+
+        <span class="c1"># 処理が完了し、結果が得られることを確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">p_value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">effect_size</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_streaming_statistics">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_streaming_statistics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_streaming_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ストリーミング統計テスト&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.ab_test.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">StreamingStatistics</span>
+
+        <span class="c1"># ストリーミング統計クラスのテスト</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">StreamingStatistics</span><span class="p">(</span><span class="s2">&quot;test_variant&quot;</span><span class="p">)</span>
+
+        <span class="c1"># サンプルデータを追加</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;value&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)}</span>
+            <span class="n">stats</span><span class="o">.</span><span class="n">add_sample</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+        <span class="c1"># 統計量が正しく計算されていることを確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">count</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="mf">49.5</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">get_std</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># リセットテスト</span>
+        <span class="n">stats</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">count</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_performance_optimization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_performance_optimization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_performance_optimization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス最適化テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 異なるワーカー数での比較</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
+
+        <span class="c1"># シングルワーカー設定</span>
+        <span class="n">config_single</span> <span class="o">=</span> <span class="n">ABTestConfig</span><span class="p">()</span>
+        <span class="n">config_single</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">analyzer_single</span> <span class="o">=</span> <span class="n">ABTestAnalyzer</span><span class="p">(</span><span class="n">config_single</span><span class="p">)</span>
+
+        <span class="c1"># マルチワーカー設定</span>
+        <span class="n">config_multi</span> <span class="o">=</span> <span class="n">ABTestConfig</span><span class="p">()</span>
+        <span class="n">config_multi</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span> <span class="o">=</span> <span class="mi">4</span>
+        <span class="n">analyzer_multi</span> <span class="o">=</span> <span class="n">ABTestAnalyzer</span><span class="p">(</span><span class="n">config_multi</span><span class="p">)</span>
+
+        <span class="c1"># シングルワーカーでの実行時間</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">result_single</span> <span class="o">=</span> <span class="n">analyzer_single</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+        <span class="n">time_single</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># マルチワーカーでの実行時間</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">result_multi</span> <span class="o">=</span> <span class="n">analyzer_multi</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+        <span class="n">time_multi</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># 結果が同等であることを確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">result_single</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="n">result_multi</span><span class="o">.</span><span class="n">p_value</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">result_single</span><span class="o">.</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">result_multi</span><span class="o">.</span><span class="n">effect_size</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+        <span class="c1"># クリーンアップ</span>
+        <span class="n">analyzer_single</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">analyzer_multi</span><span class="o">.</span><span class="n">executor</span><span class="o">.</span><span class="n">shutdown</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestAnalyzer.test_error_handling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestAnalyzer.test_error_handling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_error_handling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;エラーハンドリングテスト&quot;&quot;&quot;</span>
+        <span class="c1"># 空のデータでのテスト</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]))</span>
+            <span class="c1"># 空のデータでもクラッシュしないことを確認</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># 例外が発生しても適切に処理されることを確認</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">ZeroDivisionError</span><span class="p">))</span>
+
+        <span class="c1"># 片方が空のデータ</span>
+        <span class="n">data_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>
+        <span class="n">data_b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">analyzer</span><span class="o">.</span><span class="n">analyze_parallel</span><span class="p">(</span><span class="n">data_a</span><span class="p">,</span> <span class="n">data_b</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">StatisticalResult</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">ZeroDivisionError</span><span class="p">))</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestABTestConfiguration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestConfiguration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestABTestConfiguration</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ABTestConfigのテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestABTestConfiguration.test_default_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestConfiguration.test_default_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_default_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;デフォルト設定での初期化&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">ABTestConfig</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="p">,</span> <span class="n">ABTestPerformanceConfig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">max_workers</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">performance</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestABTestConfiguration.test_performance_config">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestABTestConfiguration.test_performance_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_performance_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス設定テスト&quot;&quot;&quot;</span>
+        <span class="n">perf_config</span> <span class="o">=</span> <span class="n">ABTestPerformanceConfig</span><span class="p">(</span>
+            <span class="n">max_memory_mb</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
+            <span class="n">max_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="mi">2000</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">perf_config</span><span class="o">.</span><span class="n">max_memory_mb</span><span class="p">,</span> <span class="mi">2048</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">perf_config</span><span class="o">.</span><span class="n">max_workers</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">perf_config</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="mi">2000</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestModelSelector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestModelSelector</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ModelSelectorのテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestModelSelector.setUp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">ABTestConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector</span> <span class="o">=</span> <span class="n">ModelSelector</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traffic_manager</span> <span class="o">=</span> <span class="n">TrafficManager</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestModelSelector.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">ABTestConfig</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">traffic_manager</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">,</span> <span class="p">{})</span></div>
+
+
+<div class="viewcode-block" id="TestModelSelector.test_select_model_basic">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.test_select_model_basic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_select_model_basic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;基本的なモデル選択テスト&quot;&quot;&quot;</span>
+        <span class="c1"># テストデータ作成</span>
+        <span class="n">variant_a</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+            <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;variant_a&quot;</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model_a&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Model A&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">variant_b</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+            <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;variant_b&quot;</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model_b&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Model B&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">test_config</span> <span class="o">=</span> <span class="n">ABTestConfiguration</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="s2">&quot;test_001&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Test A/B&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Basic test&quot;</span><span class="p">,</span>
+            <span class="n">variant_a</span><span class="o">=</span><span class="n">variant_a</span><span class="p">,</span>
+            <span class="n">variant_b</span><span class="o">=</span><span class="n">variant_b</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 統計結果作成</span>
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">StatisticalResult</span><span class="p">(</span>
+            <span class="n">test_type</span><span class="o">=</span><span class="n">StatisticalTest</span><span class="o">.</span><span class="n">T_TEST</span><span class="p">,</span>
+            <span class="n">p_value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+            <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">confidence_interval</span><span class="o">=</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">),</span>
+            <span class="n">sample_size_a</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">sample_size_b</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">mean_a</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">mean_b</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span>
+            <span class="n">std_a</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">std_b</span><span class="o">=</span><span class="mf">0.025</span>
+        <span class="p">)</span>
+
+        <span class="n">result_summary</span> <span class="o">=</span> <span class="n">ABTestResultSummary</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="s2">&quot;test_001&quot;</span><span class="p">,</span>
+            <span class="n">result</span><span class="o">=</span><span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span><span class="p">,</span>
+            <span class="n">winner_variant_id</span><span class="o">=</span><span class="s2">&quot;variant_b&quot;</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+            <span class="n">statistical_result</span><span class="o">=</span><span class="n">stat_result</span><span class="p">,</span>
+            <span class="n">risk_assessment</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">},</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Deploy variant B&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># テスト状態（モック）- 簡略化のため最小限のデータ</span>
+        <span class="k">class</span><span class="w"> </span><span class="nc">MockTestState</span><span class="p">:</span>
+            <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_a</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockMetrics&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;sample_count&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_b</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockMetrics&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;sample_count&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">regression_detected</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">test_state</span> <span class="o">=</span> <span class="n">MockTestState</span><span class="p">()</span>
+
+        <span class="c1"># モデル選択</span>
+        <span class="n">decision</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">select_model</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">,</span> <span class="n">result_summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">decision</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">],</span> <span class="s2">&quot;deploy&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">decision</span><span class="p">[</span><span class="s2">&quot;selected_variant&quot;</span><span class="p">],</span> <span class="n">variant_b</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestModelSelector.test_select_model_no_winner">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.test_select_model_no_winner">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_select_model_no_winner</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;勝者なしの場合のテスト&quot;&quot;&quot;</span>
+        <span class="n">variant_a</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+            <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;variant_a&quot;</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model_a&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Model A&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">variant_b</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+            <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;variant_b&quot;</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model_b&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Model B&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">test_config</span> <span class="o">=</span> <span class="n">ABTestConfiguration</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="s2">&quot;test_002&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Test A/B&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;No winner test&quot;</span><span class="p">,</span>
+            <span class="n">variant_a</span><span class="o">=</span><span class="n">variant_a</span><span class="p">,</span>
+            <span class="n">variant_b</span><span class="o">=</span><span class="n">variant_b</span>
+        <span class="p">)</span>
+
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">StatisticalResult</span><span class="p">(</span>
+            <span class="n">test_type</span><span class="o">=</span><span class="n">StatisticalTest</span><span class="o">.</span><span class="n">T_TEST</span><span class="p">,</span>
+            <span class="n">p_value</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+            <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">confidence_interval</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.007</span><span class="p">),</span>
+            <span class="n">sample_size_a</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">sample_size_b</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">mean_a</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">mean_b</span><span class="o">=</span><span class="mf">0.051</span><span class="p">,</span>
+            <span class="n">std_a</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">std_b</span><span class="o">=</span><span class="mf">0.02</span>
+        <span class="p">)</span>
+
+        <span class="n">result_summary</span> <span class="o">=</span> <span class="n">ABTestResultSummary</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="s2">&quot;test_002&quot;</span><span class="p">,</span>
+            <span class="n">result</span><span class="o">=</span><span class="n">ABTestResult</span><span class="o">.</span><span class="n">INCONCLUSIVE</span><span class="p">,</span>
+            <span class="n">winner_variant_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+            <span class="n">statistical_result</span><span class="o">=</span><span class="n">stat_result</span><span class="p">,</span>
+            <span class="n">risk_assessment</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">},</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Continue testing&quot;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">class</span><span class="w"> </span><span class="nc">MockTestState</span><span class="p">:</span>
+            <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_a</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockMetrics&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;sample_count&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">metrics_b</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="s1">&#39;MockMetrics&#39;</span><span class="p">,</span> <span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;sample_count&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">})()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">regression_detected</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">test_state</span> <span class="o">=</span> <span class="n">MockTestState</span><span class="p">()</span>
+
+        <span class="n">decision</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">select_model</span><span class="p">(</span><span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">,</span> <span class="n">result_summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">decision</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">],</span> <span class="s2">&quot;hold&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">decision</span><span class="p">[</span><span class="s2">&quot;selected_variant&quot;</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="TestModelSelector.test_calculate_confidence_level">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.test_calculate_confidence_level">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_calculate_confidence_level</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;信頼区間計算テスト&quot;&quot;&quot;</span>
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">StatisticalResult</span><span class="p">(</span>
+            <span class="n">test_type</span><span class="o">=</span><span class="n">StatisticalTest</span><span class="o">.</span><span class="n">T_TEST</span><span class="p">,</span>
+            <span class="n">p_value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+            <span class="n">effect_size</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">confidence_interval</span><span class="o">=</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">),</span>
+            <span class="n">sample_size_a</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">sample_size_b</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+            <span class="n">mean_a</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">mean_b</span><span class="o">=</span><span class="mf">0.07</span><span class="p">,</span>
+            <span class="n">std_a</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">std_b</span><span class="o">=</span><span class="mf">0.025</span>
+        <span class="p">)</span>
+
+        <span class="n">result_summary</span> <span class="o">=</span> <span class="n">ABTestResultSummary</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="o">=</span><span class="s2">&quot;test_confidence&quot;</span><span class="p">,</span>
+            <span class="n">result</span><span class="o">=</span><span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span><span class="p">,</span>
+            <span class="n">winner_variant_id</span><span class="o">=</span><span class="s2">&quot;variant_b&quot;</span><span class="p">,</span>
+            <span class="n">confidence_level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+            <span class="n">statistical_result</span><span class="o">=</span><span class="n">stat_result</span><span class="p">,</span>
+            <span class="n">risk_assessment</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">},</span>
+            <span class="n">recommendations</span><span class="o">=</span><span class="p">[]</span>
+        <span class="p">)</span>
+
+        <span class="n">confidence</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">_calculate_confidence_level</span><span class="p">(</span><span class="n">result_summary</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="n">confidence</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span>  <span class="c1"># 高い信頼度</span></div>
+
+
+<div class="viewcode-block" id="TestModelSelector.test_rollback_conditions">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.tests.TestModelSelector.test_rollback_conditions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_rollback_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバック条件テスト&quot;&quot;&quot;</span>
+        <span class="n">test_id</span> <span class="o">=</span> <span class="s2">&quot;test_rollback&quot;</span>
+        <span class="n">variant</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+            <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;variant_a&quot;</span><span class="p">,</span>
+            <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;/path/to/model_a&quot;</span><span class="p">,</span>
+            <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;1.0&quot;</span><span class="p">,</span>
+            <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Model A&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ロールバックトリガー設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">_setup_rollback_triggers</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="n">variant</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;high&quot;</span><span class="p">})</span>
+
+        <span class="c1"># トリガー存在確認</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">)</span>
+
+        <span class="c1"># ロールバック条件チェック（正常）</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;performance&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">}</span>  <span class="c1"># 正常範囲</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">rollback_triggered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">selector</span><span class="o">.</span><span class="n">check_rollback_conditions</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">rollback_triggered</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

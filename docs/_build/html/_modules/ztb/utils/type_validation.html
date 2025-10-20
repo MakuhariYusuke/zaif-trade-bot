@@ -1,0 +1,483 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.utils.type_validation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.utils.type_validation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.utils.type_validation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Runtime type validation utilities.</span>
+
+<span class="sd">This module provides runtime type checking utilities for critical code paths,</span>
+<span class="sd">helping catch type-related issues during execution rather than just at static analysis time.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">get_origin</span><span class="p">,</span> <span class="n">get_args</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+
+
+<div class="viewcode-block" id="TypeValidator">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.TypeValidator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TypeValidator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Runtime type validator for function arguments and return values.</span>
+
+<span class="sd">    This class provides decorators and utilities for runtime type checking</span>
+<span class="sd">    of critical functions to catch type mismatches during execution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TypeValidator.validate_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.TypeValidator.validate_type">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_type</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;value&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate that a value matches the expected type at runtime.</span>
+
+<span class="sd">        Performs comprehensive type checking including support for:</span>
+<span class="sd">        - Basic types (int, str, float, etc.)</span>
+<span class="sd">        - Generic types (List[int], Dict[str, Any], etc.)</span>
+<span class="sd">        - Union types (Union[int, str])</span>
+<span class="sd">        - Optional types (Optional[str])</span>
+<span class="sd">        - NumPy array types (NDArray[np.float64])</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value: The value to validate against the expected type.</span>
+<span class="sd">            expected_type: The type that value should conform to.</span>
+<span class="sd">                          Supports typing module constructs like Union, Optional, List, etc.</span>
+<span class="sd">            name: Descriptive name of the value for error messages.</span>
+<span class="sd">                 Defaults to &quot;value&quot;.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            TypeError: If the value doesn&#39;t match the expected type.</span>
+<span class="sd">                      Error message includes the value name and actual/expected types.</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; TypeValidator.validate_type(42, int, &quot;age&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; TypeValidator.validate_type([1, 2, 3], List[int], &quot;numbers&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; TypeValidator.validate_type(None, Optional[str], &quot;optional_name&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TypeValidator</span><span class="o">.</span><span class="n">_check_type</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be of type </span><span class="si">{</span><span class="n">expected_type</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TypeValidator</span><span class="o">.</span><span class="n">_check_type</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be of type </span><span class="si">{</span><span class="n">expected_type</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_type</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">:</span> <span class="n">Type</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if value matches expected type, handling generics.&quot;&quot;&quot;</span>
+        <span class="c1"># Handle None</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">expected_type</span> <span class="ow">is</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="nb">hasattr</span><span class="p">(</span><span class="n">expected_type</span><span class="p">,</span> <span class="s1">&#39;__args__&#39;</span><span class="p">)</span> <span class="ow">and</span>
+                <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">expected_type</span><span class="p">,</span> <span class="s1">&#39;__args__&#39;</span><span class="p">,</span> <span class="p">())</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Handle Union types</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="n">get_origin</span><span class="p">(</span><span class="n">expected_type</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="n">Union</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">any</span><span class="p">(</span><span class="n">TypeValidator</span><span class="o">.</span><span class="n">_check_type</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">arg</span><span class="p">)</span> <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">get_args</span><span class="p">(</span><span class="n">expected_type</span><span class="p">))</span>
+
+        <span class="c1"># Handle generic types</span>
+        <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">origin</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># Check generic arguments for specific cases</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="n">get_args</span><span class="p">(</span><span class="n">expected_type</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="n">NDArray</span> <span class="ow">and</span> <span class="n">args</span><span class="p">:</span>
+                <span class="n">dtype_arg</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dtype_arg</span><span class="p">,</span> <span class="s1">&#39;__origin__&#39;</span><span class="p">):</span>
+                    <span class="c1"># Handle np.floating[Any], np.integer[Any], etc.</span>
+                    <span class="n">dtype_origin</span> <span class="o">=</span> <span class="n">get_origin</span><span class="p">(</span><span class="n">dtype_arg</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">dtype_origin</span> <span class="ow">in</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+                        <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Accept any numeric dtype for now</span>
+                <span class="k">elif</span> <span class="n">dtype_arg</span> <span class="ow">in</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Standard isinstance check</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="c1"># Some types (like generics) can&#39;t be used with isinstance</span>
+            <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># Assume valid if isinstance fails</span>
+
+<div class="viewcode-block" id="TypeValidator.validate_array_shape">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.TypeValidator.validate_array_shape">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_array_shape</span><span class="p">(</span>
+        <span class="n">array</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">expected_shape</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate numpy array shape.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array: Array to validate</span>
+<span class="sd">            expected_shape: Expected shape (None for any shape)</span>
+<span class="sd">            name: Name for error messages</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If shape doesn&#39;t match</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">expected_shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">array</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="n">expected_shape</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> shape must be </span><span class="si">{</span><span class="n">expected_shape</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TypeValidator.validate_array_dtype">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.TypeValidator.validate_array_dtype">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_array_dtype</span><span class="p">(</span>
+        <span class="n">array</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span>
+        <span class="n">expected_dtype</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;array&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate numpy array dtype.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            array: Array to validate</span>
+<span class="sd">            expected_dtype: Expected dtype (None for any dtype)</span>
+<span class="sd">            name: Name for error messages</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            TypeError: If dtype doesn&#39;t match</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">expected_dtype</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">array</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">expected_dtype</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> dtype must be </span><span class="si">{</span><span class="n">expected_dtype</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">array</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="runtime_type_check">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.runtime_type_check">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">runtime_type_check</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Decorator for runtime type checking of function arguments and return values.</span>
+
+<span class="sd">    This decorator inspects the function&#39;s type annotations and validates</span>
+<span class="sd">    arguments and return values at runtime.</span>
+
+<span class="sd">    Note: This is a development/debugging tool and may impact performance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="n">annotations</span> <span class="o">=</span> <span class="n">func</span><span class="o">.</span><span class="vm">__annotations__</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="c1"># Bind arguments to parameter names</span>
+        <span class="n">bound_args</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">bound_args</span><span class="o">.</span><span class="n">apply_defaults</span><span class="p">()</span>
+
+        <span class="c1"># Validate arguments</span>
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_value</span> <span class="ow">in</span> <span class="n">bound_args</span><span class="o">.</span><span class="n">arguments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">annotations</span><span class="p">:</span>
+                <span class="n">expected_type</span> <span class="o">=</span> <span class="n">annotations</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">TypeValidator</span><span class="o">.</span><span class="n">validate_type</span><span class="p">(</span>
+                        <span class="n">param_value</span><span class="p">,</span> <span class="n">expected_type</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;argument &#39;</span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="c1"># Log warning but don&#39;t fail - for development use</span>
+                    <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+                    <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Type check failed for </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Call function</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Validate return value</span>
+        <span class="k">if</span> <span class="s1">&#39;return&#39;</span> <span class="ow">in</span> <span class="n">annotations</span><span class="p">:</span>
+            <span class="n">expected_return_type</span> <span class="o">=</span> <span class="n">annotations</span><span class="p">[</span><span class="s1">&#39;return&#39;</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">TypeValidator</span><span class="o">.</span><span class="n">validate_type</span><span class="p">(</span>
+                    <span class="n">result</span><span class="p">,</span> <span class="n">expected_return_type</span><span class="p">,</span> <span class="s2">&quot;return value&quot;</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Return type check failed for </span><span class="si">{</span><span class="n">func</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">return</span> <span class="n">wrapper</span></div>
+
+
+
+<span class="c1"># Convenience functions for common validations</span>
+<div class="viewcode-block" id="validate_environment_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_environment_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_environment_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate environment configuration dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration dictionary to validate</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If configuration is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;reward_scaling&#39;</span><span class="p">,</span> <span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="s1">&#39;max_position_size&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required config key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Validate types</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reward_scaling&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;reward_scaling must be numeric&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;transaction_cost must be numeric&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_position_size must be numeric&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_training_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_training_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_training_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate training configuration dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration dictionary to validate</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If configuration is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="s1">&#39;total_timesteps&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required training config key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Validate ranges</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;learning_rate must be between 0 and 1&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;batch_size must be positive&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_timesteps&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;total_timesteps must be positive&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_feature_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_feature_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_feature_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate feature configuration dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration dictionary to validate</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If configuration is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s1">&#39;features&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Missing required feature config key: features&quot;</span><span class="p">)</span>
+
+    <span class="n">features</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;features&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;features must be a list&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">features</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;features list cannot be empty&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Validate each feature has required fields</span>
+    <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">features</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">feature</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each feature must be a dictionary&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;name&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each feature must have a &#39;name&#39; field&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;type&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Each feature must have a &#39;type&#39; field&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_trading_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_trading_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_trading_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate trading configuration dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration dictionary to validate</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If configuration is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pair&#39;</span><span class="p">,</span> <span class="s1">&#39;timeframe&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_balance&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required trading config key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;initial_balance must be positive&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;max_position_size must be positive&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_model_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_model_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_model_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate model configuration dictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: Configuration dictionary to validate</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If configuration is invalid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">required_keys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;policy&#39;</span><span class="p">,</span> <span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required model config key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;learning_rate must be between 0 and 1&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;batch_size must be positive&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="validate_array_type">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.type_validation.validate_array_type">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_array_type</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">expected_dtype</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Validate that an array has the expected dtype.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        arr: Array to validate</span>
+<span class="sd">        expected_dtype: Expected numpy dtype</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        True if array has expected dtype, False otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="ow">and</span> <span class="n">arr</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">expected_dtype</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

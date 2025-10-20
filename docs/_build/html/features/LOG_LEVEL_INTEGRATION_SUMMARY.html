@@ -1,0 +1,547 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ログレベル制御機能 統合サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Implementation" href="../implementation/index.html" />
+    <link rel="prev" title="ログレベル制御ガイド" href="LOG_LEVEL_CONTROL.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Features</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="FEATURE_IMPLEMENTATION_SUMMARY.html">大規模機能実装サマリー - 2025年10月7日</a></li>
+<li class="toctree-l2"><a class="reference internal" href="LOG_LEVEL_CONTROL.html">ログレベル制御ガイド</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ログレベル制御機能 統合サマリー</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">✅ 実装内容</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#unified-trainer-py">1. unified_trainer.py拡張</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">2. ドキュメント更新</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">🚀 使用方法</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id9">基本構文</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id10">利用可能なログレベル</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">📝 実行例</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id12">通常実行（推奨）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#warning">静かに実行（WARNINGレベル）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#debug">デバッグ実行（DEBUGレベル）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#k">🔧 100kテストでの推奨設定</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id13">シーケンシャル実行</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">並列実行（推奨）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id15">📊 効果</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#before-log-level">Before（–log-level 未実装）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#after-log-level-info">After（–log-level INFO）</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#after-log-level-warning">After（–log-level WARNING - 並列実行時）</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id16">🎯 推奨ログレベル</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tensorboard">💡 TensorBoardとの併用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id17">✅ 検証結果</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id18">ヘルプ表示確認</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id19">ログレベル引数パース確認</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id20">📚 関連ドキュメント</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id21">🔄 既存機能との互換性</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#verbose">–verbose フラグとの関係</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id22">📋 今後の拡張予定</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id23">モジュール別ログレベル制御</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id24">✅ まとめ</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Features</a></li>
+      <li class="breadcrumb-item active">ログレベル制御機能 統合サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/features/LOG_LEVEL_INTEGRATION_SUMMARY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>ログレベル制御機能 統合サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>実装日</strong>: 2025年10月7日<br />
+<strong>目的</strong>: unified_trainer実行時のログ出力を制御し、視認性を向上</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>✅ 実装内容<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="unified-trainer-py">
+<h3>1. unified_trainer.py拡張<a class="headerlink" href="#unified-trainer-py" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code></p>
+<section id="id3">
+<h4>追加引数<a class="headerlink" href="#id3" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--log-level&quot;</span><span class="p">,</span>
+    <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+    <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span> <span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="s2">&quot;WARNING&quot;</span><span class="p">,</span> <span class="s2">&quot;ERROR&quot;</span><span class="p">,</span> <span class="s2">&quot;CRITICAL&quot;</span><span class="p">],</span>
+    <span class="n">default</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+    <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Set logging level (default: INFO). Overrides --verbose flag.&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h4>ログレベル制御ロジック<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># --log-level takes precedence over --verbose</span>
+<span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;log_level&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">log_level</span><span class="p">:</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">logging</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">log_level</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">verbose</span> <span class="k">else</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">log_level</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(name)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Also set the root logger level to suppress third-party DEBUG logs</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">log_level</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>重要な変更点</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--log-level</span></code> 引数が <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> より優先</p></li>
+<li><p>ルートロガーのレベルも設定し、サードパーティライブラリ（torch、stable-baselines3等）のDEBUGログも抑制</p></li>
+<li><p>デフォルトは <code class="docutils literal notranslate"><span class="pre">INFO</span></code>（DEBUGログを抑制）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h3>2. ドキュメント更新<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<section id="id6">
+<h4>新規作成<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>LOG_LEVEL_CONTROL.md</strong>: ログレベル制御の詳細ガイド</p>
+<ul>
+<li><p>使用方法、実行例、推奨設定</p></li>
+<li><p>100kテストでの活用方法</p></li>
+<li><p>TensorBoardとの併用Tips</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id7">
+<h4>更新<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>QUICKSTART_100K_TEST.md</strong>: 100kテスト実行ガイド</p>
+<ul>
+<li><p>「ログレベル制御」セクション追加</p></li>
+<li><p>全実行例に <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">INFO</span></code> を追加</p></li>
+<li><p>並列実行時は <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">WARNING</span></code> を推奨</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>🚀 使用方法<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>基本構文<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>&lt;設定ファイル&gt;<span class="w"> </span>--log-level<span class="w"> </span>&lt;レベル&gt;
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h3>利用可能なログレベル<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>レベル</p></th>
+<th class="head"><p>説明</p></th>
+<th class="head"><p>用途</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>DEBUG</strong></p></td>
+<td><p>すべてのログ（最も詳細）</p></td>
+<td><p>デバッグ時のみ</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>INFO</strong></p></td>
+<td><p>重要な情報のみ（<strong>デフォルト、推奨</strong>）</p></td>
+<td><p>通常実行</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>WARNING</strong></p></td>
+<td><p>警告とエラーのみ</p></td>
+<td><p>安定稼働時、並列実行時</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>ERROR</strong></p></td>
+<td><p>エラーのみ</p></td>
+<td><p>本番環境</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>CRITICAL</strong></p></td>
+<td><p>致命的エラーのみ</p></td>
+<td><p>本番環境（最小ログ）</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>📝 実行例<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h3>通常実行（推奨）<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># INFOレベル（デフォルト）- 重要な情報のみ表示</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>INFO
+</pre></div>
+</div>
+<p><strong>出力</strong>: 進捗、チェックポイント保存、重要なイベントのみ</p>
+</section>
+<hr class="docutils" />
+<section id="warning">
+<h3>静かに実行（WARNINGレベル）<a class="headerlink" href="#warning" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 警告とエラーのみ表示</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>WARNING
+</pre></div>
+</div>
+<p><strong>用途</strong>:</p>
+<ul class="simple">
+<li><p>並列実行時（3つのウィンドウで混乱しないように）</p></li>
+<li><p>長時間実行時（1M学習等）</p></li>
+<li><p>安定稼働時</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="debug">
+<h3>デバッグ実行（DEBUGレベル）<a class="headerlink" href="#debug" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># すべてのログを表示（デバッグ時のみ）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>DEBUG
+</pre></div>
+</div>
+<p><strong>用途</strong>: エラー調査、動作確認時のみ</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="k">
+<h2>🔧 100kテストでの推奨設定<a class="headerlink" href="#k" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3>シーケンシャル実行<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># INFOレベル（進捗を確認）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_A_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>INFO
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>INFO
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_C_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>INFO
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h3>並列実行（推奨）<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="c"># WARNINGレベル（静かに実行）</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_A_100k_test.json --log-level WARNING&quot;</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_B_100k_test.json --log-level WARNING&quot;</span>
+<span class="nb">Start-Process</span> <span class="n">powershell</span> <span class="n">-ArgumentList</span> <span class="s2">&quot;-NoExit&quot;</span><span class="p">,</span> <span class="s2">&quot;-Command&quot;</span><span class="p">,</span> <span class="s2">&quot;python -m ztb.training.unified_trainer --config configs\train\ensemble_C_100k_test.json --log-level WARNING&quot;</span>
+</pre></div>
+</div>
+<p><strong>理由</strong>: 3つのウィンドウでINFOログが大量に出ると混乱するため</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>📊 効果<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="before-log-level">
+<h3>Before（–log-level 未実装）<a class="headerlink" href="#before-log-level" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2025-10-07 10:00:00 - torch.nn.modules.module - DEBUG - Registered hook...
+2025-10-07 10:00:00 - stable_baselines3.common.logger - DEBUG - Writing to TensorBoard...
+2025-10-07 10:00:00 - ztb.utils.file_utils - DEBUG - Opening file...
+2025-10-07 10:00:01 - ztb.trading.training.ppo_trainer - INFO - Training started
+2025-10-07 10:00:01 - torch.optim.adam - DEBUG - Step...
+2025-10-07 10:00:01 - stable_baselines3.ppo.ppo - DEBUG - Collecting rollouts...
+（DEBUGログが大量に出力され、重要な情報が埋もれる）
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="after-log-level-info">
+<h3>After（–log-level INFO）<a class="headerlink" href="#after-log-level-info" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2025-10-07 10:00:00 - ztb.training.unified_trainer - INFO - Loaded config from configs\train\ensemble_B_100k_test.json
+2025-10-07 10:00:01 - ztb.training.unified_trainer - INFO - Algorithm: ppo
+2025-10-07 10:00:01 - ztb.training.unified_trainer - INFO - Starting PPO training...
+2025-10-07 10:00:05 - ztb.trading.training.ppo_trainer - INFO - Training started (total_timesteps=100000)
+2025-10-07 10:05:00 - ztb.trading.training.ppo_trainer - INFO - Checkpoint saved: checkpoints/ensemble_B_100k_test/checkpoint_10000
+（重要な情報のみ表示、視認性向上）
+</pre></div>
+</div>
+</section>
+<hr class="docutils" />
+<section id="after-log-level-warning">
+<h3>After（–log-level WARNING - 並列実行時）<a class="headerlink" href="#after-log-level-warning" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>2025-10-07 10:00:00 - ztb.trading.training.ppo_trainer - WARNING - SELL rate is low: 0.03
+2025-10-07 10:05:00 - ztb.trading.training.ppo_trainer - WARNING - Gradient norm is zero for SELL action
+（警告とエラーのみ表示、静かに実行）
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>🎯 推奨ログレベル<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>状況</p></th>
+<th class="head"><p>推奨レベル</p></th>
+<th class="head"><p>理由</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>初回実行・動作確認</p></td>
+<td><p><strong>INFO</strong></p></td>
+<td><p>重要な情報を確認</p></td>
+</tr>
+<tr class="row-odd"><td><p>100kテスト（シーケンシャル）</p></td>
+<td><p><strong>INFO</strong></p></td>
+<td><p>進捗とチェックポイントを確認</p></td>
+</tr>
+<tr class="row-even"><td><p>100kテスト（並列）</p></td>
+<td><p><strong>WARNING</strong></p></td>
+<td><p>複数ウィンドウで混乱しないように</p></td>
+</tr>
+<tr class="row-odd"><td><p>1M学習（長時間）</p></td>
+<td><p><strong>WARNING</strong></p></td>
+<td><p>ログ量を抑制</p></td>
+</tr>
+<tr class="row-even"><td><p>エラー調査</p></td>
+<td><p><strong>DEBUG</strong></p></td>
+<td><p>詳細な情報で原因特定</p></td>
+</tr>
+<tr class="row-odd"><td><p>本番環境</p></td>
+<td><p><strong>ERROR</strong></p></td>
+<td><p>エラーのみ記録</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="tensorboard">
+<h2>💡 TensorBoardとの併用<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h2>
+<p>ログを減らしてもTensorBoardで詳細確認可能:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># WARNINGレベルで実行（ログ少ない）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>configs<span class="se">\t</span>rain<span class="se">\e</span>nsemble_B_100k_test.json<span class="w"> </span>--log-level<span class="w"> </span>WARNING
+
+<span class="c1"># 別ターミナルでTensorBoard起動（詳細な指標確認）</span>
+tensorboard<span class="w"> </span>--logdir<span class="w"> </span>logs<span class="w"> </span>--port<span class="w"> </span><span class="m">6006</span>
+</pre></div>
+</div>
+<p><strong>メリット</strong>:</p>
+<ul class="simple">
+<li><p>コンソールログは最小限（警告のみ）</p></li>
+<li><p>TensorBoardで詳細な指標を確認（学習曲線、アクション分布、勾配ノルム等）</p></li>
+<li><p>ログファイルサイズも削減</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id17">
+<h2>✅ 検証結果<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>ヘルプ表示確認<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--help<span class="w"> </span><span class="p">|</span><span class="w"> </span>findstr<span class="w"> </span>/C:<span class="s2">&quot;log-level&quot;</span><span class="w"> </span>/C:<span class="s2">&quot;verbose&quot;</span>
+<span class="w">  </span>--verbose<span class="w">             </span>Enable<span class="w"> </span>verbose<span class="w"> </span>logging
+<span class="w">  </span>--log-level<span class="w"> </span><span class="o">{</span>DEBUG,INFO,WARNING,ERROR,CRITICAL<span class="o">}</span>
+<span class="w">                        </span>Set<span class="w"> </span>logging<span class="w"> </span>level<span class="w"> </span><span class="o">(</span>default:<span class="w"> </span>INFO<span class="o">)</span>.<span class="w"> </span>Overrides<span class="w"> </span>--verbose
+</pre></div>
+</div>
+<p>✅ 正常に追加されている</p>
+</section>
+<hr class="docutils" />
+<section id="id19">
+<h3>ログレベル引数パース確認<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import argparse; import logging; parser = argparse.ArgumentParser(); parser.add_argument(&#39;--log-level&#39;, choices=[&#39;DEBUG&#39;, &#39;INFO&#39;, &#39;WARNING&#39;, &#39;ERROR&#39;, &#39;CRITICAL&#39;], default=&#39;INFO&#39;); args = parser.parse_args([&#39;--log-level&#39;, &#39;WARNING&#39;]); log_level = getattr(logging, args.log_level); print(f&#39;Log level: {args.log_level} → {log_level}&#39;)&quot;</span>
+
+Log<span class="w"> </span>level:<span class="w"> </span>WARNING<span class="w"> </span>→<span class="w"> </span><span class="m">30</span>
+</pre></div>
+</div>
+<p>✅ 正常にパースされている（WARNING = 30）</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id20">
+<h2>📚 関連ドキュメント<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>LOG_LEVEL_CONTROL.md</strong>: ログレベル制御の詳細ガイド</p></li>
+<li><p><strong>QUICKSTART_100K_TEST.md</strong>: 100kテスト実行ガイド（ログレベル制御例あり）</p></li>
+<li><p><strong>UNIFIED_TRAINER_INTEGRATION_SUMMARY.md</strong>: unified_trainer統合サマリー</p></li>
+<li><p><strong>CHECKPOINT_INTERVAL_EXTENSION.md</strong>: checkpoint_interval拡張ガイド</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>🔄 既存機能との互換性<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="verbose">
+<h3>–verbose フラグとの関係<a class="headerlink" href="#verbose" title="Link to this heading"></a></h3>
+<p><strong>優先順位</strong>: <code class="docutils literal notranslate"><span class="pre">--log-level</span></code> &gt; <code class="docutils literal notranslate"><span class="pre">--verbose</span></code></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># DEBUGレベル（従来の方法）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--verbose
+
+<span class="c1"># DEBUGレベル（新しい方法）</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--log-level<span class="w"> </span>DEBUG
+
+<span class="c1"># --log-levelが優先</span>
+python<span class="w"> </span>-m<span class="w"> </span>ztb.training.unified_trainer<span class="w"> </span>--config<span class="w"> </span>config.json<span class="w"> </span>--verbose<span class="w"> </span>--log-level<span class="w"> </span>WARNING
+<span class="c1"># → WARNINGレベルで実行（--verboseは無視される）</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>📋 今後の拡張予定<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>モジュール別ログレベル制御<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p>設定ファイルに追加可能にする（将来実装）:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;logging&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;root_level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;modules&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;ztb.trading.training.ppo_trainer&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;stable_baselines3&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;WARNING&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;torch&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ERROR&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>メリット</strong>:</p>
+<ul class="simple">
+<li><p>特定のモジュールだけDEBUGレベルで詳細確認</p></li>
+<li><p>サードパーティライブラリのログを個別に抑制</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>✅ まとめ<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>実装完了</strong>: <code class="docutils literal notranslate"><span class="pre">--log-level</span></code> 引数を追加</p></li>
+<li><p><strong>デフォルト</strong>: <code class="docutils literal notranslate"><span class="pre">INFO</span></code>レベル（DEBUGログを抑制）</p></li>
+<li><p><strong>推奨設定</strong>:</p>
+<ul class="simple">
+<li><p>シーケンシャル実行: <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">INFO</span></code></p></li>
+<li><p>並列実行: <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">WARNING</span></code></p></li>
+<li><p>エラー調査: <code class="docutils literal notranslate"><span class="pre">--log-level</span> <span class="pre">DEBUG</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>互換性</strong>: 既存の <code class="docutils literal notranslate"><span class="pre">--verbose</span></code> フラグも引き続き使用可能</p></li>
+<li><p><strong>ドキュメント</strong>: LOG_LEVEL_CONTROL.md、QUICKSTART_100K_TEST.md更新</p></li>
+</ol>
+<p><strong>視認性が大幅に向上し、100kテストや1M学習がより快適に実行可能になりました！</strong> 🎉</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="LOG_LEVEL_CONTROL.html" class="btn btn-neutral float-left" title="ログレベル制御ガイド" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../implementation/index.html" class="btn btn-neutral float-right" title="Implementation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

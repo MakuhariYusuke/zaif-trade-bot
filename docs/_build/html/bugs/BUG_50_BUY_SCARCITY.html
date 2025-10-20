@@ -1,0 +1,437 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bug #50: BUY Scarcity Limits SELL Opportunities &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Bug #50: BUY Scarcity Limits SELL Opportunities</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bugs/BUG_50_BUY_SCARCITY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="bug-50-buy-scarcity-limits-sell-opportunities">
+<h1>Bug #50: BUY Scarcity Limits SELL Opportunities<a class="headerlink" href="#bug-50-buy-scarcity-limits-sell-opportunities" title="Link to this heading"></a></h1>
+<p><strong>Status</strong>: 🔍 IDENTIFIED → 🔧 FIX IN PROGRESS<br />
+<strong>Severity</strong>: 🔴 CRITICAL (Root cause of persistent SELL avoidance)<br />
+<strong>Discovered</strong>: 2025-10-08<br />
+<strong>Fixed In</strong>: v3.6.5</p>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p>v3.6.4 validation revealed <strong>BUY rate of only 8.3%</strong>, which structurally limits SELL opportunities since the agent can only SELL when holding a position (which requires prior BUY). This is the <strong>root cause</strong> of why SELL rate plateaued at 12.2% despite Bug #48 and #49 fixes.</p>
+</section>
+<hr class="docutils" />
+<section id="problem-description">
+<h2>Problem Description<a class="headerlink" href="#problem-description" title="Link to this heading"></a></h2>
+<section id="observed-behavior-v3-6-4">
+<h3>Observed Behavior (v3.6.4)<a class="headerlink" href="#observed-behavior-v3-6-4" title="Link to this heading"></a></h3>
+<p>From console log analysis (<code class="docutils literal notranslate"><span class="pre">analyze_v364_console.py</span></code>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>AGGREGATE STATISTICS:
+  Total Actions: 96
+  HOLD:  76 ( 79.2%)
+  BUY:    8 (  8.3%)
+  SELL:  12 ( 12.5%)
+
+SELL=12.5% is 1.5x BUY rate
+→ Position turnover is already HIGH
+→ To increase SELL further, must increase BUY first
+</pre></div>
+</div>
+<p><strong>Key Finding</strong>: SELL rate cannot sustainably exceed BUY rate. With BUY at 8.3%, the theoretical maximum SELL rate is ~8-10% (accounting for position holding time).</p>
+</section>
+<section id="root-cause-chain">
+<h3>Root Cause Chain<a class="headerlink" href="#root-cause-chain" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>HOLD dominance (79.2%)</strong>: Agent is overly conservative</p></li>
+<li><p><strong>BUY scarcity (8.3%)</strong>: Few positions opened</p></li>
+<li><p><strong>SELL structural limit (12.5%)</strong>: Cannot sell without position</p></li>
+<li><p><strong>Lambda ineffective</strong>: λ=30.0 (maximum) cannot overcome reward imbalance</p></li>
+</ol>
+<p><strong>Configuration Issue</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">1.0</span><span class="p">]</span><span class="w">  </span><span class="c1">// [BUY, SELL, HOLD]</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>BUY=1.0: No incentive to open positions</p></li>
+<li><p>SELL=3.0: Strong incentive but no opportunities</p></li>
+<li><p>HOLD=1.0: Neutral, becomes default action</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="impact">
+<h2>Impact<a class="headerlink" href="#impact" title="Link to this heading"></a></h2>
+<section id="symptom-cascade">
+<h3>Symptom Cascade<a class="headerlink" href="#symptom-cascade" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Version</p></th>
+<th class="head"><p>BUY%</p></th>
+<th class="head"><p>SELL%</p></th>
+<th class="head"><p>HOLD%</p></th>
+<th class="head"><p>Issue</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>v3.6.1</p></td>
+<td><p>?</p></td>
+<td><p>10.7%</p></td>
+<td><p>?</p></td>
+<td><p>Bug #49 (wrong array order)</p></td>
+</tr>
+<tr class="row-odd"><td><p>v3.6.3</p></td>
+<td><p>?</p></td>
+<td><p>8.8%</p></td>
+<td><p>?</p></td>
+<td><p>Bug #48 (reward_settings not passed)</p></td>
+</tr>
+<tr class="row-even"><td><p>v3.6.4</p></td>
+<td><p>8.3%</p></td>
+<td><p>12.2%</p></td>
+<td><p>79.2%</p></td>
+<td><p><strong>Bug #50 (BUY scarcity)</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p>Even with correct reward propagation and array order, the <strong>reward structure itself</strong> doesn’t incentivize BUY actions enough.</p>
+</section>
+<section id="why-previous-fixes-failed">
+<h3>Why Previous Fixes Failed<a class="headerlink" href="#why-previous-fixes-failed" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Bug #48 fix</strong>: Ensured reward_settings reach environment, but multipliers still imbalanced</p></li>
+<li><p><strong>Bug #49 fix</strong>: Applied SELL 3x bonus correctly, but without BUY opportunities, SELL cannot increase</p></li>
+<li><p><strong>Lambda=30.0</strong>: Maximum constraint strength cannot create BUY opportunities</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="fix-implementation">
+<h2>Fix Implementation<a class="headerlink" href="#fix-implementation" title="Link to this heading"></a></h2>
+<section id="strategy-balanced-multiplier-approach">
+<h3>Strategy: Balanced Multiplier Approach<a class="headerlink" href="#strategy-balanced-multiplier-approach" title="Link to this heading"></a></h3>
+<p><strong>Configuration Change</strong> (v3.6.5):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;profit_bonus_multipliers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">2.0</span><span class="p">,</span><span class="w"> </span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.5</span><span class="p">]</span><span class="w">  </span><span class="c1">// [BUY, SELL, HOLD]</span>
+</pre></div>
+</div>
+<p><strong>Rationale</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>BUY 1.0 → 2.0</strong>: Create position-opening incentive</p></li>
+<li><p><strong>SELL 3.0</strong> (unchanged): Maintain strong closing incentive</p></li>
+<li><p><strong>HOLD 1.0 → 0.5</strong>: Discourage passive holding</p></li>
+</ol>
+<p><strong>Expected Outcome</strong>:</p>
+<ul class="simple">
+<li><p>BUY: 8.3% → 20-25%</p></li>
+<li><p>SELL: 12.2% → 15-20%</p></li>
+<li><p>HOLD: 79.2% → 55-60%</p></li>
+</ul>
+</section>
+<section id="alternative-strategies-considered">
+<h3>Alternative Strategies Considered<a class="headerlink" href="#alternative-strategies-considered" title="Link to this heading"></a></h3>
+<section id="option-a-higher-lambda-max">
+<h4>Option A: Higher Lambda Max<a class="headerlink" href="#option-a-higher-lambda-max" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;lagrange_lambda_max&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">50.0</span><span class="w">  </span><span class="c1">// was 30.0</span>
+</pre></div>
+</div>
+<p><strong>Rejected</strong>: Risks numerical instability, doesn’t address BUY scarcity</p>
+</section>
+<section id="option-b-action-penalties">
+<h4>Option B: Action Penalties<a class="headerlink" href="#option-b-action-penalties" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="nt">&quot;hold_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span>
+<span class="nt">&quot;buy_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.05</span><span class="p">,</span>
+<span class="nt">&quot;sell_action_penalty&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.1</span>
+</pre></div>
+</div>
+<p><strong>Deferred</strong>: Requires reward_calculator.py modifications, not backward compatible</p>
+</section>
+<section id="option-c-curriculum-learning">
+<h4>Option C: Curriculum Learning<a class="headerlink" href="#option-c-curriculum-learning" title="Link to this heading"></a></h4>
+<p>Start with SELL target 10%, gradually increase to 33%<br />
+<strong>Deferred</strong>: Adds training complexity, try simpler fix first</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="validation-plan">
+<h2>Validation Plan<a class="headerlink" href="#validation-plan" title="Link to this heading"></a></h2>
+<section id="success-criteria-v3-6-5">
+<h3>Success Criteria (v3.6.5)<a class="headerlink" href="#success-criteria-v3-6-5" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>BUY Rate</strong>: ≥ 20%</p></li>
+<li><p><strong>SELL Rate</strong>: ≥ 15% (previously 12.2%)</p></li>
+<li><p><strong>HOLD Rate</strong>: ≤ 65% (previously 79.2%)</p></li>
+<li><p><strong>Distribution Balance</strong>: Max deviation from 33.3% ≤ 20pp</p></li>
+</ol>
+</section>
+<section id="validation-command">
+<h3>Validation Command<a class="headerlink" href="#validation-command" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="expected-log-output">
+<h3>Expected Log Output<a class="headerlink" href="#expected-log-output" title="Link to this heading"></a></h3>
+<p>With enhanced <code class="docutils literal notranslate"><span class="pre">_final_validation()</span></code> method:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">FINAL</span> <span class="n">ACTION</span> <span class="n">DISTRIBUTION</span><span class="p">:</span>
+  <span class="n">HOLD</span><span class="p">:</span>  <span class="mf">55.0</span><span class="o">%</span> <span class="p">(</span><span class="mi">176</span> <span class="o">/</span> <span class="mi">320</span><span class="p">)</span>
+  <span class="n">BUY</span><span class="p">:</span>   <span class="mf">22.0</span><span class="o">%</span> <span class="p">(</span> <span class="mi">70</span> <span class="o">/</span> <span class="mi">320</span><span class="p">)</span>
+  <span class="n">SELL</span><span class="p">:</span>  <span class="mf">18.0</span><span class="o">%</span> <span class="p">(</span> <span class="mi">57</span> <span class="o">/</span> <span class="mi">320</span><span class="p">)</span>
+
+<span class="n">OUTPUT</span> <span class="n">PATHS</span><span class="p">:</span>
+  <span class="n">Model</span><span class="p">:</span>        <span class="n">models</span><span class="o">/</span><span class="n">ppo_balanced_mem_optimized</span><span class="o">.</span><span class="n">zip</span>
+  <span class="n">Checkpoints</span><span class="p">:</span>  <span class="n">checkpoints</span><span class="o">/</span><span class="n">ppo_balanced_mem_optimized</span>
+  <span class="n">TensorBoard</span><span class="p">:</span>  <span class="n">tensorboard</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="related-changes">
+<h2>Related Changes<a class="headerlink" href="#related-changes" title="Link to this heading"></a></h2>
+<section id="files-modified">
+<h3>Files Modified<a class="headerlink" href="#files-modified" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>configs/training/ppo_balanced_mem_optimized.json</strong></p>
+<ul class="simple">
+<li><p>Line 97: <code class="docutils literal notranslate"><span class="pre">profit_bonus_multipliers:</span> <span class="pre">[1.0,</span> <span class="pre">3.0,</span> <span class="pre">1.0]</span> <span class="pre">→</span> <span class="pre">[2.0,</span> <span class="pre">3.0,</span> <span class="pre">0.5]</span></code></p></li>
+<li><p>Line 3: Version <code class="docutils literal notranslate"><span class="pre">3.6.4</span> <span class="pre">→</span> <span class="pre">3.6.5</span></code></p></li>
+<li><p>Added Bug #50 to <code class="docutils literal notranslate"><span class="pre">_bugs_fixed</span></code> list</p></li>
+</ul>
+</li>
+<li><p><strong>ztb/training/sell_mitigation_ppo_trainer.py</strong></p>
+<ul class="simple">
+<li><p>Enhanced <code class="docutils literal notranslate"><span class="pre">_final_validation()</span></code> to show all action distributions</p></li>
+<li><p>Added output path logging</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="analysis-scripts-created">
+<h3>Analysis Scripts Created<a class="headerlink" href="#analysis-scripts-created" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>debug_sell_rate_detail.py</strong>: TensorBoard event analysis (found events not readable)</p></li>
+<li><p><strong>analyze_v364_console.py</strong>: Console log parsing with detailed diagnosis ✅</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="lessons-learned">
+<h2>Lessons Learned<a class="headerlink" href="#lessons-learned" title="Link to this heading"></a></h2>
+<section id="system-understanding">
+<h3>System Understanding<a class="headerlink" href="#system-understanding" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Action Dependencies</strong>: SELL requires prior BUY → must balance both</p></li>
+<li><p><strong>Reward Propagation Chain</strong>: Config → reward_settings → multipliers → actual rewards</p></li>
+<li><p><strong>Constraint Limitations</strong>: Lagrange can only bias existing distribution, not create new actions</p></li>
+</ol>
+</section>
+<section id="debugging-methodology">
+<h3>Debugging Methodology<a class="headerlink" href="#debugging-methodology" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Console log parsing</strong> more reliable than TensorBoard for quick diagnosis</p></li>
+<li><p><strong>Action ratio analysis</strong> reveals structural constraints (e.g., SELL/BUY &lt; 1.5x)</p></li>
+<li><p><strong>Aggregate statistics</strong> over iterations provide clearer picture than single snapshots</p></li>
+</ol>
+</section>
+<section id="configuration-design">
+<h3>Configuration Design<a class="headerlink" href="#configuration-design" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Multipliers must be holistic</strong>: Cannot optimize one action in isolation</p></li>
+<li><p><strong>Default action emergence</strong>: With equal multipliers, HOLD becomes default (lowest risk)</p></li>
+<li><p><strong>Incentive hierarchy</strong>: BUY → SELL chain must be rewarded throughout</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<section id="if-v3-6-5-succeeds-buy-20-sell-15">
+<h3>If v3.6.5 Succeeds (BUY ≥ 20%, SELL ≥ 15%)<a class="headerlink" href="#if-v3-6-5-succeeds-buy-20-sell-15" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Longer training run (30k steps) for stability validation</p></li>
+<li><p>Document final hyperparameter recommendations</p></li>
+<li><p>Consider fine-tuning multipliers (e.g., [2.5, 3.5, 0.5])</p></li>
+</ol>
+</section>
+<section id="if-v3-6-5-fails-sell-15">
+<h3>If v3.6.5 Fails (SELL &lt; 15%)<a class="headerlink" href="#if-v3-6-5-fails-sell-15" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Increase BUY multiplier to 3.0</strong>: <code class="docutils literal notranslate"><span class="pre">[3.0,</span> <span class="pre">3.0,</span> <span class="pre">0.5]</span></code></p></li>
+<li><p><strong>Add action penalties</strong> (Option B above)</p></li>
+<li><p><strong>Investigate action masking</strong>: Check if SELL is being masked too frequently</p></li>
+<li><p><strong>Reward scaling audit</strong>: Ensure ATR normalization doesn’t dilute multiplier effect</p></li>
+</ol>
+</section>
+<section id="long-term-improvements">
+<h3>Long-term Improvements<a class="headerlink" href="#long-term-improvements" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Implement per-action penalties</strong> in reward_calculator.py</p></li>
+<li><p><strong>Add position-holding-time bonus</strong> to encourage position opening</p></li>
+<li><p><strong>Curriculum learning</strong> with gradual SELL target increase</p></li>
+<li><p><strong>Hybrid Lagrange + multiplier</strong> approach with adaptive scaling</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="technical-details">
+<h2>Technical Details<a class="headerlink" href="#technical-details" title="Link to this heading"></a></h2>
+<section id="configuration-diff-v3-6-4-v3-6-5">
+<h3>Configuration Diff (v3.6.4 → v3.6.5)<a class="headerlink" href="#configuration-diff-v3-6-4-v3-6-5" title="Link to this heading"></a></h3>
+<div class="highlight-diff notranslate"><div class="highlight"><pre><span></span><span class="gd">- &quot;_comment_header&quot;: &quot;=== PPO Balanced Memory-Optimized Configuration v3.6.4 ===&quot;,</span>
+<span class="gi">+ &quot;_comment_header&quot;: &quot;=== PPO Balanced Memory-Optimized Configuration v3.6.5 ===&quot;,</span>
+<span class="gd">- &quot;_comment_version&quot;: &quot;Last updated: 2025-10-08 - Bug #49 fix: SELL 3x with CORRECT array order [BUY, SELL, HOLD]&quot;,</span>
+<span class="gi">+ &quot;_comment_version&quot;: &quot;Last updated: 2025-10-08 - Root cause fix: BUY 2x + SELL 3x + HOLD 0.5x to address BUY scarcity&quot;,</span>
+<span class="gi">+ &quot;_comment_bugs_fixed&quot;: &quot;Bug #47 (CLI timesteps), Bug #48 (reward_settings propagation), Bug #49 (array order), Bug #50 (BUY scarcity)&quot;,</span>
+<span class="gi">+ &quot;_config_version&quot;: &quot;3.6.5&quot;,</span>
+
+<span class="gd">- &quot;profit_bonus_multipliers&quot;: [1.0, 3.0, 1.0],</span>
+<span class="gi">+ &quot;profit_bonus_multipliers&quot;: [2.0, 3.0, 0.5],</span>
+
+<span class="gd">- &quot;_bugs_fixed&quot;: [..., &quot;Bug #49: profit_bonus_multipliers order&quot;],</span>
+<span class="gi">+ &quot;_bugs_fixed&quot;: [..., &quot;Bug #49: profit_bonus_multipliers order&quot;, &quot;Bug #50: BUY scarcity limits SELL&quot;],</span>
+<span class="gd">- &quot;_validation_status&quot;: &quot;⚠️  EXPERIMENTAL - Bug #49 fix: SELL 3x (correct order)&quot;</span>
+<span class="gi">+ &quot;_validation_status&quot;: &quot;⚠️  EXPERIMENTAL - v3.6.5: BUY 2x + SELL 3x + HOLD 0.5x + HOLD penalty 0.05&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="code-changes">
+<h3>Code Changes<a class="headerlink" href="#code-changes" title="Link to this heading"></a></h3>
+<p><strong>sell_mitigation_ppo_trainer.py</strong> <code class="docutils literal notranslate"><span class="pre">_final_validation()</span></code>:</p>
+<ul class="simple">
+<li><p>Added action distribution estimation from Lagrange stats</p></li>
+<li><p>Enhanced logging with HOLD/BUY/SELL percentages</p></li>
+<li><p>Added output path display (model, checkpoints, TensorBoard)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="verification-checklist">
+<h2>Verification Checklist<a class="headerlink" href="#verification-checklist" title="Link to this heading"></a></h2>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Root cause identified (BUY scarcity)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Analysis script created (analyze_v364_console.py)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Configuration updated (v3.6.5)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Log output enhanced (_final_validation)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> Documentation complete (this file)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Validation run executed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Results analyzed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Success criteria met</p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>Related Bugs</strong>: #47 (CLI), #48 (reward_settings), #49 (array order)<br />
+<strong>Supersedes</strong>: v3.6.1-v3.6.4 SELL mitigation attempts<br />
+<strong>Config</strong>: <code class="docutils literal notranslate"><span class="pre">configs/training/ppo_balanced_mem_optimized.json</span></code></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

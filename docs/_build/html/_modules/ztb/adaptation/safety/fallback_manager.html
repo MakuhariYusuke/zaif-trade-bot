@@ -1,0 +1,766 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.safety.fallback_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.safety.fallback_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.safety.fallback_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Fallback Manager</span>
+<span class="sd">フォールバックマネージャー</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..monitoring.safety</span><span class="w"> </span><span class="kn">import</span> <span class="n">SafetyManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">FallbackStrategy</span><span class="p">,</span> <span class="n">FallbackAction</span><span class="p">,</span> <span class="n">FallbackStatus</span><span class="p">,</span> <span class="n">SafetyLevel</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FallbackMode">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackMode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバックモード&quot;&quot;&quot;</span>
+    <span class="n">CONSERVATIVE</span> <span class="o">=</span> <span class="s2">&quot;conservative&quot;</span>  <span class="c1"># 保守的な取引（低リスク）</span>
+    <span class="n">CIRCUIT_BREAKER</span> <span class="o">=</span> <span class="s2">&quot;circuit_breaker&quot;</span>  <span class="c1"># 取引停止</span>
+    <span class="n">GRADUAL_DEGRADATION</span> <span class="o">=</span> <span class="s2">&quot;gradual_degradation&quot;</span>  <span class="c1"># 段階的機能低下</span>
+    <span class="n">EMERGENCY_SHUTDOWN</span> <span class="o">=</span> <span class="s2">&quot;emergency_shutdown&quot;</span>  <span class="c1"># 緊急停止</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackConfig">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバック設定&quot;&quot;&quot;</span>
+
+    <span class="c1"># フォールバックモード設定</span>
+    <span class="n">enable_conservative_mode</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">enable_circuit_breaker</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">enable_gradual_degradation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># 保守的モード設定</span>
+    <span class="n">conservative_max_position_size</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># 最大ポジションサイズ（通常の10%）</span>
+    <span class="n">conservative_max_leverage</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># レバレッジ制限</span>
+    <span class="n">conservative_trade_frequency_limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># 1時間あたりの最大取引回数</span>
+
+    <span class="c1"># サーキットブレーカー設定</span>
+    <span class="n">circuit_breaker_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># アクティベーション閾値</span>
+    <span class="n">circuit_breaker_cooldown_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># クールダウン期間</span>
+    <span class="n">circuit_breaker_auto_reset</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># 段階的劣化設定</span>
+    <span class="n">degradation_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># 劣化ステップ数</span>
+    <span class="n">degradation_reduction_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>  <span class="c1"># 各ステップでの削減率</span>
+
+    <span class="c1"># タイムアウト設定</span>
+    <span class="n">fallback_timeout_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3600</span>  <span class="c1"># フォールバックの最大継続時間</span>
+    <span class="n">recovery_check_interval_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>  <span class="c1"># 回復チェック間隔</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackState">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackState">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackState</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバック状態&quot;&quot;&quot;</span>
+
+    <span class="n">mode</span><span class="p">:</span> <span class="n">FallbackMode</span>
+    <span class="n">activated_at</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="n">SafetyLevel</span>
+    <span class="n">active_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">recovery_attempts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">last_recovery_check</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">expected_recovery_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバックマネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">safety_manager</span><span class="p">:</span> <span class="n">SafetyManager</span><span class="p">,</span>
+                 <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FallbackConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span> <span class="o">=</span> <span class="n">safety_manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">FallbackConfig</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">FallbackState</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fallback_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackState</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># コールバック</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fallback_activated_callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fallback_deactivated_callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recovery_attempt_callbacks</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># スレッド管理</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;FallbackManager initialized&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FallbackManager.start_monitoring">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.start_monitoring">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;監視を開始&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_active</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Monitoring already active&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_active</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_monitoring_worker</span><span class="p">,</span>
+                <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Fallback monitoring started&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start fallback monitoring: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.stop_monitoring">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.stop_monitoring">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_monitoring</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;監視を停止&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="o">.</span><span class="n">is_alive</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">monitor_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Fallback monitoring stopped&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.activate_fallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.activate_fallback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">activate_fallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">mode</span><span class="p">:</span> <span class="n">FallbackMode</span><span class="p">,</span>
+                         <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                         <span class="n">severity</span><span class="p">:</span> <span class="n">SafetyLevel</span> <span class="o">=</span> <span class="n">SafetyLevel</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックをアクティベート&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback already active: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># フォールバック状態を作成</span>
+            <span class="n">fallback_state</span> <span class="o">=</span> <span class="n">FallbackState</span><span class="p">(</span>
+                <span class="n">mode</span><span class="o">=</span><span class="n">mode</span><span class="p">,</span>
+                <span class="n">activated_at</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                <span class="n">reason</span><span class="o">=</span><span class="n">reason</span><span class="p">,</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">severity</span>
+            <span class="p">)</span>
+
+            <span class="c1"># フォールバックアクションを実行</span>
+            <span class="n">actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_execute_fallback_actions</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">severity</span><span class="p">)</span>
+            <span class="n">fallback_state</span><span class="o">.</span><span class="n">active_actions</span> <span class="o">=</span> <span class="n">actions</span>
+
+            <span class="c1"># 期待回復時間を設定</span>
+            <span class="n">fallback_state</span><span class="o">.</span><span class="n">expected_recovery_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_expected_recovery_time</span><span class="p">(</span><span class="n">mode</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span> <span class="o">=</span> <span class="n">fallback_state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fallback_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="c1"># コールバックを実行</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_fallback_activated_callbacks</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback activated: </span><span class="si">{</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate fallback: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.deactivate_fallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.deactivate_fallback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">deactivate_fallback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Manual deactivation&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックを非アクティベート&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No active fallback to deactivate&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># フォールバックアクションを元に戻す</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_rollback_fallback_actions</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">active_actions</span><span class="p">)</span>
+
+            <span class="n">fallback_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="c1"># コールバックを実行</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_fallback_deactivated_callbacks</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback deactivated: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to deactivate fallback: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.attempt_recovery">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.attempt_recovery">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">attempt_recovery</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回復を試行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No active fallback to recover from&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">recovery_attempts</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">last_recovery_check</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="c1"># 安全状態をチェック</span>
+            <span class="n">safety_status</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">safety_manager</span><span class="o">.</span><span class="n">get_safety_status</span><span class="p">()</span>
+
+            <span class="c1"># 回復条件をチェック</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_recovery_conditions</span><span class="p">(</span><span class="n">safety_status</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Recovery conditions met, deactivating fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deactivate_fallback</span><span class="p">(</span><span class="s2">&quot;Recovery conditions met&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># コールバックを実行</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_trigger_recovery_attempt_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Recovery conditions not met, keeping fallback active&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recovery attempt failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.get_fallback_status">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.get_fallback_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_fallback_status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバック状態を取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;active&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;activated_at&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="kc">None</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;active&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;activated_at&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">activated_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span>
+            <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+            <span class="s2">&quot;recovery_attempts&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">recovery_attempts</span><span class="p">,</span>
+            <span class="s2">&quot;expected_recovery_time&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">expected_recovery_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">expected_recovery_time</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;active_actions_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">active_actions</span><span class="p">)</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_fallback_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">FallbackMode</span><span class="p">,</span> <span class="n">severity</span><span class="p">:</span> <span class="n">SafetyLevel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックアクションを実行&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">CONSERVATIVE</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_activate_conservative_mode</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_activate_circuit_breaker</span><span class="p">())</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">GRADUAL_DEGRADATION</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_activate_gradual_degradation</span><span class="p">(</span><span class="n">severity</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span><span class="p">:</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_activate_emergency_shutdown</span><span class="p">())</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executed </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span><span class="si">}</span><span class="s2"> fallback actions for mode: </span><span class="si">{</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">actions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to execute fallback actions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_activate_conservative_mode</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;保守的モードをアクティベート&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># ポジションサイズ制限</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;conservative_position_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;limit_position_size&quot;</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">conservative_max_position_size</span><span class="p">},</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Limit position size to conservative levels&quot;</span><span class="p">,</span>
+                <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;restore_position_size&quot;</span>
+            <span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># レバレッジ制限</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;conservative_leverage_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;limit_leverage&quot;</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_leverage&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">conservative_max_leverage</span><span class="p">},</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Limit leverage to conservative levels&quot;</span><span class="p">,</span>
+                <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;restore_leverage&quot;</span>
+            <span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># 取引頻度制限</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;conservative_frequency_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;limit_trade_frequency&quot;</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;max_trades_per_hour&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">conservative_trade_frequency_limit</span><span class="p">},</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Limit trade frequency to conservative levels&quot;</span><span class="p">,</span>
+                <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;restore_trade_frequency&quot;</span>
+            <span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># アクションを実行（実際の取引システムとの統合）</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_execute_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">actions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate conservative mode: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_activate_circuit_breaker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サーキットブレーカーをアクティベート&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 取引停止</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;circuit_breaker_stop_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;stop_trading&quot;</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">circuit_breaker_cooldown_minutes</span><span class="p">},</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Stop all trading activities&quot;</span><span class="p">,</span>
+                <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;resume_trading&quot;</span>
+            <span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># アクションを実行</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_execute_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">actions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate circuit breaker: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_activate_gradual_degradation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">severity</span><span class="p">:</span> <span class="n">SafetyLevel</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;段階的劣化をアクティベート&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 劣化ステップ数を決定</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">degradation_steps</span><span class="p">,</span>
+                       <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">degradation_steps</span><span class="p">)))</span>
+
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
+                <span class="n">reduction_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">degradation_reduction_factor</span> <span class="o">**</span> <span class="p">(</span><span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                    <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;degradation_step_</span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;reduce_capacity&quot;</span><span class="p">,</span>
+                    <span class="n">parameters</span><span class="o">=</span><span class="p">{</span>
+                        <span class="s2">&quot;reduction_factor&quot;</span><span class="p">:</span> <span class="n">reduction_factor</span><span class="p">,</span>
+                        <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                        <span class="s2">&quot;total_steps&quot;</span><span class="p">:</span> <span class="n">steps</span>
+                    <span class="p">},</span>
+                    <span class="n">description</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Reduce system capacity by factor </span><span class="si">{</span><span class="n">reduction_factor</span><span class="si">}</span><span class="s2"> (step </span><span class="si">{</span><span class="n">step</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">steps</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                    <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;restore_capacity&quot;</span>
+                <span class="p">)</span>
+                <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># アクションを実行</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_execute_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">actions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate gradual degradation: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_activate_emergency_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;緊急停止をアクティベート&quot;&quot;&quot;</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 完全停止</span>
+            <span class="n">action</span> <span class="o">=</span> <span class="n">FallbackAction</span><span class="p">(</span>
+                <span class="n">action_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;emergency_shutdown_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">timestamp</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">action_type</span><span class="o">=</span><span class="s2">&quot;emergency_shutdown&quot;</span><span class="p">,</span>
+                <span class="n">parameters</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Complete system shutdown&quot;</span><span class="p">,</span>
+                <span class="n">rollback_action</span><span class="o">=</span><span class="s2">&quot;emergency_startup&quot;</span>
+            <span class="p">)</span>
+            <span class="n">actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="c1"># アクションを実行</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_execute_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">actions</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to activate emergency shutdown: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">FallbackAction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アクションを実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 実際の取引システムとの統合ポイント</span>
+            <span class="c1"># ここではログ出力のみ（実際の実装では取引システムのAPIを呼び出す）</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing fallback action: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">action_type</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># アクションタイプに応じた処理</span>
+            <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;limit_position_size&quot;</span><span class="p">:</span>
+                <span class="c1"># ポジションサイズ制限の実装</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;limit_leverage&quot;</span><span class="p">:</span>
+                <span class="c1"># レバレッジ制限の実装</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;limit_trade_frequency&quot;</span><span class="p">:</span>
+                <span class="c1"># 取引頻度制限の実装</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;stop_trading&quot;</span><span class="p">:</span>
+                <span class="c1"># 取引停止の実装</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;reduce_capacity&quot;</span><span class="p">:</span>
+                <span class="c1"># 容量削減の実装</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">action_type</span> <span class="o">==</span> <span class="s2">&quot;emergency_shutdown&quot;</span><span class="p">:</span>
+                <span class="c1"># 緊急停止の実装</span>
+                <span class="k">pass</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to execute action </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">action_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rollback_fallback_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">FallbackAction</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックアクションをロールバック&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">actions</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rolling back action: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">action_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="c1"># ロールバックアクションの実行</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_execute_rollback_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to rollback actions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_rollback_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="n">FallbackAction</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバックアクションを実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executing rollback for action: </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">action_id</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># ロールバックアクションタイプに応じた処理</span>
+            <span class="k">if</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;restore_position_size&quot;</span><span class="p">:</span>
+                <span class="c1"># ポジションサイズ制限の解除</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;restore_leverage&quot;</span><span class="p">:</span>
+                <span class="c1"># レバレッジ制限の解除</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;restore_trade_frequency&quot;</span><span class="p">:</span>
+                <span class="c1"># 取引頻度制限の解除</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;resume_trading&quot;</span><span class="p">:</span>
+                <span class="c1"># 取引再開</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;restore_capacity&quot;</span><span class="p">:</span>
+                <span class="c1"># 容量復元</span>
+                <span class="k">pass</span>
+            <span class="k">elif</span> <span class="n">action</span><span class="o">.</span><span class="n">rollback_action</span> <span class="o">==</span> <span class="s2">&quot;emergency_startup&quot;</span><span class="p">:</span>
+                <span class="c1"># 緊急起動</span>
+                <span class="k">pass</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to execute rollback for action </span><span class="si">{</span><span class="n">action</span><span class="o">.</span><span class="n">action_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_expected_recovery_time</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="n">FallbackMode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;期待回復時間を計算&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">CONSERVATIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">now</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">conservative_mode_duration_hours</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">CIRCUIT_BREAKER</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">now</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">circuit_breaker_cooldown_minutes</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">GRADUAL_DEGRADATION</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">now</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>  <span class="c1"># 30分後</span>
+            <span class="k">elif</span> <span class="n">mode</span> <span class="o">==</span> <span class="n">FallbackMode</span><span class="o">.</span><span class="n">EMERGENCY_SHUTDOWN</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># 手動回復が必要</span>
+
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to calculate expected recovery time: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_recovery_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">safety_status</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回復条件をチェック&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 安全スコアが閾値を超えているかチェック</span>
+            <span class="k">if</span> <span class="n">safety_status</span><span class="o">.</span><span class="n">system_health_score</span> <span class="o">&lt;</span> <span class="mf">0.8</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># アクティブな異常が少ないかチェック</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">safety_status</span><span class="o">.</span><span class="n">active_anomalies</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="c1"># 最近の安全チェックが成功しているかチェック</span>
+            <span class="n">recent_checks</span> <span class="o">=</span> <span class="n">safety_status</span><span class="o">.</span><span class="n">recent_checks</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]</span>  <span class="c1"># 直近5件</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_checks</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="n">success_rate</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">check</span> <span class="ow">in</span> <span class="n">recent_checks</span> <span class="k">if</span> <span class="n">check</span><span class="o">.</span><span class="n">passed</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_checks</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">success_rate</span> <span class="o">&lt;</span> <span class="mf">0.8</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to check recovery conditions: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_monitoring_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;監視ワーカー&quot;&quot;&quot;</span>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitoring_active</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="p">:</span>
+                    <span class="c1"># タイムアウトチェック</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_check_fallback_timeout</span><span class="p">():</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Fallback timeout reached, attempting recovery&quot;</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">attempt_recovery</span><span class="p">()</span>
+
+                    <span class="c1"># 定期的な回復チェック</span>
+                    <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_check_recovery</span><span class="p">():</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">attempt_recovery</span><span class="p">()</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">recovery_check_interval_seconds</span><span class="p">)</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in monitoring worker: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_fallback_timeout</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックタイムアウトをチェック&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">expected_recovery_time</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">expected_recovery_time</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_should_check_recovery</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回復チェックが必要か判定&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span> <span class="ow">or</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">last_recovery_check</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="n">time_since_last_check</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_fallback</span><span class="o">.</span><span class="n">last_recovery_check</span>
+        <span class="k">return</span> <span class="n">time_since_last_check</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">recovery_check_interval_seconds</span>
+
+<div class="viewcode-block" id="FallbackManager.add_fallback_activated_callback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.add_fallback_activated_callback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_fallback_activated_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックアクティベートコールバックを追加&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fallback_activated_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.add_fallback_deactivated_callback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.add_fallback_deactivated_callback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_fallback_deactivated_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバック非アクティベートコールバックを追加&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fallback_deactivated_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FallbackManager.add_recovery_attempt_callback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.add_recovery_attempt_callback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_recovery_attempt_callback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">FallbackState</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回復試行コールバックを追加&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">recovery_attempt_callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_fallback_activated_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fallback_state</span><span class="p">:</span> <span class="n">FallbackState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバックアクティベートコールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_activated_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback activated callback failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_fallback_deactivated_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fallback_state</span><span class="p">:</span> <span class="n">FallbackState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバック非アクティベートコールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_deactivated_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Fallback deactivated callback failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_trigger_recovery_attempt_callbacks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fallback_state</span><span class="p">:</span> <span class="n">FallbackState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;回復試行コールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">recovery_attempt_callbacks</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">callback</span><span class="p">(</span><span class="n">fallback_state</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Recovery attempt callback failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FallbackManager.get_fallback_history">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.fallback_manager.FallbackManager.get_fallback_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_fallback_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hours</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フォールバック履歴を取得&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cutoff_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+            <span class="n">recent_fallbacks</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">fallback_history</span>
+                <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">activated_at</span> <span class="o">&gt;</span> <span class="n">cutoff_time</span>
+            <span class="p">]</span>
+
+            <span class="k">return</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;mode&quot;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">mode</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s2">&quot;activated_at&quot;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">activated_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                    <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span>
+                    <span class="s2">&quot;severity&quot;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                    <span class="s2">&quot;recovery_attempts&quot;</span><span class="p">:</span> <span class="n">f</span><span class="o">.</span><span class="n">recovery_attempts</span><span class="p">,</span>
+                    <span class="s2">&quot;active_actions_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">active_actions</span><span class="p">)</span>
+                <span class="p">}</span>
+                <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">recent_fallbacks</span>
+            <span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get fallback history: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

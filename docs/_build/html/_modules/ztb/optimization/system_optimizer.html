@@ -1,0 +1,548 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.optimization.system_optimizer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.optimization.system_optimizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.optimization.system_optimizer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">System-level optimizations for SAC v421.</span>
+
+<span class="sd">This module provides comprehensive system optimizations including:</span>
+<span class="sd">- Memory management and leak prevention</span>
+<span class="sd">- CPU performance optimization</span>
+<span class="sd">- I/O improvements with caching</span>
+<span class="sd">- Integration with existing utilities (MemoryTracker, PerformanceProfiler, TTLCache)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">contextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.cache_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">TTLCache</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.memory_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryTracker</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.performance_profiler</span><span class="w"> </span><span class="kn">import</span> <span class="n">PerformanceProfiler</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SystemOptimizer">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SystemOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Comprehensive system-level optimizer for training pipelines.</span>
+
+<span class="sd">    Integrates memory management, performance profiling, and I/O optimizations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">enable_memory_tracking</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">enable_performance_profiling</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">enable_io_caching</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">memory_threshold_mb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span>
+        <span class="n">cache_ttl_seconds</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span>
+        <span class="n">gc_interval_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize system optimizer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            enable_memory_tracking: Enable memory usage tracking</span>
+<span class="sd">            enable_performance_profiling: Enable CPU performance profiling</span>
+<span class="sd">            enable_io_caching: Enable I/O caching with TTL</span>
+<span class="sd">            memory_threshold_mb: Memory usage threshold for warnings (MB)</span>
+<span class="sd">            cache_ttl_seconds: TTL for cache entries in seconds</span>
+<span class="sd">            gc_interval_steps: Interval for garbage collection (training steps)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_memory_tracking</span> <span class="o">=</span> <span class="n">enable_memory_tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_performance_profiling</span> <span class="o">=</span> <span class="n">enable_performance_profiling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_io_caching</span> <span class="o">=</span> <span class="n">enable_io_caching</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_threshold_mb</span> <span class="o">=</span> <span class="n">memory_threshold_mb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_ttl_seconds</span> <span class="o">=</span> <span class="n">cache_ttl_seconds</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gc_interval_steps</span> <span class="o">=</span> <span class="n">gc_interval_steps</span>
+
+        <span class="c1"># Initialize components</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="o">=</span> <span class="n">MemoryTracker</span><span class="p">()</span> <span class="k">if</span> <span class="n">enable_memory_tracking</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_profiler</span> <span class="o">=</span> <span class="n">PerformanceProfiler</span><span class="p">()</span> <span class="k">if</span> <span class="n">enable_performance_profiling</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span> <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="n">ttl_seconds</span><span class="o">=</span><span class="n">cache_ttl_seconds</span><span class="p">)</span> <span class="k">if</span> <span class="n">enable_io_caching</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># Tracking state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Threading lock for thread safety</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">RLock</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SystemOptimizer.optimize_training_step">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.optimize_training_step">[docs]</a>
+    <span class="nd">@contextmanager</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_training_step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;training_step&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Context manager for optimized training step execution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            step_name: Name of the training step for profiling</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Memory tracking</span>
+        <span class="n">memory_ctx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">memory_ctx</span><span class="p">:</span>
+            <span class="n">memory_ctx</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
+
+        <span class="c1"># Performance profiling</span>
+        <span class="n">perf_enabled</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_profiler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">perf_enabled</span><span class="p">:</span>
+            <span class="n">perf_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># Performance profiling cleanup</span>
+            <span class="k">if</span> <span class="n">perf_enabled</span><span class="p">:</span>
+                <span class="n">perf_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">perf_start</span>
+                <span class="c1"># Record performance data manually since PerformanceProfiler doesn&#39;t have context manager</span>
+                <span class="n">perf_stats</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;step_time&#39;</span><span class="p">:</span> <span class="n">perf_time</span><span class="p">,</span>
+                    <span class="s1">&#39;cpu_percent&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+                    <span class="s1">&#39;step_name&#39;</span><span class="p">:</span> <span class="n">step_name</span><span class="p">,</span>
+                    <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="p">}</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">perf_stats</span><span class="p">)</span>
+
+            <span class="c1"># Memory tracking cleanup</span>
+            <span class="k">if</span> <span class="n">memory_ctx</span><span class="p">:</span>
+                <span class="n">memory_ctx</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+            <span class="c1"># Record metrics</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">step_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+                <span class="c1"># Memory metrics</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+                    <span class="n">current_memory</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_memory</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">current_memory</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_threshold_mb</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;High memory usage in </span><span class="si">{</span><span class="n">step_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">current_memory</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">MB &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(threshold: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_threshold_mb</span><span class="si">}</span><span class="s2">MB)&quot;</span>
+                        <span class="p">)</span>
+
+                <span class="c1"># Performance metrics</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_profiler</span><span class="p">:</span>
+                    <span class="n">perf_stats</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s1">&#39;step_time&#39;</span><span class="p">:</span> <span class="n">step_time</span><span class="p">,</span>
+                        <span class="s1">&#39;cpu_percent&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">),</span>
+                        <span class="s1">&#39;step_name&#39;</span><span class="p">:</span> <span class="n">step_name</span><span class="p">,</span>
+                        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                    <span class="p">}</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">perf_stats</span><span class="p">)</span>
+
+                <span class="c1"># Periodic garbage collection</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">gc_interval_steps</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_perform_garbage_collection</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.optimize_model_memory">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.optimize_model_memory">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_model_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize model memory usage.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model: PyTorch model to optimize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Optimized model</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">model</span>
+
+        <span class="c1"># Enable gradient checkpointing for memory efficiency</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;gradient_checkpointing_enable&#39;</span><span class="p">):</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">gradient_checkpointing_enable</span><span class="p">()</span>
+
+        <span class="c1"># Use mixed precision if available</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span> <span class="n">memory_format</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">contiguous_format</span><span class="p">)</span>
+
+        <span class="c1"># Pin memory for faster GPU transfers</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">pin_memory</span><span class="p">()</span> <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">is_cuda</span> <span class="k">else</span> <span class="n">param</span><span class="o">.</span><span class="n">data</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applied model memory optimizations&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.optimize_dataloader">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.optimize_dataloader">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_dataloader</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize dataloader for memory efficiency and performance.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dataloader: DataLoader to optimize</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Optimized dataloader</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Configure optimal settings for memory efficiency (only if not already initialized)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="s1">&#39;pin_memory&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">dataloader</span><span class="p">,</span> <span class="s1">&#39;_iterator&#39;</span><span class="p">):</span>
+            <span class="n">dataloader</span><span class="o">.</span><span class="n">pin_memory</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+
+        <span class="c1"># Note: persistent_workers and prefetch_factor can only be set during DataLoader creation</span>
+        <span class="c1"># We can&#39;t modify them on an existing DataLoader</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Applied dataloader optimizations&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dataloader</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.cache_io_operation">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.cache_io_operation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cache_io_operation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">operation</span><span class="p">:</span> <span class="nb">callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Cache I/O operation results using TTL cache.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: Cache key</span>
+<span class="sd">            operation: Function to execute if not cached</span>
+<span class="sd">            *args: Arguments for the operation</span>
+<span class="sd">            **kwargs: Keyword arguments for the operation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Cached or computed result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">operation</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache hit for key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">operation</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cache miss for key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">, stored result&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="SystemOptimizer.get_system_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.get_system_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_system_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get comprehensive system statistics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with system statistics</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;step_counter&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span><span class="p">,</span>
+                <span class="s1">&#39;memory_tracking_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_memory_tracking</span><span class="p">,</span>
+                <span class="s1">&#39;performance_profiling_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_performance_profiling</span><span class="p">,</span>
+                <span class="s1">&#39;io_caching_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_io_caching</span><span class="p">,</span>
+            <span class="p">}</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">:</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                    <span class="s1">&#39;current_memory_mb&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s1">&#39;peak_memory_mb&#39;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s1">&#39;avg_memory_mb&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">:</span>
+                <span class="n">recent_perf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>  <span class="c1"># Last 10 steps</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                    <span class="s1">&#39;avg_step_time&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;step_time&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">recent_perf</span><span class="p">]),</span>
+                    <span class="s1">&#39;avg_cpu_percent&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">p</span><span class="p">[</span><span class="s1">&#39;cpu_percent&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">recent_perf</span><span class="p">]),</span>
+                <span class="p">})</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="p">:</span>
+                <span class="n">stats</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                    <span class="s1">&#39;cache_size&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="o">.</span><span class="n">cache</span><span class="p">),</span>
+                    <span class="s1">&#39;cache_hits&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span><span class="p">,</span>
+                    <span class="s1">&#39;cache_misses&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span><span class="p">,</span>
+                    <span class="s1">&#39;cache_hit_rate&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="p">})</span>
+
+            <span class="k">return</span> <span class="n">stats</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_garbage_collection</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform garbage collection to free memory.&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Performing garbage collection&quot;</span><span class="p">)</span>
+        <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="c1"># Clear CUDA cache if available</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+<div class="viewcode-block" id="SystemOptimizer.reset_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.SystemOptimizer.reset_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset all collected statistics.&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">step_counter</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">performance_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_hits</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cache_misses</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">io_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;System optimizer statistics reset&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="MemoryOptimizer">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.MemoryOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Specialized memory optimization utilities.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MemoryOptimizer.optimize_tensor_memory">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.MemoryOptimizer.optimize_tensor_memory">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_tensor_memory</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize tensor memory usage.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            tensor: Input tensor</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Memory-optimized tensor</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Use contiguous memory layout</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">tensor</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">():</span>
+            <span class="n">tensor</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()</span>
+
+        <span class="c1"># Optimize dtype if possible</span>
+        <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">:</span>
+            <span class="c1"># Check if float32 is sufficient</span>
+            <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mf">1e6</span><span class="p">:</span>
+                <span class="n">tensor</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tensor</span></div>
+
+
+<div class="viewcode-block" id="MemoryOptimizer.clear_gpu_cache">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.MemoryOptimizer.clear_gpu_cache">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_gpu_cache</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear GPU cache to free memory.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;GPU cache cleared&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MemoryOptimizer.get_memory_usage">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.MemoryOptimizer.get_memory_usage">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_memory_usage</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get current memory usage statistics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with memory statistics</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">process</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">()</span>
+        <span class="n">memory_info</span> <span class="o">=</span> <span class="n">process</span><span class="o">.</span><span class="n">memory_info</span><span class="p">()</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;rss_mb&#39;</span><span class="p">:</span> <span class="n">memory_info</span><span class="o">.</span><span class="n">rss</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">,</span>
+            <span class="s1">&#39;vms_mb&#39;</span><span class="p">:</span> <span class="n">memory_info</span><span class="o">.</span><span class="n">vms</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;gpu_allocated_mb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;gpu_reserved_mb&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_reserved</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PerformanceOptimizer">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.PerformanceOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    CPU performance optimization utilities.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="PerformanceOptimizer.optimize_numpy_operations">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.PerformanceOptimizer.optimize_numpy_operations">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_numpy_operations</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Optimize NumPy operations for performance.&quot;&quot;&quot;</span>
+        <span class="c1"># Set optimal thread count for NumPy</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;OMP_NUM_THREADS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;MKL_NUM_THREADS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PerformanceOptimizer.enable_torch_optimizations">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.PerformanceOptimizer.enable_torch_optimizations">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enable_torch_optimizations</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enable PyTorch performance optimizations.&quot;&quot;&quot;</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">set_num_threads</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">//</span> <span class="mi">2</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="c1"># Enable CUDA optimizations</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="PerformanceOptimizer.get_cpu_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.system_optimizer.PerformanceOptimizer.get_cpu_stats">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu_stats</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get CPU performance statistics.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with CPU statistics</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;cpu_percent&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="s1">&#39;cpu_count&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">(),</span>
+            <span class="s1">&#39;cpu_freq_current&#39;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_freq</span><span class="p">()</span><span class="o">.</span><span class="n">current</span> <span class="k">if</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_freq</span><span class="p">()</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,474 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.benchmarks.ablation_runner &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.benchmarks.ablation_runner</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.benchmarks.ablation_runner</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">ablation_runner.py</span>
+<span class="sd">特徴量アブレーション分析実行スクリプト</span>
+<span class="sd">experimental特徴量の評価も統合</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.config_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigLoader</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_csv_data</span>
+
+<span class="c1"># 年間取引日数（一般的に252日）</span>
+<span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">=</span> <span class="mi">252</span>
+
+<span class="c1"># プロジェクトルートをパスに追加</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="evaluate_experimental_features">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.evaluate_experimental_features">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_experimental_features</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">experimental_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">baseline_sharpe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stub implementation for experimental features evaluation</span>
+<span class="sd">    TODO: Implement proper evaluation logic</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;not_implemented&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;experimental_features&quot;</span><span class="p">:</span> <span class="n">experimental_features</span><span class="p">,</span>
+        <span class="s2">&quot;baseline_sharpe&quot;</span><span class="p">:</span> <span class="n">baseline_sharpe</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.metrics.trading_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">calculate_delta_sharpe</span><span class="p">,</span>
+    <span class="n">sharpe_ratio</span><span class="p">,</span>
+    <span class="n">sharpe_with_stats</span><span class="p">,</span>
+    <span class="n">validate_ablation_results</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.load_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_config</span><span class="p">(</span><span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;設定ファイルを読み込み&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ConfigLoader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_evaluation_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.load_evaluation_config">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_evaluation_config</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;評価設定を読み込み&quot;&quot;&quot;</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/evaluation.yaml&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="c1"># デフォルト値</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;thresholds&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;re_evaluate&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s2">&quot;monitor&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">},</span>
+            <span class="s2">&quot;min_samples&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">ConfigLoader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="load_feature_sets">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.load_feature_sets">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_feature_sets</span><span class="p">(</span><span class="n">sets_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量セットを読み込み&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ConfigLoader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">sets_path</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="run_ablation_analysis">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.run_ablation_analysis">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_ablation_analysis</span><span class="p">(</span>
+    <span class="n">base_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+    <span class="n">experimental_features</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">num_runs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">evaluation_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    アブレーション分析を実行</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        base_features: ベースとなる特徴量リスト</span>
+<span class="sd">        experimental_features: 実験的特徴量リスト（オプション）</span>
+<span class="sd">        data_path: データファイルパス</span>
+<span class="sd">        num_runs: 実行回数</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        分析結果</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;base_features&quot;</span><span class="p">:</span> <span class="n">base_features</span><span class="p">,</span>
+        <span class="s2">&quot;experimental_features&quot;</span><span class="p">:</span> <span class="n">experimental_features</span> <span class="ow">or</span> <span class="p">[],</span>
+        <span class="s2">&quot;ablation_results&quot;</span><span class="p">:</span> <span class="p">{},</span>
+        <span class="s2">&quot;experimental_eval&quot;</span><span class="p">:</span> <span class="p">{},</span>
+        <span class="s2">&quot;summary&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;total_runs&quot;</span><span class="p">:</span> <span class="n">num_runs</span><span class="p">,</span> <span class="s2">&quot;valid_results&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="c1"># データ読み込み（仮）</span>
+    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">and</span> <span class="n">data_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># サンプルデータ生成</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># 再現性のためにシード固定</span>
+        <span class="n">n_samples</span> <span class="o">=</span> <span class="mi">1000</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">)),</span>
+                <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="mi">100</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">)),</span>
+                <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="c1"># 評価設定からパラメータ取得</span>
+    <span class="n">min_samples</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">evaluation_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_samples&quot;</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span> <span class="k">if</span> <span class="n">evaluation_config</span> <span class="k">else</span> <span class="mi">10000</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ベース特徴量でのSharpe ratio計算（シミュレーション）</span>
+    <span class="n">base_sharpes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
+        <span class="c1"># ランダムなリターンを生成（実際のトレーディング結果をシミュレート）</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+            <span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">TRADING_DAYS_PER_YEAR</span>
+        <span class="p">)</span>  <span class="c1"># 1年分の日次リターン</span>
+        <span class="n">sharpe</span> <span class="o">=</span> <span class="n">sharpe_ratio</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+        <span class="n">base_sharpes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sharpe</span><span class="p">)</span>
+
+    <span class="n">base_stats</span> <span class="o">=</span> <span class="n">sharpe_with_stats</span><span class="p">(</span><span class="n">base_sharpes</span><span class="p">)</span>
+
+    <span class="c1"># 各特徴量のアブレーション分析</span>
+    <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">base_features</span> <span class="o">+</span> <span class="p">(</span><span class="n">experimental_features</span> <span class="ow">or</span> <span class="p">[]):</span>
+        <span class="c1"># 特徴量追加時のSharpe ratio計算（シミュレーション）</span>
+        <span class="n">with_feature_sharpes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">run</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_runs</span><span class="p">):</span>
+            <span class="c1"># 特徴量の影響をシミュレート（ランダムノイズ）</span>
+            <span class="n">impact</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># 特徴量の影響</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.001</span> <span class="o">+</span> <span class="n">impact</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+            <span class="n">sharpe</span> <span class="o">=</span> <span class="n">sharpe_ratio</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span>
+            <span class="n">with_feature_sharpes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sharpe</span><span class="p">)</span>
+
+        <span class="c1"># delta_sharpeの計算</span>
+        <span class="n">delta_sharpe</span> <span class="o">=</span> <span class="n">calculate_delta_sharpe</span><span class="p">(</span><span class="n">base_sharpes</span><span class="p">,</span> <span class="n">with_feature_sharpes</span><span class="p">)</span>
+
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ablation_results&quot;</span><span class="p">][</span><span class="n">feature_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>  <span class="c1"># type: ignore</span>
+            <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="n">delta_sharpe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;sharpe_stats&quot;</span><span class="p">:</span> <span class="n">sharpe_with_stats</span><span class="p">(</span><span class="n">with_feature_sharpes</span><span class="p">),</span>
+            <span class="s2">&quot;delta_sharpe&quot;</span><span class="p">:</span> <span class="n">delta_sharpe</span><span class="p">,</span>
+            <span class="s2">&quot;runs&quot;</span><span class="p">:</span> <span class="n">num_runs</span><span class="p">,</span>
+            <span class="s2">&quot;is_experimental&quot;</span><span class="p">:</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="p">(</span><span class="n">experimental_features</span> <span class="ow">or</span> <span class="p">[]),</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="n">validate_ablation_results</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;ablation_results&quot;</span><span class="p">][</span><span class="n">feature_name</span><span class="p">]):</span>  <span class="c1"># type: ignore</span>
+            <span class="n">results</span><span class="p">[</span><span class="s2">&quot;summary&quot;</span><span class="p">][</span><span class="s2">&quot;valid_results&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>  <span class="c1"># type: ignore</span>
+
+    <span class="n">base_stats</span> <span class="o">=</span> <span class="n">sharpe_with_stats</span><span class="p">(</span><span class="n">base_sharpes</span><span class="p">)</span>
+
+    <span class="c1"># experimental特徴量の評価</span>
+    <span class="k">if</span> <span class="n">experimental_features</span><span class="p">:</span>
+        <span class="n">exp_results</span> <span class="o">=</span> <span class="n">evaluate_experimental_features</span><span class="p">(</span>
+            <span class="n">df</span><span class="p">,</span> <span class="n">experimental_features</span><span class="p">,</span> <span class="n">baseline_sharpe</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">base_stats</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">results</span><span class="p">[</span><span class="s2">&quot;experimental_eval&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp_results</span>
+
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="save_results">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.save_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_results</span><span class="p">(</span><span class="n">results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;結果をJSONファイルとCSVファイルに保存&quot;&quot;&quot;</span>
+    <span class="c1"># JSON保存</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># CSV保存</span>
+    <span class="n">csv_path</span> <span class="o">=</span> <span class="n">output_path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.csv&quot;</span><span class="p">)</span>
+    <span class="n">csv_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">feature_name</span><span class="p">,</span> <span class="n">feature_result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;ablation_results&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">feature_name</span><span class="p">,</span>
+            <span class="s2">&quot;is_experimental&quot;</span><span class="p">:</span> <span class="n">feature_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;is_experimental&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="n">feature_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;success&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+            <span class="s2">&quot;runs&quot;</span><span class="p">:</span> <span class="n">feature_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;runs&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Sharpe統計</span>
+        <span class="k">if</span> <span class="s2">&quot;sharpe_stats&quot;</span> <span class="ow">in</span> <span class="n">feature_result</span><span class="p">:</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="n">feature_result</span><span class="p">[</span><span class="s2">&quot;sharpe_stats&quot;</span><span class="p">]</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;sharpe_mean&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="s2">&quot;sharpe_std&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="s2">&quot;sharpe_ci_low&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci95&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="s2">&quot;sharpe_ci_high&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci95&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="c1"># delta_sharpe統計</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="s2">&quot;delta_sharpe&quot;</span> <span class="ow">in</span> <span class="n">feature_result</span>
+            <span class="ow">and</span> <span class="n">feature_result</span><span class="p">[</span><span class="s2">&quot;delta_sharpe&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">feature_result</span><span class="p">[</span><span class="s2">&quot;delta_sharpe&quot;</span><span class="p">]</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;delta_sharpe_mean&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="s2">&quot;delta_sharpe_std&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+                    <span class="s2">&quot;delta_sharpe_ci_low&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci95&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="s2">&quot;delta_sharpe_ci_high&quot;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ci95&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;delta_sharpe_mean&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;delta_sharpe_std&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;delta_sharpe_ci_low&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s2">&quot;delta_sharpe_ci_high&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+        <span class="n">csv_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="c1"># CSV出力</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">csv_data</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">csv_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="n">csv_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablation_runner.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;特徴量アブレーション分析&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--config&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/features.yaml&quot;</span><span class="p">),</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;特徴量設定ファイル&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--feature-sets&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/feature_sets.yaml&quot;</span><span class="p">),</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;特徴量セット設定ファイル&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--set&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;balanced&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;使用する特徴量セット (minimal/balanced/extended)&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--include-experimental&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;experimental特徴量を含めて評価&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--data&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;評価用データファイル&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--num-runs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;アブレーション分析の実行回数&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--output&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">Path</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;results/ablation_results.json&quot;</span><span class="p">),</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;出力ファイルパス&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># 設定読み込み</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">evaluation_config</span> <span class="o">=</span> <span class="n">load_evaluation_config</span><span class="p">()</span>
+        <span class="n">feature_sets</span> <span class="o">=</span> <span class="n">load_feature_sets</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">feature_sets</span><span class="p">)</span>
+
+        <span class="c1"># 特徴量セット取得</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature_sets</span><span class="p">[</span><span class="s2">&quot;sets&quot;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown feature set: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">set</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">base_features</span> <span class="o">=</span> <span class="n">feature_sets</span><span class="p">[</span><span class="s2">&quot;sets&quot;</span><span class="p">][</span><span class="n">args</span><span class="o">.</span><span class="n">set</span><span class="p">]</span>
+        <span class="n">experimental_features</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">include_experimental</span><span class="p">:</span>
+            <span class="c1"># experimental特徴量を取得（experimental.yamlから）</span>
+            <span class="n">exp_config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;config/experimental.yaml&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exp_config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">exp_config</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="n">exp_config_path</span><span class="p">)</span>
+                <span class="n">experimental_features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">exp_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;features&quot;</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">&quot;experimental.yaml not found, skipping experimental features&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># アブレーション分析実行</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Running ablation analysis for set: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">set</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">experimental_features</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Including experimental features: </span><span class="si">{</span><span class="n">experimental_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="n">run_ablation_analysis</span><span class="p">(</span>
+            <span class="n">base_features</span><span class="o">=</span><span class="n">base_features</span><span class="p">,</span>
+            <span class="n">experimental_features</span><span class="o">=</span><span class="n">experimental_features</span><span class="p">,</span>
+            <span class="n">data_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">num_runs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">num_runs</span><span class="p">,</span>
+            <span class="n">evaluation_config</span><span class="o">=</span><span class="n">evaluation_config</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 結果保存</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">save_results</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># experimental評価結果を別ファイルにも保存</span>
+        <span class="k">if</span> <span class="n">results</span><span class="p">[</span><span class="s2">&quot;experimental_eval&quot;</span><span class="p">]:</span>
+            <span class="n">exp_output</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;experimental_eval.json&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">exp_output</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="s2">&quot;experimental_eval&quot;</span><span class="p">],</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Experimental evaluation saved to </span><span class="si">{</span><span class="n">exp_output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Analysis failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

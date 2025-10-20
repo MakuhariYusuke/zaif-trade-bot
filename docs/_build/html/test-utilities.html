@@ -1,0 +1,331 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Utilities Developer Guide &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Test Utilities Developer Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/test-utilities.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="test-utilities-developer-guide">
+<h1>Test Utilities Developer Guide<a class="headerlink" href="#test-utilities-developer-guide" title="Link to this heading"></a></h1>
+<p>This guide covers the test isolation utilities available in <code class="docutils literal notranslate"><span class="pre">ztb/tests/util/</span></code> for writing robust, isolated unit tests.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The test utilities provide:</p>
+<ul class="simple">
+<li><p><strong>Temporary Directory Management</strong>: Isolated file system operations</p></li>
+<li><p><strong>Performance Monitoring</strong>: Test execution timing and slow test detection</p></li>
+<li><p><strong>Test Isolation</strong>: Unique resources per test to prevent interference</p></li>
+</ul>
+</section>
+<section id="temporary-directory-utilities-tempdir-py">
+<h2>Temporary Directory Utilities (<code class="docutils literal notranslate"><span class="pre">tempdir.py</span></code>)<a class="headerlink" href="#temporary-directory-utilities-tempdir-py" title="Link to this heading"></a></h2>
+<section id="get-unique-temp-dir-prefix-str-test-str">
+<h3><code class="docutils literal notranslate"><span class="pre">get_unique_temp_dir(prefix:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&quot;test&quot;)</span> <span class="pre">-&gt;</span> <span class="pre">str</span></code><a class="headerlink" href="#get-unique-temp-dir-prefix-str-test-str" title="Link to this heading"></a></h3>
+<p>Generates a unique temporary directory path with timestamp and UUID for complete test isolation.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">prefix</span></code>: Directory name prefix (default: “test”)</p></li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul class="simple">
+<li><p>Absolute path to unique temporary directory</p></li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.tests.util.tempdir</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_unique_temp_dir</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_file_operations</span><span class="p">():</span>
+    <span class="n">temp_dir</span> <span class="o">=</span> <span class="n">get_unique_temp_dir</span><span class="p">(</span><span class="s2">&quot;file_test&quot;</span><span class="p">)</span>
+    <span class="c1"># temp_dir: &quot;/tmp/file_test_1234567890_abc12345&quot;</span>
+    <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span> <span class="o">==</span> <span class="kc">False</span>  <span class="c1"># Not created yet</span>
+</pre></div>
+</div>
+</section>
+<section id="tempdirmanager-prefix-str-test">
+<h3><code class="docutils literal notranslate"><span class="pre">TempDirManager(prefix:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&quot;test&quot;)</span></code><a class="headerlink" href="#tempdirmanager-prefix-str-test" title="Link to this heading"></a></h3>
+<p>Context manager for automatic creation and cleanup of temporary directories.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">prefix</span></code>: Directory name prefix (default: “test”)</p></li>
+</ul>
+<p><strong>Yields:</strong></p>
+<ul class="simple">
+<li><p>Absolute path to created temporary directory</p></li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.tests.util.tempdir</span><span class="w"> </span><span class="kn">import</span> <span class="n">TempDirManager</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_with_temp_dir</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">TempDirManager</span><span class="p">(</span><span class="s2">&quot;my_feature&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+        <span class="c1"># Directory is created and available</span>
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span>
+
+        <span class="c1"># Perform file operations</span>
+        <span class="n">test_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">,</span> <span class="s2">&quot;test.txt&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">test_file</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;test data&quot;</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">test_file</span><span class="p">)</span>
+
+    <span class="c1"># Directory is automatically cleaned up</span>
+    <span class="k">assert</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Best Practices:</strong></p>
+<ul class="simple">
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">TempDirManager</span></code> for tests requiring file I/O</p></li>
+<li><p>Avoid hardcoded paths; always use generated temp directories</p></li>
+<li><p>Test cleanup is automatic - no manual <code class="docutils literal notranslate"><span class="pre">shutil.rmtree</span></code> needed</p></li>
+</ul>
+</section>
+</section>
+<section id="performance-monitoring-test-utils-py">
+<h2>Performance Monitoring (<code class="docutils literal notranslate"><span class="pre">test_utils.py</span></code>)<a class="headerlink" href="#performance-monitoring-test-utils-py" title="Link to this heading"></a></h2>
+<section id="timed-test-decorator">
+<h3><code class="docutils literal notranslate"><span class="pre">&#64;timed_test</span></code> Decorator<a class="headerlink" href="#timed-test-decorator" title="Link to this heading"></a></h3>
+<p>Monitors test execution time and logs slow or failed tests.</p>
+<p><strong>Features:</strong></p>
+<ul class="simple">
+<li><p>Automatic timing of test functions</p></li>
+<li><p>Slow test detection (&gt;5 seconds)</p></li>
+<li><p>Failed test duration logging</p></li>
+<li><p>Non-intrusive (doesn’t affect test logic)</p></li>
+</ul>
+<p><strong>Example:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.tests.util.test_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timed_test</span>
+
+<span class="nd">@timed_test</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_expensive_operation</span><span class="p">():</span>
+    <span class="c1"># Simulate expensive operation</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span>  <span class="c1"># This will trigger slow test warning</span>
+
+<span class="c1"># Output: &quot;SLOW TEST: test_expensive_operation took 6.00s&quot;</span>
+
+<span class="nd">@timed_test</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_failing_operation</span><span class="p">():</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;Test failed&quot;</span><span class="p">)</span>
+
+<span class="c1"># Output: &quot;FAILED TEST: test_failing_operation failed after 2.00s&quot;</span>
+</pre></div>
+</div>
+<p><strong>Best Practices:</strong></p>
+<ul class="simple">
+<li><p>Apply to integration tests and slow unit tests</p></li>
+<li><p>Use for performance regression detection</p></li>
+<li><p>Review slow test logs during CI runs</p></li>
+</ul>
+</section>
+</section>
+<section id="integration-with-pytest">
+<h2>Integration with pytest<a class="headerlink" href="#integration-with-pytest" title="Link to this heading"></a></h2>
+<section id="using-with-pytest-fixtures">
+<h3>Using with pytest fixtures<a class="headerlink" href="#using-with-pytest-fixtures" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.tests.util.tempdir</span><span class="w"> </span><span class="kn">import</span> <span class="n">TempDirManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.tests.util.test_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">timed_test</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TestFileOperations</span><span class="p">:</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">temp_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">TempDirManager</span><span class="p">(</span><span class="s2">&quot;file_ops&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">d</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">d</span>
+
+    <span class="nd">@timed_test</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_write_read_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">):</span>
+        <span class="c1"># Test implementation using temp_dir</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@timed_test</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_concurrent_access</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temp_dir</span><span class="p">):</span>
+        <span class="c1"># Test implementation</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+</section>
+<section id="test-organization">
+<h3>Test Organization<a class="headerlink" href="#test-organization" title="Link to this heading"></a></h3>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ztb/tests/
+├── unit/
+│   ├── core/
+│   └── utils/
+├── integration/
+│   └── features/
+└── util/              # Test utilities
+    ├── tempdir.py     # Directory isolation
+    └── test_utils.py  # Performance monitoring
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-issues">
+<h3>Common Issues<a class="headerlink" href="#common-issues" title="Link to this heading"></a></h3>
+<p><strong>Temp directory not cleaned up:</strong></p>
+<ul class="simple">
+<li><p>Ensure <code class="docutils literal notranslate"><span class="pre">TempDirManager</span></code> is used as context manager</p></li>
+<li><p>Check for file handles keeping directory locked</p></li>
+</ul>
+<p><strong>Slow test warnings:</strong></p>
+<ul class="simple">
+<li><p>Review test logic for optimization opportunities</p></li>
+<li><p>Consider splitting large tests</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">&#64;timed_test</span></code> to identify bottlenecks</p></li>
+</ul>
+<p><strong>Test interference:</strong></p>
+<ul class="simple">
+<li><p>Use unique temp directories per test</p></li>
+<li><p>Avoid shared global state</p></li>
+<li><p>Clean up resources in <code class="docutils literal notranslate"><span class="pre">finally</span></code> blocks</p></li>
+</ul>
+</section>
+<section id="performance-guidelines">
+<h3>Performance Guidelines<a class="headerlink" href="#performance-guidelines" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Fast tests (&lt; 0.1s)</strong>: No decorator needed</p></li>
+<li><p><strong>Medium tests (0.1-5s)</strong>: Optional <code class="docutils literal notranslate"><span class="pre">&#64;timed_test</span></code></p></li>
+<li><p><strong>Slow tests (&gt; 5s)</strong>: Always use <code class="docutils literal notranslate"><span class="pre">&#64;timed_test</span></code></p></li>
+<li><p><strong>Integration tests</strong>: Always use both utilities</p></li>
+</ul>
+</section>
+</section>
+<section id="migration-from-legacy-tests">
+<h2>Migration from Legacy Tests<a class="headerlink" href="#migration-from-legacy-tests" title="Link to this heading"></a></h2>
+<p><strong>Before:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_legacy</span><span class="p">():</span>
+    <span class="c1"># Hardcoded temp dir</span>
+    <span class="n">temp_dir</span> <span class="o">=</span> <span class="s2">&quot;/tmp/test_data&quot;</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="c1"># ... test logic ...</span>
+    <span class="c1"># Manual cleanup (often forgotten)</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">temp_dir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>After:</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@timed_test</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_modern</span><span class="p">():</span>
+    <span class="k">with</span> <span class="n">TempDirManager</span><span class="p">(</span><span class="s2">&quot;legacy_migration&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+        <span class="c1"># ... test logic ...</span>
+        <span class="c1"># Automatic cleanup</span>
+</pre></div>
+</div>
+<p>This ensures reliable, isolated, and maintainable tests.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

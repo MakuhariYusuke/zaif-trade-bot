@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐛 重大バグ発見・修正レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🐛 重大バグ発見・修正レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bugs/BUG_48_REWARD_SETTINGS_NOT_PASSED.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>🐛 重大バグ発見・修正レポート<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>日時</strong>: 2025-10-08 12:15<br />
+<strong>バグID</strong>: Bug #48<br />
+<strong>重要度</strong>: <strong>CRITICAL</strong> 🔴</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>📋 バグの概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3><strong>症状</strong><a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>v3.6.3緊急修正(Lambda=30.0, SELL報酬3倍)を適用してもSELL率が改善せず</p></li>
+<li><p>むしろ悪化: 10.7% → 8.8%</p></li>
+<li><p>Lambda=30.0到達、ペナルティ強化されているのに効果なし</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3><strong>根本原因</strong><a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p><strong><code class="docutils literal notranslate"><span class="pre">reward_settings</span></code>が環境に渡されていなかった</strong> ⚠️</p>
+<p><code class="docutils literal notranslate"><span class="pre">ztb/training/sell_mitigation_ppo_trainer.py</span></code>の<code class="docutils literal notranslate"><span class="pre">env_config</span></code>構築時に、設定ファイルの<code class="docutils literal notranslate"><span class="pre">reward_settings</span></code>が含まれていませんでした。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>🔍 バグの詳細<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3><strong>問題のコード箇所</strong><a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/sell_mitigation_ppo_trainer.py:281-288</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ❌ バグのあるコード</span>
+<span class="n">env_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;curriculum_stage&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curriculum_stage&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;allow_reverse&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_reverse</span><span class="p">,</span>
+    <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">),</span>
+    <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;risk_free_rate&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_scaling&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="c1"># ★ reward_settings が欠落！</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3><strong>影響範囲</strong><a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>profit_bonus_multipliers</strong>: SELL報酬3倍が適用されず</p></li>
+<li><p><strong>action_penalty_scale</strong>: ペナルティ撤廃が無効</p></li>
+<li><p><strong>その他すべてのreward_settings</strong>: 一切反映されず</p></li>
+</ol>
+<p>結果として、設定ファイルに記述した報酬調整が<strong>完全に無視</strong>されていました。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>✅ 修正内容<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3><strong>修正後のコード</strong><a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ✅ 修正版</span>
+<span class="n">env_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;curriculum_stage&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;curriculum_stage&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">),</span>
+    <span class="s2">&quot;allow_reverse&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">allow_reverse</span><span class="p">,</span>
+    <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">),</span>
+    <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;risk_free_rate&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_scaling&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
+    <span class="c1"># ★ BUG FIX: Pass reward_settings from config to environment</span>
+    <span class="s2">&quot;reward_settings&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;reward_settings&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id10">
+<h3><strong>修正の効果</strong><a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">profit_bonus_multipliers:</span> <span class="pre">[1.0,</span> <span class="pre">1.0,</span> <span class="pre">3.0]</span></code> が環境に渡される</p></li>
+<li><p>✅ すべてのペナルティ撤廃(<code class="docutils literal notranslate"><span class="pre">action_penalty_scale:</span> <span class="pre">0.0</span></code>など)が有効化</p></li>
+<li><p>✅ カスタム報酬設定が正しく適用される</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>🎯 期待される改善<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="v3-6-3">
+<h3><strong>v3.6.3設定の実際の適用</strong><a class="headerlink" href="#v3-6-3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>設定項目</p></th>
+<th class="head"><p>設定値</p></th>
+<th class="head"><p>以前の状態</p></th>
+<th class="head"><p>修正後</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>profit_bonus_multipliers[2]</strong></p></td>
+<td><p>3.0</p></td>
+<td><p>❌ 未適用</p></td>
+<td><p>✅ 適用</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>action_penalty_scale</strong></p></td>
+<td><p>0.0</p></td>
+<td><p>❌ デフォルト値</p></td>
+<td><p>✅ 0.0</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>position_penalty_scale</strong></p></td>
+<td><p>0.0</p></td>
+<td><p>❌ デフォルト値</p></td>
+<td><p>✅ 0.0</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>volatility_penalty_scale</strong></p></td>
+<td><p>0.0</p></td>
+<td><p>❌ デフォルト値</p></td>
+<td><p>✅ 0.0</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sell">
+<h3><strong>予測されるSELL率の改善</strong><a class="headerlink" href="#sell" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>修正前</strong>: 8.8% (reward_settings無効のため)</p></li>
+<li><p><strong>修正後(予測)</strong>: <strong>15-20%</strong> (SELL報酬3倍+ペナルティ撤廃の効果)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>🧪 検証計画<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3><strong>再検証の実行</strong><a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_mem_optimized.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--force
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h3><strong>確認ポイント</strong><a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ SELL率が15%以上に到達するか</p></li>
+<li><p>✅ Lambda値の推移(上限30.0未満で安定するか)</p></li>
+<li><p>⚠️ 逆バイアス(SELL率&gt;40%)の発生有無</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>📊 過去の検証結果との比較<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>検証回</p></th>
+<th class="head"><p>Lambda上限</p></th>
+<th class="head"><p>SELL報酬</p></th>
+<th class="head"><p>ペナルティ</p></th>
+<th class="head"><p>SELL率</p></th>
+<th class="head"><p>reward_settings</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>v3.6.1</strong></p></td>
+<td><p>20.0</p></td>
+<td><p>2x</p></td>
+<td><p>微小</p></td>
+<td><p>10.7%</p></td>
+<td><p>❌ 無効</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>v3.6.3(バグ有)</strong></p></td>
+<td><p>30.0</p></td>
+<td><p>3x</p></td>
+<td><p>撤廃</p></td>
+<td><p>8.8%</p></td>
+<td><p>❌ <strong>無効</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>v3.6.3(修正後)</strong></p></td>
+<td><p>30.0</p></td>
+<td><p>3x</p></td>
+<td><p>撤廃</p></td>
+<td><p><strong>?%</strong></p></td>
+<td><p>✅ <strong>有効</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>🔧 その他の影響調査<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3><strong>他のトレーナーも同様のバグがないか確認が必要</strong><a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ppo_trainer.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">curriculum_learning.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ensemble.py</span></code></p></li>
+</ul>
+<p>これらのファイルでも<code class="docutils literal notranslate"><span class="pre">env_config</span></code>構築時に<code class="docutils literal notranslate"><span class="pre">reward_settings</span></code>が渡されているか要確認。</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>📝 学んだ教訓<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>設定の伝播チェーンを追跡する重要性</strong></p>
+<ul class="simple">
+<li><p>Config → UnifiedTrainer → PPOTrainer → env_config → Environment</p></li>
+<li><p>途中で欠落するリスク</p></li>
+</ul>
+</li>
+<li><p><strong>デバッグ時はログで実際の設定値を出力</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">logger.info(f&quot;env_config:</span> <span class="pre">{env_config}&quot;)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">logger.info(f&quot;reward_settings:</span> <span class="pre">{self.reward_settings}&quot;)</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>単体テストでconfigの伝播を検証</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">test_reward_settings_propagation.py</span></code> を作成すべき</p></li>
+</ul>
+</li>
+</ol>
+<hr class="docutils" />
+<p><strong>修正ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/sell_mitigation_ppo_trainer.py</span></code> (1行追加)<br />
+<strong>ステータス</strong>: ✅ 修正完了 → 再検証待ち<br />
+<strong>次のアクション</strong>: 10,000ステップ検証実行 → SELL率15%達成を確認</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

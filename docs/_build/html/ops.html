@@ -1,0 +1,281 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zaif Trade Bot Operations &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contributing Guide" href="contributing/index.html" />
+    <link rel="prev" title="Zaif Trade Bot Runbook" href="runbook.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="reference/index.html">Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CONFIGURATION_GUIDE.html">統一設定管理ガイド (Unified Configuration Management Guide)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="operations_manual.html">運用手順マニュアル</a></li>
+<li class="toctree-l2"><a class="reference internal" href="runbook.html">Zaif Trade Bot Runbook</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Zaif Trade Bot Operations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">静的ダッシュボード生成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">セッション横断トレンド集計</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ops-doctor">“ops doctor”（一次切り分けワンショット）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">毎晩のレポート生成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gpu">コスト見積り（GPU/電力/クラウド）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a">コスト算出：日本の従量電灯（40A）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">ゲート失敗時の自動通知</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#discord">通知設定：Discord</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">スケジュールテンプレート生成</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">スケジューリング：キャッチアップと常駐運用</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tensorboard">TensorBoard サマリースクレイパー</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">予算ロールアップレポート</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">外部統合互換性ラッパー</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">ライブステータススナップショット（Discord配信）</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="reference/index.html">Reference</a></li>
+      <li class="breadcrumb-item active">Zaif Trade Bot Operations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ops.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="zaif-trade-bot-operations">
+<h1>Zaif Trade Bot Operations<a class="headerlink" href="#zaif-trade-bot-operations" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>静的ダッシュボード生成<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/make_dashboard.py</span></code> で artifacts/index.json と各 summary.json を集約して HTML ダッシュボード生成</p></li>
+<li><p>セッション一覧（ID/開始時刻/最新step/ETA/ステータス）と主要メトリクス（Sharpe/DSR/p-value/メモリ/RSSピーク）を表形式で表示</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--out</span> <span class="pre">artifacts/dashboard.html</span></code> で出力先指定</p></li>
+</ul>
+</section>
+<section id="id2">
+<h2>セッション横断トレンド集計<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/aggregate_trends.py</span></code> で artifacts/*/summary.json から global_step, rl_sharpe, dsr, p_value を CSV 出力</p></li>
+<li><p>欠損値は空欄扱い、session_id でソート</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--out</span> <span class="pre">artifacts/trends.csv</span></code> で出力先指定</p></li>
+</ul>
+</section>
+<section id="ops-doctor">
+<h2>“ops doctor”（一次切り分けワンショット）<a class="headerlink" href="#ops-doctor" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/ops_doctor.py</span></code> で validate_artifacts → collect_last_errors → progress_eta → disk_health を順次実行</p></li>
+<li><p>失敗しても継続、要約（OK/WARN/FAIL数）を1行表示、詳細は artifacts/<code class="docutils literal notranslate"><span class="pre">&lt;ID&gt;</span></code>/reports/doctor.txt に保存</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--correlation-id</span> <span class="pre">&lt;ID&gt;</span></code> で対象セッション指定</p></li>
+</ul>
+</section>
+<section id="id3">
+<h2>毎晩のレポート生成<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/make_trends_md.py</span></code> で trends.csv から Markdown レポート生成</p></li>
+<li><p>メトリクス別テーブルと ASCII スパークラインでトレンド可視化</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--out</span> <span class="pre">reports/trends.md</span></code> で出力先指定</p></li>
+</ul>
+</section>
+<section id="gpu">
+<h2>コスト見積り（GPU/電力/クラウド）<a class="headerlink" href="#gpu" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/cost_estimator.py</span></code> で run_metadata + steps/sec + 単価からコスト見積り</p></li>
+<li><p>出力: reports/budget_estimate.json または .md</p></li>
+<li><p>パラメータ例: –gpu-rate 300 (GPU時間単価, 円/時), –kwh-rate 35 (電力単価, 円/kWh)</p></li>
+<li><p>ENV変数: GPU_RATE_JPY_PER_HOUR, KWH_RATE_JPY, CLOUD_RATE_JPY_PER_HOUR でデフォルト設定</p></li>
+</ul>
+</section>
+<section id="a">
+<h2>コスト算出：日本の従量電灯（40A）<a class="headerlink" href="#a" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>–tariff jp_residential_tiered で三段階料金適用（基本料金1246.96円/月込み）</p>
+<ul>
+<li><p>0–120 kWh: 29.70 円/kWh</p></li>
+<li><p>120–300 kWh: 35.69 円/kWh</p></li>
+<li><p>300+ kWh: 39.50 円/kWh</p></li>
+</ul>
+</li>
+<li><p>月間消費kWhは run_metadata/tb_summary/steps_per_sec から推定、–kwh で手動上書き可</p></li>
+<li><p>CLI: python -m ztb.ops.cost_estimator –tariff jp_residential_tiered –kwh <code class="docutils literal notranslate"><span class="pre">&lt;override&gt;</span></code></p></li>
+</ul>
+</section>
+<section id="id4">
+<h2>ゲート失敗時の自動通知<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/gates_to_alerts.py</span></code> で <code class="docutils literal notranslate"><span class="pre">artifacts/&lt;ID&gt;/reports/gates.json</span></code> を読み、失敗を webhook に通知</p></li>
+<li><p>gates.json が無い場合は SKIP、失敗時のみ WARN/ERROR レベルで通知</p></li>
+<li><p>–webhook で URL 指定、ENV $SLACK_WEBHOOK_URL も可</p></li>
+</ul>
+</section>
+<section id="discord">
+<h2>通知設定：Discord<a class="headerlink" href="#discord" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Discord Webhook 対応で Slack 未設定でも通知可能</p></li>
+<li><p>Webhook 作成: Discordサーバー設定 → 連携サービス → Webhook → URLコピー</p></li>
+<li><p>ENV優先順位: –discord-webhook &gt; ZTB_DISCORD_WEBHOOK &gt; –webhook &gt; SLACK_WEBHOOK_URL</p></li>
+<li><p>カスタム設定: ZTB_DISCORD_USERNAME, ZTB_DISCORD_AVATAR_URL でボット表示変更</p></li>
+<li><p>レート制限429時は指数バックオフで自動リトライ（最大3回）</p></li>
+</ul>
+</section>
+<section id="id5">
+<h2>スケジュールテンプレート生成<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/schedule_templates.py</span></code> で <a class="reference external" href="http://cronish.py">cronish.py</a> のプリセットJSONを生成</p></li>
+<li><p>クロスプラットフォーム対応 (Windows/Linux cron 形式)</p></li>
+<li><p>テンプレート: daily, hourly, weekly, monthly, training-daily, backup-hourly</p></li>
+<li><p>–list で利用可能テンプレート一覧、–template で指定生成</p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>スケジューリング：キャッチアップと常駐運用<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/cronish.py</span></code> で定期コマンド実行、–max-catchup で起動時取りこぼし補填（最大回数制限）</p></li>
+<li><p>–catchup-cooldown-sec で補填実行間クールダウン</p></li>
+<li><p>24/7運用: ops/systemd/ztb-live.service (Linux systemd) または ops/windows/task_scheduler.xml (Windows タスクスケジューラ)</p></li>
+<li><p>PC再起動後に1回だけ取りこぼしを実行、systemd/Windows の雛形を提供</p></li>
+</ul>
+</section>
+<section id="tensorboard">
+<h2>TensorBoard サマリースクレイパー<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/tb_scrape_summary.py</span></code> で runs/ のTBログから最新スカラー値をJSON抽出</p></li>
+<li><p>各実験ディレクトリをスキャン、scalars_summary.json がある場合は読み込み</p></li>
+<li><p>–run-dir で対象ディレクトリ指定、–output でJSON出力ファイル指定</p></li>
+</ul>
+</section>
+<section id="id7">
+<h2>予算ロールアップレポート<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/budget_rollup.py</span></code> で run_metadata.json と cost_estimate.json を集計</p></li>
+<li><p>日次コストレポートを reports/budget_daily.md にmarkdown出力</p></li>
+<li><p>–date で特定日付フィルタ、総コスト/GPU時間/実行回数を集計</p></li>
+</ul>
+</section>
+<section id="id8">
+<h2>外部統合互換性ラッパー<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/compat_wrapper.py</span></code> で外部ツールからのJSONベース統合を提供</p></li>
+<li><p>stdinからJSONリクエストを受け取り、stdoutにJSONレスポンスを返す</p></li>
+<li><p>action: “status” でライブステータス取得、 “run” でコマンド実行</p></li>
+<li><p>例: echo ‘{“action”: “status”}’ | python scripts/compat_wrapper.py</p></li>
+<li><p>外部監視ツールやCI/CDパイプラインとの統合に適する</p></li>
+</ul>
+</section>
+<section id="id9">
+<h2>ライブステータススナップショット（Discord配信）<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/live_status_snapshot.py</span></code> で trade-state.json, trade-config.json, stats.json から現在のボットステータスを収集</p></li>
+<li><p>Discord Webhook に embed 形式で配信（フェーズ/連勝日数/P&amp;L/設定値など）</p></li>
+<li><p>コマンド: python scripts/live_status_snapshot.py <code class="docutils literal notranslate"><span class="pre">&lt;discord_webhook_url&gt;</span></code></p></li>
+<li><p>ファイルが存在しない場合はスキップ、部分データでも配信可能</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="runbook.html" class="btn btn-neutral float-left" title="Zaif Trade Bot Runbook" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="contributing/index.html" class="btn btn-neutral float-right" title="Contributing Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

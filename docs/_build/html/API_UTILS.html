@@ -1,0 +1,415 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZTB Utils API Documentation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reference" href="reference/index.html" />
+    <link rel="prev" title="API Reference" href="api_reference.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="api/index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api_reference.html">API Reference</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ZTB Utils API Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#modules">Modules</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#data-validation-py">data_validation.py</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#types-py">types.py</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#talib-wrapper-py">talib_wrapper.py</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-py">config.py</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#file-utils-py">file_utils.py</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#logging-utils-py">logging_utils.py</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#usage-examples">Usage Examples</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#data-validation">Data Validation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ta-lib-integration">Ta-Lib Integration</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#type-safe-configuration">Type-Safe Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#error-handling">Error Handling</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="api/index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">ZTB Utils API Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/API_UTILS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="ztb-utils-api-documentation">
+<h1>ZTB Utils API Documentation<a class="headerlink" href="#ztb-utils-api-documentation" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">ztb.utils</span></code> package provides common utilities used throughout the ZTB trading system. This document describes the key modules and their APIs.</p>
+</section>
+<section id="modules">
+<h2>Modules<a class="headerlink" href="#modules" title="Link to this heading"></a></h2>
+<section id="data-validation-py">
+<h3>data_validation.py<a class="headerlink" href="#data-validation-py" title="Link to this heading"></a></h3>
+<p>Data validation utilities for ensuring data quality and integrity.</p>
+<section id="functions">
+<h4>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h4>
+<section id="validate-dataframe-df-required-columns-column-types-none-min-rows-1">
+<h5><code class="docutils literal notranslate"><span class="pre">validate_dataframe(df,</span> <span class="pre">required_columns,</span> <span class="pre">column_types=None,</span> <span class="pre">min_rows=1)</span></code><a class="headerlink" href="#validate-dataframe-df-required-columns-column-types-none-min-rows-1" title="Link to this heading"></a></h5>
+<p>Validates DataFrame structure and content.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">df</span></code> (pd.DataFrame): DataFrame to validate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">required_columns</span></code> (List[str]): Required column names</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">column_types</span></code> (Optional[Dict[str, str]]): Expected column dtypes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_rows</span></code> (int): Minimum number of rows required</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">bool</span></code> - True if validation passes</p>
+</section>
+<section id="validate-numeric-array-data-name-allow-nan-true-min-value-none-max-value-none">
+<h5><code class="docutils literal notranslate"><span class="pre">validate_numeric_array(data,</span> <span class="pre">name,</span> <span class="pre">allow_nan=True,</span> <span class="pre">min_value=None,</span> <span class="pre">max_value=None)</span></code><a class="headerlink" href="#validate-numeric-array-data-name-allow-nan-true-min-value-none-max-value-none" title="Link to this heading"></a></h5>
+<p>Validates numeric array data.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Numeric data to validate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code> (str): Name for logging</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">allow_nan</span></code> (bool): Whether NaN values are allowed</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_value</span></code> (Optional[float]): Minimum allowed value</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_value</span></code> (Optional[float]): Maximum allowed value</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">bool</span></code> - True if validation passes</p>
+</section>
+<section id="validate-config-dict-config-required-keys-validators-none">
+<h5><code class="docutils literal notranslate"><span class="pre">validate_config_dict(config,</span> <span class="pre">required_keys,</span> <span class="pre">validators=None)</span></code><a class="headerlink" href="#validate-config-dict-config-required-keys-validators-none" title="Link to this heading"></a></h5>
+<p>Validates configuration dictionary.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">config</span></code> (Dict[str, Any]): Configuration to validate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">required_keys</span></code> (List[str]): Required keys</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">validators</span></code> (Optional[Dict[str, Callable]]): Validation functions</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">bool</span></code> - True if validation passes</p>
+</section>
+</section>
+</section>
+<section id="types-py">
+<h3><a class="reference external" href="http://types.py">types.py</a><a class="headerlink" href="#types-py" title="Link to this heading"></a></h3>
+<p>Type definitions and protocols used across the codebase.</p>
+<section id="type-aliases">
+<h4>Type Aliases<a class="headerlink" href="#type-aliases" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">NumericType</span></code>: <code class="docutils literal notranslate"><span class="pre">Union[int,</span> <span class="pre">float,</span> <span class="pre">np.number]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ArrayLike</span></code>: <code class="docutils literal notranslate"><span class="pre">Union[np.ndarray,</span> <span class="pre">pd.Series,</span> <span class="pre">List[NumericType]]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ActionType</span></code>: <code class="docutils literal notranslate"><span class="pre">int</span></code> (0: HOLD, 1: BUY, 2: SELL)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ActionMask</span></code>: <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code> (Boolean array for valid actions)</p></li>
+</ul>
+</section>
+<section id="typeddict-classes">
+<h4>TypedDict Classes<a class="headerlink" href="#typeddict-classes" title="Link to this heading"></a></h4>
+<section id="trainingconfig">
+<h5><code class="docutils literal notranslate"><span class="pre">TrainingConfig</span></code><a class="headerlink" href="#trainingconfig" title="Link to this heading"></a></h5>
+<p>Training configuration dictionary with optional fields for PPO parameters.</p>
+</section>
+<section id="environmentconfig">
+<h5><code class="docutils literal notranslate"><span class="pre">EnvironmentConfig</span></code><a class="headerlink" href="#environmentconfig" title="Link to this heading"></a></h5>
+<p>Environment configuration dictionary for trading environments.</p>
+</section>
+<section id="modelconfig">
+<h5><code class="docutils literal notranslate"><span class="pre">ModelConfig</span></code><a class="headerlink" href="#modelconfig" title="Link to this heading"></a></h5>
+<p>Model configuration dictionary for neural network architecture.</p>
+</section>
+</section>
+<section id="protocols">
+<h4>Protocols<a class="headerlink" href="#protocols" title="Link to this heading"></a></h4>
+<section id="tradingenvironment">
+<h5><code class="docutils literal notranslate"><span class="pre">TradingEnvironment</span></code><a class="headerlink" href="#tradingenvironment" title="Link to this heading"></a></h5>
+<p>Protocol for trading environments with standard RL interface.</p>
+</section>
+<section id="featurecalculator">
+<h5><code class="docutils literal notranslate"><span class="pre">FeatureCalculator</span></code><a class="headerlink" href="#featurecalculator" title="Link to this heading"></a></h5>
+<p>Protocol for feature calculation classes.</p>
+</section>
+<section id="callbackprotocol">
+<h5><code class="docutils literal notranslate"><span class="pre">CallbackProtocol</span></code><a class="headerlink" href="#callbackprotocol" title="Link to this heading"></a></h5>
+<p>Protocol for training callbacks.</p>
+</section>
+</section>
+</section>
+<section id="talib-wrapper-py">
+<h3>talib_wrapper.py<a class="headerlink" href="#talib-wrapper-py" title="Link to this heading"></a></h3>
+<p>Ta-Lib integration with fallback implementations.</p>
+<section id="class-talibwrapper">
+<h4>Class: <code class="docutils literal notranslate"><span class="pre">TaLibWrapper</span></code><a class="headerlink" href="#class-talibwrapper" title="Link to this heading"></a></h4>
+<section id="static-methods">
+<h5>Static Methods<a class="headerlink" href="#static-methods" title="Link to this heading"></a></h5>
+<section id="check-talib-availability">
+<h6><code class="docutils literal notranslate"><span class="pre">check_talib_availability()</span></code><a class="headerlink" href="#check-talib-availability" title="Link to this heading"></a></h6>
+<p>Check if Ta-Lib is available.</p>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">bool</span></code></p>
+</section>
+<section id="sma-data-period">
+<h6><code class="docutils literal notranslate"><span class="pre">sma(data,</span> <span class="pre">period)</span></code><a class="headerlink" href="#sma-data-period" title="Link to this heading"></a></h6>
+<p>Simple Moving Average.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Input price data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">period</span></code> (int): Period for calculation</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p>
+</section>
+<section id="ema-data-period">
+<h6><code class="docutils literal notranslate"><span class="pre">ema(data,</span> <span class="pre">period)</span></code><a class="headerlink" href="#ema-data-period" title="Link to this heading"></a></h6>
+<p>Exponential Moving Average.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Input price data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">period</span></code> (int): Period for calculation</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p>
+</section>
+<section id="rsi-data-period-14">
+<h6><code class="docutils literal notranslate"><span class="pre">rsi(data,</span> <span class="pre">period=14)</span></code><a class="headerlink" href="#rsi-data-period-14" title="Link to this heading"></a></h6>
+<p>Relative Strength Index.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Input price data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">period</span></code> (int): Period for calculation</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p>
+</section>
+<section id="macd-data-fast-period-12-slow-period-26-signal-period-9">
+<h6><code class="docutils literal notranslate"><span class="pre">macd(data,</span> <span class="pre">fast_period=12,</span> <span class="pre">slow_period=26,</span> <span class="pre">signal_period=9)</span></code><a class="headerlink" href="#macd-data-fast-period-12-slow-period-26-signal-period-9" title="Link to this heading"></a></h6>
+<p>MACD (Moving Average Convergence Divergence).</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Input price data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fast_period</span></code>, <code class="docutils literal notranslate"><span class="pre">slow_period</span></code>, <code class="docutils literal notranslate"><span class="pre">signal_period</span></code> (int): MACD parameters</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">Tuple[np.ndarray,</span> <span class="pre">np.ndarray,</span> <span class="pre">np.ndarray]</span></code> - (MACD, Signal, Histogram)</p>
+</section>
+<section id="bbands-data-period-20-nbdevup-2-0-nbdevdn-2-0">
+<h6><code class="docutils literal notranslate"><span class="pre">bbands(data,</span> <span class="pre">period=20,</span> <span class="pre">nbdevup=2.0,</span> <span class="pre">nbdevdn=2.0)</span></code><a class="headerlink" href="#bbands-data-period-20-nbdevup-2-0-nbdevdn-2-0" title="Link to this heading"></a></h6>
+<p>Bollinger Bands.</p>
+<p><strong>Parameters:</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">data</span></code> (ArrayLike): Input price data</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">period</span></code> (int): Period for calculation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">nbdevup</span></code>, <code class="docutils literal notranslate"><span class="pre">nbdevdn</span></code> (float): Standard deviation multipliers</p></li>
+</ul>
+<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">Tuple[np.ndarray,</span> <span class="pre">np.ndarray,</span> <span class="pre">np.ndarray]</span></code> - (Upper, Middle, Lower)</p>
+</section>
+</section>
+</section>
+</section>
+<section id="config-py">
+<h3><a class="reference external" href="http://config.py">config.py</a><a class="headerlink" href="#config-py" title="Link to this heading"></a></h3>
+<p>Central configuration management.</p>
+<section id="class-ztbconfig">
+<h4>Class: <code class="docutils literal notranslate"><span class="pre">ZTBConfig</span></code><a class="headerlink" href="#class-ztbconfig" title="Link to this heading"></a></h4>
+<section id="methods">
+<h5>Methods<a class="headerlink" href="#methods" title="Link to this heading"></a></h5>
+<section id="get-key-default-none">
+<h6><code class="docutils literal notranslate"><span class="pre">get(key,</span> <span class="pre">default=None)</span></code><a class="headerlink" href="#get-key-default-none" title="Link to this heading"></a></h6>
+<p>Get configuration value from environment variables.</p>
+</section>
+<section id="get-bool-key-default-false">
+<h6><code class="docutils literal notranslate"><span class="pre">get_bool(key,</span> <span class="pre">default=False)</span></code><a class="headerlink" href="#get-bool-key-default-false" title="Link to this heading"></a></h6>
+<p>Get boolean configuration value.</p>
+</section>
+<section id="get-int-key-default-0">
+<h6><code class="docutils literal notranslate"><span class="pre">get_int(key,</span> <span class="pre">default=0)</span></code><a class="headerlink" href="#get-int-key-default-0" title="Link to this heading"></a></h6>
+<p>Get integer configuration value.</p>
+</section>
+<section id="get-float-key-default-0-0">
+<h6><code class="docutils literal notranslate"><span class="pre">get_float(key,</span> <span class="pre">default=0.0)</span></code><a class="headerlink" href="#get-float-key-default-0-0" title="Link to this heading"></a></h6>
+<p>Get float configuration value.</p>
+</section>
+</section>
+</section>
+</section>
+<section id="file-utils-py">
+<h3>file_utils.py<a class="headerlink" href="#file-utils-py" title="Link to this heading"></a></h3>
+<p>File I/O utilities.</p>
+<section id="id1">
+<h4>Functions<a class="headerlink" href="#id1" title="Link to this heading"></a></h4>
+<section id="safe-json-load-file-path-default-none">
+<h5><code class="docutils literal notranslate"><span class="pre">safe_json_load(file_path,</span> <span class="pre">default=None)</span></code><a class="headerlink" href="#safe-json-load-file-path-default-none" title="Link to this heading"></a></h5>
+<p>Safely load JSON from file with error handling.</p>
+</section>
+<section id="safe-json-dump-data-file-path-indent-2-default-none">
+<h5><code class="docutils literal notranslate"><span class="pre">safe_json_dump(data,</span> <span class="pre">file_path,</span> <span class="pre">indent=2,</span> <span class="pre">default=None)</span></code><a class="headerlink" href="#safe-json-dump-data-file-path-indent-2-default-none" title="Link to this heading"></a></h5>
+<p>Safely dump data to JSON file with error handling.</p>
+</section>
+</section>
+</section>
+<section id="logging-utils-py">
+<h3>logging_utils.py<a class="headerlink" href="#logging-utils-py" title="Link to this heading"></a></h3>
+<p>Logging utilities.</p>
+<section id="id2">
+<h4>Functions<a class="headerlink" href="#id2" title="Link to this heading"></a></h4>
+<section id="setup-logging-level-info-format-string-none">
+<h5><code class="docutils literal notranslate"><span class="pre">setup_logging(level=INFO,</span> <span class="pre">format_string=None)</span></code><a class="headerlink" href="#setup-logging-level-info-format-string-none" title="Link to this heading"></a></h5>
+<p>Set up basic logging configuration.</p>
+</section>
+<section id="get-logger-name">
+<h5><code class="docutils literal notranslate"><span class="pre">get_logger(name)</span></code><a class="headerlink" href="#get-logger-name" title="Link to this heading"></a></h5>
+<p>Get a configured logger instance.</p>
+</section>
+</section>
+</section>
+</section>
+<section id="usage-examples">
+<h2>Usage Examples<a class="headerlink" href="#usage-examples" title="Link to this heading"></a></h2>
+<section id="data-validation">
+<h3>Data Validation<a class="headerlink" href="#data-validation" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data_validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate_dataframe</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s1">&#39;market_data.csv&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">validate_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Data validation passed&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="ta-lib-integration">
+<h3>Ta-Lib Integration<a class="headerlink" href="#ta-lib-integration" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.talib_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaLibWrapper</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span>
+<span class="n">sma_values</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="n">rsi_values</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">rsi</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">period</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="type-safe-configuration">
+<h3>Type-Safe Configuration<a class="headerlink" href="#type-safe-configuration" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ZTBConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingConfig</span>
+
+<span class="n">config</span> <span class="o">=</span> <span class="n">ZTBConfig</span><span class="p">()</span>
+<span class="n">learning_rate</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_float</span><span class="p">(</span><span class="s1">&#39;LEARNING_RATE&#39;</span><span class="p">,</span> <span class="mf">0.0003</span><span class="p">)</span>
+
+<span class="n">train_config</span><span class="p">:</span> <span class="n">TrainingConfig</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">1000000</span><span class="p">,</span>
+    <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="n">learning_rate</span><span class="p">,</span>
+    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="mi">64</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="error-handling">
+<h2>Error Handling<a class="headerlink" href="#error-handling" title="Link to this heading"></a></h2>
+<p>All utility functions include comprehensive error handling and logging. Check logs for detailed error information when operations fail.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="api_reference.html" class="btn btn-neutral float-left" title="API Reference" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="reference/index.html" class="btn btn-neutral float-right" title="Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

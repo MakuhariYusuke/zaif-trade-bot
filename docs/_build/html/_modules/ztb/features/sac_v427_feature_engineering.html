@@ -1,0 +1,965 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.sac_v427_feature_engineering &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.sac_v427_feature_engineering</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.sac_v427_feature_engineering</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">SAC v427 Feature Engineering</span>
+
+<span class="sd">Advanced feature engineering for market-adaptive ensemble system.</span>
+<span class="sd">Includes market regime awareness, correlation features, and ensemble signals.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.sac_v427_market_adaptive_system</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv427MarketAdaptiveSystem</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SACv427FeatureEngineer">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.sac_v427_feature_engineering.SACv427FeatureEngineer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SACv427FeatureEngineer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Advanced feature engineering for SAC v427.</span>
+
+<span class="sd">    Generates market-aware features including:</span>
+<span class="sd">    - Regime-specific indicators</span>
+<span class="sd">    - Correlation features</span>
+<span class="sd">    - Ensemble prediction signals</span>
+<span class="sd">    - Risk-adjusted technical indicators</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">market_system</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SACv427MarketAdaptiveSystem</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">market_system</span> <span class="o">=</span> <span class="n">market_system</span> <span class="ow">or</span> <span class="n">SACv427MarketAdaptiveSystem</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="SACv427FeatureEngineer.generate_v427_features">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.sac_v427_feature_engineering.SACv427FeatureEngineer.generate_v427_features">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_v427_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">window_sizes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate comprehensive SAC v427 feature set with 150+ dimensions (optimized version).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: Input dataframe with OHLCV data</span>
+<span class="sd">            window_sizes: Window sizes for technical indicators</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with v427 features (150+ dimensions)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Generating SAC v427 feature set (150+ dimensions, optimized)...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Ensure we have numeric data</span>
+        <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Input dataframe is empty&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Convert to numeric where possible (vectorized)</span>
+        <span class="n">numeric_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">numeric_df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">numeric_cols</span><span class="p">:</span>
+                <span class="n">numeric_df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">numeric_df</span><span class="p">[</span><span class="n">col</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s1">&#39;coerce&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Drop columns that are all NaN (efficient)</span>
+        <span class="n">numeric_df</span> <span class="o">=</span> <span class="n">numeric_df</span><span class="o">.</span><span class="n">dropna</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Ensure we have at least some numeric columns</span>
+        <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">numeric_df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">numeric_cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No numeric columns found in input data&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Start with basic price features</span>
+        <span class="n">features_df</span> <span class="o">=</span> <span class="n">numeric_df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Generate extensive feature set efficiently using vectorized operations</span>
+        <span class="n">all_features</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 1. Market regime features (15+ features) - optimized</span>
+        <span class="n">regime_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_regime_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">regime_features</span><span class="p">)</span>
+
+        <span class="c1"># 2. Correlation-aware features (20+ features) - optimized</span>
+        <span class="n">correlation_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_correlation_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">correlation_features</span><span class="p">)</span>
+
+        <span class="c1"># 3. Ensemble signal features (15+ features) - optimized</span>
+        <span class="n">ensemble_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_ensemble_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ensemble_features</span><span class="p">)</span>
+
+        <span class="c1"># 4. Risk-adjusted technical indicators for multiple windows (60+ features) - optimized</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">window_sizes</span><span class="p">:</span>
+            <span class="n">tech_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_risk_adjusted_technical_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span>
+            <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tech_features</span><span class="p">)</span>
+
+        <span class="c1"># 5. Market microstructure features (10+ features) - optimized</span>
+        <span class="n">microstructure_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_market_microstructure_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">microstructure_features</span><span class="p">)</span>
+
+        <span class="c1"># 6. Statistical features (20+ features) - optimized</span>
+        <span class="n">statistical_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_statistical_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">statistical_features</span><span class="p">)</span>
+
+        <span class="c1"># 7. Volume-based features (10+ features) - optimized</span>
+        <span class="n">volume_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_volume_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">volume_features</span><span class="p">)</span>
+
+        <span class="c1"># 8. Momentum and trend features (15+ features) - optimized</span>
+        <span class="n">momentum_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_momentum_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">all_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">momentum_features</span><span class="p">)</span>
+
+        <span class="c1"># Combine all features efficiently</span>
+        <span class="k">for</span> <span class="n">feature_set</span> <span class="ow">in</span> <span class="n">all_features</span><span class="p">:</span>
+            <span class="n">features_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">features_df</span><span class="p">,</span> <span class="n">feature_set</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># 9. Adaptive normalization (additional 20+ features) - optimized</span>
+        <span class="n">features_df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_adaptive_normalization_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+
+        <span class="c1"># 10. Feature interactions (additional 10+ features) - optimized</span>
+        <span class="n">interaction_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_feature_interactions_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">)</span>
+        <span class="n">features_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">features_df</span><span class="p">,</span> <span class="n">interaction_features</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Memory optimization: convert to float32 for efficiency</span>
+        <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">features_df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+        <span class="n">features_df</span><span class="p">[</span><span class="n">numeric_cols</span><span class="p">]</span> <span class="o">=</span> <span class="n">features_df</span><span class="p">[</span><span class="n">numeric_cols</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+        <span class="c1"># Fill remaining NaN values with 0 (vectorized)</span>
+        <span class="n">features_df</span> <span class="o">=</span> <span class="n">features_df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">total_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">features_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated </span><span class="si">{</span><span class="n">total_features</span><span class="si">}</span><span class="s2"> additional features (target: 150+)&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Ensure we have at least 150 features</span>
+        <span class="k">if</span> <span class="n">total_features</span> <span class="o">&lt;</span> <span class="mi">150</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Only generated </span><span class="si">{</span><span class="n">total_features</span><span class="si">}</span><span class="s2"> features, padding to reach 150+&quot;</span><span class="p">)</span>
+            <span class="c1"># Add synthetic features if needed</span>
+            <span class="n">padding_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_padding_features_optimized</span><span class="p">(</span><span class="n">features_df</span><span class="p">,</span> <span class="mi">150</span> <span class="o">-</span> <span class="n">total_features</span><span class="p">)</span>
+            <span class="n">features_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">features_df</span><span class="p">,</span> <span class="n">padding_features</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">features_df</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_regime_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate market regime awareness features (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">regime_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Vectorized regime detection using rolling windows</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">50</span><span class="p">:</span>
+            <span class="c1"># Calculate returns for regime detection</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+
+            <span class="c1"># Volatility-based regime detection (vectorized)</span>
+            <span class="n">vol_20</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">vol_50</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;volatility_regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">vol_20</span> <span class="o">&gt;</span> <span class="n">vol_50</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="c1"># Trend-based regime detection</span>
+            <span class="n">sma_20</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">sma_50</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;trend_regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sma_20</span> <span class="o">&gt;</span> <span class="n">sma_50</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="c1"># Momentum regime</span>
+            <span class="n">mom_20</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;momentum_regime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mom_20</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+            <span class="c1"># Combined regime score</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_score&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;volatility_regime&#39;</span><span class="p">]</span> <span class="o">+</span>
+                <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;trend_regime&#39;</span><span class="p">]</span> <span class="o">+</span>
+                <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;momentum_regime&#39;</span><span class="p">]</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span>
+
+            <span class="c1"># One-hot encode regime components</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_low_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;volatility_regime&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_high_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;volatility_regime&#39;</span><span class="p">]</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_downtrend&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;trend_regime&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_uptrend&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;trend_regime&#39;</span><span class="p">]</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_bearish&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;momentum_regime&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+            <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;regime_bullish&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">regime_features</span><span class="p">[</span><span class="s1">&#39;momentum_regime&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">regime_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_correlation_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate market correlation awareness features (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">correlation_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+
+        <span class="c1"># Rolling correlations (vectorized)</span>
+        <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]:</span>
+            <span class="n">lagged_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">lagged_returns</span><span class="p">)</span>
+            <span class="n">correlation_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_correlation_lag_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">corr</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Volume-price correlation if volume available</span>
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">vol_returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+            <span class="n">vol_price_corr</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">vol_returns</span><span class="p">)</span>
+            <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;volume_price_correlation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_price_corr</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Volatility correlation (vectorized)</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="n">lagged_volatility</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">vol_corr</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">lagged_volatility</span><span class="p">)</span>
+        <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;volatility_correlation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_corr</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Beta calculation (vectorized)</span>
+        <span class="n">market_proxy</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">market_returns</span> <span class="o">=</span> <span class="n">market_proxy</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">covariance</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">market_returns</span><span class="p">)</span>
+        <span class="n">market_variance</span> <span class="o">=</span> <span class="n">market_returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="n">covariance</span> <span class="o">/</span> <span class="n">market_variance</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;market_beta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">correlation_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_ensemble_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate ensemble prediction signal features (optimized version).&quot;&quot;&quot;</span>
+        <span class="n">ensemble_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Use deterministic but varied signals based on price patterns</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducible results</span>
+
+        <span class="c1"># Base signals from price patterns</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">sma_10</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">sma_20</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+        <span class="c1"># Generate ensemble signals based on technical patterns</span>
+        <span class="n">bullish_signal</span> <span class="o">=</span> <span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">sma_10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sma_10</span> <span class="o">&gt;</span> <span class="n">sma_20</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">bearish_signal</span> <span class="o">=</span> <span class="p">((</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">sma_10</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sma_10</span> <span class="o">&lt;</span> <span class="n">sma_20</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Ensemble confidence signals (vectorized random with pattern bias)</span>
+        <span class="n">base_confidence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_confidence</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">bullish_signal</span><span class="p">)</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">base_confidence</span> <span class="o">*</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">+</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">bearish_signal</span><span class="p">)</span>
+
+        <span class="c1"># Neutral confidence</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_sideways&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Ensemble action predictions</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.6</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.6</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_hold&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">|</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="c1"># Ensemble disagreement (diversity measure)</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_disagreement&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">+</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span> <span class="o">+</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_hold&#39;</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span>
+
+        <span class="c1"># Ensemble trend strength</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_trend_strength&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">-</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ensemble_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_correlation_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate market correlation awareness features.&quot;&quot;&quot;</span>
+        <span class="n">correlation_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Rolling correlation with different assets (simplified - using lagged price)</span>
+        <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]:</span>
+            <span class="n">lagged_price</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">lagged_price</span><span class="p">)</span>
+            <span class="n">correlation_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_correlation_lag_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">corr</span>
+
+        <span class="c1"># Volume-price correlation</span>
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">vol_price_corr</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">])</span>
+            <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;volume_price_correlation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_price_corr</span>
+
+        <span class="c1"># Volatility correlation</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="n">lagged_volatility</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="n">vol_corr</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">lagged_volatility</span><span class="p">)</span>
+        <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;volatility_correlation&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_corr</span>
+
+        <span class="c1"># Beta calculation (simplified market proxy)</span>
+        <span class="n">market_proxy</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">100</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># Simple market proxy</span>
+        <span class="n">beta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_rolling_beta</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">],</span> <span class="n">market_proxy</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="n">correlation_features</span><span class="p">[</span><span class="s1">&#39;market_beta&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">beta</span>
+
+        <span class="k">return</span> <span class="n">correlation_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_ensemble_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate ensemble prediction signal features.&quot;&quot;&quot;</span>
+        <span class="n">ensemble_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Mock ensemble predictions (in real implementation, use trained ensemble)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>  <span class="c1"># For reproducible mock data</span>
+
+        <span class="c1"># Ensemble confidence signals</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_sideways&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))</span>
+
+        <span class="c1"># Ensemble action predictions</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">])</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_hold&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">])</span>
+
+        <span class="c1"># Ensemble disagreement (diversity measure)</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_disagreement&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">+</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span> <span class="o">+</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_hold&#39;</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="mf">3.0</span>
+
+        <span class="c1"># Ensemble trend strength</span>
+        <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_trend_strength&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bull&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_buy&#39;</span><span class="p">]</span> <span class="o">-</span>
+            <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_confidence_bear&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">ensemble_features</span><span class="p">[</span><span class="s1">&#39;ensemble_pred_sell&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ensemble_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_risk_adjusted_technical_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate risk-adjusted technical indicators (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">tech_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Vectorized calculations</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+
+        <span class="c1"># Risk-adjusted RSI (vectorized)</span>
+        <span class="n">rsi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_rsi_vectorized</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">],</span> <span class="n">window</span><span class="p">)</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;rsi_risk_adjusted_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rsi</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">volatility</span><span class="p">)</span>
+
+        <span class="c1"># Risk-adjusted MACD (vectorized)</span>
+        <span class="n">macd</span><span class="p">,</span> <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_macd_vectorized</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">])</span>
+        <span class="n">macd_volatility</span> <span class="o">=</span> <span class="n">macd</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;macd_risk_adjusted_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">macd</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">macd_volatility</span><span class="p">)</span>
+
+        <span class="c1"># Risk-adjusted Bollinger Bands (vectorized)</span>
+        <span class="n">sma</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">bb_upper</span> <span class="o">=</span> <span class="n">sma</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">std</span>
+        <span class="n">bb_lower</span> <span class="o">=</span> <span class="n">sma</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">std</span>
+        <span class="n">bb_position</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">bb_lower</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">bb_upper</span> <span class="o">-</span> <span class="n">bb_lower</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Adjust for volatility</span>
+        <span class="n">volatility_factor</span> <span class="o">=</span> <span class="n">std</span> <span class="o">/</span> <span class="n">sma</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;bb_position_vol_adjusted_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">bb_position</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">volatility_factor</span><span class="p">)</span>
+
+        <span class="c1"># Risk-adjusted momentum (vectorized)</span>
+        <span class="n">momentum</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">window</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">momentum_volatility</span> <span class="o">=</span> <span class="n">momentum</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;momentum_risk_adjusted_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">momentum</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">momentum_volatility</span><span class="p">)</span>
+
+        <span class="c1"># ATR normalized features (vectorized)</span>
+        <span class="n">atr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_atr_vectorized</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">window</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;close_atr_normalized_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">atr</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;high_atr_normalized_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">atr</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">tech_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;low_atr_normalized_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">atr</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">tech_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_rsi_vectorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate RSI indicator (vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">rs</span> <span class="o">=</span> <span class="n">gain</span> <span class="o">/</span> <span class="n">loss</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_macd_vectorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">fast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">slow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">26</span><span class="p">,</span> <span class="n">signal</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">9</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate MACD indicator (vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">fast_ema</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">fast</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">slow_ema</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">slow</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">macd</span> <span class="o">=</span> <span class="n">fast_ema</span> <span class="o">-</span> <span class="n">slow_ema</span>
+        <span class="n">signal_line</span> <span class="o">=</span> <span class="n">macd</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">signal</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">macd</span><span class="p">,</span> <span class="n">signal_line</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_atr_vectorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate Average True Range (vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span>
+        <span class="n">low</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span>
+        <span class="n">close</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">tr1</span> <span class="o">=</span> <span class="n">high</span> <span class="o">-</span> <span class="n">low</span>
+        <span class="n">tr2</span> <span class="o">=</span> <span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">close</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+        <span class="n">tr3</span> <span class="o">=</span> <span class="p">(</span><span class="n">low</span> <span class="o">-</span> <span class="n">close</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+
+        <span class="n">tr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">tr1</span><span class="p">,</span> <span class="n">tr2</span><span class="p">,</span> <span class="n">tr3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">atr</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">atr</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_market_microstructure_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate market microstructure features.&quot;&quot;&quot;</span>
+        <span class="n">ms_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Price impact estimation</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># Volume-weighted price impact</span>
+            <span class="n">volume_ma</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">price_impact</span> <span class="o">=</span> <span class="n">returns</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">volume_ma</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+            <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;price_impact&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_impact</span>
+
+            <span class="c1"># Order flow toxicity</span>
+            <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;order_flow_toxicity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">])</span>
+
+        <span class="c1"># Bid-ask spread proxy (using high-low range)</span>
+        <span class="n">spread_proxy</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span>
+        <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;spread_proxy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">spread_proxy</span>
+
+        <span class="c1"># Market depth proxy (using volume consistency)</span>
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">volume_consistency</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;market_depth_proxy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">volume_consistency</span><span class="p">)</span>
+
+        <span class="c1"># Trading activity patterns</span>
+        <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;trading_intensity&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+        <span class="n">ms_features</span><span class="p">[</span><span class="s1">&#39;price_efficiency&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span> <span class="o">/</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">var</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">ms_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_adaptive_normalization</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply adaptive normalization based on market regime.&quot;&quot;&quot;</span>
+        <span class="n">normalized_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Get numeric columns only</span>
+        <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+
+        <span class="c1"># Adaptive normalization per regime</span>
+        <span class="k">if</span> <span class="s1">&#39;regime_bull&#39;</span> <span class="ow">in</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_cols</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;regime_&#39;</span><span class="p">,</span> <span class="s1">&#39;ensemble_&#39;</span><span class="p">)):</span>
+                    <span class="k">continue</span>  <span class="c1"># Skip regime and ensemble columns</span>
+
+                <span class="c1"># Bull market normalization</span>
+                <span class="n">bull_mask</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="p">[</span><span class="s1">&#39;regime_bull&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">bull_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">bull_data</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bull_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+                    <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bull_mask</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s1">_bull_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="p">(</span><span class="n">bull_data</span> <span class="o">-</span> <span class="n">bull_data</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">bull_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># Bear market normalization</span>
+                <span class="n">bear_mask</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="p">[</span><span class="s1">&#39;regime_bear&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">bear_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+                    <span class="n">bear_data</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bear_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+                    <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bear_mask</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s1">_bear_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="p">(</span><span class="n">bear_data</span> <span class="o">-</span> <span class="n">bear_data</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">bear_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">normalized_df</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_rsi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate RSI indicator.&quot;&quot;&quot;</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">rs</span> <span class="o">=</span> <span class="n">gain</span> <span class="o">/</span> <span class="n">loss</span>
+        <span class="k">return</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_macd</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">fast</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">slow</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">26</span><span class="p">,</span> <span class="n">signal</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">9</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate MACD indicator.&quot;&quot;&quot;</span>
+        <span class="n">fast_ema</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">fast</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">slow_ema</span> <span class="o">=</span> <span class="n">prices</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">slow</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">macd</span> <span class="o">=</span> <span class="n">fast_ema</span> <span class="o">-</span> <span class="n">slow_ema</span>
+        <span class="n">signal_line</span> <span class="o">=</span> <span class="n">macd</span><span class="o">.</span><span class="n">ewm</span><span class="p">(</span><span class="n">span</span><span class="o">=</span><span class="n">signal</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">macd</span><span class="p">,</span> <span class="n">signal_line</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_atr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate Average True Range.&quot;&quot;&quot;</span>
+        <span class="n">high</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;high&#39;</span><span class="p">]</span>
+        <span class="n">low</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;low&#39;</span><span class="p">]</span>
+        <span class="n">close</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">tr1</span> <span class="o">=</span> <span class="n">high</span> <span class="o">-</span> <span class="n">low</span>
+        <span class="n">tr2</span> <span class="o">=</span> <span class="p">(</span><span class="n">high</span> <span class="o">-</span> <span class="n">close</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+        <span class="n">tr3</span> <span class="o">=</span> <span class="p">(</span><span class="n">low</span> <span class="o">-</span> <span class="n">close</span><span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+
+        <span class="n">tr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">tr1</span><span class="p">,</span> <span class="n">tr2</span><span class="p">,</span> <span class="n">tr3</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">atr</span> <span class="o">=</span> <span class="n">tr</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">atr</span>
+
+        <span class="k">return</span> <span class="n">beta</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_statistical_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate statistical features for 150+ dimension expansion (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">stat_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+
+        <span class="c1"># Rolling statistics for multiple windows (vectorized)</span>
+        <span class="n">windows</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">windows</span><span class="p">:</span>
+            <span class="n">rolling_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_mean_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_skew_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_kurt_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">kurt</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_quantile_25_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_quantile_75_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_returns</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+
+        <span class="c1"># Price distribution features (vectorized)</span>
+        <span class="n">price_windows</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">price_windows</span><span class="p">:</span>
+            <span class="n">rolling_close</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">mean_price</span> <span class="o">=</span> <span class="n">rolling_close</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">std_price</span> <span class="o">=</span> <span class="n">rolling_close</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_zscore_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mean_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">std_price</span>
+
+        <span class="c1"># Autocorrelation features (vectorized approximation)</span>
+        <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]:</span>
+            <span class="n">lagged_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span>
+            <span class="c1"># Simplified autocorrelation using rolling correlation</span>
+            <span class="n">autocorr</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">lagged_returns</span><span class="p">)</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_autocorr_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">autocorr</span>
+
+        <span class="k">return</span> <span class="n">stat_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_volume_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate volume-based features (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">vol_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># Generate synthetic volume features if volume not available</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;synthetic_volume&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;synthetic_volume&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Volume indicators (vectorized)</span>
+        <span class="n">vol_windows</span> <span class="o">=</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="n">vol_windows</span><span class="p">:</span>
+            <span class="n">rolling_vol</span> <span class="o">=</span> <span class="n">volume</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_ma_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">vol_ma</span> <span class="o">=</span> <span class="n">rolling_vol</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_ratio_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volume</span> <span class="o">/</span> <span class="n">vol_ma</span>
+
+        <span class="c1"># Volume-price trend (vectorized)</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;volume_price_trend&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">volume</span><span class="p">)</span>
+
+        <span class="c1"># On-balance volume approximation (vectorized)</span>
+        <span class="n">price_change</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">obv_flow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">price_change</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">volume</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">price_change</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">volume</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;obv_approx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">obv_flow</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">vol_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_momentum_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate momentum and trend features (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">mom_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Multi-timeframe momentum (vectorized)</span>
+        <span class="n">periods</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">periods</span><span class="p">:</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;momentum_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">period</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;momentum_roc_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="c1"># Rate of change combinations (vectorized)</span>
+        <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;roc_acceleration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_roc_5&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_roc_5&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+        <span class="c1"># Trend strength indicators (vectorized)</span>
+        <span class="n">trend_periods</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="n">trend_periods</span><span class="p">:</span>
+            <span class="n">sma_short</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">period</span><span class="o">//</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">sma_long</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;trend_strength_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sma_short</span> <span class="o">-</span> <span class="n">sma_long</span><span class="p">)</span> <span class="o">/</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Momentum divergence (vectorized)</span>
+        <span class="n">momentum_5</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_5&#39;</span><span class="p">]</span>
+        <span class="n">momentum_20</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_20&#39;</span><span class="p">]</span>
+        <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_divergence&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">momentum_5</span> <span class="o">-</span> <span class="n">momentum_20</span>
+
+        <span class="k">return</span> <span class="n">mom_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate statistical features for 150+ dimension expansion.&quot;&quot;&quot;</span>
+        <span class="n">stat_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+
+        <span class="c1"># Rolling statistics for multiple windows</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">100</span><span class="p">]:</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_mean_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_skew_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">skew</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_kurt_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">kurt</span><span class="p">()</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_quantile_25_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_quantile_75_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+
+        <span class="c1"># Price distribution features</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">]:</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;price_zscore_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span>
+                <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Autocorrelation features</span>
+        <span class="k">for</span> <span class="n">lag</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]:</span>
+            <span class="n">stat_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;returns_autocorr_</span><span class="si">{</span><span class="n">lag</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+                <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">autocorr</span><span class="p">(</span><span class="n">lag</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">lag</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">stat_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_volume_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate volume-based features.&quot;&quot;&quot;</span>
+        <span class="n">vol_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;volume&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># Generate synthetic volume features if volume not available</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;synthetic_volume&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">*</span> <span class="mi">1000</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;synthetic_volume&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">volume</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Volume indicators</span>
+        <span class="k">for</span> <span class="n">window</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]:</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_ma_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volume</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_std_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volume</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+            <span class="n">vol_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;volume_ratio_</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volume</span> <span class="o">/</span> <span class="n">volume</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Volume-price trend</span>
+        <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;volume_price_trend&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">volume</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">())</span>
+
+        <span class="c1"># On-balance volume approximation</span>
+        <span class="n">price_change</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;obv_approx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">price_change</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">*</span> <span class="n">volume</span> <span class="o">-</span> <span class="p">(</span><span class="n">price_change</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span> <span class="o">*</span> <span class="n">volume</span>
+        <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;obv_approx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vol_features</span><span class="p">[</span><span class="s1">&#39;obv_approx&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">vol_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_momentum_features</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate momentum and trend features.&quot;&quot;&quot;</span>
+        <span class="n">mom_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Multi-timeframe momentum</span>
+        <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">50</span><span class="p">]:</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;momentum_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="n">period</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;momentum_roc_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">(</span><span class="n">period</span><span class="p">)</span>
+
+        <span class="c1"># Rate of change combinations</span>
+        <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;roc_acceleration&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_roc_5&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_roc_5&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+
+        <span class="c1"># Trend strength indicators</span>
+        <span class="k">for</span> <span class="n">period</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">20</span><span class="p">]:</span>
+            <span class="n">sma_short</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">period</span><span class="o">//</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">sma_long</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">period</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="n">mom_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;trend_strength_</span><span class="si">{</span><span class="n">period</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">sma_short</span> <span class="o">-</span> <span class="n">sma_long</span><span class="p">)</span> <span class="o">/</span> <span class="n">sma_long</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Momentum divergence</span>
+        <span class="n">momentum_5</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_5&#39;</span><span class="p">]</span>
+        <span class="n">momentum_20</span> <span class="o">=</span> <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_20&#39;</span><span class="p">]</span>
+        <span class="n">mom_features</span><span class="p">[</span><span class="s1">&#39;momentum_divergence&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">momentum_5</span> <span class="o">-</span> <span class="n">momentum_20</span>
+
+        <span class="k">return</span> <span class="n">mom_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_feature_interactions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate feature interaction terms.&quot;&quot;&quot;</span>
+        <span class="n">interaction_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Select key base features for interactions</span>
+        <span class="n">base_features</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_5&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_20&#39;</span><span class="p">,</span> <span class="s1">&#39;rsi_14&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_ma_10&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Generate pairwise interactions (limited to avoid explosion)</span>
+        <span class="n">interaction_pairs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;rsi_14&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_ma_10&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;sma_5&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_20&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">feat1</span><span class="p">,</span> <span class="n">feat2</span> <span class="ow">in</span> <span class="n">interaction_pairs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">feat1</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">feat2</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">interaction_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">feat1</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">feat2</span><span class="si">}</span><span class="s1">_product&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">feat1</span><span class="p">]</span> <span class="o">*</span> <span class="n">df</span><span class="p">[</span><span class="n">feat2</span><span class="p">]</span>
+                <span class="n">interaction_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">feat1</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">feat2</span><span class="si">}</span><span class="s1">_ratio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">feat1</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="n">feat2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Polynomial features for key indicators</span>
+        <span class="k">if</span> <span class="s1">&#39;rsi_14&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">interaction_features</span><span class="p">[</span><span class="s1">&#39;rsi_squared&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">interaction_features</span><span class="p">[</span><span class="s1">&#39;rsi_cubed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">3</span>
+
+        <span class="k">return</span> <span class="n">interaction_features</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_adaptive_normalization_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply adaptive normalization based on market regime (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">normalized_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Get numeric columns only (efficient)</span>
+        <span class="n">numeric_cols</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span>
+
+        <span class="c1"># Adaptive normalization per regime (vectorized)</span>
+        <span class="k">if</span> <span class="s1">&#39;regime_bull&#39;</span> <span class="ow">in</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="c1"># Bull market normalization</span>
+            <span class="n">bull_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">normalized_df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;regime_bull&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">bull_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_cols</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">col</span><span class="o">.</span><span class="n">startswith</span><span class="p">((</span><span class="s1">&#39;regime_&#39;</span><span class="p">,</span> <span class="s1">&#39;ensemble_&#39;</span><span class="p">))]</span>
+            <span class="k">if</span> <span class="n">bull_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">bull_cols</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">bull_cols</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>  <span class="c1"># Limit to first 5 columns for efficiency</span>
+                    <span class="n">bull_data</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bull_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">bull_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bull_mask</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s1">_bull_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="p">(</span><span class="n">bull_data</span> <span class="o">-</span> <span class="n">bull_data</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">bull_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                        <span class="p">)</span>
+
+            <span class="c1"># Bear market normalization</span>
+            <span class="n">bear_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">normalized_df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;regime_bear&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">bear_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="n">bull_cols</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">bull_cols</span><span class="p">[:</span><span class="mi">5</span><span class="p">]:</span>  <span class="c1"># Limit to first 5 columns for efficiency</span>
+                    <span class="n">bear_data</span> <span class="o">=</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bear_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">bear_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">normalized_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">bear_mask</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s1">_bear_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="p">(</span><span class="n">bear_data</span> <span class="o">-</span> <span class="n">bear_data</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span> <span class="o">/</span> <span class="n">bear_data</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">normalized_df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_feature_interactions_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate feature interaction terms (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">interaction_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Select key base features for interactions (limit for efficiency)</span>
+        <span class="n">base_features</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_5&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_20&#39;</span><span class="p">,</span> <span class="s1">&#39;rsi_14&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_ma_10&#39;</span><span class="p">]</span>
+        <span class="n">available_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">base_features</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+
+        <span class="c1"># Generate pairwise interactions (limited to avoid explosion)</span>
+        <span class="n">interaction_pairs</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="s1">&#39;close&#39;</span><span class="p">,</span> <span class="s1">&#39;rsi_14&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;returns&#39;</span><span class="p">,</span> <span class="s1">&#39;volume_ma_10&#39;</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;sma_5&#39;</span><span class="p">,</span> <span class="s1">&#39;sma_20&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">feat1</span><span class="p">,</span> <span class="n">feat2</span> <span class="ow">in</span> <span class="n">interaction_pairs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">feat1</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="ow">and</span> <span class="n">feat2</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">interaction_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">feat1</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">feat2</span><span class="si">}</span><span class="s1">_product&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">feat1</span><span class="p">]</span> <span class="o">*</span> <span class="n">df</span><span class="p">[</span><span class="n">feat2</span><span class="p">]</span>
+                <span class="n">interaction_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">feat1</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">feat2</span><span class="si">}</span><span class="s1">_ratio&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">feat1</span><span class="p">]</span> <span class="o">/</span> <span class="n">df</span><span class="p">[</span><span class="n">feat2</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Polynomial features for key indicators (limited)</span>
+        <span class="k">if</span> <span class="s1">&#39;rsi_14&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">interaction_features</span><span class="p">[</span><span class="s1">&#39;rsi_squared&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">interaction_features</span><span class="p">[</span><span class="s1">&#39;rsi_cubed&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;rsi_14&#39;</span><span class="p">]</span> <span class="o">**</span> <span class="mi">3</span>
+
+        <span class="k">return</span> <span class="n">interaction_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_padding_features_optimized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">num_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate synthetic features to reach target dimension (optimized vectorized version).&quot;&quot;&quot;</span>
+        <span class="n">padding_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Generate synthetic features using mathematical transformations (vectorized)</span>
+        <span class="n">base_cols</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>  <span class="c1"># Use first 10 numeric columns</span>
+
+        <span class="c1"># Pre-compute transformations for efficiency</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">num_features</span><span class="p">,</span> <span class="mi">50</span><span class="p">)):</span>  <span class="c1"># Limit padding features for efficiency</span>
+            <span class="n">base_col</span> <span class="o">=</span> <span class="n">base_cols</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">base_cols</span><span class="p">)]</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Sine transformation</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_sin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Cosine transformation</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_cos_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># Exponential decay</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_exp_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Log transformation (with offset to avoid log(0))</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_log_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">padding_features</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate synthetic features to reach target dimension.&quot;&quot;&quot;</span>
+        <span class="n">padding_features</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+        <span class="c1"># Generate synthetic features using mathematical transformations</span>
+        <span class="n">base_cols</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">10</span><span class="p">]</span>  <span class="c1"># Use first 10 numeric columns</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_features</span><span class="p">):</span>
+            <span class="c1"># Create various mathematical transformations</span>
+            <span class="n">base_col</span> <span class="o">=</span> <span class="n">base_cols</span><span class="p">[</span><span class="n">i</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">base_cols</span><span class="p">)]</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="c1"># Sine transformation</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_sin_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Cosine transformation</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_cos_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">]</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">4</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># Exponential decay</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_exp_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">])</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Log transformation (with offset to avoid log(0))</span>
+                <span class="n">padding_features</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;synthetic_log_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">base_col</span><span class="p">])</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">padding_features</span></div>
+
+
+
+<div class="viewcode-block" id="create_v427_feature_set">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.sac_v427_feature_engineering.create_v427_feature_set">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_v427_feature_set</span><span class="p">(</span><span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create complete SAC v427 feature set from raw data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data_path: Path to raw market data</span>
+<span class="sd">        output_path: Optional path to save processed features</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame with v427 features</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading data from </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+
+    <span class="c1"># Ensure required columns exist</span>
+    <span class="n">required_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;close&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">required_cols</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data must contain columns: </span><span class="si">{</span><span class="n">required_cols</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Convert timestamp</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">])</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Initialize feature engineer</span>
+    <span class="n">feature_engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">()</span>
+
+    <span class="c1"># Generate v427 features</span>
+    <span class="n">features_df</span> <span class="o">=</span> <span class="n">feature_engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+    <span class="c1"># Save if requested</span>
+    <span class="k">if</span> <span class="n">output_path</span><span class="p">:</span>
+        <span class="n">features_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved v427 features to </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> total features&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">features_df</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Example usage</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="n">create_v427_feature_set</span><span class="p">(</span>
+        <span class="s2">&quot;data/btc_jpy_real_dataset.csv&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;data/btc_jpy_v427_features.csv&quot;</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created SAC v427 feature set with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

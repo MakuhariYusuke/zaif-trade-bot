@@ -1,0 +1,633 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SELL Action Bias - 徹底調査と修正計画の完全版 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SELL Action Bias - 徹底調査と修正計画の完全版</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/sell_bias_comprehensive_analysis.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sell-action-bias">
+<h1>SELL Action Bias - 徹底調査と修正計画の完全版<a class="headerlink" href="#sell-action-bias" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>エグゼクティブサマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>現状<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>PPOモデルが極端な報酬設定(<code class="docutils literal notranslate"><span class="pre">has_position_sell_reward:</span> <span class="pre">20.0</span></code>, <code class="docutils literal notranslate"><span class="pre">no_position_buy_reward:</span> <span class="pre">-1.0</span></code>)で訓練されたにもかかわらず、推論時にSELLアクションを選択せず、HOLDまたはBUYのみを選択する問題が発生しています。</p>
+</section>
+<section id="id3">
+<h3>これまでの実施内容<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>MaskablePPO統一</strong>: モデル読み込みエラー解消、<code class="docutils literal notranslate"><span class="pre">use_sde</span></code>無効化</p></li>
+<li><p><strong>ハイパーパラメータ調整</strong>: エントロピー係数、報酬スケール、学習率、<code class="docutils literal notranslate"><span class="pre">n_steps</span></code>等を段階的に調整</p></li>
+<li><p><strong>ポジション依存報酬</strong>: 多数の組み合わせを試行(BUY/SELL/HOLDの奨励・ペナルティ変更)</p></li>
+<li><p><strong>カリキュラム学習</strong>: 過学習抑制のための段階的学習</p></li>
+<li><p><strong>紙上取引テスト</strong>: アクション分布と収益性の確認(複数回実施)</p></li>
+<li><p><strong>アクションマスク修正</strong>: <code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code>で<code class="docutils literal notranslate"><span class="pre">action_masks</span></code>を<code class="docutils literal notranslate"><span class="pre">predict()</span></code>に渡すように修正</p></li>
+<li><p><strong>デバッグログ追加</strong>: verbose出力試行(未完了)</p></li>
+</ol>
+</section>
+<section id="id4">
+<h3>今回の追加実施内容(2025-10-06)<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>診断ツール作成</strong> ✓</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/utils/diagnostics/action_diagnostics.py</span></code></p></li>
+<li><p>マスク適用前後のlogits/probs、temperature、エントロピー、KL、lossを可視化</p></li>
+</ul>
+</li>
+<li><p><strong>強制アクションテスト作成</strong> ✓</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/unit/environment/test_forced_actions.py</span></code></p></li>
+<li><p>既知価格列でBUY→SELL実行時のPnL/fee/在庫を理論値と突合</p></li>
+<li><p>1テスト通過確認(<code class="docutils literal notranslate"><span class="pre">test_hold_only_sequence</span></code>)</p></li>
+</ul>
+</li>
+<li><p><strong>包括的ドキュメント作成</strong> ✓</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/fix_sell_bias.md</span></code>: 問題の経緯、技術分析、修正計画</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/action_bias_implementation_guide.md</span></code>: 具体的なファイル・関数・コード例</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id5">
+<h2>依然として収益化できない原因の洗い出し<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="copilot">
+<h3>Copilot分析に<strong>欠けている視点</strong>(追加)<a class="headerlink" href="#copilot" title="Link to this heading"></a></h3>
+<section id="action-mask-critical">
+<h4>1. <strong>学習時と評価時のAction Mask不一致</strong> 🔴 CRITICAL<a class="headerlink" href="#action-mask-critical" title="Link to this heading"></a></h4>
+<p><strong>状況</strong>:</p>
+<ul class="simple">
+<li><p>学習時: 全アクション許可(mask未適用)</p></li>
+<li><p>評価時: mask適用でillegalアクション除外</p></li>
+<li><p>結果: 学習分布と評価分布が乖離 → deterministic選択が崩壊</p></li>
+</ul>
+<p><strong>影響</strong>:</p>
+<ul class="simple">
+<li><p>学習中にillegalアクションも学習 → 評価でそれが除外 → 確率分布が大幅変化</p></li>
+<li><p>特にBUYが学習で多く選ばれていた場合、評価でも残存</p></li>
+</ul>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p>学習時も評価と<strong>同一のaction mask</strong>を適用</p></li>
+<li><p>policy forward内でillegalを<code class="docutils literal notranslate"><span class="pre">-inf</span></code>に設定</p></li>
+<li><p>sampling/loss計算はmask後分布のみ使用</p></li>
+</ul>
+</section>
+<section id="high">
+<h4>2. <strong>決定論デコード順序バグ</strong> 🟡 HIGH<a class="headerlink" href="#high" title="Link to this heading"></a></h4>
+<p><strong>正しい順序</strong>: <code class="docutils literal notranslate"><span class="pre">mask</span> <span class="pre">→</span> <span class="pre">softmax(temperature)</span> <span class="pre">→</span> <span class="pre">argmax</span></code></p>
+<p><strong>誤った順序の影響</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">softmax</span> <span class="pre">→</span> <span class="pre">mask</span> <span class="pre">→</span> <span class="pre">argmax</span></code>: illegalアクションに確率配分 → 除外で分布歪み</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">argmax</span> <span class="pre">→</span> <span class="pre">mask</span></code>: maskより先に選択 → illegal選択の可能性</p></li>
+<li><p>temperature誤適用: 過信頼/過探索</p></li>
+</ul>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p>順序を明示的に固定</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">T=0.7</span></code>のsoft-greedy評価も併用</p></li>
+<li><p>中間値をログして検証</p></li>
+</ul>
+</section>
+<section id="policy-head-medium">
+<h4>3. <strong>policy headバイアス初期値の傾き</strong> 🟡 MEDIUM<a class="headerlink" href="#policy-head-medium" title="Link to this heading"></a></h4>
+<p><strong>メカニズム</strong>:</p>
+<ul class="simple">
+<li><p>最終層<code class="docutils literal notranslate"><span class="pre">bias</span></code>が微妙に正に偏る → BUY優先</p></li>
+<li><p>勾配更新が不十分だと偏りが残存</p></li>
+</ul>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action_net.bias.zero_()</span></code> で再初期化</p></li>
+<li><p>または学習可能な<code class="docutils literal notranslate"><span class="pre">LogitBiasLayer</span></code>挿入(初期値=0)</p></li>
+</ul>
+</section>
+<section id="id6">
+<h4>4. <strong>アクション不均衡による勾配スタベーション</strong> 🟡 HIGH<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<p><strong>メカニズム</strong>:</p>
+<ul class="simple">
+<li><p>SELLが稀 → SELLのadvantage勾配が小</p></li>
+<li><p>policy更新がBUY/HOLD優先 → フィードバックループ</p></li>
+</ul>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p><strong>逆頻度重み</strong>: <code class="docutils literal notranslate"><span class="pre">w_a</span> <span class="pre">=</span> <span class="pre">max(0.5,</span> <span class="pre">1/freq(a))</span></code>でpolicy lossを重み付け</p></li>
+<li><p><strong>レジーム分層サンプリング</strong>: trend/range/high_vol/low_volを均等にサンプル</p></li>
+</ul>
+</section>
+<section id="vf-coef-medium">
+<h4>5. <strong>価値関数の過支配(vf_coef高すぎ)</strong> 🟡 MEDIUM<a class="headerlink" href="#vf-coef-medium" title="Link to this heading"></a></h4>
+<p><strong>現状</strong>: <code class="docutils literal notranslate"><span class="pre">vf_coef:</span> <span class="pre">0.5</span></code></p>
+<p><strong>影響</strong>: <code class="docutils literal notranslate"><span class="pre">value_loss</span> <span class="pre">&gt;&gt;</span> <span class="pre">policy_loss</span></code> → 方策が硬直</p>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vf_coef:</span> <span class="pre">0.5</span> <span class="pre">→</span> <span class="pre">0.3</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gae_lambda:</span> <span class="pre">0.95</span> <span class="pre">→</span> <span class="pre">0.9</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clip_range:</span> <span class="pre">0.2</span> <span class="pre">→</span> <span class="pre">0.1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_kl:</span> <span class="pre">0.02</span></code>導入</p></li>
+</ul>
+</section>
+<section id="low">
+<h4>6. <strong>正規化統計のズレ(学習≠評価)</strong> 🟢 LOW<a class="headerlink" href="#low" title="Link to this heading"></a></h4>
+<p><strong>影響</strong>: 学習時のscalerを評価で再現しない → 特徴量スケールがズレる</p>
+<p><strong>修正策</strong>:</p>
+<ul class="simple">
+<li><p>学習時にscaler保存(<code class="docutils literal notranslate"><span class="pre">joblib.dump</span></code>)</p></li>
+<li><p>評価時に固定ロード</p></li>
+<li><p>0分散列を前処理で除去</p></li>
+</ul>
+</section>
+<section id="id7">
+<h4>7. <strong>手数料・スリッページの非対称</strong> 🟢 LOW<a class="headerlink" href="#id7" title="Link to this heading"></a></h4>
+<p><strong>影響</strong>: BUY/SELLで控除タイミングがズレる → SELL常に不利</p>
+<p><strong>検証</strong>: 強制アクション単体テストで1往復(BUY→SELL)の理論値突合</p>
+</section>
+<section id="sell-info">
+<h4>8. <strong>SELLの意味論(スポット制約)</strong> 🟢 INFO<a class="headerlink" href="#sell-info" title="Link to this heading"></a></h4>
+<p><strong>前提</strong>: スポット取引で空売り不可 → SELLはエグジット専用</p>
+<p><strong>重要</strong>:</p>
+<ul class="simple">
+<li><p>KPIは「保有時のSELL実行率」であり、絶対SELL率ではない</p></li>
+<li><p>action maskで<code class="docutils literal notranslate"><span class="pre">position</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>時のみSELL合法化が必須</p></li>
+</ul>
+</section>
+</section>
+<section id="id8">
+<h3>Copilot既存分析(再掲)<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id9">
+<h4>環境・報酬ロジック<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✓ 売買成立条件やアクションマスク検証済み(SELL合法確認)</p></li>
+<li><p>✓ 報酬スケール確認済み(20.0 → 2.0)</p></li>
+<li><p>⚠️ 手数料設定の影響(要検証)</p></li>
+</ul>
+</section>
+<section id="id10">
+<h4>データ・特徴量<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>⚠️ 学習データの片側バイアス(上昇相場中心の可能性)</p></li>
+<li><p>⚠️ 特徴量がBUYシグナル偏重</p></li>
+<li><p>✓ 価格データ整合性確認済み</p></li>
+</ul>
+</section>
+<section id="id11">
+<h4>ハイパーパラメータ<a class="headerlink" href="#id11" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✓ エントロピー係数調整済み</p></li>
+<li><p>⚠️ <code class="docutils literal notranslate"><span class="pre">gamma</span></code>/<code class="docutils literal notranslate"><span class="pre">gae_lambda</span></code>の短期行動強化の可能性</p></li>
+<li><p>⚠️ バッチサイズ/更新頻度の不整合</p></li>
+</ul>
+</section>
+<section id="id12">
+<h4>モデル構造<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>⚠️ ネットワーク容量不足の可能性</p></li>
+<li><p>⚠️ 過学習による評価時バランス崩壊</p></li>
+<li><p>⚠️ 価値関数と政策の非同期</p></li>
+</ul>
+</section>
+<section id="id13">
+<h4>評価・実装差異<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>✓ トレーニング/評価環境の設定確認済み</p></li>
+<li><p>⚠️ モデル保存・読み込み時の正規化統計(要対応)</p></li>
+<li><p>✓ 評価指標整備済み</p></li>
+</ul>
+</section>
+<section id="id14">
+<h4>マーケット特有要因<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>⚠️ 学習期間と評価期間のregimeずれ</p></li>
+<li><p>⚠️ 高頻度急変動への追随不足</p></li>
+<li><p>⚠️ 単一ペア依存のボラティリティ偏り</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="id15">
+<h2>修正計画の優先順位<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="phase-1-1-2">
+<h3>Phase 1: 即効性高(1-2日) 🔴<a class="headerlink" href="#phase-1-1-2" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>学習時action mask厳密適用</strong> (CRITICAL)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">StrictMaskedPolicy</span></code>作成</p></li>
+<li><p>policy forward内でillegal → <code class="docutils literal notranslate"><span class="pre">-inf</span></code></p></li>
+<li><p>実装ガイド: <code class="docutils literal notranslate"><span class="pre">docs/action_bias_implementation_guide.md</span></code> §2</p></li>
+</ul>
+</li>
+<li><p><strong>決定論デコード順序修正</strong> (HIGH)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">mask</span> <span class="pre">→</span> <span class="pre">softmax(T)</span> <span class="pre">→</span> <span class="pre">argmax</span></code>順序固定</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">T=0.7</span></code>評価追加</p></li>
+<li><p>実装ガイド: §3</p></li>
+</ul>
+</li>
+<li><p><strong>強制アクションテスト完全実行</strong> (HIGH)</p>
+<ul class="simple">
+<li><p>全テストケース実行</p></li>
+<li><p>手数料対称性確認</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">tests/unit/environment/test_forced_actions.py</span> <span class="pre">-v</span></code></p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="phase-2-3-4">
+<h3>Phase 2: 学習安定化(3-4日) 🟡<a class="headerlink" href="#phase-2-3-4" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="4">
+<li><p><strong>アクション不均衡補正</strong> (HIGH)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ActionFrequencyWeighter</span></code>実装</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RegimeSampler</span></code>実装</p></li>
+<li><p>実装ガイド: §4</p></li>
+</ul>
+</li>
+<li><p><strong>policy head中立化</strong> (MEDIUM)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">action_net.bias.zero_()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">target_kl=0.02</span></code>導入</p></li>
+<li><p>エントロピー係数cosine減衰(<code class="docutils literal notranslate"><span class="pre">0.6→0.2</span></code>)</p></li>
+<li><p>実装ガイド: §5, §6</p></li>
+</ul>
+</li>
+<li><p><strong>ハイパーパラメータ最適化</strong> (MEDIUM)</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vf_coef:</span> <span class="pre">0.5→0.3</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">clip_range:</span> <span class="pre">0.2→0.1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gae_lambda:</span> <span class="pre">0.95→0.9</span></code></p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="phase-3-5-7">
+<h3>Phase 3: 評価・検証(5-7日) 🟢<a class="headerlink" href="#phase-3-5-7" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="7">
+<li><p><strong>正規化統計固定</strong> (LOW)</p>
+<ul class="simple">
+<li><p>scaler保存/ロード</p></li>
+<li><p>0分散列フィルタ</p></li>
+<li><p>実装ガイド: §7</p></li>
+</ul>
+</li>
+<li><p><strong>50k×3seed検証</strong> (REQUIRED)</p>
+<ul class="simple">
+<li><p>変更前後で比較</p></li>
+<li><p>BUY/SELL/HOLD分布</p></li>
+<li><p>Sharpe、entropy、KL</p></li>
+<li><p>レジーム別性能</p></li>
+<li><p>結果を<code class="docutils literal notranslate"><span class="pre">docs/fix_sell_bias.md</span></code>に記録</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id16">
+<h2>実装成果物<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>作成済みファイル ✓<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>診断ツール</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/utils/diagnostics/action_diagnostics.py</span></code>: 504行</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/utils/diagnostics/__init__.py</span></code>: 3行</p></li>
+</ul>
+</li>
+<li><p><strong>テストスイート</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/unit/environment/test_forced_actions.py</span></code>: 268行</p></li>
+<li><p>10テストケース実装(1テスト通過確認済み)</p></li>
+</ul>
+</li>
+<li><p><strong>ドキュメント</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/fix_sell_bias.md</span></code>: 包括的問題分析・修正計画</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/action_bias_implementation_guide.md</span></code>: 具体的実装手順</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id18">
+<h3>未実装(次ステップ)<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/training/policies/masked_policy.py</span></code></strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">StrictMaskedPolicy</span></code>クラス</p></li>
+<li><p>学習時mask厳密適用</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/training/utils/action_weighting.py</span></code></strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ActionFrequencyWeighter</span></code>クラス</p></li>
+<li><p>逆頻度loss重み付け</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/training/data/regime_sampler.py</span></code></strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">RegimeSampler</span></code>クラス</p></li>
+<li><p>レジーム分層サンプリング</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/training/unified_trainer.py</span></code>への統合</strong></p>
+<ul class="simple">
+<li><p>診断ログ統合</p></li>
+<li><p>policy bias再初期化</p></li>
+<li><p>entropy cosine減衰</p></li>
+<li><p>hyperparameter調整</p></li>
+</ul>
+</li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/training/paper_trade.py</span></code>への統合</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_get_action_with_temperature()</span></code>メソッド</p></li>
+<li><p>scaler読み込み</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id19">
+<h2>検証基準<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<section id="id20">
+<h3>必須条件 ✅<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>合法アクション率</strong> ≥ 99.9% (学習/評価とも)</p></li>
+<li><p><strong>アクション分布</strong>: 極端な偏りなし</p>
+<ul class="simple">
+<li><p>スポット前提: 「保有時SELL実行率」で評価</p></li>
+</ul>
+</li>
+<li><p><strong>エントロピー</strong>: 早期枯渇なし(初期高→自然減衰)</p></li>
+<li><p><strong>手数料対称テスト</strong>: 全テストグリーン ✓(1/10)</p></li>
+<li><p><strong>Sharpe &gt; 0</strong>: 50k×3seed平均</p></li>
+</ol>
+</section>
+<section id="id21">
+<h3>推奨条件 🎯<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>レジーム別分析(bull/bear/high-vol/low-vol)</p></li>
+<li><p>取引頻度が許容範囲内</p></li>
+<li><p>ドローダウンが限度内</p></li>
+<li><p>seed間の収束安定性</p></li>
+</ol>
+</section>
+</section>
+<section id="ai">
+<h2>次のステップ(他AIエージェントとの相談用)<a class="headerlink" href="#ai" title="Link to this heading"></a></h2>
+<section id="id22">
+<h3>即座に確認すべき点<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>現在のトレーニングコードでaction maskが適用されているか</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">MaskablePPO</span></code>のforward pass確認</p></li>
+<li><p>loss計算でmaskが考慮されているか</p></li>
+</ul>
+</li>
+<li><p><strong>決定論推論の実装順序</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code>の<code class="docutils literal notranslate"><span class="pre">predict()</span></code>呼び出しフロー</p></li>
+<li><p>mask/softmax/argmaxの順序</p></li>
+</ul>
+</li>
+<li><p><strong>policy head初期化</strong></p>
+<ul class="simple">
+<li><p>最終層biasの初期値確認</p></li>
+<li><p>学習前のlogits分布</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id23">
+<h3>追加調査が必要な点<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>学習データのregime分析</strong></p>
+<ul class="simple">
+<li><p>上昇/下降/レンジの比率</p></li>
+<li><p>SELLが有利な状況の頻度</p></li>
+</ul>
+</li>
+<li><p><strong>特徴量のSELLシグナル表現力</strong></p>
+<ul class="simple">
+<li><p>SELL優位を示す特徴の有無</p></li>
+<li><p>特徴量重要度分析</p></li>
+</ul>
+</li>
+<li><p><strong>モデル容量の妥当性</strong></p>
+<ul class="simple">
+<li><p>ネットワークサイズと問題複雑度のバランス</p></li>
+<li><p>過学習の兆候</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id24">
+<h3>実装の優先順位相談<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>最優先</strong>: 学習時mask適用(Phase 1-1)</p>
+<ul class="simple">
+<li><p>効果が最も高い可能性</p></li>
+<li><p>実装比較的シンプル</p></li>
+</ul>
+</li>
+<li><p><strong>次点</strong>: デコード順序修正(Phase 1-2)</p>
+<ul class="simple">
+<li><p>バグの可能性が高い</p></li>
+<li><p>即効性あり</p></li>
+</ul>
+</li>
+<li><p><strong>並行</strong>: 強制テスト完全実行(Phase 1-3)</p>
+<ul class="simple">
+<li><p>環境の正しさを保証</p></li>
+<li><p>他修正の前提条件</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id25">
+<h2>総合診断チェックリスト<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>環境検証 ✓<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> reward計算ロジック確認(SELL=20.0適用確認)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> action mask実装確認(position&gt;=0でSELL合法)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 基本テスト作成(test_hold_only_sequence通過)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 全強制テスト実行</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 手数料対称性検証</p></li>
+</ul>
+</section>
+<section id="id27">
+<h3>学習パイプライン検証 ⏳<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 学習時mask適用確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 決定論デコード順序確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> policy bias初期値確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> アクション分布ログ確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> エントロピー推移確認</p></li>
+</ul>
+</section>
+<section id="id28">
+<h3>評価パイプライン検証 ⏳<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> mask適用確認(<code class="docutils literal notranslate"><span class="pre">paper_trade.py</span></code>修正済み)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 正規化統計一致確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> temperature評価追加</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> verbose出力動作確認</p></li>
+</ul>
+</section>
+<section id="id29">
+<h3>診断・可視化 ✓<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> <code class="docutils literal notranslate"><span class="pre">ActionDiagnostics</span></code>ツール作成</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 学習ループ統合</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 評価時診断ログ</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> プロット生成・確認</p></li>
+</ul>
+</section>
+</section>
+<section id="id30">
+<h2>まとめ<a class="headerlink" href="#id30" title="Link to this heading"></a></h2>
+<section id="id31">
+<h3>現時点の状況<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>問題の本質</strong>: 学習と評価のaction mask適用不一致が主因の可能性が高い</p></li>
+<li><p><strong>実施済み</strong>: 診断ツール、テストスイート、包括的ドキュメント作成完了</p></li>
+<li><p><strong>次のステップ</strong>: Phase 1(即効修正)の実装とテスト</p></li>
+</ul>
+</section>
+<section id="id32">
+<h3>他AIエージェントへの引き継ぎポイント<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>作成済みファイル</strong>を確認</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ztb/utils/diagnostics/action_diagnostics.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tests/unit/environment/test_forced_actions.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/fix_sell_bias.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/action_bias_implementation_guide.md</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>実装ガイド</strong>(<code class="docutils literal notranslate"><span class="pre">docs/action_bias_implementation_guide.md</span></code>)の§2-§7を順次実装</p></li>
+<li><p><strong>検証</strong>: 50k×3seed短距離学習で変更前後を比較</p></li>
+<li><p><strong>報告</strong>: 結果を<code class="docutils literal notranslate"><span class="pre">docs/fix_sell_bias.md</span></code>に追記</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>作成日</strong>: 2025-10-06<br />
+<strong>ステータス</strong>: 診断・計画フェーズ完了、実装フェーズ開始準備完了</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

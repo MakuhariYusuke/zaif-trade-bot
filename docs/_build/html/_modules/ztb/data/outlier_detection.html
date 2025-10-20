@@ -1,0 +1,820 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.data.outlier_detection &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.data.outlier_detection</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.data.outlier_detection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">異常値検出と処理機能の実装</span>
+
+<span class="sd">金融時系列データに対する様々な異常値検出・処理手法を提供：</span>
+<span class="sd">- 統計的手法（Z-score, IQR, Modified Z-score）</span>
+<span class="sd">- 機械学習手法（Isolation Forest, Local Outlier Factor）</span>
+<span class="sd">- 時系列特化手法（STL分解, ARIMA残差分析）</span>
+<span class="sd">- 処理手法（除去, 補完, クリッピング）</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">IsolationForest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.neighbors</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalOutlierFactor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">StandardScaler</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tsa.seasonal</span><span class="w"> </span><span class="kn">import</span> <span class="n">STL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.tsa.arima.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">ARIMA</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="OutlierDetector">
+<a class="viewcode-back" href="../../../api/generated/ztb.data.html#ztb.data.outlier_detection.OutlierDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OutlierDetector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    金融時系列データに対する異常値検出を行うクラス。</span>
+
+<span class="sd">    複数の検出手法を組み合わせ、堅牢な異常値検出を実現。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">random_seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        OutlierDetectorを初期化。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            random_seed: 再現性確保のための乱数シード</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span> <span class="o">=</span> <span class="n">random_seed</span>
+        <span class="k">if</span> <span class="n">random_seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
+
+        <span class="c1"># スケーラーのキャッシュ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">StandardScaler</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 学習済みモデルのキャッシュ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="OutlierDetector.detect_outliers">
+<a class="viewcode-back" href="../../../api/generated/ztb.data.html#ztb.data.outlier_detection.OutlierDetector.detect_outliers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect_outliers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">methods</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]],</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        指定された手法で異常値を検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            methods: 検出手法の設定リスト</span>
+<span class="sd">            columns: 適用する列（Noneの場合は数値列全て）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            異常値フラグを含むデータフレーム</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; detector = OutlierDetector()</span>
+<span class="sd">            &gt;&gt;&gt; methods = [</span>
+<span class="sd">            ...     {&quot;type&quot;: &quot;z_score&quot;, &quot;threshold&quot;: 3.0},</span>
+<span class="sd">            ...     {&quot;type&quot;: &quot;iqr&quot;, &quot;multiplier&quot;: 1.5}</span>
+<span class="sd">            ... ]</span>
+<span class="sd">            &gt;&gt;&gt; result = detector.detect_outliers(data, methods)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">result_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">columns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">columns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+        <span class="c1"># 各手法で異常値を検出</span>
+        <span class="n">outlier_flags</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">method_config</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
+            <span class="n">method_type</span> <span class="o">=</span> <span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;z_score&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_z_score</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">threshold</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;iqr&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_iqr</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">multiplier</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;multiplier&quot;</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;modified_z_score&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_modified_z_score</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">threshold</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;isolation_forest&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_isolation_forest</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">contamination</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contamination&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;lof&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_lof</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">n_neighbors</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;n_neighbors&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+                        <span class="n">contamination</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;contamination&quot;</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;stl_decomposition&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_stl_decomposition</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">seasonal</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;seasonal&quot;</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span>
+                        <span class="n">threshold</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">method_type</span> <span class="o">==</span> <span class="s2">&quot;arima_residual&quot;</span><span class="p">:</span>
+                    <span class="n">flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_arima_residual</span><span class="p">(</span>
+                        <span class="n">result_data</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span>
+                        <span class="n">order</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;order&quot;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span>
+                        <span class="n">threshold</span><span class="o">=</span><span class="n">method_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;threshold&quot;</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown outlier detection method: </span><span class="si">{</span><span class="n">method_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+
+                <span class="n">outlier_flags</span><span class="p">[</span><span class="n">method_type</span><span class="p">]</span> <span class="o">=</span> <span class="n">flags</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply outlier detection </span><span class="si">{</span><span class="n">method_type</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+        <span class="c1"># 異常値フラグを統合</span>
+        <span class="n">combined_flags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_combine_outlier_flags</span><span class="p">(</span><span class="n">outlier_flags</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">combined_flags</span><span class="p">:</span>
+                <span class="n">result_data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">_is_outlier&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">combined_flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">result_data</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_z_score</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Z-score法による異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            threshold: 閾値</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">z_scores</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">stats</span><span class="o">.</span><span class="n">zscore</span><span class="p">(</span><span class="n">values</span><span class="p">))</span>
+            <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+
+            <span class="c1"># NaNでない位置のみを考慮</span>
+            <span class="n">valid_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+            <span class="n">outlier_mask</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">z_scores</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+
+            <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Z-score detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns with threshold </span><span class="si">{</span><span class="n">threshold</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_iqr</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">multiplier</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.5</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        IQR法による異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            multiplier: IQR倍率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">Q1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+            <span class="n">Q3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="mi">75</span><span class="p">)</span>
+            <span class="n">IQR</span> <span class="o">=</span> <span class="n">Q3</span> <span class="o">-</span> <span class="n">Q1</span>
+
+            <span class="n">lower_bound</span> <span class="o">=</span> <span class="n">Q1</span> <span class="o">-</span> <span class="n">multiplier</span> <span class="o">*</span> <span class="n">IQR</span>
+            <span class="n">upper_bound</span> <span class="o">=</span> <span class="n">Q3</span> <span class="o">+</span> <span class="n">multiplier</span> <span class="o">*</span> <span class="n">IQR</span>
+
+            <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="n">valid_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+            <span class="n">outlier_mask</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">lower_bound</span><span class="p">)</span> <span class="o">|</span> \
+                                     <span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">upper_bound</span><span class="p">)</span>
+
+            <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;IQR detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns with multiplier </span><span class="si">{</span><span class="n">multiplier</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_modified_z_score</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.5</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Modified Z-score法による異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            threshold: 閾値</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">median</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+            <span class="n">mad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">values</span> <span class="o">-</span> <span class="n">median</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">mad</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="n">modified_z_scores</span> <span class="o">=</span> <span class="mf">0.6745</span> <span class="o">*</span> <span class="p">(</span><span class="n">values</span> <span class="o">-</span> <span class="n">median</span><span class="p">)</span> <span class="o">/</span> <span class="n">mad</span>
+            <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">valid_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span>
+            <span class="n">outlier_mask</span><span class="p">[</span><span class="n">valid_mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">modified_z_scores</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span>
+
+            <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Modified Z-score detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns with threshold </span><span class="si">{</span><span class="n">threshold</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_isolation_forest</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">contamination</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Isolation Forestによる異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            contamination: 異常値の割合</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 特徴量を準備</span>
+        <span class="n">feature_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">flags</span>
+
+        <span class="c1"># スケーリング</span>
+        <span class="n">scaler_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;isolation_forest_</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">columns</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">scaler_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">scaler_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+
+        <span class="n">scaled_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">scaler_key</span><span class="p">]</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">feature_data</span><span class="p">)</span>
+
+        <span class="c1"># Isolation Forestの適用</span>
+        <span class="n">model_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;isolation_forest_</span><span class="si">{</span><span class="n">contamination</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">model_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">IsolationForest</span><span class="p">(</span>
+                <span class="n">contamination</span><span class="o">=</span><span class="n">contamination</span><span class="p">,</span>
+                <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span>
+            <span class="p">)</span>
+
+        <span class="n">outlier_predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">scaled_features</span><span class="p">)</span>
+
+        <span class="c1"># 各列に同じフラグを適用（特徴量全体としての異常値）</span>
+        <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">outlier_predictions</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">full_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">full_mask</span><span class="p">[</span><span class="n">valid_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_mask</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Isolation Forest detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns with contamination </span><span class="si">{</span><span class="n">contamination</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_lof</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">n_neighbors</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">contamination</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Local Outlier Factorによる異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            n_neighbors: 近傍点数</span>
+<span class="sd">            contamination: 異常値の割合</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 特徴量を準備</span>
+        <span class="n">feature_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_data</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">flags</span>
+
+        <span class="c1"># スケーリング</span>
+        <span class="n">scaler_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;lof_</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">columns</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">scaler_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">scaler_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">StandardScaler</span><span class="p">()</span>
+
+        <span class="n">scaled_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">scalers</span><span class="p">[</span><span class="n">scaler_key</span><span class="p">]</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">feature_data</span><span class="p">)</span>
+
+        <span class="c1"># LOFの適用</span>
+        <span class="n">model_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;lof_</span><span class="si">{</span><span class="n">n_neighbors</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">contamination</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="n">model_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">LocalOutlierFactor</span><span class="p">(</span>
+                <span class="n">n_neighbors</span><span class="o">=</span><span class="n">n_neighbors</span><span class="p">,</span>
+                <span class="n">contamination</span><span class="o">=</span><span class="n">contamination</span>
+            <span class="p">)</span>
+
+        <span class="n">outlier_predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trained_models</span><span class="p">[</span><span class="n">model_key</span><span class="p">]</span><span class="o">.</span><span class="n">fit_predict</span><span class="p">(</span><span class="n">scaled_features</span><span class="p">)</span>
+
+        <span class="c1"># 各列に同じフラグを適用</span>
+        <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">outlier_predictions</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="n">full_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+        <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">full_mask</span><span class="p">[</span><span class="n">valid_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_mask</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LOF detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns with n_neighbors </span><span class="si">{</span><span class="n">n_neighbors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_stl_decomposition</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">seasonal</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">7</span><span class="p">,</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        STL分解による時系列異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            seasonal: 季節性周期</span>
+<span class="sd">            threshold: 残差の閾値</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">seasonal</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># STL分解</span>
+                <span class="n">stl</span> <span class="o">=</span> <span class="n">STL</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">seasonal</span><span class="o">=</span><span class="n">seasonal</span><span class="p">,</span> <span class="n">robust</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">result</span> <span class="o">=</span> <span class="n">stl</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+
+                <span class="c1"># 残差の標準偏差で閾値を設定</span>
+                <span class="n">residual_std</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">resid</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">resid</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span> <span class="o">*</span> <span class="n">residual_std</span>
+
+                <span class="c1"># 元のデータフレームにマッピング</span>
+                <span class="n">full_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">index</span>
+                <span class="n">full_mask</span><span class="p">[</span><span class="n">valid_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_mask</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;STL decomposition failed for </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;STL decomposition detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_arima_residual</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">order</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ARIMA残差分析による異常値検出。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            columns: 対象列</span>
+<span class="sd">            order: ARIMA次数 (p, d, q)</span>
+<span class="sd">            threshold: 残差の閾値</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            各列の異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">values</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># ARIMAモデルフィッティング</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">ARIMA</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+                <span class="n">fitted_model</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">()</span>
+
+                <span class="c1"># 残差を取得</span>
+                <span class="n">residuals</span> <span class="o">=</span> <span class="n">fitted_model</span><span class="o">.</span><span class="n">resid</span>
+
+                <span class="c1"># 残差の標準偏差で閾値を設定</span>
+                <span class="n">residual_std</span> <span class="o">=</span> <span class="n">residuals</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+                <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">residuals</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">threshold</span> <span class="o">*</span> <span class="n">residual_std</span>
+
+                <span class="c1"># 元のデータフレームにマッピング</span>
+                <span class="n">full_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="kc">False</span><span class="p">)</span>
+                <span class="n">valid_indices</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">index</span>
+                <span class="n">full_mask</span><span class="p">[</span><span class="n">valid_indices</span><span class="p">]</span> <span class="o">=</span> <span class="n">outlier_mask</span>
+
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">full_mask</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ARIMA residual analysis failed for </span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ARIMA residual detection completed for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">flags</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_combine_outlier_flags</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">outlier_flags</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        複数の検出手法の結果を統合。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            outlier_flags: 各手法の異常値フラグ</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            統合された異常値フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">outlier_flags</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="c1"># 最初の手法の列を取得</span>
+        <span class="n">first_method</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">outlier_flags</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">combined_flags</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">first_method</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="c1"># 各手法のフラグを収集</span>
+            <span class="n">method_flags</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">method_flags_dict</span> <span class="ow">in</span> <span class="n">outlier_flags</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">method_flags_dict</span><span class="p">:</span>
+                    <span class="n">method_flags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">method_flags_dict</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="n">method_flags</span><span class="p">:</span>
+                <span class="c1"># 多数決で統合（過半数の手法が異常値と判定）</span>
+                <span class="n">stacked_flags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">method_flags</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">combined_flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">stacked_flags</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">method_flags</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">combined_flags</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">first_method</span><span class="p">[</span><span class="n">col</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">combined_flags</span></div>
+
+
+
+<div class="viewcode-block" id="OutlierHandler">
+<a class="viewcode-back" href="../../../api/generated/ztb.data.html#ztb.data.outlier_detection.OutlierHandler">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OutlierHandler</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    検出された異常値に対する処理を行うクラス。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;OutlierHandlerを初期化。&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="OutlierHandler.handle_outliers">
+<a class="viewcode-back" href="../../../api/generated/ztb.data.html#ztb.data.outlier_detection.OutlierHandler.handle_outliers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">handle_outliers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;remove&quot;</span><span class="p">,</span>
+        <span class="n">outlier_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        異常値を処理。</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 対象データ</span>
+<span class="sd">            method: 処理方法 (&quot;remove&quot;, &quot;interpolate&quot;, &quot;clip&quot;, &quot;replace&quot;)</span>
+<span class="sd">            outlier_columns: 異常値フラグ列のリスト</span>
+<span class="sd">            **kwargs: 処理方法固有のパラメータ</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            処理後のデータフレーム</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">processed_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">outlier_columns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># &quot;_is_outlier&quot; で終わる列を自動検出</span>
+            <span class="n">outlier_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">col</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">)]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">outlier_columns</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No outlier columns found&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">processed_data</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;remove&quot;</span><span class="p">:</span>
+                <span class="n">processed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_remove_outliers</span><span class="p">(</span><span class="n">processed_data</span><span class="p">,</span> <span class="n">outlier_columns</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;interpolate&quot;</span><span class="p">:</span>
+                <span class="n">processed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_interpolate_outliers</span><span class="p">(</span>
+                    <span class="n">processed_data</span><span class="p">,</span> <span class="n">outlier_columns</span><span class="p">,</span>
+                    <span class="n">method</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interpolation_method&quot;</span><span class="p">,</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;clip&quot;</span><span class="p">:</span>
+                <span class="n">processed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_clip_outliers</span><span class="p">(</span>
+                    <span class="n">processed_data</span><span class="p">,</span> <span class="n">outlier_columns</span><span class="p">,</span>
+                    <span class="n">lower_percentile</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lower_percentile&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+                    <span class="n">upper_percentile</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;upper_percentile&quot;</span><span class="p">,</span> <span class="mi">95</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;replace&quot;</span><span class="p">:</span>
+                <span class="n">processed_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_replace_outliers</span><span class="p">(</span>
+                    <span class="n">processed_data</span><span class="p">,</span> <span class="n">outlier_columns</span><span class="p">,</span>
+                    <span class="n">replacement_value</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;replacement_value&quot;</span><span class="p">,</span> <span class="s2">&quot;median&quot;</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown outlier handling method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to handle outliers with method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">processed_data</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_remove_outliers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">outlier_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;異常値を含む行を削除。&quot;&quot;&quot;</span>
+        <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">outlier_columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">base_col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">base_col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">outlier_mask</span> <span class="o">|=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removing </span><span class="si">{</span><span class="n">outlier_mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span><span class="si">}</span><span class="s2"> outlier rows&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="o">~</span><span class="n">outlier_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_interpolate_outliers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">outlier_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;異常値を補間。&quot;&quot;&quot;</span>
+        <span class="n">processed_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">outlier_columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">base_col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">base_col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+                    <span class="c1"># 異常値でないデータで補間</span>
+                    <span class="n">valid_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">interpolated</span> <span class="o">=</span> <span class="n">valid_data</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+                        <span class="n">processed_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">interpolated</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">)[</span><span class="n">outlier_mask</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Interpolated outliers using </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> method&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">processed_data</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_clip_outliers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">outlier_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">lower_percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">upper_percentile</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">95</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;異常値をパーセンタイルでクリッピング。&quot;&quot;&quot;</span>
+        <span class="n">processed_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">outlier_columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">base_col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">base_col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+                    <span class="c1"># 有効なデータのパーセンタイルを計算</span>
+                    <span class="n">valid_values</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">lower_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_values</span><span class="p">,</span> <span class="n">lower_percentile</span><span class="p">)</span>
+                        <span class="n">upper_bound</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">valid_values</span><span class="p">,</span> <span class="n">upper_percentile</span><span class="p">)</span>
+
+                        <span class="n">processed_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                            <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">],</span> <span class="n">lower_bound</span><span class="p">,</span> <span class="n">upper_bound</span>
+                        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Clipped outliers to </span><span class="si">{</span><span class="n">lower_percentile</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">upper_percentile</span><span class="si">}</span><span class="s2"> percentiles&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">processed_data</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_replace_outliers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">outlier_columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">replacement_value</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;異常値を指定値で置換。&quot;&quot;&quot;</span>
+        <span class="n">processed_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">outlier_columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">base_col</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;_is_outlier&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">base_col</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                    <span class="n">outlier_mask</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+
+                    <span class="c1"># 置換値を決定</span>
+                    <span class="n">valid_values</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="o">~</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">replacement_value</span> <span class="o">==</span> <span class="s2">&quot;median&quot;</span><span class="p">:</span>
+                            <span class="n">replace_val</span> <span class="o">=</span> <span class="n">valid_values</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+                        <span class="k">elif</span> <span class="n">replacement_value</span> <span class="o">==</span> <span class="s2">&quot;mean&quot;</span><span class="p">:</span>
+                            <span class="n">replace_val</span> <span class="o">=</span> <span class="n">valid_values</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">replacement_value</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+                            <span class="n">replace_val</span> <span class="o">=</span> <span class="n">replacement_value</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">replace_val</span> <span class="o">=</span> <span class="n">valid_values</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+
+                        <span class="n">processed_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">outlier_mask</span><span class="p">,</span> <span class="n">base_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">replace_val</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Replaced outliers with </span><span class="si">{</span><span class="n">replacement_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">processed_data</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

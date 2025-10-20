@@ -1,0 +1,595 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.attention_trainer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.attention_trainer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.attention_trainer</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Attention Model Training for Adaptive Feature Selection</span>
+<span class="sd">適応的特徴選択のための注意モデルトレーニング</span>
+
+<span class="sd">実装内容:</span>
+<span class="sd">- Attention modelの学習システム</span>
+<span class="sd">- トレーニングデータ収集と管理</span>
+<span class="sd">- メモリ効率的なトレーニング</span>
+<span class="sd">- 特徴量重要度の動的学習</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">Dataset</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.memory.dtypes</span><span class="w"> </span><span class="kn">import</span> <span class="n">optimize_dtypes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.path_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">ensure_dir</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FeatureAttentionLayer">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.FeatureAttentionLayer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeatureAttentionLayer</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Attention-based feature weighting layer&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span> <span class="o">=</span> <span class="n">n_features</span>
+
+        <span class="c1"># Attention layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">query_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_features</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">key_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_features</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">n_features</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">attention_dropout</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">n_features</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FeatureAttentionLayer.forward">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.FeatureAttentionLayer.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            x: (batch_size, n_features)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            attention_weights: (batch_size, n_features)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Query, Key, Value</span>
+        <span class="n">Q</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># (batch, hidden)</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">key_proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>    <span class="c1"># (batch, hidden)</span>
+        <span class="n">V</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_proj</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>  <span class="c1"># (batch, hidden)</span>
+
+        <span class="c1"># Attention scores</span>
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_features</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>  <span class="c1"># (batch, batch)</span>
+        <span class="n">attention_weights</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">scores</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># (batch, batch)</span>
+
+        <span class="c1"># Apply attention</span>
+        <span class="n">attended</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">attention_weights</span><span class="p">,</span> <span class="n">V</span><span class="p">)</span>  <span class="c1"># (batch, hidden)</span>
+        <span class="n">attended</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_dropout</span><span class="p">(</span><span class="n">attended</span><span class="p">)</span>
+
+        <span class="c1"># Output projection</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_proj</span><span class="p">(</span><span class="n">attended</span><span class="p">)</span>  <span class="c1"># (batch, n_features)</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>  <span class="c1"># (batch, n_features)</span>
+
+        <span class="k">return</span> <span class="n">weights</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AttentionTrainingDataset">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainingDataset">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AttentionTrainingDataset</span><span class="p">(</span><span class="n">Dataset</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;注意モデルトレーニング用データセット&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">feature_data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">rewards</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">regimes</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            feature_data: 特徴量データ (n_samples, n_features)</span>
+<span class="sd">            rewards: 報酬データ (n_samples,)</span>
+<span class="sd">            regimes: 市場状態ラベル (n_samples,)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">feature_data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">regimes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">LongTensor</span><span class="p">(</span><span class="n">regimes</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_data</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_data</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">rewards</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">regimes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="AttentionTrainer">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AttentionTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;注意モデルトレーニングマネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">n_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+        <span class="n">max_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">model_save_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            n_features: 特徴量数</span>
+<span class="sd">            hidden_dim: 注意レイヤーの隠れ層次元</span>
+<span class="sd">            learning_rate: 学習率</span>
+<span class="sd">            batch_size: バッチサイズ</span>
+<span class="sd">            max_epochs: 最大エポック数</span>
+<span class="sd">            patience: 早期停止の忍耐回数</span>
+<span class="sd">            model_save_path: モデル保存パス</span>
+<span class="sd">            memory_manager: メモリマネージャー</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span> <span class="o">=</span> <span class="n">n_features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span> <span class="o">=</span> <span class="n">hidden_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span> <span class="o">=</span> <span class="n">learning_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_epochs</span> <span class="o">=</span> <span class="n">max_epochs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">patience</span> <span class="o">=</span> <span class="n">patience</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="o">=</span> <span class="n">memory_manager</span>
+
+        <span class="c1"># モデル初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">FeatureAttentionLayer</span><span class="p">(</span><span class="n">n_features</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
+
+        <span class="c1"># トレーニング履歴</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># モデル保存パス</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_save_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">model_save_path</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span><span class="p">:</span>
+            <span class="n">ensure_dir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span><span class="o">.</span><span class="n">parent</span><span class="p">)</span>
+
+        <span class="c1"># トレーニングデータ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_buffer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">regime_buffer</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized AttentionTrainer with </span><span class="si">{</span><span class="n">n_features</span><span class="si">}</span><span class="s2"> features, hidden_dim=</span><span class="si">{</span><span class="n">hidden_dim</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="AttentionTrainer.add_training_sample">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.add_training_sample">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_training_sample</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">features</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span>
+        <span class="n">reward</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">regime</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        トレーニングサンプルを追加</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            features: 特徴量ベクトル</span>
+<span class="sd">            reward: 報酬値</span>
+<span class="sd">            regime: 市場状態 (文字列または整数)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10000</span><span class="p">:</span>  <span class="c1"># バッファサイズ制限</span>
+            <span class="c1"># 古いデータを削除してメモリ節約</span>
+            <span class="n">remove_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">)</span> <span class="o">//</span> <span class="mi">4</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">[</span><span class="n">remove_count</span><span class="p">:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reward_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reward_buffer</span><span class="p">[</span><span class="n">remove_count</span><span class="p">:]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">regime_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_buffer</span><span class="p">[</span><span class="n">remove_count</span><span class="p">:]</span>
+
+            <span class="c1"># メモリ解放とGC</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;attention_trainer_buffer_trim&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">features</span><span class="o">.</span><span class="n">copy</span><span class="p">())</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reward_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span>
+
+        <span class="c1"># 市場状態を整数に変換</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">regime</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">regime_map</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;trending&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;ranging&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;high_volatility&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="s2">&quot;low_volatility&quot;</span><span class="p">:</span> <span class="mi">3</span>
+            <span class="p">}</span>
+            <span class="n">regime_int</span> <span class="o">=</span> <span class="n">regime_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">regime</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">regime_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">regime</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">regime_buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">regime_int</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.has_enough_data">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.has_enough_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">has_enough_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;十分なトレーニングデータがあるか確認&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">min_samples</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.prepare_dataset">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.prepare_dataset">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prepare_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">AttentionTrainingDataset</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;トレーニングデータセットを作成&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_enough_data</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Insufficient training data: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">feature_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_buffer</span><span class="p">)</span>
+            <span class="n">reward_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reward_buffer</span><span class="p">)</span>
+            <span class="n">regime_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">regime_buffer</span><span class="p">)</span>
+
+            <span class="c1"># メモリ最適化</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;attention_trainer_dataset_prep&quot;</span><span class="p">)</span>
+
+            <span class="n">dataset</span> <span class="o">=</span> <span class="n">AttentionTrainingDataset</span><span class="p">(</span><span class="n">feature_data</span><span class="p">,</span> <span class="n">reward_data</span><span class="p">,</span> <span class="n">regime_data</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prepared dataset with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">dataset</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to prepare dataset: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.train_epoch">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.train_epoch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_epoch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">:</span> <span class="n">DataLoader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;1エポックのトレーニング&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+        <span class="n">epoch_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">n_batches</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">,</span> <span class="n">batch_regimes</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+            <span class="c1"># 順伝播</span>
+            <span class="n">attention_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">batch_features</span><span class="p">)</span>
+
+            <span class="c1"># 損失計算 (報酬を予測するように学習)</span>
+            <span class="c1"># 注意重みと報酬の相関を最大化</span>
+            <span class="n">predicted_rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">attention_weights</span> <span class="o">*</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">predicted_rewards</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">)</span>
+
+            <span class="c1"># 逆伝播</span>
+            <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+            <span class="n">epoch_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="n">n_batches</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="c1"># メモリ解放</span>
+            <span class="k">del</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">,</span> <span class="n">batch_regimes</span><span class="p">,</span> <span class="n">attention_weights</span><span class="p">,</span> <span class="n">predicted_rewards</span>
+            <span class="k">if</span> <span class="n">n_batches</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+
+        <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">epoch_loss</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">n_batches</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="n">avg_loss</span><span class="p">,</span> <span class="s2">&quot;n_batches&quot;</span><span class="p">:</span> <span class="n">n_batches</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.validate">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.validate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataloader</span><span class="p">:</span> <span class="n">DataLoader</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;検証&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="n">val_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">n_batches</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">,</span> <span class="n">batch_regimes</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+                <span class="n">attention_weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">batch_features</span><span class="p">)</span>
+                <span class="n">predicted_rewards</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">attention_weights</span> <span class="o">*</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">criterion</span><span class="p">(</span><span class="n">predicted_rewards</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">)</span>
+
+                <span class="n">val_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="n">n_batches</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># メモリ解放</span>
+                <span class="k">del</span> <span class="n">batch_features</span><span class="p">,</span> <span class="n">batch_rewards</span><span class="p">,</span> <span class="n">batch_regimes</span><span class="p">,</span> <span class="n">attention_weights</span><span class="p">,</span> <span class="n">predicted_rewards</span>
+
+        <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">val_loss</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">n_batches</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;val_loss&quot;</span><span class="p">:</span> <span class="n">avg_loss</span><span class="p">,</span> <span class="s2">&quot;n_batches&quot;</span><span class="p">:</span> <span class="n">n_batches</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.train">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.train">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">val_split</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        モデルのトレーニング</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            val_split: 検証データ分割率</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            トレーニング結果</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_dataset</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Insufficient training data&quot;</span><span class="p">}</span>
+
+        <span class="c1"># データ分割</span>
+        <span class="n">n_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">*</span> <span class="n">val_split</span><span class="p">)</span>
+        <span class="n">n_train</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span> <span class="o">-</span> <span class="n">n_val</span>
+
+        <span class="n">train_dataset</span><span class="p">,</span> <span class="n">val_dataset</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">random_split</span><span class="p">(</span>
+            <span class="n">dataset</span><span class="p">,</span> <span class="p">[</span><span class="n">n_train</span><span class="p">,</span> <span class="n">n_val</span><span class="p">],</span>
+            <span class="n">generator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">Generator</span><span class="p">()</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># データローダー</span>
+        <span class="n">train_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">train_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">val_loader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">val_dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="c1"># トレーニングループ</span>
+        <span class="n">best_val_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">best_model_state</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting training for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_epochs</span><span class="si">}</span><span class="s2"> epochs with </span><span class="si">{</span><span class="n">n_train</span><span class="si">}</span><span class="s2"> train, </span><span class="si">{</span><span class="n">n_val</span><span class="si">}</span><span class="s2"> val samples&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_epochs</span><span class="p">):</span>
+            <span class="c1"># トレーニング</span>
+            <span class="n">train_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train_epoch</span><span class="p">(</span><span class="n">train_loader</span><span class="p">)</span>
+
+            <span class="c1"># 検証</span>
+            <span class="n">val_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">val_loader</span><span class="p">)</span>
+
+            <span class="c1"># 履歴記録</span>
+            <span class="n">epoch_metrics</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;epoch&quot;</span><span class="p">:</span> <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">train_metrics</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">val_metrics</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch_metrics</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">max_epochs</span><span class="si">}</span><span class="s2"> - &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Train Loss: </span><span class="si">{</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Val Loss: </span><span class="si">{</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 早期停止判定</span>
+            <span class="k">if</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best_val_loss</span><span class="p">:</span>
+                <span class="n">best_val_loss</span> <span class="o">=</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+                <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="n">best_model_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">patience_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">if</span> <span class="n">patience_counter</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">patience</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Early stopping at epoch </span><span class="si">{</span><span class="n">epoch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+
+            <span class="c1"># メモリログ</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="ow">and</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;attention_trainer_epoch_</span><span class="si">{</span><span class="n">epoch</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 最良モデルを復元</span>
+        <span class="k">if</span> <span class="n">best_model_state</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">best_model_state</span><span class="p">)</span>
+
+        <span class="c1"># モデル保存</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span><span class="p">:</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
+                <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+                <span class="s1">&#39;optimizer_state_dict&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+                <span class="s1">&#39;training_history&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">,</span>
+                <span class="s1">&#39;n_features&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_features</span><span class="p">,</span>
+                <span class="s1">&#39;hidden_dim&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="p">},</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model saved to </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_save_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">final_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">&quot;final_metrics&quot;</span><span class="p">:</span> <span class="n">final_metrics</span><span class="p">,</span>
+            <span class="s2">&quot;training_history&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">,</span>
+            <span class="s2">&quot;best_val_loss&quot;</span><span class="p">:</span> <span class="n">best_val_loss</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.get_attention_weights">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.get_attention_weights">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_attention_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        特徴量に対する注意重みを取得</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            features: 特徴量ベクトル</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            注意重み配列</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+            <span class="n">features_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">FloatTensor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># (1, n_features)</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">features_tensor</span><span class="p">)</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>  <span class="c1"># (n_features,)</span>
+
+        <span class="k">return</span> <span class="n">weights</span></div>
+
+
+<div class="viewcode-block" id="AttentionTrainer.load_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.AttentionTrainer.load_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        保存されたモデルを読み込み</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_path: モデルファイルパス</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            読み込み成功フラグ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;model_state_dict&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;optimizer_state_dict&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;training_history&#39;</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model loaded from </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_attention_trainer">
+<a class="viewcode-back" href="../../../api/generated/ztb.features.html#ztb.features.attention_trainer.create_attention_trainer">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_attention_trainer</span><span class="p">(</span>
+    <span class="n">n_features</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">memory_manager</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AttentionTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    注意モデルトレーナーを作成</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        n_features: 特徴量数</span>
+<span class="sd">        config: 設定辞書</span>
+<span class="sd">        memory_manager: メモリマネージャー</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        AttentionTrainerインスタンス</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">return</span> <span class="n">AttentionTrainer</span><span class="p">(</span>
+        <span class="n">n_features</span><span class="o">=</span><span class="n">n_features</span><span class="p">,</span>
+        <span class="n">hidden_dim</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;hidden_dim&#39;</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
+        <span class="n">learning_rate</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="mf">1e-4</span><span class="p">),</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span>
+        <span class="n">max_epochs</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;max_epochs&#39;</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+        <span class="n">patience</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;patience&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+        <span class="n">model_save_path</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;model_save_path&#39;</span><span class="p">),</span>
+        <span class="n">memory_manager</span><span class="o">=</span><span class="n">memory_manager</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

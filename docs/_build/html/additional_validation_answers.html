@@ -1,0 +1,257 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>追加検証問題への回答 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">追加検証問題への回答</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/additional_validation_answers.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>追加検証問題への回答<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>1. 評価用データ分割<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>時系列データを考慮した適切な分割戦略を実装します：</p>
+<section id="id3">
+<h3>時系列クロスバリデーション<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>TimeSeriesSplit</strong>: scikit-learnのTimeSeriesSplitを使用</p></li>
+<li><p><strong>ウォークフォワード検証</strong>: 訓練期間を順次拡張しながら評価</p></li>
+<li><p><strong>ギャップ付き分割</strong>: 訓練とテスト間にギャップを設けてデータ漏洩を防ぐ</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>実装例<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSeriesSplit</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">create_time_series_splits</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">gap</span><span class="o">=</span><span class="mi">24</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;時系列データを考慮したクロスバリデーション分割&quot;&quot;&quot;</span>
+    <span class="n">tscv</span> <span class="o">=</span> <span class="n">TimeSeriesSplit</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">n_splits</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="n">test_size</span><span class="p">)</span>
+    <span class="n">splits</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span> <span class="ow">in</span> <span class="n">tscv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+        <span class="c1"># ギャップを考慮したインデックス調整</span>
+        <span class="k">if</span> <span class="n">gap</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">test_idx</span> <span class="o">=</span> <span class="n">test_idx</span><span class="p">[</span><span class="n">gap</span><span class="p">:]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_idx</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">gap</span> <span class="k">else</span> <span class="n">test_idx</span>
+        
+        <span class="n">splits</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">splits</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id5">
+<h2>2. アンサンブル重み付け検証<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<p>各モデルの貢献度を定量的に評価：</p>
+<section id="id6">
+<h3>重み重要度分析<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>シャープレシオ分解</strong>: 各モデルのリスク調整リターンを分析</p></li>
+<li><p><strong>相関分析</strong>: モデル間の相関を評価</p></li>
+<li><p><strong>貢献度指標</strong>: 各モデルのポートフォリオ分散への貢献</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>アンサンブル分析の実装例<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">analyze_ensemble_weights</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">test_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;アンサンブル重みの貢献度分析&quot;&quot;&quot;</span>
+    <span class="n">individual_returns</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">correlations</span> <span class="o">=</span> <span class="p">{}</span>
+    
+    <span class="c1"># 各モデルの個別パフォーマンス</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="n">models</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="n">evaluate_model_returns</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">test_data</span><span class="p">)</span>
+        <span class="n">individual_returns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">returns</span>
+    
+    <span class="c1"># 相関分析</span>
+    <span class="n">returns_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">individual_returns</span><span class="p">)</span>
+    <span class="n">correlations</span> <span class="o">=</span> <span class="n">returns_df</span><span class="o">.</span><span class="n">corr</span><span class="p">()</span>
+    
+    <span class="c1"># 重み最適化の貢献度</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">optimize_ensemble_weights</span><span class="p">(</span><span class="n">individual_returns</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s1">&#39;individual_performance&#39;</span><span class="p">:</span> <span class="n">individual_returns</span><span class="p">,</span>
+        <span class="s1">&#39;correlations&#39;</span><span class="p">:</span> <span class="n">correlations</span><span class="p">,</span>
+        <span class="s1">&#39;optimal_weights&#39;</span><span class="p">:</span> <span class="n">weights</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h2>3. 再現性保証<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<p>実験の再現性を確保するための仕組み：</p>
+<section id="id9">
+<h3>シード管理<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>グローバルシード設定</strong>: numpy, random, torchのシード統一</p></li>
+<li><p><strong>環境変数管理</strong>: 実験ごとに一意のシード</p></li>
+<li><p><strong>シード追跡</strong>: 各実験のシードをログに記録</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>実験追跡<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>設定ファイル</strong>: すべてのハイパーパラメータをYAML/JSONで保存</p></li>
+<li><p><strong>バージョン管理</strong>: コードとデータのバージョン追跡</p></li>
+<li><p><strong>結果ログ</strong>: メトリクス、設定、実行時間を構造化して保存</p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>再現性セットアップの実装例<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">setup_reproducibility</span><span class="p">(</span><span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;再現性確保のためのセットアップ&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hashlib</span><span class="o">.</span><span class="n">md5</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span>
+    
+    <span class="c1"># シード設定</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed_all</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">seed</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">save_experiment_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">results_dir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;実験設定の保存&quot;&quot;&quot;</span>
+    <span class="n">config_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_dir</span><span class="p">,</span> <span class="s1">&#39;experiment_config.yaml&#39;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">default_flow_style</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">config_path</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id12">
+<h2>推奨評価ワークフロー<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>データ準備</strong>: 時系列分割で訓練/検証/テストセットを作成</p></li>
+<li><p><strong>ベースラインベンチマーク</strong>: 単一モデル vs アンサンブルの比較</p></li>
+<li><p><strong>アブレーション研究</strong>: 各改善の貢献度を個別に評価</p></li>
+<li><p><strong>アンサンブル検証</strong>: 重み付けの最適化と貢献度分析</p></li>
+<li><p><strong>取引分析</strong>: 行動パターンとリスク指標の評価</p></li>
+<li><p><strong>再現性検証</strong>: 異なるシードでの結果の一貫性確認</p></li>
+</ol>
+<p>このアプローチにより、5つの改善（動的HOLDペナルティ、Sortino/Calmar比率、コサインアニーリングLR、アーリーストッピング、信頼度重み付けアンサンブル）の有効性を包括的に検証できます。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

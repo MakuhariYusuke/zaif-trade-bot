@@ -1,0 +1,210 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC v397i: HOLD削減 &amp; カリキュラム学習版 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Algorithms" href="../algorithms/index.html" />
+    <link rel="prev" title="SAC v397h: BUY行動学習修正版" href="sac_v397h_design.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Design Documents</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="sac_v397h_design.html">SAC v397h: BUY行動学習修正版</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">SAC v397i: HOLD削減 &amp; カリキュラム学習版</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">概要</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#v397h">問題分析 (v397h)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">解決方針</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#hold">1. HOLDペナルティ強化</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id3">2. カリキュラム学習活用</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id4">3. トレード促進設計</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">期待される行動分布</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">学習戦略</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">成功基準</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Design Documents</a></li>
+      <li class="breadcrumb-item active">SAC v397i: HOLD削減 &amp; カリキュラム学習版</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/design/sac_v397i_hold_reduction.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-v397i-hold">
+<h1>SAC v397i: HOLD削減 &amp; カリキュラム学習版<a class="headerlink" href="#sac-v397i-hold" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>概要<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>v397hのHOLD 90.8%問題を解決し、短期間収益向上を目指す。</p>
+</section>
+<section id="v397h">
+<h2>問題分析 (v397h)<a class="headerlink" href="#v397h" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>HOLD: 90.8% (過度に高い)</p></li>
+<li><p>BUY: 4.4%, SELL: 4.8% (トレード不足)</p></li>
+<li><p>収益: -6.71% (トレード機会損失)</p></li>
+</ul>
+</section>
+<section id="id2">
+<h2>解決方針<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="hold">
+<h3>1. HOLDペナルティ強化<a class="headerlink" href="#hold" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">inactivity_penalty_rate</span></code>: 0.005 → 0.01</p></li>
+<li><p>HOLDの連続ペナルティを2倍に</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>2. カリキュラム学習活用<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">curriculum_stage</span></code>: “forced_balance” (初期) → “balanced_transition” (中期) → “pnl_focused” (後期)</p></li>
+<li><p>段階的学習: トレード強制 → バランス最適化 → 収益重視</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>3. トレード促進設計<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>初期: 強制バランス (BUY/SELL/HOLD均衡)</p></li>
+<li><p>中期: バランス移行 (自然学習開始)</p></li>
+<li><p>後期: PnL重視 (収益最適化)</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2>期待される行動分布<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>BUY: 15-20% (カリキュラム強制)</p></li>
+<li><p>HOLD: 60-70% (ペナルティで削減)</p></li>
+<li><p>SELL: 15-20% (バランス化)</p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>学習戦略<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>P0 (forced_balance)</strong>: トレード強制学習</p></li>
+<li><p><strong>P1 (balanced_transition)</strong>: 自然学習移行</p></li>
+<li><p><strong>P2 (pnl_focused)</strong>: 収益最適化</p></li>
+</ol>
+</section>
+<section id="id7">
+<h2>成功基準<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>HOLD率: &lt; 70% (v397hの90.8%から大幅削減)</p></li>
+<li><p>BUY/SELL率: &gt; 15%ずつ</p></li>
+<li><p>収益: &gt; 0% (短期間収益向上)</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sac_v397h_design.html" class="btn btn-neutral float-left" title="SAC v397h: BUY行動学習修正版" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../algorithms/index.html" class="btn btn-neutral float-right" title="Algorithms" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

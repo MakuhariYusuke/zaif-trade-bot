@@ -1,0 +1,258 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture Overview &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Architecture Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/contributing/architecture.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="architecture-overview">
+<h1>Architecture Overview<a class="headerlink" href="#architecture-overview" title="Link to this heading"></a></h1>
+<p>This document provides an overview of the Zaif Trade Bot architecture, covering both the TypeScript/Node.js layer and the Python/ML layer.</p>
+<section id="system-architecture">
+<h2>System Architecture<a class="headerlink" href="#system-architecture" title="Link to this heading"></a></h2>
+<p>The project follows a layered architecture with clear separation of concerns between trading logic, data processing, and machine learning components.</p>
+</section>
+<section id="typescript-node-js-layer">
+<h2>TypeScript/Node.js Layer<a class="headerlink" href="#typescript-node-js-layer" title="Link to this heading"></a></h2>
+<section id="core-components">
+<h3>Core Components<a class="headerlink" href="#core-components" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">core/</span></code></strong>: Pure business logic (independent of I/O, filesystem, environment)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">adapters/</span></code></strong>: I/O and external API delegation (filesystem, HTTP, signing, rate limiting)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">application/</span></code></strong>: Strategy and use case orchestration (event subscription, aggregation)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">app/</span></code></strong>: Main execution loop (<code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">start</span></code>)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">tools/</span></code></strong>: CLI tools for live/paper/ml/stats modes</p></li>
+</ul>
+</section>
+<section id="design-principles">
+<h3>Design Principles<a class="headerlink" href="#design-principles" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Dependency Injection</strong>: Adapters injected into core logic for testability</p></li>
+<li><p><strong>Pure Functions</strong>: Core logic is deterministic and side-effect free</p></li>
+<li><p><strong>Interface Segregation</strong>: Clean contracts between layers</p></li>
+</ul>
+</section>
+</section>
+<section id="python-ml-layer-ztb">
+<h2>Python/ML Layer (ztb/)<a class="headerlink" href="#python-ml-layer-ztb" title="Link to this heading"></a></h2>
+<section id="directory-structure">
+<h3>Directory Structure<a class="headerlink" href="#directory-structure" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/core/</span></code></strong>: Coroutines (trade execution, market data, risk management)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/features/</span></code></strong>: Technical indicator features (trend, volatility, momentum)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/evaluation/</span></code></strong>: Quality assessment, promotion engine, benchmarks</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/trading/</span></code></strong>: Reinforcement learning environment, PPO trainer</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/ml/</span></code></strong>: ML pipeline, data transformation, export</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/experiments/</span></code></strong>: Experiment code (scaling tests, validation scripts)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/utils/</span></code></strong>: Common utilities (notifications, caching, logging)</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/tests/</span></code></strong>: Unit tests, integration tests</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">ztb/tools/</span></code></strong>: Operational tools, report generation</p></li>
+</ul>
+</section>
+<section id="key-components">
+<h3>Key Components<a class="headerlink" href="#key-components" title="Link to this heading"></a></h3>
+<section id="trading-engine-ztb-trading">
+<h4>Trading Engine (<code class="docutils literal notranslate"><span class="pre">ztb/trading/</span></code>)<a class="headerlink" href="#trading-engine-ztb-trading" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>PPO Trainer</strong>: Proximal Policy Optimization for strategy learning</p></li>
+<li><p><strong>Environment</strong>: RL environment with realistic market simulation</p></li>
+<li><p><strong>Bridge</strong>: Interface between trading logic and RL framework</p></li>
+</ul>
+</section>
+<section id="data-pipeline-ztb-data">
+<h4>Data Pipeline (<code class="docutils literal notranslate"><span class="pre">ztb/data/</span></code>)<a class="headerlink" href="#data-pipeline-ztb-data" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Streaming</strong>: Real-time data ingestion and processing</p></li>
+<li><p><strong>CoinGecko Integration</strong>: External market data API client</p></li>
+<li><p><strong>Caching</strong>: Price and feature data caching for performance</p></li>
+</ul>
+</section>
+<section id="feature-engineering-ztb-features">
+<h4>Feature Engineering (<code class="docutils literal notranslate"><span class="pre">ztb/features/</span></code>)<a class="headerlink" href="#feature-engineering-ztb-features" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Technical Indicators</strong>: RSI, MACD, Bollinger Bands, etc.</p></li>
+<li><p><strong>Statistical Features</strong>: Volatility, momentum, trend analysis</p></li>
+<li><p><strong>Quality Gates</strong>: Feature validation and statistical checks</p></li>
+</ul>
+</section>
+<section id="evaluation-framework-ztb-evaluation">
+<h4>Evaluation Framework (<code class="docutils literal notranslate"><span class="pre">ztb/evaluation/</span></code>)<a class="headerlink" href="#evaluation-framework-ztb-evaluation" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Quality Gates</strong>: NaN rates, correlations, skewness, kurtosis</p></li>
+<li><p><strong>Benchmarking</strong>: Performance comparison across experiments</p></li>
+<li><p><strong>Promotion Engine</strong>: Automated model advancement based on criteria</p></li>
+</ul>
+</section>
+<section id="utilities-ztb-utils">
+<h4>Utilities (<code class="docutils literal notranslate"><span class="pre">ztb/utils/</span></code>)<a class="headerlink" href="#utilities-ztb-utils" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>LoggerManager</strong>: Unified logging, notifications, experiment tracking</p></li>
+<li><p><strong>CheckpointManager</strong>: Async model persistence with compression</p></li>
+<li><p><strong>Stats Utils</strong>: Statistical analysis functions</p></li>
+<li><p><strong>Cache Manager</strong>: Multi-level caching (memory, disk, Redis)</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="data-flow">
+<h2>Data Flow<a class="headerlink" href="#data-flow" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Market Data → Streaming Pipeline → Feature Engineering → Trading Environment
+                                                            ↓
+Evaluation Framework ← Checkpoint Manager ← PPO Training ← ↑
+                                                            ↓
+Notification System ← Experiment Tracking ← Quality Gates ← ↑
+</pre></div>
+</div>
+</section>
+<section id="configuration-management">
+<h2>Configuration Management<a class="headerlink" href="#configuration-management" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Environment Variables</strong>: Runtime overrides and secrets</p></li>
+<li><p><strong>YAML/JSON Config Files</strong>: Default settings and complex configurations</p></li>
+<li><p><strong>ZTBConfig Class</strong>: Centralized configuration access</p></li>
+</ul>
+</section>
+<section id="testing-strategy">
+<h2>Testing Strategy<a class="headerlink" href="#testing-strategy" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Unit Tests</strong>: Isolated component testing with mocks</p></li>
+<li><p><strong>Integration Tests</strong>: End-to-end pipeline validation</p></li>
+<li><p><strong>Performance Tests</strong>: Memory profiling and timing analysis</p></li>
+<li><p><strong>Quality Gates</strong>: Automated validation before promotion</p></li>
+</ul>
+</section>
+<section id="migration-notes">
+<h2>Migration Notes<a class="headerlink" href="#migration-notes" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Legacy <code class="docutils literal notranslate"><span class="pre">src/services/*</span></code> has been removed - use <code class="docutils literal notranslate"><span class="pre">&#64;adapters/*</span></code> for new code</p></li>
+<li><p>Types consolidated in <code class="docutils literal notranslate"><span class="pre">src/contracts</span></code> - import via <code class="docutils literal notranslate"><span class="pre">&#64;contracts</span></code></p></li>
+<li><p>Python code centralized under <code class="docutils literal notranslate"><span class="pre">ztb/</span></code> directory</p></li>
+</ul>
+</section>
+<section id="development-workflow">
+<h2>Development Workflow<a class="headerlink" href="#development-workflow" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Feature Development</strong>: Create branch, implement with tests</p></li>
+<li><p><strong>Quality Checks</strong>: Type checking, linting, unit tests</p></li>
+<li><p><strong>Integration</strong>: Run integration tests and performance validation</p></li>
+<li><p><strong>Review</strong>: Code review and automated quality gates</p></li>
+<li><p><strong>Deployment</strong>: Automated deployment with rollback capabilities</p></li>
+</ol>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

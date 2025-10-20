@@ -1,0 +1,738 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.continual_learning &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.continual_learning</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.continual_learning</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Continual Learning for SAC v421</span>
+<span class="sd">長期的な知識蓄積とモデル劣化防止</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span><span class="p">,</span> <span class="n">deque</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">torch.utils.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">TensorDataset</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.memory_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">temporary_array</span><span class="p">,</span> <span class="n">memory_efficient_processing</span><span class="p">,</span> <span class="n">MemoryTracker</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TaskData">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.TaskData">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TaskData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;タスクデータ&quot;&quot;&quot;</span>
+    <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">states</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">actions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">rewards</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">next_states</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">dones</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+    <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="ContinualLearningConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearningConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContinualLearningConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;継続学習設定&quot;&quot;&quot;</span>
+    <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;ewc&#39;</span>  <span class="c1"># &#39;ewc&#39;, &#39;rehearsal&#39;, &#39;progressive&#39;</span>
+    <span class="n">ewc_lambda</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># EWC正則化強度</span>
+    <span class="n">rehearsal_buffer_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># リハーサル用バッファサイズ</span>
+    <span class="n">progressive_network_growth</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># Progressive NNの成長率</span>
+    <span class="n">memory_importance_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>  <span class="c1"># メモリ重要度の閾値</span>
+    <span class="n">max_tasks_in_memory</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># メモリに保持する最大タスク数</span>
+    <span class="n">enable_memory_tracking</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="ElasticWeightConsolidation">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ElasticWeightConsolidation">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ElasticWeightConsolidation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Elastic Weight Consolidation (EWC)&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ContinualLearningConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fisher_information</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># フィッシャー情報行列</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 各タスクの最適パラメータ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="o">=</span> <span class="n">MemoryTracker</span><span class="p">()</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">enable_memory_tracking</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="ElasticWeightConsolidation.consolidate_task">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ElasticWeightConsolidation.consolidate_task">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">consolidate_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;タスクの統合（重要パラメータの保存）&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Consolidating task: </span><span class="si">{</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 現在のモデルを保存</span>
+        <span class="n">current_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()}</span>
+
+        <span class="c1"># タスクでの学習（簡易版）</span>
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+        <span class="c1"># フィッシャー情報行列の計算</span>
+        <span class="n">fisher_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_fisher_information</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">)</span>
+
+        <span class="c1"># 最適パラメータ保存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">[</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">current_params</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fisher_information</span><span class="p">[</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">fisher_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># メモリ管理</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+            <span class="c1"># MemoryTrackerはコンテキストマネージャーなので、直接使用せずログのみ</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task consolidated: </span><span class="si">{</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 古いタスクの削除（メモリ節約）</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_tasks_in_memory</span><span class="p">:</span>
+            <span class="n">oldest_task</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">[</span><span class="n">oldest_task</span><span class="p">]</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">fisher_information</span><span class="p">[</span><span class="n">oldest_task</span><span class="p">]</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Removed old task from memory: </span><span class="si">{</span><span class="n">oldest_task</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span>
+            <span class="s1">&#39;fisher_norm&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">([</span><span class="n">f</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fisher_info</span><span class="o">.</span><span class="n">values</span><span class="p">()])),</span>
+            <span class="s1">&#39;param_count&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_params</span><span class="p">)</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_fisher_information</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;フィッシャー情報行列の計算&quot;&quot;&quot;</span>
+        <span class="n">fisher_info</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># パラメータごとの勾配を計算</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+
+        <span class="c1"># 少量のデータで勾配を計算</span>
+        <span class="n">sample_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">num_samples</span><span class="p">)</span>  <span class="c1"># メモリ節約のため少量使用</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">num_samples</span><span class="p">)[:</span><span class="n">sample_size</span><span class="p">]</span>
+
+        <span class="c1"># テンソルを直接使用（memory_efficient_processingはnumpy用）</span>
+        <span class="n">states</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+        <span class="n">rewards</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+        <span class="n">next_states</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+        <span class="n">dones</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">[</span><span class="n">indices</span><span class="p">]</span>
+
+        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">next_states</span><span class="p">),</span> <span class="n">dones</span><span class="p">)</span>
+        <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+        <span class="c1"># 勾配の二乗をフィッシャー情報として保存</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fisher_info</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fisher_info</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">param</span><span class="p">)</span>
+
+        <span class="c1"># 勾配をクリア</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">fisher_info</span>
+
+<div class="viewcode-block" id="ElasticWeightConsolidation.regularization_loss">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ElasticWeightConsolidation.regularization_loss">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">regularization_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;EWC正則化損失の計算&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">optimal_params</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">fisher_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fisher_information</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">current_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">optimal_params</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">fisher_info</span><span class="p">:</span>
+                    <span class="n">optimal_param</span> <span class="o">=</span> <span class="n">optimal_params</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                    <span class="n">fisher_value</span> <span class="o">=</span> <span class="n">fisher_info</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+                    <span class="c1"># EWC損失: λ * F * (θ - θ*)²</span>
+                    <span class="n">param_diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">param</span> <span class="o">-</span> <span class="n">optimal_param</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+                    <span class="n">loss_contribution</span> <span class="o">=</span> <span class="n">fisher_value</span> <span class="o">*</span> <span class="n">param_diff</span>
+                    <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">loss_contribution</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">ewc_lambda</span> <span class="o">*</span> <span class="n">total_loss</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RehearsalBuffer">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.RehearsalBuffer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RehearsalBuffer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;リハーサル用バッファ（過去データの保存）&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ContinualLearningConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">rehearsal_buffer_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">rehearsal_buffer_size</span> <span class="o">//</span> <span class="mi">5</span><span class="p">))</span>  <span class="c1"># タスクごとのバッファ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="o">=</span> <span class="n">MemoryTracker</span><span class="p">()</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">enable_memory_tracking</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="RehearsalBuffer.add_samples">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.RehearsalBuffer.add_samples">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_samples</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サンプルの追加&quot;&quot;&quot;</span>
+        <span class="c1"># タスク全体のバッファ</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">num_samples</span><span class="p">)):</span>  <span class="c1"># メモリ節約のため最大50サンプル</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;actions&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;rewards&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;next_states&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;dones&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+        <span class="c1"># タスク固有のバッファ</span>
+        <span class="n">task_samples</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">num_samples</span><span class="p">)):</span>  <span class="c1"># タスクごと最大20サンプル</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;actions&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;rewards&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;next_states&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">(),</span>
+                <span class="s1">&#39;dones&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="n">task_samples</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span><span class="p">[</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">task_samples</span><span class="p">)</span>
+
+        <span class="c1"># メモリ管理</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">task_samples</span><span class="p">)</span><span class="si">}</span><span class="s2"> samples to rehearsal buffer&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RehearsalBuffer.get_rehearsal_batch">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.RehearsalBuffer.get_rehearsal_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_rehearsal_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;リハーサル用バッチの取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">batch_size</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="c1"># ランダムサンプリング</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">))[:</span><span class="n">batch_size</span><span class="p">]</span>
+        <span class="n">batch_samples</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
+
+        <span class="c1"># バッチ作成</span>
+        <span class="n">batch</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;actions&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;actions&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;rewards&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;next_states&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;next_states&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;dones&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;dones&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">])</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">batch</span></div>
+
+
+<div class="viewcode-block" id="RehearsalBuffer.get_task_rehearsal_batch">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.RehearsalBuffer.get_task_rehearsal_batch">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_task_rehearsal_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;タスク固有のリハーサルバッチ取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span><span class="p">[</span><span class="n">task_id</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">batch_size</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">task_buffer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+        <span class="n">indices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randperm</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">task_buffer</span><span class="p">))[:</span><span class="n">batch_size</span><span class="p">]</span>
+        <span class="n">batch_samples</span> <span class="o">=</span> <span class="p">[</span><span class="n">task_buffer</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
+
+        <span class="n">batch</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;actions&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;actions&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;rewards&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;next_states&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;next_states&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">]),</span>
+            <span class="s1">&#39;dones&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="s1">&#39;dones&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">batch_samples</span><span class="p">])</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">batch</span></div>
+
+
+<div class="viewcode-block" id="RehearsalBuffer.get_buffer_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.RehearsalBuffer.get_buffer_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_buffer_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;バッファ統計取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;total_samples&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">),</span>
+            <span class="s1">&#39;task_buffers&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">task_id</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span> <span class="k">for</span> <span class="n">task_id</span><span class="p">,</span> <span class="n">buffer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_buffers</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+            <span class="s1">&#39;max_buffer_size&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">rehearsal_buffer_size</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ProgressiveNetwork">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ProgressiveNetwork">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProgressiveNetwork</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Progressive Neural Networks&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ContinualLearningConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span> <span class="o">=</span> <span class="n">base_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># タスクごとのネットワーク</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lateral_connections</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># ネットワーク間の横接続</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="o">=</span> <span class="n">MemoryTracker</span><span class="p">()</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">enable_memory_tracking</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="ProgressiveNetwork.add_task_network">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ProgressiveNetwork.add_task_network">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_task_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;新規タスク用のネットワーク追加&quot;&quot;&quot;</span>
+        <span class="c1"># ベースネットワークのコピー</span>
+        <span class="n">task_network</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">)</span>
+
+        <span class="c1"># ネットワーク拡張（オプション）</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">progressive_network_growth</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">growth_factor</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">progressive_network_growth</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span>
+            <span class="n">task_network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_expand_network</span><span class="p">(</span><span class="n">task_network</span><span class="p">,</span> <span class="n">growth_factor</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_network</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># 横接続の設定（前のタスクからの知識転移）</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setup_lateral_connections</span><span class="p">(</span><span class="n">task_id</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Added progressive network for task: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">task_network</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_expand_network</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">growth_factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ネットワークの拡張&quot;&quot;&quot;</span>
+        <span class="c1"># 簡易的な拡張：一部の層のサイズを増加</span>
+        <span class="n">expanded_network</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">network</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">expanded_network</span><span class="o">.</span><span class="n">named_modules</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">):</span>
+                <span class="n">in_features</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">in_features</span> <span class="o">*</span> <span class="n">growth_factor</span><span class="p">)</span>
+                <span class="n">out_features</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">out_features</span> <span class="o">*</span> <span class="n">growth_factor</span><span class="p">)</span>
+
+                <span class="c1"># 新しい層を作成</span>
+                <span class="n">new_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">in_features</span><span class="p">,</span> <span class="n">out_features</span><span class="p">)</span>
+                <span class="c1"># 重みをコピー（可能な範囲で）</span>
+                <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                    <span class="n">min_in</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">in_features</span><span class="p">,</span> <span class="n">in_features</span><span class="p">)</span>
+                    <span class="n">min_out</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">module</span><span class="o">.</span><span class="n">out_features</span><span class="p">,</span> <span class="n">out_features</span><span class="p">)</span>
+                    <span class="n">new_layer</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">min_out</span><span class="p">,</span> <span class="p">:</span><span class="n">min_in</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">weight</span><span class="p">[:</span><span class="n">min_out</span><span class="p">,</span> <span class="p">:</span><span class="n">min_in</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">module</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">new_layer</span><span class="o">.</span><span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">new_layer</span><span class="o">.</span><span class="n">bias</span><span class="p">[:</span><span class="n">min_out</span><span class="p">]</span> <span class="o">=</span> <span class="n">module</span><span class="o">.</span><span class="n">bias</span><span class="p">[:</span><span class="n">min_out</span><span class="p">]</span>
+
+                <span class="c1"># モジュールを置き換え</span>
+                <span class="k">if</span> <span class="s1">&#39;.&#39;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+                    <span class="n">parent_name</span><span class="p">,</span> <span class="n">child_name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="n">parent</span> <span class="o">=</span> <span class="n">expanded_network</span>
+                    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parent_name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">):</span>
+                        <span class="n">parent</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="n">child_name</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># トップレベルモジュールの場合</span>
+                    <span class="nb">setattr</span><span class="p">(</span><span class="n">expanded_network</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">new_layer</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">expanded_network</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_lateral_connections</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;横接続の設定&quot;&quot;&quot;</span>
+        <span class="c1"># 簡易実装：前のタスクからの知識転移用接続</span>
+        <span class="n">prev_tasks</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="o">.</span><span class="n">keys</span><span class="p">())[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># 最後のタスク以外</span>
+
+        <span class="k">for</span> <span class="n">prev_task_id</span> <span class="ow">in</span> <span class="n">prev_tasks</span><span class="p">:</span>
+            <span class="c1"># 横接続の設定（実際の実装ではアダプター層などを使用）</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">lateral_connections</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">prev_task_id</span><span class="si">}</span><span class="s2">_to_</span><span class="si">{</span><span class="n">new_task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;source_task&#39;</span><span class="p">:</span> <span class="n">prev_task_id</span><span class="p">,</span>
+                <span class="s1">&#39;target_task&#39;</span><span class="p">:</span> <span class="n">new_task_id</span><span class="p">,</span>
+                <span class="s1">&#39;connection_type&#39;</span><span class="p">:</span> <span class="s1">&#39;knowledge_transfer&#39;</span>
+            <span class="p">}</span>
+
+<div class="viewcode-block" id="ProgressiveNetwork.forward_with_lateral">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ProgressiveNetwork.forward_with_lateral">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward_with_lateral</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;横接続を含むフォワードパス&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task network not found: </span><span class="si">{</span><span class="n">task_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">task_network</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="p">[</span><span class="n">task_id</span><span class="p">]</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="n">task_network</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># 横接続からの知識統合（簡易版）</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lateral_connections</span><span class="p">:</span>
+            <span class="c1"># 前のタスクからの出力を統合</span>
+            <span class="n">lateral_contributions</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">connection_key</span><span class="p">,</span> <span class="n">connection_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lateral_connections</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">connection_info</span><span class="p">[</span><span class="s1">&#39;target_task&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">task_id</span><span class="p">:</span>
+                    <span class="n">source_task</span> <span class="o">=</span> <span class="n">connection_info</span><span class="p">[</span><span class="s1">&#39;source_task&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">source_task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="p">:</span>
+                        <span class="n">source_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="p">[</span><span class="n">source_task</span><span class="p">](</span><span class="n">x</span><span class="p">)</span>
+                        <span class="c1"># 簡易的な統合（平均など）</span>
+                        <span class="n">lateral_contributions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">source_output</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># 小さな重み</span>
+
+            <span class="k">if</span> <span class="n">lateral_contributions</span><span class="p">:</span>
+                <span class="n">lateral_combined</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">lateral_contributions</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+                <span class="n">output</span> <span class="o">=</span> <span class="n">output</span> <span class="o">+</span> <span class="n">lateral_combined</span>
+
+        <span class="k">return</span> <span class="n">output</span></div>
+
+
+<div class="viewcode-block" id="ProgressiveNetwork.get_network_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ProgressiveNetwork.get_network_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_network_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ネットワーク統計取得&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;task_count&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_count</span><span class="p">,</span>
+            <span class="s1">&#39;task_networks&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_networks</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span>
+            <span class="s1">&#39;lateral_connections&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lateral_connections</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;memory_stats&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;note&#39;</span><span class="p">:</span> <span class="s1">&#39;MemoryTracker context manager used&#39;</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ContinualLearner">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ContinualLearner</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;継続学習統合クラス&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ContinualLearningConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 手法ごとのコンポーネント初期化</span>
+        <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;ewc&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span> <span class="o">=</span> <span class="n">ElasticWeightConsolidation</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;rehearsal&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span> <span class="o">=</span> <span class="n">RehearsalBuffer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">elif</span> <span class="n">config</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;progressive&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span> <span class="o">=</span> <span class="n">ProgressiveNetwork</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported continual learning method: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_history</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span> <span class="o">=</span> <span class="n">MemoryTracker</span><span class="p">()</span> <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">enable_memory_tracking</span> <span class="k">else</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="ContinualLearner.learn_task">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner.learn_task">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">learn_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">,</span>
+                  <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;新規タスクの学習&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Learning task: </span><span class="si">{</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2"> using method: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># タスク固有のモデル取得/設定</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;progressive&#39;</span><span class="p">:</span>
+            <span class="n">task_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span><span class="o">.</span><span class="n">add_task_network</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">task_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+
+        <span class="c1"># タスクデータの追加（リハーサル用）</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="o">.</span><span class="n">add_samples</span><span class="p">(</span><span class="n">task_data</span><span class="p">)</span>
+
+        <span class="c1"># 学習実行</span>
+        <span class="n">training_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_task_model</span><span class="p">(</span><span class="n">task_model</span><span class="p">,</span> <span class="n">task_data</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">)</span>
+
+        <span class="c1"># タスク統合（EWC用）</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="p">:</span>
+            <span class="n">consolidation_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">consolidate_task</span><span class="p">(</span><span class="n">task_data</span><span class="p">,</span> <span class="n">loss_fn</span><span class="p">)</span>
+            <span class="n">training_stats</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">consolidation_stats</span><span class="p">)</span>
+
+        <span class="c1"># 履歴記録</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_history</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span>
+            <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="s1">&#39;training_stats&#39;</span><span class="p">:</span> <span class="n">training_stats</span><span class="p">,</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">elapsed_time</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Event</span><span class="p">(</span><span class="n">enable_timing</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span>
+
+        <span class="c1"># メモリクリーンアップ</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">training_stats</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_train_task_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task_model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">task_data</span><span class="p">:</span> <span class="n">TaskData</span><span class="p">,</span>
+                         <span class="n">loss_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">optim</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">,</span> <span class="n">num_epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;タスクモデルの学習&quot;&quot;&quot;</span>
+        <span class="n">task_model</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+        <span class="n">training_losses</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># データローダー作成</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="n">TensorDataset</span><span class="p">(</span><span class="n">task_data</span><span class="o">.</span><span class="n">states</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">rewards</span><span class="p">,</span>
+                              <span class="n">task_data</span><span class="o">.</span><span class="n">next_states</span><span class="p">,</span> <span class="n">task_data</span><span class="o">.</span><span class="n">dones</span><span class="p">)</span>
+        <span class="n">dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_epochs</span><span class="p">):</span>
+            <span class="n">epoch_loss</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">batch_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+                <span class="n">states</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">next_states</span><span class="p">,</span> <span class="n">dones</span> <span class="o">=</span> <span class="n">batch</span>
+
+                <span class="c1"># 通常の損失</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+                <span class="n">outputs</span> <span class="o">=</span> <span class="n">task_model</span><span class="p">(</span><span class="n">states</span><span class="p">)</span>
+                <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">actions</span><span class="p">,</span> <span class="n">rewards</span><span class="p">,</span> <span class="n">task_model</span><span class="p">(</span><span class="n">next_states</span><span class="p">),</span> <span class="n">dones</span><span class="p">)</span>
+
+                <span class="c1"># 継続学習の正則化損失追加</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="p">:</span>
+                    <span class="n">current_params</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">param</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">task_model</span><span class="o">.</span><span class="n">named_parameters</span><span class="p">()}</span>
+                    <span class="n">regularization_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">regularization_loss</span><span class="p">(</span><span class="n">current_params</span><span class="p">)</span>
+                    <span class="n">loss</span> <span class="o">+=</span> <span class="n">regularization_loss</span>
+
+                <span class="c1"># リハーサル損失追加</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span> <span class="ow">and</span> <span class="n">epoch</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># 2エポックに1回</span>
+                    <span class="n">rehearsal_batch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="o">.</span><span class="n">get_rehearsal_batch</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">rehearsal_batch</span><span class="p">:</span>
+                        <span class="n">rehearsal_outputs</span> <span class="o">=</span> <span class="n">task_model</span><span class="p">(</span><span class="n">rehearsal_batch</span><span class="p">[</span><span class="s1">&#39;states&#39;</span><span class="p">])</span>
+                        <span class="n">rehearsal_loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">rehearsal_outputs</span><span class="p">,</span> <span class="n">rehearsal_batch</span><span class="p">[</span><span class="s1">&#39;actions&#39;</span><span class="p">],</span>
+                                               <span class="n">rehearsal_batch</span><span class="p">[</span><span class="s1">&#39;rewards&#39;</span><span class="p">],</span>
+                                               <span class="n">task_model</span><span class="p">(</span><span class="n">rehearsal_batch</span><span class="p">[</span><span class="s1">&#39;next_states&#39;</span><span class="p">]),</span>
+                                               <span class="n">rehearsal_batch</span><span class="p">[</span><span class="s1">&#39;dones&#39;</span><span class="p">])</span>
+                        <span class="n">loss</span> <span class="o">+=</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">rehearsal_loss</span>  <span class="c1"># 小さな重み</span>
+
+                <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+                <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+
+                <span class="n">epoch_loss</span> <span class="o">+=</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                <span class="n">batch_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="n">avg_loss</span> <span class="o">=</span> <span class="n">epoch_loss</span> <span class="o">/</span> <span class="n">batch_count</span> <span class="k">if</span> <span class="n">batch_count</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">training_losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">avg_loss</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Task </span><span class="si">{</span><span class="n">task_data</span><span class="o">.</span><span class="n">task_id</span><span class="si">}</span><span class="s2">, epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_epochs</span><span class="si">}</span><span class="s2">, loss: </span><span class="si">{</span><span class="n">avg_loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;final_loss&#39;</span><span class="p">:</span> <span class="n">training_losses</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">training_losses</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s1">&#39;avg_loss&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">training_losses</span><span class="p">),</span>
+            <span class="s1">&#39;training_losses&#39;</span><span class="p">:</span> <span class="n">training_losses</span><span class="p">,</span>
+            <span class="s1">&#39;epochs_completed&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">training_losses</span><span class="p">)</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="ContinualLearner.predict_with_continual">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner.predict_with_continual">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict_with_continual</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;継続学習を考慮した予測&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">task_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;progressive&#39;</span> <span class="ow">and</span> <span class="n">task_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span><span class="o">.</span><span class="n">forward_with_lateral</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ContinualLearner.get_continual_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner.get_continual_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_continual_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;継続学習統計取得&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span><span class="p">,</span>
+            <span class="s1">&#39;current_task&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">,</span>
+            <span class="s1">&#39;task_history&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_history</span><span class="p">),</span>
+            <span class="s1">&#39;learned_tasks&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">task</span><span class="p">[</span><span class="s1">&#39;task_id&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_history</span><span class="p">]</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;ewc_tasks&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;rehearsal_stats&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="o">.</span><span class="n">get_buffer_stats</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;progressive_stats&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progressive_net</span><span class="o">.</span><span class="n">get_network_stats</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_tracker</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;memory_stats&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;note&#39;</span><span class="p">:</span> <span class="s1">&#39;MemoryTracker context manager used&#39;</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+
+
+<div class="viewcode-block" id="ContinualLearner.save_continual_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner.save_continual_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_continual_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;継続学習状態の保存&quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+            <span class="s1">&#39;current_task&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span><span class="p">,</span>
+            <span class="s1">&#39;task_history&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_history</span><span class="p">,</span>
+            <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">method</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 手法固有の状態保存</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="p">:</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;ewc_params&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">optimal_params</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;ewc_fisher&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">fisher_information</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="p">:</span>
+            <span class="c1"># バッファはメモリのため保存しない（再構築が必要）</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;rehearsal_config&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rehearsal_buffer</span><span class="o">.</span><span class="n">config</span>
+
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Continual learning state saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ContinualLearner.load_continual_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.adaptation.html#ztb.adaptation.continual_learning.ContinualLearner.load_continual_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_continual_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;継続学習状態の読み込み&quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;config&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_task</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;current_task&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_history</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;task_history&#39;</span><span class="p">]</span>
+
+        <span class="c1"># 手法固有の状態復元</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span> <span class="ow">and</span> <span class="s1">&#39;ewc_params&#39;</span> <span class="ow">in</span> <span class="n">state</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">optimal_params</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;ewc_params&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">fisher_information</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s1">&#39;ewc_fisher&#39;</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">task_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ewc</span><span class="o">.</span><span class="n">optimal_params</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Continual learning state loaded from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

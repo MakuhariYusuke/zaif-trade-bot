@@ -1,0 +1,460 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.unit.test_order_state_machine &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.unit.test_order_state_machine</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.unit.test_order_state_machine</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for order state machine</span>
+<span class="sd">注文ステートマシンの単体テスト</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">patch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.orders.state_machine</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">IdempotencyManager</span><span class="p">,</span>
+    <span class="n">OrderData</span><span class="p">,</span>
+    <span class="n">OrderEvent</span><span class="p">,</span>
+    <span class="n">OrderState</span><span class="p">,</span>
+    <span class="n">OrderStateMachine</span><span class="p">,</span>
+    <span class="n">get_idempotency_manager</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestOrderState">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderState">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestOrderState</span><span class="p">:</span>
+<div class="viewcode-block" id="TestOrderState.test_order_state_enum_values">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderState.test_order_state_enum_values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_order_state_enum_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderState enum has expected values&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;pending&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">CONFIRMED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;confirmed&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PARTIAL</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;partial&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">FILLED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;filled&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">CANCELLED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;cancelled&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">REJECTED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;rejected&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">EXPIRED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;expired&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">FAILED</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;failed&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestOrderEvent">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderEvent">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestOrderEvent</span><span class="p">:</span>
+<div class="viewcode-block" id="TestOrderEvent.test_order_event_enum_values">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderEvent.test_order_event_enum_values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_order_event_enum_values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderEvent enum has expected values&quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">SUBMIT</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;submit&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">CONFIRM</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;confirm&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">FILL</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;fill&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">PARTIAL_FILL</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;partial_fill&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">CANCEL</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;cancel&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">REJECT</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;reject&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">EXPIRE</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;expire&quot;</span>
+        <span class="k">assert</span> <span class="n">OrderEvent</span><span class="o">.</span><span class="n">FAIL</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s2">&quot;fail&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestOrderData">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderData">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestOrderData</span><span class="p">:</span>
+<div class="viewcode-block" id="TestOrderData.test_order_data_creation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderData.test_order_data_creation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_order_data_creation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderData dataclass creation&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="n">price</span><span class="o">=</span><span class="mf">5000000.0</span><span class="p">,</span>
+            <span class="n">order_type</span><span class="o">=</span><span class="s2">&quot;limit&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">order_id</span> <span class="o">==</span> <span class="s2">&quot;order_123&quot;</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">client_order_id</span> <span class="o">==</span> <span class="s2">&quot;client_123&quot;</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">symbol</span> <span class="o">==</span> <span class="s2">&quot;BTC_JPY&quot;</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">side</span> <span class="o">==</span> <span class="s2">&quot;buy&quot;</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">quantity</span> <span class="o">==</span> <span class="mf">1.0</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">price</span> <span class="o">==</span> <span class="mf">5000000.0</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">order_type</span> <span class="o">==</span> <span class="s2">&quot;limit&quot;</span>
+        <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">timestamp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TestOrderData.test_order_data_default_timestamp">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderData.test_order_data_default_timestamp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_order_data_default_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderData sets default timestamp&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;time.time&quot;</span><span class="p">,</span> <span class="n">return_value</span><span class="o">=</span><span class="mf">1234567890.0</span><span class="p">):</span>
+            <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+                <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+                <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+                <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+                <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+                <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="k">assert</span> <span class="n">order_data</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">==</span> <span class="mf">1234567890.0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestOrderStateMachine">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestOrderStateMachine</span><span class="p">:</span>
+<div class="viewcode-block" id="TestOrderStateMachine.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderStateMachine initialization&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">order_data</span> <span class="o">==</span> <span class="n">order_data</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">sm</span><span class="o">.</span><span class="n">state_history</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">state_history</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">idempotency_key</span> <span class="o">==</span> <span class="s2">&quot;client_123_BTC_JPY&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestOrderStateMachine.test_valid_transitions_from_pending">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_valid_transitions_from_pending">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_valid_transitions_from_pending</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test valid state transitions from PENDING&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="c1"># Test CONFIRM transition</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">CONFIRM</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">CONFIRMED</span>
+
+        <span class="c1"># Reset and test REJECT transition</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">=</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">REJECT</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">REJECTED</span>
+
+        <span class="c1"># Reset and test CANCEL transition</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">=</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">CANCEL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">CANCELLED</span></div>
+
+
+<div class="viewcode-block" id="TestOrderStateMachine.test_invalid_transition">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_invalid_transition">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_invalid_transition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test invalid state transition&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="c1"># Try to fill from pending (invalid)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">FILL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">current_state</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span></div>
+
+
+<div class="viewcode-block" id="TestOrderStateMachine.test_can_transition">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_can_transition">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_can_transition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test can_transition method&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">can_transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">CONFIRM</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">can_transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">FILL</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestOrderStateMachine.test_is_terminal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_is_terminal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_is_terminal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test is_terminal method&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="c1"># PENDING is not terminal</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">sm</span><span class="o">.</span><span class="n">is_terminal</span><span class="p">()</span>
+
+        <span class="c1"># Move to FILLED (terminal)</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">CONFIRM</span><span class="p">)</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">FILL</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">is_terminal</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="TestOrderStateMachine.test_get_state_and_history">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestOrderStateMachine.test_get_state_and_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_state_and_history</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test get_state and get_state_history methods&quot;&quot;&quot;</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">sm</span><span class="o">.</span><span class="n">get_state</span><span class="p">()</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span>
+        <span class="n">history</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">get_state_history</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="n">history</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">OrderState</span><span class="o">.</span><span class="n">PENDING</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestIdempotencyManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestIdempotencyManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestIdempotencyManager</span><span class="p">:</span>
+<div class="viewcode-block" id="TestIdempotencyManager.test_initialization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestIdempotencyManager.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test IdempotencyManager initialization&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">IdempotencyManager</span><span class="p">()</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">_processed_keys</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">manager</span><span class="o">.</span><span class="n">_order_states</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="TestIdempotencyManager.test_is_idempotent">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestIdempotencyManager.test_is_idempotent">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_is_idempotent</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test is_idempotent method&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">IdempotencyManager</span><span class="p">()</span>
+
+        <span class="c1"># First call should be idempotent</span>
+        <span class="k">assert</span> <span class="n">manager</span><span class="o">.</span><span class="n">is_idempotent</span><span class="p">(</span><span class="s2">&quot;key1&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Mark as processed</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">mark_processed</span><span class="p">(</span><span class="s2">&quot;key1&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Second call should not be idempotent</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="n">manager</span><span class="o">.</span><span class="n">is_idempotent</span><span class="p">(</span><span class="s2">&quot;key1&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Different key should be idempotent</span>
+        <span class="k">assert</span> <span class="n">manager</span><span class="o">.</span><span class="n">is_idempotent</span><span class="p">(</span><span class="s2">&quot;key2&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestIdempotencyManager.test_order_registration">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestIdempotencyManager.test_order_registration">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_order_registration</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test order state machine registration&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">IdempotencyManager</span><span class="p">()</span>
+
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">register_order</span><span class="p">(</span><span class="n">sm</span><span class="p">)</span>
+
+        <span class="n">retrieved_sm</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_order_state_machine</span><span class="p">(</span><span class="s2">&quot;order_123&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">retrieved_sm</span> <span class="o">==</span> <span class="n">sm</span>
+
+        <span class="c1"># Non-existent order should return None</span>
+        <span class="k">assert</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_order_state_machine</span><span class="p">(</span><span class="s2">&quot;non_existent&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="TestIdempotencyManager.test_cleanup_expired">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestIdempotencyManager.test_cleanup_expired">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_cleanup_expired</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test cleanup of expired orders&quot;&quot;&quot;</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">IdempotencyManager</span><span class="p">()</span>
+
+        <span class="c1"># Create order and register</span>
+        <span class="n">order_data</span> <span class="o">=</span> <span class="n">OrderData</span><span class="p">(</span>
+            <span class="n">order_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">client_order_id</span><span class="o">=</span><span class="s2">&quot;client_123&quot;</span><span class="p">,</span>
+            <span class="n">symbol</span><span class="o">=</span><span class="s2">&quot;BTC_JPY&quot;</span><span class="p">,</span>
+            <span class="n">side</span><span class="o">=</span><span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="n">quantity</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">sm</span> <span class="o">=</span> <span class="n">OrderStateMachine</span><span class="p">(</span><span class="n">order_data</span><span class="p">)</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">CONFIRM</span><span class="p">)</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">transition</span><span class="p">(</span><span class="n">OrderEvent</span><span class="o">.</span><span class="n">FILL</span><span class="p">)</span>  <span class="c1"># Terminal state</span>
+
+        <span class="n">manager</span><span class="o">.</span><span class="n">register_order</span><span class="p">(</span><span class="n">sm</span><span class="p">)</span>
+
+        <span class="c1"># Mock old timestamp</span>
+        <span class="n">sm</span><span class="o">.</span><span class="n">state_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">OrderState</span><span class="o">.</span><span class="n">FILLED</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="mi">7200</span><span class="p">)</span>  <span class="c1"># 2 hours ago</span>
+
+        <span class="c1"># Cleanup should remove expired orders</span>
+        <span class="n">manager</span><span class="o">.</span><span class="n">cleanup_expired</span><span class="p">(</span><span class="n">max_age_seconds</span><span class="o">=</span><span class="mi">3600</span><span class="p">)</span>  <span class="c1"># 1 hour max age</span>
+
+        <span class="k">assert</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_order_state_machine</span><span class="p">(</span><span class="s2">&quot;order_123&quot;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestGlobalIdempotencyManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestGlobalIdempotencyManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestGlobalIdempotencyManager</span><span class="p">:</span>
+<div class="viewcode-block" id="TestGlobalIdempotencyManager.test_get_idempotency_manager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_order_state_machine.TestGlobalIdempotencyManager.test_get_idempotency_manager">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_idempotency_manager</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test global idempotency manager getter&quot;&quot;&quot;</span>
+        <span class="n">manager1</span> <span class="o">=</span> <span class="n">get_idempotency_manager</span><span class="p">()</span>
+        <span class="n">manager2</span> <span class="o">=</span> <span class="n">get_idempotency_manager</span><span class="p">()</span>
+
+        <span class="c1"># Should return the same instance</span>
+        <span class="k">assert</span> <span class="n">manager1</span> <span class="ow">is</span> <span class="n">manager2</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manager1</span><span class="p">,</span> <span class="n">IdempotencyManager</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

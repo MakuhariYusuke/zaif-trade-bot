@@ -1,0 +1,676 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.optimization.hyperparameter_optimizer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.optimization.hyperparameter_optimizer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.optimization.hyperparameter_optimizer</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Hyperparameter Optimization Framework for SAC v428.</span>
+
+<span class="sd">This module provides comprehensive hyperparameter optimization including:</span>
+<span class="sd">- Bayesian optimization using Optuna</span>
+<span class="sd">- Grid search and random search</span>
+<span class="sd">- Cross-validation across market conditions</span>
+<span class="sd">- Automated parameter space exploration</span>
+<span class="sd">- Performance tracking and analysis</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">optuna</span>
+    <span class="n">OPTUNA_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">OPTUNA_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Optuna not available. Bayesian optimization will be disabled.&quot;</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSeriesSplit</span>
+    <span class="n">SKLEARN_AVAILABLE</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">SKLEARN_AVAILABLE</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Scikit-learn not available. Cross-validation features will be limited.&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="OptimizationResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.OptimizationResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">OptimizationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of hyperparameter optimization.&quot;&quot;&quot;</span>
+    <span class="n">best_params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">best_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trials</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">optimization_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">convergence_info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">cross_validation_scores</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ParameterSpace">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.ParameterSpace">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParameterSpace</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Definition of hyperparameter search space.&quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="nb">type</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &#39;float&#39;, &#39;int&#39;, &#39;categorical&#39;</span>
+    <span class="n">low</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">high</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">choices</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">log_scale</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+
+<div class="viewcode-block" id="OptimizationMethod">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.OptimizationMethod">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OptimizationMethod</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base class for optimization methods.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="OptimizationMethod.optimize">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.OptimizationMethod.optimize">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">],</span>
+                <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run optimization.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BayesianOptimization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.BayesianOptimization">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BayesianOptimization</span><span class="p">(</span><span class="n">OptimizationMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Bayesian optimization using Optuna.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">OPTUNA_AVAILABLE</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;Optuna is required for Bayesian optimization&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BayesianOptimization.optimize">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.BayesianOptimization.optimize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">],</span>
+                <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run Bayesian optimization with Optuna.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">optuna_objective</span><span class="p">(</span><span class="n">trial</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;Optuna objective function.&quot;&quot;&quot;</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_def</span> <span class="ow">in</span> <span class="n">parameter_space</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;float&#39;</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">log_scale</span><span class="p">:</span>
+                        <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_float</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_float</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;int&#39;</span><span class="p">:</span>
+                    <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_int</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;categorical&#39;</span><span class="p">:</span>
+                    <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">trial</span><span class="o">.</span><span class="n">suggest_categorical</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c1"># Create Optuna study</span>
+        <span class="n">study</span> <span class="o">=</span> <span class="n">optuna</span><span class="o">.</span><span class="n">create_study</span><span class="p">(</span><span class="n">direction</span><span class="o">=</span><span class="s1">&#39;maximize&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Run optimization</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">study</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">optuna_objective</span><span class="p">,</span> <span class="n">n_trials</span><span class="o">=</span><span class="n">n_trials</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">optimization_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="c1"># Extract results</span>
+        <span class="n">best_params</span> <span class="o">=</span> <span class="n">study</span><span class="o">.</span><span class="n">best_params</span>
+        <span class="n">best_score</span> <span class="o">=</span> <span class="n">study</span><span class="o">.</span><span class="n">best_value</span>
+
+        <span class="c1"># Extract trial information</span>
+        <span class="n">trials</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">study</span><span class="o">.</span><span class="n">trials</span><span class="p">:</span>
+            <span class="n">trials</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">params</span><span class="p">,</span>
+                <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                <span class="s1">&#39;number&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">number</span><span class="p">,</span>
+                <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="n">trial</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">})</span>
+
+        <span class="c1"># Convergence information</span>
+        <span class="n">convergence_info</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;n_completed_trials&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">([</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">study</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s1">&#39;COMPLETE&#39;</span><span class="p">]),</span>
+            <span class="s1">&#39;best_trial_number&#39;</span><span class="p">:</span> <span class="n">study</span><span class="o">.</span><span class="n">best_trial</span><span class="o">.</span><span class="n">number</span><span class="p">,</span>
+            <span class="s1">&#39;optimization_history&#39;</span><span class="p">:</span> <span class="p">[(</span><span class="n">t</span><span class="o">.</span><span class="n">number</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">study</span><span class="o">.</span><span class="n">trials</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span>
+            <span class="n">best_params</span><span class="o">=</span><span class="n">best_params</span><span class="p">,</span>
+            <span class="n">best_score</span><span class="o">=</span><span class="n">best_score</span><span class="p">,</span>
+            <span class="n">trials</span><span class="o">=</span><span class="n">trials</span><span class="p">,</span>
+            <span class="n">optimization_time</span><span class="o">=</span><span class="n">optimization_time</span><span class="p">,</span>
+            <span class="n">convergence_info</span><span class="o">=</span><span class="n">convergence_info</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GridSearchOptimization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.GridSearchOptimization">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">GridSearchOptimization</span><span class="p">(</span><span class="n">OptimizationMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Grid search optimization.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GridSearchOptimization.optimize">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.GridSearchOptimization.optimize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">],</span>
+                <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run grid search optimization.&quot;&quot;&quot;</span>
+
+        <span class="c1"># Generate parameter combinations</span>
+        <span class="n">param_combinations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_grid</span><span class="p">(</span><span class="n">parameter_space</span><span class="p">)</span>
+
+        <span class="c1"># Limit to n_trials if specified</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_combinations</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">n_trials</span><span class="p">:</span>
+            <span class="c1"># Randomly sample combinations</span>
+            <span class="n">indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">param_combinations</span><span class="p">),</span> <span class="n">n_trials</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">param_combinations</span> <span class="o">=</span> <span class="p">[</span><span class="n">param_combinations</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">]</span>
+
+        <span class="n">trials</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">best_score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+        <span class="n">best_params</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">params</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">param_combinations</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score</span> <span class="o">=</span> <span class="n">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+                <span class="n">trials</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">,</span>
+                    <span class="s1">&#39;number&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="s1">&#39;COMPLETE&#39;</span>
+                <span class="p">})</span>
+
+                <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">best_score</span><span class="p">:</span>
+                    <span class="n">best_score</span> <span class="o">=</span> <span class="n">score</span>
+                    <span class="n">best_params</span> <span class="o">=</span> <span class="n">params</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trial </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">trials</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;number&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="s1">&#39;FAILED&#39;</span>
+                <span class="p">})</span>
+
+        <span class="n">optimization_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span>
+            <span class="n">best_params</span><span class="o">=</span><span class="n">best_params</span><span class="p">,</span>
+            <span class="n">best_score</span><span class="o">=</span><span class="n">best_score</span><span class="p">,</span>
+            <span class="n">trials</span><span class="o">=</span><span class="n">trials</span><span class="p">,</span>
+            <span class="n">optimization_time</span><span class="o">=</span><span class="n">optimization_time</span><span class="p">,</span>
+            <span class="n">convergence_info</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="s1">&#39;grid_search&#39;</span><span class="p">,</span> <span class="s1">&#39;total_combinations&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">param_combinations</span><span class="p">)}</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate all parameter combinations for grid search.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">parameter_space</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[{}]</span>
+
+        <span class="n">param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">parameter_space</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">param_defs</span> <span class="o">=</span> <span class="p">[</span><span class="n">parameter_space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">param_names</span><span class="p">]</span>
+
+        <span class="c1"># Generate values for each parameter</span>
+        <span class="n">param_values</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">param_def</span> <span class="ow">in</span> <span class="n">param_defs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;categorical&#39;</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="n">param_def</span><span class="o">.</span><span class="n">choices</span>
+            <span class="k">elif</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;int&#39;</span><span class="p">]:</span>
+                <span class="c1"># For grid search, use fixed number of values</span>
+                <span class="n">n_values</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Can be made configurable</span>
+                <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">log_scale</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">),</span> <span class="n">n_values</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">,</span> <span class="n">n_values</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;int&#39;</span><span class="p">:</span>
+                    <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">]</span>  <span class="c1"># Default value</span>
+
+            <span class="n">param_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+        <span class="c1"># Generate all combinations</span>
+        <span class="n">combinations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">combo</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndindex</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">param_values</span><span class="p">]):</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">param_names</span><span class="p">):</span>
+                <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_values</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">combo</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span>
+            <span class="n">combinations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">combinations</span></div>
+
+
+
+<div class="viewcode-block" id="RandomSearchOptimization">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.RandomSearchOptimization">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RandomSearchOptimization</span><span class="p">(</span><span class="n">OptimizationMethod</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Random search optimization.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RandomSearchOptimization.optimize">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.RandomSearchOptimization.optimize">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">],</span>
+                <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run random search optimization.&quot;&quot;&quot;</span>
+
+        <span class="n">trials</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">best_score</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+        <span class="n">best_params</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_trials</span><span class="p">):</span>
+            <span class="c1"># Sample random parameters</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random_params</span><span class="p">(</span><span class="n">parameter_space</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score</span> <span class="o">=</span> <span class="n">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+                <span class="n">trials</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">score</span><span class="p">,</span>
+                    <span class="s1">&#39;number&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="s1">&#39;COMPLETE&#39;</span>
+                <span class="p">})</span>
+
+                <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="n">best_score</span><span class="p">:</span>
+                    <span class="n">best_score</span> <span class="o">=</span> <span class="n">score</span>
+                    <span class="n">best_params</span> <span class="o">=</span> <span class="n">params</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trial </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">trials</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s1">&#39;params&#39;</span><span class="p">:</span> <span class="n">params</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;number&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">,</span>
+                    <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="s1">&#39;FAILED&#39;</span>
+                <span class="p">})</span>
+
+        <span class="n">optimization_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+        <span class="k">return</span> <span class="n">OptimizationResult</span><span class="p">(</span>
+            <span class="n">best_params</span><span class="o">=</span><span class="n">best_params</span><span class="p">,</span>
+            <span class="n">best_score</span><span class="o">=</span><span class="n">best_score</span><span class="p">,</span>
+            <span class="n">trials</span><span class="o">=</span><span class="n">trials</span><span class="p">,</span>
+            <span class="n">optimization_time</span><span class="o">=</span><span class="n">optimization_time</span><span class="p">,</span>
+            <span class="n">convergence_info</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="s1">&#39;random_search&#39;</span><span class="p">,</span> <span class="s1">&#39;n_trials&#39;</span><span class="p">:</span> <span class="n">n_trials</span><span class="p">}</span>
+        <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sample_random_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample random parameters from the search space.&quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_def</span> <span class="ow">in</span> <span class="n">parameter_space</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;float&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">param_def</span><span class="o">.</span><span class="n">log_scale</span><span class="p">:</span>
+                    <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">))</span>
+                    <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">])</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;int&#39;</span><span class="p">:</span>
+                <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">high</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">param_def</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;categorical&#39;</span><span class="p">:</span>
+                <span class="n">params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">param_def</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">params</span></div>
+
+
+
+<div class="viewcode-block" id="HyperparameterOptimizer">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.HyperparameterOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">HyperparameterOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main hyperparameter optimization framework.</span>
+
+<span class="sd">    Supports multiple optimization methods and cross-validation strategies.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize hyperparameter optimizer.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config: Configuration parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_default_config</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Initialize optimization methods</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimization_methods</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;bayesian&#39;</span><span class="p">:</span> <span class="n">BayesianOptimization</span><span class="p">()</span> <span class="k">if</span> <span class="n">OPTUNA_AVAILABLE</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">GridSearchOptimization</span><span class="p">(),</span>
+            <span class="s1">&#39;random&#39;</span><span class="p">:</span> <span class="n">RandomSearchOptimization</span><span class="p">()</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_default_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get default configuration.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;default_method&#39;</span><span class="p">:</span> <span class="s1">&#39;bayesian&#39;</span> <span class="k">if</span> <span class="n">OPTUNA_AVAILABLE</span> <span class="k">else</span> <span class="s1">&#39;random&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;n_trials&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span>
+            <span class="s1">&#39;cv_folds&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="s1">&#39;validation_method&#39;</span><span class="p">:</span> <span class="s1">&#39;time_series_split&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;early_stopping&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;early_stopping_patience&#39;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+            <span class="s1">&#39;save_results&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;results_dir&#39;</span><span class="p">:</span> <span class="s1">&#39;optimization_results&#39;</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="HyperparameterOptimizer.optimize_hyperparameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.HyperparameterOptimizer.optimize_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                               <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+                               <span class="n">parameter_space</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">],</span>
+                               <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                               <span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                               <span class="n">cross_validate</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                               <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Run hyperparameter optimization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            objective_function: Function to optimize (takes params dict, returns score)</span>
+<span class="sd">            parameter_space: Dictionary of parameter definitions</span>
+<span class="sd">            method: Optimization method (&#39;bayesian&#39;, &#39;grid&#39;, &#39;random&#39;)</span>
+<span class="sd">            n_trials: Number of trials to run</span>
+<span class="sd">            cross_validate: Whether to use cross-validation</span>
+<span class="sd">            **kwargs: Additional arguments for optimization method</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            OptimizationResult object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="n">method</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;default_method&#39;</span><span class="p">]</span>
+        <span class="n">n_trials</span> <span class="o">=</span> <span class="n">n_trials</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;n_trials&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">method</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimization_methods</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown optimization method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimization_methods</span><span class="p">[</span><span class="n">method</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">optimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Optimization method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> is not available&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting hyperparameter optimization with method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameter space: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">parameter_space</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of trials: </span><span class="si">{</span><span class="n">n_trials</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Wrap objective function for cross-validation if requested</span>
+        <span class="k">if</span> <span class="n">cross_validate</span><span class="p">:</span>
+            <span class="n">objective_fn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_cv_objective</span><span class="p">(</span><span class="n">objective_function</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">objective_fn</span> <span class="o">=</span> <span class="n">objective_function</span>
+
+        <span class="c1"># Run optimization</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">objective_fn</span><span class="p">,</span> <span class="n">parameter_space</span><span class="p">,</span> <span class="n">n_trials</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Save results if configured</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;save_results&#39;</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_save_results</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Optimization completed. Best score: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">best_score</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Best parameters: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">best_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_cv_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objective_function</span><span class="p">:</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create cross-validation objective function.&quot;&quot;&quot;</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">cv_objective</span><span class="p">(</span><span class="n">params</span><span class="p">):</span>
+            <span class="c1"># For now, simple wrapper - can be extended with actual CV</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">score</span> <span class="o">=</span> <span class="n">objective_function</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">score</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Objective function failed with params </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">cv_objective</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">OptimizationResult</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save optimization results to disk.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">results_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;results_dir&#39;</span><span class="p">])</span>
+            <span class="n">results_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;optimization_</span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.json&quot;</span>
+
+            <span class="n">result_dict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;method&#39;</span><span class="p">:</span> <span class="n">method</span><span class="p">,</span>
+                <span class="s1">&#39;best_params&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">best_params</span><span class="p">,</span>
+                <span class="s1">&#39;best_score&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">best_score</span><span class="p">,</span>
+                <span class="s1">&#39;optimization_time&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">optimization_time</span><span class="p">,</span>
+                <span class="s1">&#39;n_trials&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">trials</span><span class="p">),</span>
+                <span class="s1">&#39;convergence_info&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">convergence_info</span><span class="p">,</span>
+                <span class="s1">&#39;cross_validation_scores&#39;</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">cross_validation_scores</span><span class="p">,</span>
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span>
+            <span class="p">}</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">results_dir</span> <span class="o">/</span> <span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">result_dict</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Optimization results saved to </span><span class="si">{</span><span class="n">results_dir</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save optimization results: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="HyperparameterOptimizer.create_parameter_space">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.HyperparameterOptimizer.create_parameter_space">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">create_parameter_space</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_definitions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ParameterSpace</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create parameter space from dictionary definitions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            param_definitions: Dictionary of parameter definitions</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary of ParameterSpace objects</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">parameter_space</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_config</span> <span class="ow">in</span> <span class="n">param_definitions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">param_space</span> <span class="o">=</span> <span class="n">ParameterSpace</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">param_name</span><span class="p">,</span>
+                <span class="nb">type</span><span class="o">=</span><span class="n">param_config</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span>
+                <span class="n">low</span><span class="o">=</span><span class="n">param_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;low&#39;</span><span class="p">),</span>
+                <span class="n">high</span><span class="o">=</span><span class="n">param_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;high&#39;</span><span class="p">),</span>
+                <span class="n">choices</span><span class="o">=</span><span class="n">param_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;choices&#39;</span><span class="p">),</span>
+                <span class="n">log_scale</span><span class="o">=</span><span class="n">param_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;log_scale&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">parameter_space</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_space</span>
+
+        <span class="k">return</span> <span class="n">parameter_space</span></div>
+
+
+<div class="viewcode-block" id="HyperparameterOptimizer.get_optimization_history">
+<a class="viewcode-back" href="../../../api/generated/ztb.optimization.html#ztb.optimization.hyperparameter_optimizer.HyperparameterOptimizer.get_optimization_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_optimization_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load optimization history from saved results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            results_dir: Directory containing optimization results</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DataFrame with optimization history</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results_dir</span> <span class="o">=</span> <span class="n">results_dir</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;results_dir&#39;</span><span class="p">]</span>
+        <span class="n">results_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">results_dir</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">results_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="n">history_data</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">json_file</span> <span class="ow">in</span> <span class="n">results_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;optimization_*.json&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">json_file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+                    <span class="n">history_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load </span><span class="si">{</span><span class="n">json_file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">history_data</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># Predefined parameter spaces for common SAC configurations</span>
+<span class="n">SAC_PARAMETER_SPACE</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;categorical&#39;</span><span class="p">,</span> <span class="s1">&#39;choices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">32</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">512</span><span class="p">]},</span>
+    <span class="s1">&#39;buffer_size&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;categorical&#39;</span><span class="p">,</span> <span class="s1">&#39;choices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">50000</span><span class="p">,</span> <span class="mi">100000</span><span class="p">,</span> <span class="mi">200000</span><span class="p">,</span> <span class="mi">500000</span><span class="p">]},</span>
+    <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">0.9</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">0.999</span><span class="p">},</span>
+    <span class="s1">&#39;tau&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">0.001</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">},</span>
+    <span class="s1">&#39;ent_coef&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1e-1</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+    <span class="s1">&#39;reward_scale&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1"># Market regime-specific parameter spaces</span>
+<span class="n">REGIME_SPECIFIC_SPACES</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;bull_market&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">5e-4</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">5e-3</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="s1">&#39;ent_coef&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1e-1</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">0.99</span><span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s1">&#39;bear_market&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1e-3</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="s1">&#39;ent_coef&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="s1">&#39;gamma&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">0.99</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">0.999</span><span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s1">&#39;high_volatility&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;batch_size&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;categorical&#39;</span><span class="p">,</span> <span class="s1">&#39;choices&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">]},</span>
+        <span class="s1">&#39;tau&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">},</span>
+        <span class="s1">&#39;reward_scale&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;float&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="mi">800</span><span class="p">,</span> <span class="s1">&#39;log_scale&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

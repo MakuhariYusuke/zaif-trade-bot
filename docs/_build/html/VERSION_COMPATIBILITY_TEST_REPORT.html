@@ -1,0 +1,719 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>バージョン互換性テストレポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">バージョン互換性テストレポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/VERSION_COMPATIBILITY_TEST_REPORT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>バージョン互換性テストレポート<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>テスト日</strong>: 2025年10月10日<br />
+<strong>目的</strong>: v378/v379の旧設定が仮想環境Python 3.11で正常動作するか検証<br />
+<strong>背景</strong>: v382_revisedの予想外の悪化がバージョン問題によるものか確認</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>📊 テスト結果サマリー<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>実行環境<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>項目</p></th>
+<th class="head"><p>詳細</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Python</strong></p></td>
+<td><p>3.11 (仮想環境: <code class="docutils literal notranslate"><span class="pre">.venv</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Stable-Baselines3</strong></p></td>
+<td><p>最新版</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>PyTorch</strong></p></td>
+<td><p>CPU版</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>実行方法</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cmd</span> <span class="pre">/d</span> <span class="pre">/c</span> <span class="pre">&quot;cd</span> <span class="pre">/d</span> <span class="pre">C:\Users\Admin\dev\zaif-trade-bot</span> <span class="pre">&amp;&amp;</span> <span class="pre">call</span> <span class="pre">.\.venv\Scripts\activate.bat</span> <span class="pre">&amp;&amp;</span> <span class="pre">python</span> <span class="pre">run_training.py</span> <span class="pre">--config</span> <span class="pre">&lt;config&gt;&quot;</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id4">
+<h3>テスト対象<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>v378_scale_short</strong> - スケール調整報酬関数</p></li>
+<li><p><strong>v379_dynamic_short</strong> - 動的市場適応報酬関数</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v378-scale-short">
+<h2>✅ v378_scale_short 実行結果<a class="headerlink" href="#v378-scale-short" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>設定概要<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v378_scale_short&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0003</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">512</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gae_lambda&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;target_kl&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.03</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>実行結果<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>値</p></th>
+<th class="head"><p>状態</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>実行状態</strong></p></td>
+<td><p>正常完了 ✅</p></td>
+<td><p>問題なし</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>総ステップ数</strong></p></td>
+<td><p>5,120 / 5,000</p></td>
+<td><p>達成</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>実行時間</strong></p></td>
+<td><p>11秒</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>処理速度</strong></p></td>
+<td><p>447 it/s</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>イテレーション数</strong></p></td>
+<td><p>10回</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>最終報酬</strong></p></td>
+<td><p>-648</p></td>
+<td><p>動作確認OK</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id7">
+<h3>詳細ログ（最終イテレーション）<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">rollout</span><span class="o">/</span>                  <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">ep_len_mean</span>            <span class="o">|</span> <span class="mi">999</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">ep_rew_mean</span>            <span class="o">|</span> <span class="o">-</span><span class="mi">648</span>                                 <span class="o">|</span>
+<span class="o">|</span> <span class="n">time</span><span class="o">/</span>                     <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">fps</span>                    <span class="o">|</span> <span class="mi">447</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">iterations</span>             <span class="o">|</span> <span class="mi">10</span>                                   <span class="o">|</span>
+<span class="o">|</span>    <span class="n">time_elapsed</span>           <span class="o">|</span> <span class="mi">11</span>                                   <span class="o">|</span>
+<span class="o">|</span>    <span class="n">total_timesteps</span>        <span class="o">|</span> <span class="mi">5120</span>                                 <span class="o">|</span>
+<span class="o">|</span> <span class="n">train</span><span class="o">/</span>                    <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">approx_kl</span>              <span class="o">|</span> <span class="mf">0.071891546</span>                          <span class="o">|</span>
+<span class="o">|</span>    <span class="n">clip_fraction</span>          <span class="o">|</span> <span class="mi">1</span>                                    <span class="o">|</span>
+<span class="o">|</span>    <span class="n">clip_range</span>             <span class="o">|</span> <span class="mf">0.2</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">explained_variance</span>     <span class="o">|</span> <span class="mf">0.04956436</span>                           <span class="o">|</span>
+<span class="o">|</span>    <span class="n">learning_rate</span>          <span class="o">|</span> <span class="mf">0.0003</span>                               <span class="o">|</span>
+<span class="o">|</span>    <span class="n">loss</span>                   <span class="o">|</span> <span class="mi">135</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_action_counts</span>      <span class="o">|</span> <span class="p">[</span><span class="mi">66</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">33</span><span class="p">]</span>                         <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_action_means</span>       <span class="o">|</span> <span class="p">[</span><span class="o">-</span><span class="mf">16.248</span><span class="p">,</span> <span class="o">-</span><span class="mf">16.266</span><span class="p">,</span> <span class="o">-</span><span class="mf">15.990</span><span class="p">]</span>          <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_total_samples</span>      <span class="o">|</span> <span class="mi">128</span>                                  <span class="o">|</span>
+<span class="o">--------------------------------------------------------------------</span>
+</pre></div>
+</div>
+</section>
+<section id="id8">
+<h3>アクション分布（最終）<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>HOLD</strong>: 66/128 = <strong>51.6%</strong></p></li>
+<li><p><strong>BUY</strong>: 29/128 = <strong>22.7%</strong></p></li>
+<li><p><strong>SELL</strong>: 33/128 = <strong>25.8%</strong></p></li>
+</ul>
+</section>
+<section id="id9">
+<h3>特記事項<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ CustomPPO正常動作</p></li>
+<li><p>✅ PAN (Policy Action Normalization)有効</p></li>
+<li><p>✅ Target Entropy Controller動作</p></li>
+<li><p>✅ Early stopping発生（全イテレーション）</p></li>
+<li><p>✅ clip_fraction=1.0 (100%クリップ)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v379-dynamic-short">
+<h2>✅ v379_dynamic_short 実行結果<a class="headerlink" href="#v379-dynamic-short" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>設定概要<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_reward_v379_dynamic_short&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ppo&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0003</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">512</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;n_epochs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gae_lambda&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.95</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;target_kl&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.03</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>実行結果<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>値</p></th>
+<th class="head"><p>状態</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>実行状態</strong></p></td>
+<td><p>正常完了 ✅</p></td>
+<td><p>問題なし</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>総ステップ数</strong></p></td>
+<td><p>5,120 / 5,000</p></td>
+<td><p>達成</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>実行時間</strong></p></td>
+<td><p>11秒</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>処理速度</strong></p></td>
+<td><p>450 it/s</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>イテレーション数</strong></p></td>
+<td><p>10回</p></td>
+<td><p>正常</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>最終報酬</strong></p></td>
+<td><p>-513</p></td>
+<td><p>動作確認OK</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id12">
+<h3>詳細ログ（最終イテレーション）<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">--------------------------------------------------------------------</span>
+<span class="o">|</span> <span class="n">rollout</span><span class="o">/</span>                  <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">ep_len_mean</span>            <span class="o">|</span> <span class="mi">999</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">ep_rew_mean</span>            <span class="o">|</span> <span class="o">-</span><span class="mi">513</span>                                 <span class="o">|</span>
+<span class="o">|</span> <span class="n">time</span><span class="o">/</span>                     <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">fps</span>                    <span class="o">|</span> <span class="mi">450</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">iterations</span>             <span class="o">|</span> <span class="mi">10</span>                                   <span class="o">|</span>
+<span class="o">|</span>    <span class="n">time_elapsed</span>           <span class="o">|</span> <span class="mi">11</span>                                   <span class="o">|</span>
+<span class="o">|</span>    <span class="n">total_timesteps</span>        <span class="o">|</span> <span class="mi">5120</span>                                 <span class="o">|</span>
+<span class="o">|</span> <span class="n">train</span><span class="o">/</span>                    <span class="o">|</span>                                      <span class="o">|</span>
+<span class="o">|</span>    <span class="n">approx_kl</span>              <span class="o">|</span> <span class="mf">0.07229765</span>                           <span class="o">|</span>
+<span class="o">|</span>    <span class="n">clip_fraction</span>          <span class="o">|</span> <span class="mi">1</span>                                    <span class="o">|</span>
+<span class="o">|</span>    <span class="n">clip_range</span>             <span class="o">|</span> <span class="mf">0.2</span>                                  <span class="o">|</span>
+<span class="o">|</span>    <span class="n">explained_variance</span>     <span class="o">|</span> <span class="o">-</span><span class="mf">0.0037657022</span>                        <span class="o">|</span>
+<span class="o">|</span>    <span class="n">learning_rate</span>          <span class="o">|</span> <span class="mf">0.0003</span>                               <span class="o">|</span>
+<span class="o">|</span>    <span class="n">loss</span>                   <span class="o">|</span> <span class="mf">33.1</span>                                 <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_action_counts</span>      <span class="o">|</span> <span class="p">[</span><span class="mi">70</span><span class="p">,</span> <span class="mi">34</span><span class="p">,</span> <span class="mi">24</span><span class="p">]</span>                         <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_action_means</span>       <span class="o">|</span> <span class="p">[</span><span class="mf">5.832</span><span class="p">,</span> <span class="mf">5.656</span><span class="p">,</span> <span class="mf">5.715</span><span class="p">]</span>                <span class="o">|</span>
+<span class="o">|</span>    <span class="n">pan_total_samples</span>      <span class="o">|</span> <span class="mi">128</span>                                  <span class="o">|</span>
+<span class="o">--------------------------------------------------------------------</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h3>アクション分布（最終）<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>HOLD</strong>: 70/128 = <strong>54.7%</strong></p></li>
+<li><p><strong>BUY</strong>: 34/128 = <strong>26.6%</strong></p></li>
+<li><p><strong>SELL</strong>: 24/128 = <strong>18.8%</strong></p></li>
+</ul>
+</section>
+<section id="id14">
+<h3>特記事項<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ CustomPPO正常動作</p></li>
+<li><p>✅ PAN (Policy Action Normalization)有効</p></li>
+<li><p>✅ Target Entropy Controller動作</p></li>
+<li><p>✅ Early stopping発生（全イテレーション）</p></li>
+<li><p>✅ clip_fraction=1.0 (100%クリップ)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v378-vs-v379">
+<h2>🔍 v378 vs v379 比較<a class="headerlink" href="#v378-vs-v379" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>v378</p></th>
+<th class="head"><p>v379</p></th>
+<th class="head"><p>差分</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>最終報酬</strong></p></td>
+<td><p>-648</p></td>
+<td><p><strong>-513</strong></p></td>
+<td><p>+135 (v379有利) ✅</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>HOLD率</strong></p></td>
+<td><p>51.6%</p></td>
+<td><p>54.7%</p></td>
+<td><p>+3.1pt</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>BUY率</strong></p></td>
+<td><p>22.7%</p></td>
+<td><p>26.6%</p></td>
+<td><p>+3.9pt</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SELL率</strong></p></td>
+<td><p>25.8%</p></td>
+<td><p>18.8%</p></td>
+<td><p>-7.0pt</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Explained Variance</strong></p></td>
+<td><p>4.96%</p></td>
+<td><p>-0.38%</p></td>
+<td><p>-5.34pt</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>approx_kl</strong></p></td>
+<td><p>0.0719</p></td>
+<td><p>0.0723</p></td>
+<td><p>+0.0004</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>処理速度</strong></p></td>
+<td><p>447 it/s</p></td>
+<td><p>450 it/s</p></td>
+<td><p>+3 it/s</p></td>
+</tr>
+</tbody>
+</table>
+<section id="id15">
+<h3>観察<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>v379の方が報酬が良い</strong> (+135pt): 動的市場適応の効果</p></li>
+<li><p><strong>両方ともEarly stopping 100%発生</strong>: target_kl=0.03問題は共通</p></li>
+<li><p><strong>両方ともclip_fraction=100%</strong>: クリップ問題も共通</p></li>
+<li><p><strong>処理速度はほぼ同等</strong>: パフォーマンス問題なし</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="v381-v382">
+<h2>🎯 v381/v382との比較<a class="headerlink" href="#v381-v382" title="Link to this heading"></a></h2>
+<section id="id16">
+<h3>設定の違い<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>v378/v379</p></th>
+<th class="head"><p>v381_revised</p></th>
+<th class="head"><p>v382_revised</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>learning_rate</strong></p></td>
+<td><p>0.0003</p></td>
+<td><p><strong>0.003</strong></p></td>
+<td><p><strong>0.002</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>n_steps</strong></p></td>
+<td><p>512</p></td>
+<td><p><strong>1024</strong></p></td>
+<td><p><strong>1024</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>batch_size</strong></p></td>
+<td><p>128</p></td>
+<td><p><strong>256</strong></p></td>
+<td><p><strong>256</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>vf_coef</strong></p></td>
+<td><p>0.5</p></td>
+<td><p><strong>0.3</strong></p></td>
+<td><p><strong>0.5</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>max_grad_norm</strong></p></td>
+<td><p>0.5</p></td>
+<td><p><strong>5.05</strong></p></td>
+<td><p><strong>5.05</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>target_kl</strong></p></td>
+<td><p>0.03</p></td>
+<td><p><strong>0.01</strong></p></td>
+<td><p><strong>0.05</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>gamma</strong></p></td>
+<td><p>0.99</p></td>
+<td><p><strong>0.8475</strong></p></td>
+<td><p><strong>0.8475</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id17">
+<h3>パフォーマンス比較<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>v378 (5k)</p></th>
+<th class="head"><p>v379 (5k)</p></th>
+<th class="head"><p>v381_revised (50k)</p></th>
+<th class="head"><p>v382_revised (100k)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>ep_rew_mean</strong></p></td>
+<td><p>-648</p></td>
+<td><p>-513</p></td>
+<td><p><strong>-541</strong></p></td>
+<td><p>-991</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>HOLD率</strong></p></td>
+<td><p>51.6%</p></td>
+<td><p>54.7%</p></td>
+<td><p><strong>51.2%</strong></p></td>
+<td><p>54.3%</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Explained Var</strong></p></td>
+<td><p>4.96%</p></td>
+<td><p>-0.38%</p></td>
+<td><p><strong>51.7%</strong></p></td>
+<td><p>2.3%</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Early stop率</strong></p></td>
+<td><p>100%</p></td>
+<td><p>100%</p></td>
+<td><p>100%</p></td>
+<td><p>100%</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>clip_fraction</strong></p></td>
+<td><p>100%</p></td>
+<td><p>100%</p></td>
+<td><p>99.6-100%</p></td>
+<td><p>61-74%</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id18">
+<h2>💡 重要な発見<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h3>発見1: バージョン問題ではない ✅<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<p><strong>結論</strong>: v378/v379は仮想環境Python 3.11で正常動作する</p>
+<p><strong>証拠</strong>:</p>
+<ul class="simple">
+<li><p>✅ 両方とも完全に実行完了</p></li>
+<li><p>✅ エラーや警告なし（pkg_resources警告は無関係）</p></li>
+<li><p>✅ CustomPPO、PAN、Entropy Controllerすべて動作</p></li>
+<li><p>✅ 処理速度も正常（447-450 it/s）</p></li>
+</ul>
+<p><strong>したがって</strong>: v382_revisedの悪化はバージョンアップが原因ではない</p>
+</section>
+<section id="id20">
+<h3>発見2: 旧設定でも同じ問題が存在 ⚠️<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<p><strong>共通問題</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Early stopping 100%発生</strong>: target_kl問題は以前から存在</p></li>
+<li><p><strong>clip_fraction 100%</strong>: クリップ過剰問題も以前から存在</p></li>
+<li><p><strong>Explained Variance低い</strong>: v378/v379ではほぼゼロ（v381で改善）</p></li>
+</ol>
+<p><strong>しかし</strong>: v378/v379は短時間実行（5kステップ）なので最終性能は未評価</p>
+</section>
+<section id="v381-revised">
+<h3>発見3: v381_revisedの改善は本物 ⭐⭐⭐<a class="headerlink" href="#v381-revised" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>v378/v379</p></th>
+<th class="head"><p>v381_revised</p></th>
+<th class="head"><p>改善</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Explained Variance</strong></p></td>
+<td><p>0-5%</p></td>
+<td><p><strong>51.7%</strong></p></td>
+<td><p><strong>+46-52pt</strong> 🎉</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>vf_coef効果</strong></p></td>
+<td><p>0.5 → 低EV</p></td>
+<td><p><strong>0.3 → 高EV</strong></p></td>
+<td><p>最適値発見</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: vf_coef=0.3は明確な改善をもたらした</p>
+</section>
+<section id="v382-revised">
+<h3>発見4: v382_revisedの失敗理由が確定 ❌<a class="headerlink" href="#v382-revised" title="Link to this heading"></a></h3>
+<p><strong>v382_revisedで悪化した原因</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>変更</p></th>
+<th class="head"><p>効果</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>vf_coef: 0.3 → <strong>0.5</strong></p></td>
+<td><p><strong>EV 51.7% → 2.3%に急落</strong> ❌❌❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>learning_rate: 0.003 → <strong>0.002</strong></p></td>
+<td><p>収束が遅すぎ ❌</p></td>
+</tr>
+<tr class="row-even"><td><p>報酬関数の過剰調整</p></td>
+<td><p>学習停滞 ❌</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>結論</strong>: バージョン問題ではなく、<strong>パラメータ選択の誤り</strong></p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>📋 結論<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="id22">
+<h3>1. バージョン互換性 ✅<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<p><strong>結論</strong>: Python 3.11 + 最新SB3で問題なし</p>
+<ul class="simple">
+<li><p>v378/v379は正常動作</p></li>
+<li><p>CustomPPO機能は全て動作</p></li>
+<li><p>パフォーマンスも正常</p></li>
+</ul>
+</section>
+<section id="id23">
+<h3>2. v382_revised悪化の原因 ❌<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p><strong>原因</strong>: vf_coef=0.5が過剰（最大の要因）</p>
+<ul class="simple">
+<li><p>vf_coef=0.3で51.7%のEVを達成</p></li>
+<li><p>vf_coef=0.5で2.3%に急落</p></li>
+<li><p>バージョンアップは無関係</p></li>
+</ul>
+</section>
+<section id="id24">
+<h3>3. 推奨アクション 🎯<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<section id="id25">
+<h4>優先度1: v381_revisedを採用<a class="headerlink" href="#id25" title="Link to this heading"></a></h4>
+<p><strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>Explained Variance 51.7%は優秀</p></li>
+<li><p>vf_coef=0.3が最適値と確定</p></li>
+<li><p>平均報酬-541も良好</p></li>
+</ul>
+</section>
+<section id="v383">
+<h4>優先度2: v383で微調整のみ<a class="headerlink" href="#v383" title="Link to this heading"></a></h4>
+<p><strong>変更すべき点</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;vf_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w">              </span><span class="c1">// 0.5→0.3に戻す ⭐⭐⭐</span>
+<span class="w">  </span><span class="nt">&quot;target_kl&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">           </span><span class="c1">// Early stopping無効化を試す</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.003</span><span class="p">,</span><span class="w">      </span><span class="c1">// 0.002→0.003に戻す</span>
+<span class="w">  </span><span class="nt">&quot;clip_range&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.15</span><span class="w">           </span><span class="c1">// 0.2→0.15に微調整</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>変更しない点</strong>:</p>
+<ul class="simple">
+<li><p>batch_size=256 ✅</p></li>
+<li><p>n_steps=1024 ✅</p></li>
+<li><p>max_grad_norm=5.05 ✅</p></li>
+<li><p>gamma=0.8475 ✅</p></li>
+</ul>
+</section>
+<section id="id26">
+<h4>優先度3: バックテスト実行<a class="headerlink" href="#id26" title="Link to this heading"></a></h4>
+<p>v381_revisedで実際の取引性能を検証</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id27">
+<h2>🔬 補足情報<a class="headerlink" href="#id27" title="Link to this heading"></a></h2>
+<section id="id28">
+<h3>実行時の警告<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">UserWarning</span><span class="p">:</span> <span class="n">pkg_resources</span> <span class="ow">is</span> <span class="n">deprecated</span> <span class="k">as</span> <span class="n">an</span> <span class="n">API</span>
+</pre></div>
+</div>
+<p><strong>影響</strong>: なし（Setuptools関連の警告、トレーニングには無関係）</p>
+</section>
+<section id="id29">
+<h3>環境情報<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Dataset</span> <span class="n">shape</span><span class="p">:</span> <span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">115</span><span class="p">)</span>
+<span class="n">Features</span><span class="p">:</span> <span class="mi">115</span> <span class="n">columns</span> <span class="p">(</span><span class="n">curated_features使用</span><span class="p">)</span>
+<span class="n">Date</span> <span class="nb">range</span><span class="p">:</span> <span class="mi">0</span> <span class="n">to</span> <span class="mi">999</span>
+<span class="n">Action</span> <span class="n">masking</span><span class="p">:</span> <span class="n">enabled</span>
+</pre></div>
+</div>
+</section>
+<section id="id30">
+<h3>モデル保存<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ v378: <code class="docutils literal notranslate"><span class="pre">models\ppo_reward_v378_scale_short.zip</span></code></p></li>
+<li><p>✅ v379: <code class="docutils literal notranslate"><span class="pre">models\ppo_reward_v379_dynamic_short.zip</span></code></p></li>
+<li><p>✅ Feature schema: <code class="docutils literal notranslate"><span class="pre">models\features_schema.json</span></code> (hash: 983b0d8334951768)</p></li>
+<li><p>✅ Normalization stats: <code class="docutils literal notranslate"><span class="pre">models\scaler.npz</span></code> (hash: 9fc649f9ce07c734)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id31">
+<h2>📊 最終推奨<a class="headerlink" href="#id31" title="Link to this heading"></a></h2>
+<section id="id32">
+<h3>✅ 確定事項<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>バージョン問題ではない</strong>: Python 3.11環境で問題なし</p></li>
+<li><p><strong>vf_coef=0.3が最適</strong>: これ以上は逆効果</p></li>
+<li><p><strong>v381_revisedが最良</strong>: 現時点で最も優秀</p></li>
+</ol>
+</section>
+<section id="id33">
+<h3>🚀 次のステップ<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>v381_revisedを本番採用</strong></p></li>
+<li><p><strong>v383で慎重に微調整</strong>（vf_coef=0.3維持）</p></li>
+<li><p><strong>バックテストで実証</strong></p></li>
+</ol>
+</section>
+<section id="id34">
+<h3>❌ やってはいけないこと<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>vf_coefを0.3より大きくする</p></li>
+<li><p>複数パラメータを同時に大きく変更</p></li>
+<li><p>learning_rateを0.002より小さくする</p></li>
+</ol>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

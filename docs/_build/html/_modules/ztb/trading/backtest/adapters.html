@@ -1,0 +1,661 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.backtest.adapters &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.backtest.adapters</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.backtest.adapters</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Strategy adapters for backtesting.</span>
+
+<span class="sd">Provides adapters to wrap different trading strategies for unified backtest interface.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Protocol</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features.sac_v427_feature_engineering</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACv427FeatureEngineer</span>
+
+
+<div class="viewcode-block" id="StrategyAdapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.StrategyAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StrategyAdapter</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protocol for trading strategy adapters.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="StrategyAdapter.generate_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.StrategyAdapter.generate_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">current_position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate trading signal.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: Market data with OHLCV and features</span>
+<span class="sd">            current_position: Current position (-1, 0, 1 for short, flat, long)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Signal dict with &#39;action&#39; and optional parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+
+
+<div class="viewcode-block" id="StrategyAdapter.update_hyperparameters">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.StrategyAdapter.update_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hyperparameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update strategy hyperparameters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            hyperparameters: Dictionary of hyperparameter names and values</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="o">...</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RLPolicyAdapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RLPolicyAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapter for RL policy (PPO trained model).&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">enable_150d_features</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with trained model path and 150-dimensional feature support.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="o">=</span> <span class="n">model_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span> <span class="o">=</span> <span class="n">enable_150d_features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span> <span class="o">=</span> <span class="n">SACv427FeatureEngineer</span><span class="p">()</span> <span class="k">if</span> <span class="n">enable_150d_features</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># Cache for computed features</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">1e-4</span><span class="p">,</span>
+            <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+            <span class="s2">&quot;regularization_strength&quot;</span><span class="p">:</span> <span class="mf">1e-5</span><span class="p">,</span>
+            <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.1</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">model_path</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">SAC</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">SAC</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+                <span class="c1"># Get observation space shape dynamically</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded RL model with observation space: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;150-dimensional feature expansion enabled&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Failed to load RL model from </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Falling back to momentum strategy&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="RLPolicyAdapter.generate_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter.generate_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">current_position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate signal using RL policy with comprehensive error handling.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Fallback: Simple momentum strategy</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+            <span class="c1"># Input validation</span>
+            <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: Empty data provided, using momentum fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: Insufficient data points, using momentum fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+            <span class="c1"># Enhanced feature processing with 150-dimensional expansion</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span><span class="p">:</span>
+                <span class="c1"># Generate comprehensive 150+ dimensional features</span>
+                <span class="n">cache_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;empty&quot;</span>
+                <span class="k">if</span> <span class="n">cache_key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">enhanced_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_engineer</span><span class="o">.</span><span class="n">generate_v427_features</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">enhanced_data</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated 150+ dimensional features: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> total columns&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">feat_e</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature engineering failed: </span><span class="si">{</span><span class="n">feat_e</span><span class="si">}</span><span class="s2">, falling back to basic features&quot;</span><span class="p">)</span>
+                        <span class="n">enhanced_data</span> <span class="o">=</span> <span class="n">data</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">enhanced_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span>
+
+                <span class="c1"># Use enhanced features</span>
+                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Fallback to basic features</span>
+                <span class="n">enhanced_data</span> <span class="o">=</span> <span class="n">data</span>
+                <span class="n">numeric_columns</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+
+            <span class="c1"># Remove timestamp and non-feature columns</span>
+            <span class="n">exclude_cols</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;open&#39;</span><span class="p">,</span> <span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="s1">&#39;volume&#39;</span><span class="p">]</span>
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">numeric_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude_cols</span><span class="p">]</span>
+
+            <span class="c1"># Prioritize features with valid values (not all NaN)</span>
+            <span class="n">valid_features</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">selected_features</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">enhanced_data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">isna</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                        <span class="n">valid_features</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                    <span class="k">continue</span>  <span class="c1"># Skip problematic columns</span>
+
+            <span class="n">selected_features</span> <span class="o">=</span> <span class="n">valid_features</span><span class="p">[:</span><span class="nb">min</span><span class="p">(</span><span class="mi">150</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_features</span><span class="p">))]</span>  <span class="c1"># Limit to 150 features max</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_features</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: No valid features found, using basic price data&quot;</span><span class="p">)</span>
+                <span class="n">selected_features</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span> <span class="k">if</span> <span class="s1">&#39;close&#39;</span> <span class="ow">in</span> <span class="n">enhanced_data</span><span class="o">.</span><span class="n">columns</span> <span class="k">else</span> <span class="p">[]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">selected_features</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Warning: No basic price data available, using momentum fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+            <span class="c1"># Get the latest data point with error handling</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">obs</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">)</span> <span class="k">as</span> <span class="n">obs_e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error extracting observation: </span><span class="si">{</span><span class="n">obs_e</span><span class="si">}</span><span class="s2">, using momentum fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+            <span class="c1"># Advanced NaN handling: forward fill, then backward fill, then interpolation</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Found NaN values in </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">))</span><span class="si">}</span><span class="s2"> features, applying advanced filling&quot;</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># Forward fill then backward fill</span>
+                    <span class="n">filled_data</span> <span class="o">=</span> <span class="n">enhanced_data</span><span class="p">[</span><span class="n">selected_features</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;ffill&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;bfill&#39;</span><span class="p">)</span>
+                    <span class="c1"># Interpolate remaining NaN</span>
+                    <span class="n">filled_data</span> <span class="o">=</span> <span class="n">filled_data</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="n">limit_direction</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">)</span>
+                    <span class="n">obs</span> <span class="o">=</span> <span class="n">filled_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                    <span class="c1"># Final fallback to 0</span>
+                    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                        <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">nan_e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;NaN handling failed: </span><span class="si">{</span><span class="n">nan_e</span><span class="si">}</span><span class="s2">, using zeros&quot;</span><span class="p">)</span>
+                    <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">)</span><span class="si">}</span><span class="s2"> features for RL model (150d enabled: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Adjust to model&#39;s expected observation space</span>
+            <span class="n">expected_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observation_space_shape</span> <span class="ow">or</span> <span class="mi">13</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">expected_features</span><span class="p">:</span>
+                <span class="c1"># Pad with zeros</span>
+                <span class="n">padding</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">expected_features</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+                <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">obs</span><span class="p">,</span> <span class="n">padding</span><span class="p">])</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">expected_features</span><span class="p">:</span>
+                <span class="c1"># Truncate to expected size</span>
+                <span class="n">obs</span> <span class="o">=</span> <span class="n">obs</span><span class="p">[:</span><span class="n">expected_features</span><span class="p">]</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final observation shape: </span><span class="si">{</span><span class="n">obs</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> (expected: </span><span class="si">{</span><span class="n">expected_features</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Generate action with model</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">action_value</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+
+                <span class="c1"># Convert to trading signal</span>
+                <span class="k">if</span> <span class="n">action_value</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
+                    <span class="n">signal_action</span> <span class="o">=</span> <span class="s2">&quot;buy&quot;</span>
+                <span class="k">elif</span> <span class="n">action_value</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">:</span>
+                    <span class="n">signal_action</span> <span class="o">=</span> <span class="s2">&quot;sell&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">signal_action</span> <span class="o">=</span> <span class="s2">&quot;hold&quot;</span>
+
+                <span class="k">return</span> <span class="p">{</span>
+                    <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="n">signal_action</span><span class="p">,</span>
+                    <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="nb">abs</span><span class="p">(</span><span class="n">action_value</span><span class="p">),</span>
+                    <span class="s2">&quot;raw_action&quot;</span><span class="p">:</span> <span class="n">action_value</span><span class="p">,</span>
+                    <span class="s2">&quot;features_used&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">selected_features</span><span class="p">),</span>
+                    <span class="s2">&quot;observation_shape&quot;</span><span class="p">:</span> <span class="n">obs</span><span class="o">.</span><span class="n">shape</span>
+                <span class="p">}</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">pred_e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model prediction failed: </span><span class="si">{</span><span class="n">pred_e</span><span class="si">}</span><span class="s2">, using momentum fallback&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected error in generate_signal: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">, using momentum fallback&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_momentum_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">current_position</span><span class="p">)</span>
+
+        <span class="c1"># Predict action (using predict_with_masks for MaskablePPO support)</span>
+        <span class="c1"># Note: No environment available in backtest adapter, so action masks won&#39;t be applied</span>
+        <span class="c1"># TODO: Refactor to pass environment instance for proper action masking</span>
+        <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Debug: Log the raw action to file</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;debug_actions.log&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Raw action from model: </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Convert continuous action to discrete action</span>
+        <span class="c1"># SAC uses continuous actions in range [-1, 1], convert to discrete</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)):</span>
+            <span class="c1"># Already discrete</span>
+            <span class="n">discrete_action</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Convert continuous to discrete</span>
+            <span class="n">action_val</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s1">&#39;__len__&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">action_val</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.33</span><span class="p">:</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>  <span class="c1"># SELL</span>
+            <span class="k">elif</span> <span class="n">action_val</span> <span class="o">&gt;</span> <span class="mf">0.33</span><span class="p">:</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">1</span>   <span class="c1"># BUY</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="mi">0</span>   <span class="c1"># HOLD</span>
+
+        <span class="c1"># Debug: Log the discrete action to file</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;debug_actions.log&quot;</span><span class="p">,</span> <span class="s2">&quot;a&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Discrete action: </span><span class="si">{</span><span class="n">discrete_action</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Map action to signal</span>
+        <span class="n">action_map</span> <span class="o">=</span> <span class="p">{</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="n">action_map</span><span class="p">[</span><span class="n">discrete_action</span><span class="p">],</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="RLPolicyAdapter.generate_signals">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter.generate_signals">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate signals for backtest (returns DataFrame).&quot;&quot;&quot;</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)):</span>
+            <span class="n">current_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Assume no position for signal generation</span>
+            <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_signal</span><span class="p">(</span><span class="n">current_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Convert actions to signals (-1, 0, 1)</span>
+        <span class="n">action_to_signal</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;hold&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+        <span class="n">signal_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">action_to_signal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">signals</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="n">signal_values</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RLPolicyAdapter.update_hyperparameters">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter.update_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hyperparameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update RL model hyperparameters.&quot;&quot;&quot;</span>
+        <span class="c1"># Update local hyperparameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hyperparameters</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">hyperparameters</span><span class="p">)</span>
+
+        <span class="c1"># If model is loaded, update model parameters if supported</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Update learning rate if supported by the model</span>
+                <span class="k">if</span> <span class="s2">&quot;learning_rate&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;learning_rate&#39;</span><span class="p">):</span>
+                    <span class="c1"># Note: This is a simplified example. Actual implementation would depend on the model type</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated model learning rate to </span><span class="si">{</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warning: Could not update model hyperparameters: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated strategy hyperparameters: </span><span class="si">{</span><span class="n">hyperparameters</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RLPolicyAdapter.clear_feature_cache">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter.clear_feature_cache">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_feature_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear feature cache to prevent memory leaks.&quot;&quot;&quot;</span>
+        <span class="n">cache_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleared feature cache (</span><span class="si">{</span><span class="n">cache_size</span><span class="si">}</span><span class="s2"> entries)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="RLPolicyAdapter.get_cache_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.RLPolicyAdapter.get_cache_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
+        <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_momentum_signal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">current_position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Simple momentum-based signal as RL fallback.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span>
+
+        <span class="c1"># Simple RSI-based signal</span>
+        <span class="n">close</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+        <span class="n">delta</span> <span class="o">=</span> <span class="n">close</span><span class="o">.</span><span class="n">diff</span><span class="p">()</span>
+        <span class="n">gain</span> <span class="o">=</span> <span class="p">(</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># type: ignore[operator]</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">delta</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">delta</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">14</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># type: ignore[operator]</span>
+        <span class="n">rs</span> <span class="o">=</span> <span class="n">gain</span> <span class="o">/</span> <span class="n">loss</span>
+        <span class="n">rsi</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
+
+        <span class="n">latest_rsi</span> <span class="o">=</span> <span class="n">rsi</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">rsi</span><span class="o">.</span><span class="n">empty</span> <span class="k">else</span> <span class="mi">50</span>
+
+        <span class="k">if</span> <span class="n">latest_rsi</span> <span class="o">&lt;</span> <span class="mi">30</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">}</span>
+        <span class="k">elif</span> <span class="n">latest_rsi</span> <span class="o">&gt;</span> <span class="mi">70</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="SMACrossoverAdapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SMACrossoverAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple Moving Average crossover strategy.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fast_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">slow_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with MA periods.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span> <span class="o">=</span> <span class="n">fast_period</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span> <span class="o">=</span> <span class="n">slow_period</span>
+
+<div class="viewcode-block" id="SMACrossoverAdapter.generate_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter.generate_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">current_position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate SMA crossover signal.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span>
+
+        <span class="n">close</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
+        <span class="n">fast_ma</span> <span class="o">=</span> <span class="n">close</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">slow_ma</span> <span class="o">=</span> <span class="n">close</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+
+        <span class="c1"># Check for crossover</span>
+        <span class="n">prev_fast</span> <span class="o">=</span> <span class="n">fast_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fast_ma</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">fast_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">prev_slow</span> <span class="o">=</span> <span class="n">slow_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">slow_ma</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">slow_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">curr_fast</span> <span class="o">=</span> <span class="n">fast_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">curr_slow</span> <span class="o">=</span> <span class="n">slow_ma</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="c1"># Bullish crossover</span>
+        <span class="k">if</span> <span class="n">prev_fast</span> <span class="o">&lt;=</span> <span class="n">prev_slow</span> <span class="ow">and</span> <span class="n">curr_fast</span> <span class="o">&gt;</span> <span class="n">curr_slow</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">}</span>
+
+        <span class="c1"># Bearish crossover</span>
+        <span class="k">elif</span> <span class="n">prev_fast</span> <span class="o">&gt;=</span> <span class="n">prev_slow</span> <span class="ow">and</span> <span class="n">curr_fast</span> <span class="o">&lt;</span> <span class="n">curr_slow</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="SMACrossoverAdapter.generate_signals">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter.generate_signals">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate signals for backtest (returns DataFrame).&quot;&quot;&quot;</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)):</span>
+            <span class="n">current_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Assume no position for signal generation</span>
+            <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_signal</span><span class="p">(</span><span class="n">current_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Convert actions to signals (-1, 0, 1)</span>
+        <span class="n">action_to_signal</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;hold&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+        <span class="n">signal_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">action_to_signal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">signals</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="n">signal_values</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SMACrossoverAdapter.update_hyperparameters">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter.update_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hyperparameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update SMA strategy hyperparameters.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;fast_period&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s2">&quot;fast_period&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s2">&quot;slow_period&quot;</span> <span class="ow">in</span> <span class="n">hyperparameters</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">hyperparameters</span><span class="p">[</span><span class="s2">&quot;slow_period&quot;</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated SMA parameters: fast_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">fast_period</span><span class="si">}</span><span class="s2">, slow_period=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">slow_period</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SMACrossoverAdapter.clear_feature_cache">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter.clear_feature_cache">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_feature_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear feature cache to prevent memory leaks.&quot;&quot;&quot;</span>
+        <span class="n">cache_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleared feature cache (</span><span class="si">{</span><span class="n">cache_size</span><span class="si">}</span><span class="s2"> entries)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SMACrossoverAdapter.get_cache_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.SMACrossoverAdapter.get_cache_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
+        <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BuyAndHoldAdapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BuyAndHoldAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Buy and hold strategy (benchmark).&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize buy and hold strategy.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="BuyAndHoldAdapter.generate_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter.generate_signal">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signal</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">current_position</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate buy and hold signal.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initialized</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="BuyAndHoldAdapter.generate_signals">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter.generate_signals">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_signals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate signals for backtest (returns DataFrame).&quot;&quot;&quot;</span>
+        <span class="n">signals</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)):</span>
+            <span class="n">current_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># Assume no position for signal generation</span>
+            <span class="n">signal</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_signal</span><span class="p">(</span><span class="n">current_data</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">signals</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">signal</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Convert actions to signals (-1, 0, 1)</span>
+        <span class="n">action_to_signal</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;sell&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;hold&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;buy&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+        <span class="n">signal_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">action_to_signal</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">signals</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">data</span> <span class="k">else</span> <span class="n">data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span>
+                <span class="s2">&quot;signal&quot;</span><span class="p">:</span> <span class="n">signal_values</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BuyAndHoldAdapter.clear_feature_cache">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter.clear_feature_cache">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">clear_feature_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear feature cache to prevent memory leaks.&quot;&quot;&quot;</span>
+        <span class="n">cache_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleared feature cache (</span><span class="si">{</span><span class="n">cache_size</span><span class="si">}</span><span class="s2"> entries)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BuyAndHoldAdapter.get_cache_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter.get_cache_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cache_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get feature cache statistics for monitoring.&quot;&quot;&quot;</span>
+        <span class="n">total_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="p">)</span>
+        <span class="n">memory_usage</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+        <span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_cache</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;cache_entries&#39;</span><span class="p">:</span> <span class="n">total_entries</span><span class="p">,</span>
+            <span class="s1">&#39;estimated_memory_mb&#39;</span><span class="p">:</span> <span class="n">memory_usage</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">),</span>
+            <span class="s1">&#39;features_enabled&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_150d_features</span><span class="p">,</span>
+            <span class="s1">&#39;model_loaded&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="BuyAndHoldAdapter.update_hyperparameters">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.BuyAndHoldAdapter.update_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hyperparameters</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update buy and hold strategy hyperparameters.&quot;&quot;&quot;</span>
+        <span class="c1"># Buy and hold strategy doesn&#39;t have hyperparameters to update</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Buy and hold strategy: no hyperparameters to update&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_adapter">
+<a class="viewcode-back" href="../../../../api/generated/ztb.trading.backtest.html#ztb.trading.backtest.adapters.create_adapter">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_adapter</span><span class="p">(</span><span class="n">strategy_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StrategyAdapter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Factory function to create strategy adapters.&quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">strategy_name</span> <span class="o">==</span> <span class="s2">&quot;rl&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">RLPolicyAdapter</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">strategy_name</span> <span class="o">==</span> <span class="s2">&quot;sma_fast_slow&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">SMACrossoverAdapter</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">strategy_name</span> <span class="o">==</span> <span class="s2">&quot;buy_hold&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">BuyAndHoldAdapter</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown strategy: </span><span class="si">{</span><span class="n">strategy_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

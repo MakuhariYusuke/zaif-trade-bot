@@ -1,0 +1,684 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.test_dynamic_hyperparameter_adaptation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.test_dynamic_hyperparameter_adaptation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.test_dynamic_hyperparameter_adaptation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Test Dynamic Hyperparameter Adaptation System</span>
+<span class="sd">動的ハイパーパラメータ適応システムテスト</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span><span class="p">,</span> <span class="n">MagicMock</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.dynamic_hyperparameter_adapter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DynamicHyperparameterAdapter</span><span class="p">,</span>
+    <span class="n">HyperparameterConfig</span><span class="p">,</span>
+    <span class="n">HyperparameterType</span><span class="p">,</span>
+    <span class="n">AdaptationStrategy</span><span class="p">,</span>
+    <span class="n">AdaptationResult</span><span class="p">,</span>
+    <span class="n">HyperparameterAdaptation</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.market_aware_hyperparameter_manager</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MarketAwareHyperparameterManager</span><span class="p">,</span>
+    <span class="n">MarketAwareConfig</span><span class="p">,</span>
+    <span class="n">MarketCondition</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.hyperparameter_adaptation_system</span><span class="w"> </span><span class="kn">import</span> <span class="n">HyperparameterAdaptationSystem</span>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestDynamicHyperparameterAdapter</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;動的ハイパーパラメータアダプターテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストセットアップ&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+
+        <span class="c1"># モックの設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">0.7</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">HyperparameterConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span> <span class="o">=</span> <span class="n">DynamicHyperparameterAdapter</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_initialization">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">performance_history</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">is_active</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_evaluate_market_conditions">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_evaluate_market_conditions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_evaluate_market_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件評価テスト&quot;&quot;&quot;</span>
+        <span class="c1"># テストデータ作成</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+            <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+            <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+
+        <span class="n">conditions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_evaluate_market_conditions</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;volatility&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;trend_strength&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market_state&#39;</span><span class="p">,</span> <span class="n">conditions</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">conditions</span><span class="p">[</span><span class="s1">&#39;volatility&#39;</span><span class="p">],</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_performance_based_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_performance_based_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_performance_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンスベース適応テスト&quot;&quot;&quot;</span>
+        <span class="n">market_conditions</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.02</span><span class="p">,</span>
+            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">1.0</span>
+        <span class="p">}</span>
+
+        <span class="c1"># パフォーマンス履歴を追加</span>
+        <span class="n">base_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">performance_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">base_time</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">i</span><span class="p">),</span> <span class="mf">0.5</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="mf">0.01</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_performance_based_adaptation</span><span class="p">(</span><span class="n">market_conditions</span><span class="p">)</span>
+
+        <span class="c1"># 適応結果を検証</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptations</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptation</span><span class="p">,</span> <span class="n">HyperparameterAdaptation</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">adaptation</span><span class="o">.</span><span class="n">parameter_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enabled_parameters</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_volatility_based_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_volatility_based_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_volatility_based_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ボラティリティベース適応テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 高ボラティリティ条件</span>
+        <span class="n">high_vol_conditions</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">2.0</span>
+        <span class="p">}</span>
+
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_volatility_based_adaptation</span><span class="p">(</span><span class="n">high_vol_conditions</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="c1"># 高ボラティリティ時は適応が発生するはず</span>
+        <span class="k">if</span> <span class="n">adaptations</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">adaptation</span> <span class="ow">in</span> <span class="n">adaptations</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptation</span><span class="p">,</span> <span class="n">HyperparameterAdaptation</span><span class="p">)</span>
+
+        <span class="c1"># 低ボラティリティ条件</span>
+        <span class="n">low_vol_conditions</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;volatility&#39;</span><span class="p">:</span> <span class="mf">0.005</span><span class="p">,</span>
+            <span class="s1">&#39;trend_strength&#39;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="s1">&#39;market_state&#39;</span><span class="p">:</span> <span class="mf">0.0</span>
+        <span class="p">}</span>
+
+        <span class="n">adaptations_low</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_volatility_based_adaptation</span><span class="p">(</span><span class="n">low_vol_conditions</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptations_low</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_combine_adaptations">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_combine_adaptations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_combine_adaptations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応統合テスト&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+                <span class="n">old_value</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+                <span class="n">new_value</span><span class="o">=</span><span class="mf">1.1e-3</span><span class="p">,</span>
+                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+                <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="p">),</span>
+            <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+                <span class="n">old_value</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+                <span class="n">new_value</span><span class="o">=</span><span class="mf">0.9e-3</span><span class="p">,</span>
+                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">,</span>
+                <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="n">combined</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_combine_adaptations</span><span class="p">(</span><span class="n">adaptations</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">combined</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># 同じパラメータタイプは統合される</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">combined</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">parameter_type</span><span class="p">,</span> <span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_apply_adaptations">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_apply_adaptations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_adaptations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応適用テスト&quot;&quot;&quot;</span>
+        <span class="n">adaptations</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+                <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+                <span class="n">old_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">],</span>
+                <span class="n">new_value</span><span class="o">=</span><span class="mf">1.5e-3</span><span class="p">,</span>
+                <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+                <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="n">applied</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_apply_adaptations</span><span class="p">(</span><span class="n">adaptations</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">applied</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">current_parameters</span><span class="p">[</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">],</span>
+            <span class="mf">1.5e-3</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_adaptation_safety">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_adaptation_safety">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_adaptation_safety</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応安全性テスト&quot;&quot;&quot;</span>
+        <span class="c1"># 安全な適応</span>
+        <span class="n">safe_adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+            <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+            <span class="n">old_value</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+            <span class="n">new_value</span><span class="o">=</span><span class="mf">1.1e-3</span><span class="p">,</span>  <span class="c1"># 10%変更</span>
+            <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+            <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_is_adaptation_safe</span><span class="p">(</span><span class="n">safe_adaptation</span><span class="p">))</span>
+
+        <span class="c1"># 危険な適応（範囲外）</span>
+        <span class="n">unsafe_adaptation</span> <span class="o">=</span> <span class="n">HyperparameterAdaptation</span><span class="p">(</span>
+            <span class="n">parameter_type</span><span class="o">=</span><span class="n">HyperparameterType</span><span class="o">.</span><span class="n">LEARNING_RATE</span><span class="p">,</span>
+            <span class="n">old_value</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+            <span class="n">new_value</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">,</span>  <span class="c1"># 範囲外</span>
+            <span class="n">adaptation_strategy</span><span class="o">=</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">PERFORMANCE_BASED</span><span class="p">,</span>
+            <span class="n">performance_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">volatility_score</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">_is_adaptation_safe</span><span class="p">(</span><span class="n">unsafe_adaptation</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TestDynamicHyperparameterAdapter.test_adapt_hyperparameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestDynamicHyperparameterAdapter.test_adapt_hyperparameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_adapt_hyperparameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ハイパーパラメータ適応テスト&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapter</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">AdaptationResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">overall_performance_improvement</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">adaptation_confidence</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestMarketAwareHyperparameterManager</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;市場対応ハイパーパラメータマネージャーテスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストセットアップ&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+
+        <span class="c1"># モックの設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">0.7</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span><span class="o">.</span><span class="n">detect_regime</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;regime&#39;</span><span class="p">:</span> <span class="s1">&#39;neutral&#39;</span><span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">MarketAwareConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span> <span class="o">=</span> <span class="n">MarketAwareHyperparameterManager</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_market_detector</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">config</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_initialization">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_initialization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;初期化テスト&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">hyperparameter_adapter</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">performance_predictors</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">is_active</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_get_market_condition">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_get_market_condition">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_market_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場条件取得テスト&quot;&quot;&quot;</span>
+        <span class="c1"># テストデータ作成</span>
+        <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1min&#39;</span><span class="p">)</span>
+        <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+            <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+            <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">50</span><span class="p">)</span>
+        <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+
+        <span class="n">condition</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_get_current_market_condition</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">MarketCondition</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">condition</span><span class="o">.</span><span class="n">volatility</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">condition</span><span class="o">.</span><span class="n">trend_strength</span><span class="p">,</span> <span class="nb">float</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_predict_optimal_parameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_predict_optimal_parameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_predict_optimal_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最適パラメータ予測テスト&quot;&quot;&quot;</span>
+        <span class="n">market_condition</span> <span class="o">=</span> <span class="n">MarketCondition</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">volatility</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">trend_strength</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">market_regime</span><span class="o">=</span><span class="s1">&#39;neutral&#39;</span><span class="p">,</span>
+            <span class="n">volume_profile</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
+            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 学習データを追加（実際の予測には必要）</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">market_condition</span><span class="o">.</span><span class="n">to_features</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">param_type</span> <span class="ow">in</span> <span class="n">HyperparameterType</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">training_data</span><span class="p">[</span><span class="n">param_type</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">features</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">))</span>
+
+        <span class="c1"># モデルを学習</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_retrain_prediction_models</span><span class="p">()</span>
+
+        <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_predict_optimal_parameters</span><span class="p">(</span><span class="n">market_condition</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+
+        <span class="c1"># 予測が成功するかは学習データによる</span>
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_select_adaptation_strategies">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_select_adaptation_strategies">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_select_adaptation_strategies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応戦略選択テスト&quot;&quot;&quot;</span>
+        <span class="n">market_condition</span> <span class="o">=</span> <span class="n">MarketCondition</span><span class="p">(</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">volatility</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>  <span class="c1"># 高ボラティリティ</span>
+            <span class="n">trend_strength</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span>  <span class="c1"># 強いトレンド</span>
+            <span class="n">market_regime</span><span class="o">=</span><span class="s1">&#39;volatile&#39;</span><span class="p">,</span>
+            <span class="n">volume_profile</span><span class="o">=</span><span class="mf">1000.0</span><span class="p">,</span>
+            <span class="n">liquidity_score</span><span class="o">=</span><span class="mf">0.8</span>
+        <span class="p">)</span>
+
+        <span class="n">predictions</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># 空の予測</span>
+
+        <span class="n">strategies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">_select_adaptation_strategies</span><span class="p">(</span><span class="n">market_condition</span><span class="p">,</span> <span class="n">predictions</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">strategies</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">AdaptationStrategy</span><span class="o">.</span><span class="n">VOLATILITY_BASED</span><span class="p">,</span> <span class="n">strategies</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_adapt_hyperparameters_market_aware">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_adapt_hyperparameters_market_aware">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_adapt_hyperparameters_market_aware</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;市場対応適応テスト&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">adapt_hyperparameters_market_aware</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">AdaptationResult</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">adaptations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_get_adaptation_recommendations">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_get_adaptation_recommendations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_adaptation_recommendations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応推奨取得テスト&quot;&quot;&quot;</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_adaptation_recommendations</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">recommendations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertGreater</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">recommendations</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_get_performance_predictions">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_get_performance_predictions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_performance_predictions</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;パフォーマンス予測取得テスト&quot;&quot;&quot;</span>
+        <span class="n">predictions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_performance_predictions</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">predictions</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span></div>
+
+        <span class="c1"># 市場条件が取得できない場合は空の辞書</span>
+
+<div class="viewcode-block" id="TestMarketAwareHyperparameterManager.test_get_adaptation_statistics">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestMarketAwareHyperparameterManager.test_get_adaptation_statistics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_adaptation_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応統計取得テスト&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">manager</span><span class="o">.</span><span class="n">get_adaptation_statistics</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_adaptations&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;market_conditions_count&#39;</span><span class="p">,</span> <span class="n">stats</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestIntegration">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestIntegration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestIntegration</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;統合テスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestIntegration.test_full_adaptation_cycle">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestIntegration.test_full_adaptation_cycle">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_full_adaptation_cycle</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;完全適応サイクルテスト&quot;&quot;&quot;</span>
+        <span class="c1"># モック設定</span>
+        <span class="n">mock_online_learning</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">mock_evaluation_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="n">mock_evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">0.6</span>
+
+        <span class="c1"># アダプター作成</span>
+        <span class="n">adapter</span> <span class="o">=</span> <span class="n">DynamicHyperparameterAdapter</span><span class="p">(</span>
+            <span class="n">mock_online_learning</span><span class="p">,</span>
+            <span class="n">mock_evaluation_manager</span>
+        <span class="p">)</span>
+
+        <span class="c1"># マネージャー作成</span>
+        <span class="n">manager</span> <span class="o">=</span> <span class="n">MarketAwareHyperparameterManager</span><span class="p">(</span>
+            <span class="n">mock_online_learning</span><span class="p">,</span>
+            <span class="n">mock_evaluation_manager</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 適応実行</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">adapt_hyperparameters_market_aware</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">AdaptationResult</span><span class="p">)</span>
+
+        <span class="c1"># 統計取得</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_adaptation_statistics</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+
+        <span class="c1"># 推奨取得</span>
+        <span class="n">recommendations</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_adaptation_recommendations</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">recommendations</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestBacktestIntegration">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestBacktestIntegration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestBacktestIntegration</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;バックテスト統合テスト&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestBacktestIntegration.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestBacktestIntegration.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;テストセットアップ&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span> <span class="o">=</span> <span class="n">Mock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span><span class="o">.</span><span class="n">get_current_performance</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="mf">0.7</span>
+
+        <span class="c1"># 適応システムの初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">adaptation_system</span> <span class="o">=</span> <span class="n">HyperparameterAdaptationSystem</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_online_learning</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mock_evaluation_manager</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestBacktestIntegration.test_backtest_engine_with_adaptation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestBacktestIntegration.test_backtest_engine_with_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_backtest_engine_with_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応機能付きバックテストエンジンテスト&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestEngine</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuyAndHoldAdapter</span>
+
+            <span class="c1"># 適応機能付きエンジンの作成</span>
+            <span class="n">engine</span> <span class="o">=</span> <span class="n">BacktestEngine</span><span class="p">(</span>
+                <span class="n">initial_capital</span><span class="o">=</span><span class="mf">10000.0</span><span class="p">,</span>
+                <span class="n">enable_adaptation</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">adaptation_config</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s1">&#39;hyperparameter_config&#39;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s1">&#39;adaptation_interval_minutes&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+                        <span class="s1">&#39;safety_margin&#39;</span><span class="p">:</span> <span class="mf">0.1</span>
+                    <span class="p">}</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 適応システムが初期化されていることを確認</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">engine</span><span class="o">.</span><span class="n">enable_adaptation</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">engine</span><span class="o">.</span><span class="n">adaptation_system</span><span class="p">)</span>
+
+            <span class="c1"># テストデータ生成</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">load_data</span><span class="p">(</span><span class="s2">&quot;test&quot;</span><span class="p">)</span>
+
+            <span class="c1"># 戦略アダプター作成</span>
+            <span class="n">strategy</span> <span class="o">=</span> <span class="n">BuyAndHoldAdapter</span><span class="p">()</span>
+
+            <span class="c1"># バックテスト実行</span>
+            <span class="n">equity_curve</span><span class="p">,</span> <span class="n">orders</span><span class="p">,</span> <span class="n">adaptation_summary</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">run_backtest</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+            <span class="c1"># 結果検証</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">equity_curve</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">orders</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">adaptation_summary</span><span class="p">,</span> <span class="p">(</span><span class="nb">dict</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)))</span>
+
+            <span class="k">if</span> <span class="n">adaptation_summary</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;total_adaptations&#39;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;final_hyperparameters&#39;</span><span class="p">,</span> <span class="n">adaptation_summary</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;Backtest components not available&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestBacktestIntegration.test_strategy_adapter_hyperparameter_update">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestBacktestIntegration.test_strategy_adapter_hyperparameter_update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_strategy_adapter_hyperparameter_update</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;戦略アダプターのハイパーパラメータ更新テスト&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">SMACrossoverAdapter</span>
+
+            <span class="c1"># SMAアダプター作成</span>
+            <span class="n">adapter</span> <span class="o">=</span> <span class="n">SMACrossoverAdapter</span><span class="p">(</span><span class="n">fast_period</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">slow_period</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+
+            <span class="c1"># 初期パラメータ確認</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">fast_period</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">slow_period</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+
+            <span class="c1"># ハイパーパラメータ更新</span>
+            <span class="n">new_params</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;fast_period&#39;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+                <span class="s1">&#39;slow_period&#39;</span><span class="p">:</span> <span class="mi">30</span>
+            <span class="p">}</span>
+            <span class="n">adapter</span><span class="o">.</span><span class="n">update_hyperparameters</span><span class="p">(</span><span class="n">new_params</span><span class="p">)</span>
+
+            <span class="c1"># 更新後のパラメータ確認</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">fast_period</span><span class="p">,</span> <span class="mi">15</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">adapter</span><span class="o">.</span><span class="n">slow_period</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;Strategy adapters not available&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestBacktestIntegration.test_adaptation_during_backtest_simulation">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_dynamic_hyperparameter_adaptation.TestBacktestIntegration.test_adaptation_during_backtest_simulation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_adaptation_during_backtest_simulation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;バックテスト中の適応シミュレーションテスト&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.runner</span><span class="w"> </span><span class="kn">import</span> <span class="n">BacktestEngine</span><span class="p">,</span> <span class="n">MockOnlineLearningPipeline</span><span class="p">,</span> <span class="n">MockEvaluationManager</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.backtest.adapters</span><span class="w"> </span><span class="kn">import</span> <span class="n">BuyAndHoldAdapter</span>
+
+            <span class="c1"># モックコンポーネント</span>
+            <span class="n">mock_online</span> <span class="o">=</span> <span class="n">MockOnlineLearningPipeline</span><span class="p">()</span>
+            <span class="n">mock_eval</span> <span class="o">=</span> <span class="n">MockEvaluationManager</span><span class="p">()</span>
+
+            <span class="c1"># 適応システム作成</span>
+            <span class="n">adaptation_system</span> <span class="o">=</span> <span class="n">HyperparameterAdaptationSystem</span><span class="p">(</span><span class="n">mock_online</span><span class="p">,</span> <span class="n">mock_eval</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">adaptation_system</span><span class="o">.</span><span class="n">initialize</span><span class="p">())</span>
+
+            <span class="c1"># テスト市場データ作成</span>
+            <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="s1">&#39;2023-01-01&#39;</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;D&#39;</span><span class="p">)</span>
+            <span class="n">prices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">30000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="n">market_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+                <span class="s1">&#39;open&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.99</span><span class="p">,</span>
+                <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">1.01</span><span class="p">,</span>
+                <span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">prices</span> <span class="o">*</span> <span class="mf">0.98</span><span class="p">,</span>
+                <span class="s1">&#39;close&#39;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+                <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="p">},</span> <span class="n">index</span><span class="o">=</span><span class="n">dates</span><span class="p">)</span>
+
+            <span class="c1"># 適応実行</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">adaptation_system</span><span class="o">.</span><span class="n">adapt_hyperparameters</span><span class="p">(</span><span class="n">market_data</span><span class="p">)</span>
+
+            <span class="c1"># 結果検証</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;adaptations&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="s1">&#39;performance_improvement&#39;</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">skipTest</span><span class="p">(</span><span class="s2">&quot;Adaptation system components not available&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

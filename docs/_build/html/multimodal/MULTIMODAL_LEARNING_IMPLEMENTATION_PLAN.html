@@ -1,0 +1,1049 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マルチモーダル学習実装計画ドキュメント &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">マルチモーダル学習実装計画ドキュメント</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/multimodal/MULTIMODAL_LEARNING_IMPLEMENTATION_PLAN.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>マルチモーダル学習実装計画ドキュメント<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>SAC v421取引AIへのマルチモーダル学習統合計画。価格データに加え、ニュース感情分析、経済指標、ソーシャルメディアデータを統合し、より堅牢で適応性の高い取引モデルを実現する。</p>
+<p><strong>作成日</strong>: 2025-10-17
+<strong>バージョン</strong>: 1.0
+<strong>目標</strong>: 2026年3月までに実運用可能なマルチモーダル取引AIの実現</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>1. プロジェクト概要<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h3>1.1 背景と目的<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>現在のSAC v421は156個のテクニカル特徴量に基づく単一モーダル学習だが、市場は価格以外にも多くの情報源（ニュース、経済指標、ソーシャルメディア）で形成される。マルチモーダル学習により、これらの情報を統合し、より包括的な市場理解と予測精度の向上を目指す。</p>
+</section>
+<section id="id5">
+<h3>1.2 期待効果<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>予測精度向上</strong>: ニュース感情による市場予測強化（+15-25%）</p></li>
+<li><p><strong>堅牢性向上</strong>: 複数情報源によるリスク分散</p></li>
+<li><p><strong>適応性強化</strong>: 市場変化の早期検知と対応</p></li>
+<li><p><strong>説明可能性</strong>: 取引判断の根拠明確化</p></li>
+</ul>
+</section>
+<section id="id6">
+<h3>1.3 スコープ定義<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>対象モダリティ</strong>:</p>
+<ul class="simple">
+<li><p>価格データ（既存の156特徴量）</p></li>
+<li><p>テキストデータ（ニュース記事、ソーシャルメディア）</p></li>
+<li><p>数値データ（経済指標、金利、為替）</p></li>
+</ul>
+<p><strong>除外項目</strong>:</p>
+<ul class="simple">
+<li><p>画像データ（チャート画像）</p></li>
+<li><p>音声データ</p></li>
+<li><p>リアルタイム高頻度データ（ミリ秒レベル）</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h2>2. データアーキテクチャ<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="id8">
+<h3>2.1 データソース構成<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<section id="id9">
+<h4>2.1.1 一次データソース（無料/公開）<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<p><strong>経済指標データ</strong>:</p>
+<ul class="simple">
+<li><p><strong>FRED API</strong>: 米国連邦準備制度理事会経済データ</p>
+<ul>
+<li><p>GDP、失業率、インフレ率、FF金利</p></li>
+<li><p>更新頻度: 月次/四半期</p></li>
+<li><p>利用: 完全に無料、無制限</p></li>
+<li><p>取得方法: <code class="docutils literal notranslate"><span class="pre">fredapi</span></code> Pythonライブラリ</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>ニュースデータ</strong>:</p>
+<ul class="simple">
+<li><p><strong>NewsAPI</strong>: グローバルニュース記事</p>
+<ul>
+<li><p>主要金融ニュースソース（Reuters, Bloomberg, WSJ）</p></li>
+<li><p>更新頻度: リアルタイム</p></li>
+<li><p>利用: 無料枠（1日100リクエスト）</p></li>
+<li><p>取得方法: REST API + Python requests</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>為替・商品データ</strong>:</p>
+<ul class="simple">
+<li><p><strong>Alpha Vantage</strong>: 金融市場データ</p>
+<ul>
+<li><p>為替レート、商品価格、暗号通貨</p></li>
+<li><p>更新頻度: 日次/リアルタイム</p></li>
+<li><p>利用: 無料枠（1日5リクエスト）</p></li>
+<li><p>取得方法: REST API</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id10">
+<h4>2.1.2 二次データソース（合成データ）<a class="headerlink" href="#id10" title="Link to this heading"></a></h4>
+<p><strong>市場状態ベース生成</strong>:</p>
+<ul class="simple">
+<li><p>強気/弱気/横ばい/高ボラティリティの各状態でリアルなデータを生成</p></li>
+<li><p>季節性・トレンドを反映した時系列生成</p></li>
+<li><p>ニュース感情の市場状態依存生成</p></li>
+</ul>
+<p><strong>データ拡張</strong>:</p>
+<ul class="simple">
+<li><p>ノイズ注入による多様性向上</p></li>
+<li><p>時間ワーピングによる時系列変形</p></li>
+<li><p>特徴量ミキシングによる新しい組み合わせ生成</p></li>
+</ul>
+</section>
+</section>
+<section id="id11">
+<h3>2.2 データパイプライン設計<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id12">
+<h4>2.2.1 データ収集レイヤー<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MultiModalDataCollector</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fred_client</span> <span class="o">=</span> <span class="n">FREDClient</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">news_client</span> <span class="o">=</span> <span class="n">NewsAPIClient</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha_vantage_client</span> <span class="o">=</span> <span class="n">AlphaVantageClient</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache_manager</span> <span class="o">=</span> <span class="n">DataCacheManager</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">collect_daily_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">date</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;日次データ収集&quot;&quot;&quot;</span>
+        <span class="n">economic_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fred_client</span><span class="o">.</span><span class="n">get_economic_indicators</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">news_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">news_client</span><span class="o">.</span><span class="n">get_financial_news</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+        <span class="n">forex_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha_vantage_client</span><span class="o">.</span><span class="n">get_forex_rates</span><span class="p">(</span><span class="n">date</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;economic&#39;</span><span class="p">:</span> <span class="n">economic_data</span><span class="p">,</span>
+            <span class="s1">&#39;news&#39;</span><span class="p">:</span> <span class="n">news_data</span><span class="p">,</span>
+            <span class="s1">&#39;forex&#39;</span><span class="p">:</span> <span class="n">forex_data</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id13">
+<h4>2.2.2 データ前処理レイヤー<a class="headerlink" href="#id13" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MultiModalDataPreprocessor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text_processor</span> <span class="o">=</span> <span class="n">TextSentimentProcessor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">numeric_processor</span> <span class="o">=</span> <span class="n">NumericDataProcessor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">temporal_aligner</span> <span class="o">=</span> <span class="n">TemporalDataAligner</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">preprocess_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;複数モダリティの統合前処理&quot;&quot;&quot;</span>
+        <span class="c1"># テキストデータの感情分析</span>
+        <span class="n">text_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">text_processor</span><span class="o">.</span><span class="n">process_news</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;news&#39;</span><span class="p">])</span>
+
+        <span class="c1"># 数値データの正規化と欠損補完</span>
+        <span class="n">numeric_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">numeric_processor</span><span class="o">.</span><span class="n">process_economic</span><span class="p">(</span><span class="n">raw_data</span><span class="p">[</span><span class="s1">&#39;economic&#39;</span><span class="p">])</span>
+
+        <span class="c1"># 時間軸の整合性確保</span>
+        <span class="n">aligned_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">temporal_aligner</span><span class="o">.</span><span class="n">align_temporal_data</span><span class="p">({</span>
+            <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="n">text_features</span><span class="p">,</span>
+            <span class="s1">&#39;numeric&#39;</span><span class="p">:</span> <span class="n">numeric_features</span><span class="p">,</span>
+            <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">raw_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="p">})</span>
+
+        <span class="k">return</span> <span class="n">aligned_data</span>
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h4>2.2.3 データ品質管理<a class="headerlink" href="#id14" title="Link to this heading"></a></h4>
+<p><strong>品質チェック項目</strong>:</p>
+<ul class="simple">
+<li><p>データ完全性（欠損率 &lt; 5%）</p></li>
+<li><p>時間整合性（タイムスタンプの正確性）</p></li>
+<li><p>異常値検知（統計的・MLベース）</p></li>
+<li><p>重複データ除去</p></li>
+</ul>
+<p><strong>品質メトリクス</strong>:</p>
+<ul class="simple">
+<li><p>データ鮮度スコア</p></li>
+<li><p>信頼度スコア</p></li>
+<li><p>ノイズ率</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id15">
+<h2>3. 特徴量エンジニアリング<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="id16">
+<h3>3.1 テキスト特徴量<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<section id="id17">
+<h4>3.1.1 感情分析アプローチ<a class="headerlink" href="#id17" title="Link to this heading"></a></h4>
+<p><strong>ハイブリッド感情分析モデル</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">HybridSentimentAnalyzer</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># BERTベース感情分類器</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bert_classifier</span> <span class="o">=</span> <span class="n">AutoModelForSequenceClassification</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+            <span class="s2">&quot;nlptown/bert-base-multilingual-uncased-sentiment&quot;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 金融ドメイン特化辞書</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">financial_lexicon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_financial_lexicon</span><span class="p">()</span>
+
+        <span class="c1"># 感情強度エンコーダー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intensity_encoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">768</span><span class="p">,</span> <span class="mi">256</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">()</span>  <span class="c1"># -1 to 1</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">analyze_sentiment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;包括的な感情分析&quot;&quot;&quot;</span>
+        <span class="c1"># BERTベース分類</span>
+        <span class="n">bert_sentiment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bert_classifier</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="c1"># 辞書ベーススコア</span>
+        <span class="n">lexicon_score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_lexicon_score</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="c1"># 文脈依存強度</span>
+        <span class="n">intensity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">intensity_encoder</span><span class="p">(</span><span class="n">bert_sentiment</span><span class="o">.</span><span class="n">embeddings</span><span class="p">)</span>
+
+        <span class="c1"># 統合スコア</span>
+        <span class="n">final_score</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fuse_sentiment_scores</span><span class="p">(</span>
+            <span class="n">bert_sentiment</span><span class="p">,</span> <span class="n">lexicon_score</span><span class="p">,</span> <span class="n">intensity</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;sentiment_score&#39;</span><span class="p">:</span> <span class="n">final_score</span><span class="p">,</span>
+            <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_confidence</span><span class="p">(</span><span class="n">bert_sentiment</span><span class="p">,</span> <span class="n">lexicon_score</span><span class="p">),</span>
+            <span class="s1">&#39;intensity&#39;</span><span class="p">:</span> <span class="n">intensity</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span>
+            <span class="s1">&#39;categories&#39;</span><span class="p">:</span> <span class="n">bert_sentiment</span><span class="o">.</span><span class="n">categories</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>感情特徴量</strong>:</p>
+<ul class="simple">
+<li><p>極性スコア（-1: 非常にネガティブ, +1: 非常にポジティブ）</p></li>
+<li><p>強度スコア（感情の強さ）</p></li>
+<li><p>信頼度スコア（分析の確信度）</p></li>
+<li><p>カテゴリ分布（positive/neutral/negativeの確率）</p></li>
+</ul>
+</section>
+<section id="id18">
+<h4>3.1.2 テキスト埋め込み<a class="headerlink" href="#id18" title="Link to this heading"></a></h4>
+<p><strong>マルチスケール埋め込み</strong>:</p>
+<ul class="simple">
+<li><p>単語レベル: Word2Vec / GloVe</p></li>
+<li><p>文レベル: BERT / RoBERTa</p></li>
+<li><p>文脈レベル: Longformer（長文対応）</p></li>
+</ul>
+<p><strong>ドメイン適応</strong>:</p>
+<ul class="simple">
+<li><p>金融ニュース特化のファインチューニング</p></li>
+<li><p>専門用語辞書の統合</p></li>
+<li><p>時系列適応（市場状態による重み調整）</p></li>
+</ul>
+</section>
+</section>
+<section id="id19">
+<h3>3.2 数値特徴量<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<section id="id20">
+<h4>3.2.1 経済指標処理<a class="headerlink" href="#id20" title="Link to this heading"></a></h4>
+<p><strong>特徴量生成</strong>:</p>
+<ul class="simple">
+<li><p>絶対値特徴量（GDP、失業率など）</p></li>
+<li><p>変化率特徴量（前月比、前年比）</p></li>
+<li><p>季節調整済み特徴量</p></li>
+<li><p>標準化特徴量（Z-score正規化）</p></li>
+</ul>
+<p><strong>欠損処理</strong>:</p>
+<ul class="simple">
+<li><p>線形補間（短期欠損）</p></li>
+<li><p>季節性モデル補完（季節パターン）</p></li>
+<li><p>MLベース補完（高度な欠損）</p></li>
+</ul>
+</section>
+<section id="id21">
+<h4>3.2.2 時系列整合<a class="headerlink" href="#id21" title="Link to this heading"></a></h4>
+<p><strong>時間軸調整</strong>:</p>
+<ul class="simple">
+<li><p>日次データ → 時間軸補間</p></li>
+<li><p>月次データ → 日次リサンプリング</p></li>
+<li><p>イベントベース → 時間軸マッピング</p></li>
+</ul>
+</section>
+</section>
+<section id="id22">
+<h3>3.3 クロスモーダル特徴量<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<section id="id23">
+<h4>3.3.1 モダリティ間関係<a class="headerlink" href="#id23" title="Link to this heading"></a></h4>
+<p><strong>相関分析</strong>:</p>
+<ul class="simple">
+<li><p>ニュース感情 vs 価格変動の時系列相関</p></li>
+<li><p>経済指標 vs 市場センチメントの関係性</p></li>
+<li><p>複数モダリティの相互作用分析</p></li>
+</ul>
+<p><strong>因果関係推論</strong>:</p>
+<ul class="simple">
+<li><p>Granger因果性検定</p></li>
+<li><p>構造方程式モデリング（SEM）</p></li>
+<li><p>ベイジアンネットワーク</p></li>
+</ul>
+</section>
+<section id="id24">
+<h4>3.3.2 統合特徴量<a class="headerlink" href="#id24" title="Link to this heading"></a></h4>
+<p><strong>マルチモーダル特徴量</strong>:</p>
+<ul class="simple">
+<li><p>感情加重価格特徴量</p></li>
+<li><p>経済状況調整センチメント</p></li>
+<li><p>クロスモーダル相互作用項</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>4. アーキテクチャ設計<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>4.1 全体アーキテクチャ<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>┌─────────────────────────────────────────────────────────────┐
+│                    MultiModal Trading AI                     │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐           │
+│  │  Text       │ │  Numeric    │ │  Price      │           │
+│  │  Encoder    │ │  Encoder    │ │  Encoder    │           │
+│  └─────────────┘ └─────────────┘ └─────────────┘           │
+│           │             │             │                     │
+│           └──────┬──────┼──────┬──────┘                     │
+│                  │      │      │                            │
+│           ┌──────▼──────▼──────▼──────┐                     │
+│           │   Cross-Modal Attention   │                     │
+│           └───────────────────────────┘                     │
+│                           │                                 │
+│           ┌───────────────▼───────────────┐                 │
+│           │   Temporal Integration       │                 │
+│           │   (BiLSTM + Transformer)     │                 │
+│           └───────────────────────────┬───┘                 │
+│                           │           │                     │
+│           ┌───────────────▼───────────▼───────────────┐     │
+│           │         SAC Agent Core                     │     │
+│           │  (Actor + Twin Critics + Auto Entropy)    │     │
+│           └───────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>4.2 各コンポーネント詳細<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<section id="id28">
+<h4>4.2.1 モダリティ別エンコーダー<a class="headerlink" href="#id28" title="Link to this heading"></a></h4>
+<p><strong>テキストエンコーダー</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TextModalityEncoder</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">embedding_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span> <span class="o">=</span> <span class="n">AutoModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s1">&#39;bert-base-multilingual-cased&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sentiment_head</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">embedding_dim</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># pos/neu/neg</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">projection</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">embedding_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_ids</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">):</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bert_model</span><span class="p">(</span><span class="n">input_ids</span><span class="p">,</span> <span class="n">attention_mask</span><span class="p">)</span>
+        <span class="n">embeddings</span> <span class="o">=</span> <span class="n">outputs</span><span class="o">.</span><span class="n">last_hidden_state</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">:]</span>  <span class="c1"># CLS token</span>
+
+        <span class="n">sentiment_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sentiment_head</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+        <span class="n">projected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projection</span><span class="p">(</span><span class="n">embeddings</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">projected</span><span class="p">,</span> <span class="n">sentiment_logits</span>
+</pre></div>
+</div>
+<p><strong>数値エンコーダー</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">NumericModalityEncoder</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.1</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id29">
+<h4>4.2.2 クロスモーダル・アテンション<a class="headerlink" href="#id29" title="Link to this heading"></a></h4>
+<p><strong>マルチヘッド・アテンション機構</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CrossModalAttention</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attention</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MultiheadAttention</span><span class="p">(</span>
+            <span class="n">embed_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ffn</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span> <span class="o">*</span> <span class="mi">4</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">,</span> <span class="n">key_value</span><span class="p">,</span> <span class="n">key_padding_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># Self-attention with residual connection</span>
+        <span class="n">attn_output</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">(</span>
+            <span class="n">query</span><span class="p">,</span> <span class="n">key_value</span><span class="p">,</span> <span class="n">key_value</span><span class="p">,</span>
+            <span class="n">key_padding_mask</span><span class="o">=</span><span class="n">key_padding_mask</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add &amp; Norm</span>
+        <span class="n">query</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm1</span><span class="p">(</span><span class="n">query</span> <span class="o">+</span> <span class="n">attn_output</span><span class="p">)</span>
+
+        <span class="c1"># Feed Forward Network</span>
+        <span class="n">ffn_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ffn</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm2</span><span class="p">(</span><span class="n">query</span> <span class="o">+</span> <span class="n">ffn_output</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+</pre></div>
+</div>
+</section>
+<section id="id30">
+<h4>4.2.3 時間的統合レイヤー<a class="headerlink" href="#id30" title="Link to this heading"></a></h4>
+<p><strong>BiLSTM + Transformerハイブリッド</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">TemporalIntegrationLayer</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># BiLSTM for temporal dependencies</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">bilstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="n">hidden_dim</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span><span class="p">,</span>
+            <span class="n">bidirectional</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Transformer for long-range dependencies</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformer_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">TransformerEncoderLayer</span><span class="p">(</span>
+            <span class="n">d_model</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">nhead</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+            <span class="n">dim_feedforward</span><span class="o">=</span><span class="n">hidden_dim</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">TransformerEncoder</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">transformer_layer</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_projection</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">attention_mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># BiLSTM processing</span>
+        <span class="n">lstm_out</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bilstm</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Transformer processing</span>
+        <span class="n">transformer_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transformer</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">)</span>
+
+        <span class="c1"># Final projection</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_projection</span><span class="p">(</span><span class="n">transformer_out</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">output</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="sac">
+<h3>4.3 SACアルゴリズム拡張<a class="headerlink" href="#sac" title="Link to this heading"></a></h3>
+<section id="id31">
+<h4>4.3.1 マルチモーダル状態表現<a class="headerlink" href="#id31" title="Link to this heading"></a></h4>
+<p><strong>拡張状態空間</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">State</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">price_features</span><span class="p">:</span> <span class="p">[</span><span class="n">batch</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="mi">156</span><span class="p">],</span>      <span class="c1"># 既存特徴量</span>
+    <span class="n">text_features</span><span class="p">:</span> <span class="p">[</span><span class="n">batch</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="mi">768</span><span class="p">],</span>       <span class="c1"># BERT埋め込み</span>
+    <span class="n">economic_features</span><span class="p">:</span> <span class="p">[</span><span class="n">batch</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="mi">20</span><span class="p">],</span>    <span class="c1"># 経済指標</span>
+    <span class="n">attention_mask</span><span class="p">:</span> <span class="p">[</span><span class="n">batch</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">]</span>            <span class="c1"># パディングマスク</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="sac-agent">
+<h4>4.3.2 マルチモーダルSAC Agent<a class="headerlink" href="#sac-agent" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">MultiModalSACAgent</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">price_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
+                 <span class="n">text_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">768</span><span class="p">,</span>
+                 <span class="n">economic_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+                 <span class="n">action_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+                 <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="c1"># マルチモーダル特徴量エンコーダー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">feature_encoder</span> <span class="o">=</span> <span class="n">MultiModalFeatureEncoder</span><span class="p">(</span>
+            <span class="n">price_dim</span><span class="p">,</span> <span class="n">text_dim</span><span class="p">,</span> <span class="n">economic_dim</span><span class="p">,</span> <span class="n">hidden_dim</span>
+        <span class="p">)</span>
+
+        <span class="c1"># SAC Actor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actor</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="n">action_dim</span> <span class="o">*</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Twin Critics</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">critic1</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span> <span class="o">+</span> <span class="n">action_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">critic2</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span> <span class="o">+</span> <span class="n">action_dim</span><span class="p">,</span> <span class="n">hidden_dim</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">hidden_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 自動エントロピー調整</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log_alpha</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">):</span>
+        <span class="c1"># マルチモーダル特徴量エンコーディング</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_encoder</span><span class="p">(</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;price_features&#39;</span><span class="p">],</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;text_features&#39;</span><span class="p">],</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;economic_features&#39;</span><span class="p">],</span>
+            <span class="n">state</span><span class="p">[</span><span class="s1">&#39;attention_mask&#39;</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 最後のタイムステップを使用</span>
+        <span class="n">current_features</span> <span class="o">=</span> <span class="n">features</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="k">return</span> <span class="n">current_features</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id32">
+<h2>5. 実装計画<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="phase-1-1-2">
+<h3>5.1 Phase 1: 基盤構築（1-2ヶ月）<a class="headerlink" href="#phase-1-1-2" title="Link to this heading"></a></h3>
+<section id="id33">
+<h4>5.1.1 データ収集インフラ構築<a class="headerlink" href="#id33" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> FRED API統合</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> NewsAPI統合</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Alpha Vantage統合</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> データキャッシュシステム実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 品質チェック機能実装</p></li>
+</ul>
+</section>
+<section id="id34">
+<h4>5.1.2 特徴量エンジニアリング<a class="headerlink" href="#id34" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 感情分析モデル実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> テキスト埋め込み生成</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 数値データ前処理</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> クロスモーダル特徴量設計</p></li>
+</ul>
+</section>
+<section id="id35">
+<h4>5.1.3 アーキテクチャ実装<a class="headerlink" href="#id35" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> モダリティ別エンコーダー実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> クロスモーダル・アテンション実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 時間的統合レイヤー実装</p></li>
+</ul>
+</section>
+</section>
+<section id="phase-2-2-3">
+<h3>5.2 Phase 2: 統合学習（2-3ヶ月）<a class="headerlink" href="#phase-2-2-3" title="Link to this heading"></a></h3>
+<section id="id36">
+<h4>5.2.1 SACアルゴリズム拡張<a class="headerlink" href="#id36" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> マルチモーダル状態表現統合</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Actor/Criticネットワーク拡張</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 自動エントロピー調整実装</p></li>
+</ul>
+</section>
+<section id="id37">
+<h4>5.2.2 トレーニングパイプライン<a class="headerlink" href="#id37" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> マルチモーダルデータローダー実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> トレーニングループ拡張</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 評価メトリクス追加</p></li>
+</ul>
+</section>
+<section id="id38">
+<h4>5.2.3 合成データ統合<a class="headerlink" href="#id38" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 市場状態ベース生成器実装</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> データ拡張パイプライン構築</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 品質評価システム実装</p></li>
+</ul>
+</section>
+</section>
+<section id="phase-3-3-6">
+<h3>5.3 Phase 3: 最適化・運用化（3-6ヶ月）<a class="headerlink" href="#phase-3-3-6" title="Link to this heading"></a></h3>
+<section id="id39">
+<h4>5.3.1 パフォーマンス最適化<a class="headerlink" href="#id39" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> モデル圧縮（量子化・蒸留）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 推論速度最適化</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> メモリ使用量削減</p></li>
+</ul>
+</section>
+<section id="id40">
+<h4>5.3.2 運用システム構築<a class="headerlink" href="#id40" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> リアルタイムデータ処理</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> モデル更新パイプライン</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> モニタリング・ログシステム</p></li>
+</ul>
+</section>
+<section id="id41">
+<h4>5.3.3 評価・検証<a class="headerlink" href="#id41" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バックテスト拡張</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> A/Bテストフレームワーク</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 運用リスク評価</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id42">
+<h2>6. 評価方法<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
+<section id="id43">
+<h3>6.1 定量評価<a class="headerlink" href="#id43" title="Link to this heading"></a></h3>
+<section id="id44">
+<h4>6.1.1 パフォーマンスメトリクス<a class="headerlink" href="#id44" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>予測精度</strong>: RMSE, MAE, 相関係数</p></li>
+<li><p><strong>取引成績</strong>: Sharpe ratio, Sortino ratio, Calmar ratio</p></li>
+<li><p><strong>リスク指標</strong>: VaR, CVaR, Maximum Drawdown</p></li>
+</ul>
+</section>
+<section id="id45">
+<h4>6.1.2 モダリティ別貢献度<a class="headerlink" href="#id45" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Shapley値</strong>: 各モダリティの貢献度分析</p></li>
+<li><p><strong>特徴量重要度</strong>: Permutation importance</p></li>
+<li><p><strong>部分依存プロット</strong>: モダリティ間相互作用分析</p></li>
+</ul>
+</section>
+</section>
+<section id="id46">
+<h3>6.2 定性評価<a class="headerlink" href="#id46" title="Link to this heading"></a></h3>
+<section id="id47">
+<h4>6.2.1 説明可能性<a class="headerlink" href="#id47" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>取引判断説明</strong>: 自然言語による根拠生成</p></li>
+<li><p><strong>特徴量寄与</strong>: 各モダリティの影響度可視化</p></li>
+<li><p><strong>意思決定プロセス</strong>: アテンション重みの分析</p></li>
+</ul>
+</section>
+<section id="id48">
+<h4>6.2.2 堅牢性評価<a class="headerlink" href="#id48" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>データ欠損耐性</strong>: 各モダリティ欠損時の性能維持</p></li>
+<li><p><strong>ノイズ耐性</strong>: ノイズ混入時の安定性</p></li>
+<li><p><strong>分布シフト耐性</strong>: 市場環境変化への適応性</p></li>
+</ul>
+</section>
+</section>
+<section id="id49">
+<h3>6.3 比較評価<a class="headerlink" href="#id49" title="Link to this heading"></a></h3>
+<section id="id50">
+<h4>6.3.1 ベースラインモデル比較<a class="headerlink" href="#id50" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>単一モーダルSAC</strong>: 価格データのみ</p></li>
+<li><p><strong>テキストのみSAC</strong>: ニュース感情のみ</p></li>
+<li><p><strong>数値のみSAC</strong>: 経済指標のみ</p></li>
+</ul>
+</section>
+<section id="id51">
+<h4>6.3.2 市場状態別評価<a class="headerlink" href="#id51" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>強気相場</strong>: 各モデルのパフォーマンス</p></li>
+<li><p><strong>弱気相場</strong>: リスク管理能力</p></li>
+<li><p><strong>高ボラティリティ</strong>: 安定性評価</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id52">
+<h2>7. リスク評価と対策<a class="headerlink" href="#id52" title="Link to this heading"></a></h2>
+<section id="id53">
+<h3>7.1 技術的リスク<a class="headerlink" href="#id53" title="Link to this heading"></a></h3>
+<section id="id54">
+<h4>7.1.1 データ品質リスク<a class="headerlink" href="#id54" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: 多重データソース、品質チェック、欠損補完</p></li>
+<li><p><strong>影響</strong>: 中程度（バックアップデータで対応可能）</p></li>
+</ul>
+</section>
+<section id="id55">
+<h4>7.1.2 計算コスト増加<a class="headerlink" href="#id55" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: モデル圧縮、効率的アーキテクチャ、GPU最適化</p></li>
+<li><p><strong>影響</strong>: 中程度（既存インフラで対応可能）</p></li>
+</ul>
+</section>
+<section id="id56">
+<h4>7.1.3 学習不安定性<a class="headerlink" href="#id56" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: 段階的学習、安定化テクニック、早期停止</p></li>
+<li><p><strong>影響</strong>: 高程度（慎重なチューニングが必要）</p></li>
+</ul>
+</section>
+</section>
+<section id="id57">
+<h3>7.2 運用リスク<a class="headerlink" href="#id57" title="Link to this heading"></a></h3>
+<section id="api">
+<h4>7.2.1 API依存リスク<a class="headerlink" href="#api" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: 複数データソース、キャッシュシステム、ローカルデータ活用</p></li>
+<li><p><strong>影響</strong>: 中程度（無料枠制限、API停止の可能性）</p></li>
+</ul>
+</section>
+<section id="id58">
+<h4>7.2.2 市場適応リスク<a class="headerlink" href="#id58" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: 継続学習、ドリフト検知、モデル更新パイプライン</p></li>
+<li><p><strong>影響</strong>: 高程度（金融市場の変化が激しい）</p></li>
+</ul>
+</section>
+<section id="id59">
+<h4>7.2.3 説明可能性リスク<a class="headerlink" href="#id59" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>対策</strong>: SHAP統合、説明生成モデル、ドキュメント整備</p></li>
+<li><p><strong>影響</strong>: 中程度（規制遵守の観点から重要）</p></li>
+</ul>
+</section>
+</section>
+<section id="id60">
+<h3>7.3 緩和戦略<a class="headerlink" href="#id60" title="Link to this heading"></a></h3>
+<section id="id61">
+<h4>7.3.1 段階的導入<a class="headerlink" href="#id61" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Phase 1</strong>: データ統合検証（リスク低）</p></li>
+<li><p><strong>Phase 2</strong>: モデル学習検証（リスク中）</p></li>
+<li><p><strong>Phase 3</strong>: 運用統合（リスク高）</p></li>
+</ul>
+</section>
+<section id="id62">
+<h4>7.3.2 フォールバック戦略<a class="headerlink" href="#id62" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>データ欠損時</strong>: 直近データ使用、統計的補完</p></li>
+<li><p><strong>モデル故障時</strong>: 単一モーダルモデルへの自動切り替え</p></li>
+<li><p><strong>API停止時</strong>: キャッシュデータ使用、代替ソース切り替え</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id63">
+<h2>8. 成功基準とマイルストーン<a class="headerlink" href="#id63" title="Link to this heading"></a></h2>
+<section id="id64">
+<h3>8.1 技術的成功基準<a class="headerlink" href="#id64" title="Link to this heading"></a></h3>
+<section id="phase-1">
+<h4>8.1.1 Phase 1完了基準<a class="headerlink" href="#phase-1" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> データ収集パイプラインの安定稼働（99%以上の uptime）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 感情分析精度 &gt; 85%（金融ニュース特化）</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> クロスモーダル特徴量の生成完了</p></li>
+</ul>
+</section>
+<section id="phase-2">
+<h4>8.1.2 Phase 2完了基準<a class="headerlink" href="#phase-2" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> マルチモーダルSACの学習収束</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ベースラインモデル比 +10%以上の性能向上</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 学習安定性（分散 &lt; 5%）</p></li>
+</ul>
+</section>
+<section id="phase-3">
+<h4>8.1.3 Phase 3完了基準<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h4>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 運用システムの24/7安定稼働</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> リアルタイム推論レイテンシ &lt; 100ms</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 月次更新サイクルの確立</p></li>
+</ul>
+</section>
+</section>
+<section id="id65">
+<h3>8.2 ビジネス的成功基準<a class="headerlink" href="#id65" title="Link to this heading"></a></h3>
+<section id="id66">
+<h4>8.2.1 パフォーマンス目標<a class="headerlink" href="#id66" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Sharpe ratio</strong>: 既存モデル比 +15%以上</p></li>
+<li><p><strong>最大ドローダウン</strong>: 既存モデル比 -20%以下</p></li>
+<li><p><strong>年間リターン</strong>: 安定したプラスリターン</p></li>
+</ul>
+</section>
+<section id="id67">
+<h4>8.2.2 運用目標<a class="headerlink" href="#id67" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>可用性</strong>: 99.9%以上のシステム可用性</p></li>
+<li><p><strong>メンテナンス性</strong>: 月次更新コスト &lt; 10万円</p></li>
+<li><p><strong>拡張性</strong>: 新モダリティ追加時の開発期間 &lt; 1ヶ月</p></li>
+</ul>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id68">
+<h2>9. 技術スタックと依存関係<a class="headerlink" href="#id68" title="Link to this heading"></a></h2>
+<section id="id69">
+<h3>9.1 主要ライブラリ<a class="headerlink" href="#id69" title="Link to this heading"></a></h3>
+<section id="id70">
+<h4>9.1.1 深層学習<a class="headerlink" href="#id70" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>PyTorch</strong>: 2.0+（マルチモーダル学習コア）</p></li>
+<li><p><strong>Transformers</strong>: 4.20+（BERT/RoBERTaモデル）</p></li>
+<li><p><strong>TorchText</strong>: 0.15+（テキスト処理）</p></li>
+</ul>
+</section>
+<section id="id71">
+<h4>9.1.2 データ処理<a class="headerlink" href="#id71" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>pandas</strong>: 2.0+（時系列データ処理）</p></li>
+<li><p><strong>numpy</strong>: 1.24+（数値計算）</p></li>
+<li><p><strong>scipy</strong>: 1.10+（統計処理）</p></li>
+</ul>
+</section>
+<section id="id72">
+<h4>9.1.3 API統合<a class="headerlink" href="#id72" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>requests</strong>: 2.28+（HTTPクライアント）</p></li>
+<li><p><strong>fredapi</strong>: 0.5+（FREDデータ取得）</p></li>
+<li><p><strong>alpha_vantage</strong>: 2.3+（金融データ取得）</p></li>
+</ul>
+</section>
+</section>
+<section id="id73">
+<h3>9.2 インフラ要件<a class="headerlink" href="#id73" title="Link to this heading"></a></h3>
+<section id="id74">
+<h4>9.2.1 計算リソース<a class="headerlink" href="#id74" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>トレーニング</strong>: GPU (NVIDIA RTX 3090以上推奨)</p></li>
+<li><p><strong>推論</strong>: CPU (Intel i7以上) または GPU</p></li>
+<li><p><strong>メモリ</strong>: 32GB以上（大規模モデル対応）</p></li>
+</ul>
+</section>
+<section id="id75">
+<h4>9.2.2 ストレージ<a class="headerlink" href="#id75" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>データ</strong>: 500GB SSD（時系列データ蓄積）</p></li>
+<li><p><strong>モデル</strong>: 100GB SSD（複数モデル保存）</p></li>
+<li><p><strong>ログ</strong>: 200GB HDD（運用ログ蓄積）</p></li>
+</ul>
+</section>
+</section>
+<section id="id76">
+<h3>9.3 開発環境<a class="headerlink" href="#id76" title="Link to this heading"></a></h3>
+<section id="python">
+<h4>9.3.1 Python環境<a class="headerlink" href="#python" title="Link to this heading"></a></h4>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># environment.yml</span>
+<span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">multimodal-trading</span>
+<span class="nt">channels</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">conda-forge</span>
+<span class="nt">dependencies</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python=3.10</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pytorch=2.0</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">torchvision</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">torchaudio</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">transformers</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">datasets</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pandas</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">numpy</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scipy</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">matplotlib</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">seaborn</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">jupyter</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scikit-learn</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pip</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">pip</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fredapi</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">alpha_vantage</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">newsapi-python</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id77">
+<h2>10. 結論と次のステップ<a class="headerlink" href="#id77" title="Link to this heading"></a></h2>
+<section id="id78">
+<h3>10.1 プロジェクトの意義<a class="headerlink" href="#id78" title="Link to this heading"></a></h3>
+<p>マルチモーダル学習の実装により、SAC v421は単なるテクニカル分析AIから、市場全体を包括的に理解するインテリジェントな取引システムへと進化する。この進化は、以下の点で画期的である：</p>
+<ol class="arabic simple">
+<li><p><strong>市場理解の深化</strong>: 価格以外の情報源を統合し、より人間らしい市場理解を実現</p></li>
+<li><p><strong>適応性の向上</strong>: ニュースや経済イベントによる市場変化に迅速に対応</p></li>
+<li><p><strong>リスク管理の強化</strong>: 複数情報源による予測の確度向上とリスク分散</p></li>
+</ol>
+</section>
+<section id="id79">
+<h3>10.2 次のステップ<a class="headerlink" href="#id79" title="Link to this heading"></a></h3>
+<section id="id80">
+<h4>10.2.1 即時アクション<a class="headerlink" href="#id80" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>データソース調査</strong>: FRED, NewsAPI, Alpha Vantageの利用可能性確認</p></li>
+<li><p><strong>PoC開発</strong>: 小規模なマルチモーダル学習の実験</p></li>
+<li><p><strong>インフラ準備</strong>: GPU環境とデータ収集システムの整備</p></li>
+</ol>
+</section>
+<section id="id81">
+<h4>10.2.2 中期計画<a class="headerlink" href="#id81" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>チーム体制</strong>: マルチモーダル専門家のアサイン検討</p></li>
+<li><p><strong>予算確保</strong>: 計算リソースとAPI利用料の予算化</p></li>
+<li><p><strong>パートナー開拓</strong>: データプロバイダーとの連携検討</p></li>
+</ol>
+</section>
+<section id="id82">
+<h4>10.2.3 長期ビジョン<a class="headerlink" href="#id82" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>エコシステム構築</strong>: 金融AIプラットフォームとしての拡張</p></li>
+<li><p><strong>学術連携</strong>: 大学・研究機関との共同研究</p></li>
+<li><p><strong>産業応用</strong>: 他の金融機関への技術提供</p></li>
+</ol>
+</section>
+</section>
+<section id="id83">
+<h3>10.3 最終目標<a class="headerlink" href="#id83" title="Link to this heading"></a></h3>
+<p>2026年までに、世界最高レベルのマルチモーダル取引AIシステムを確立し、安定した超過リターンを継続的に実現するシステムを構築する。</p>
+<hr class="docutils" />
+<p><strong>文責</strong>: AI Assistant
+<strong>最終更新</strong>: 2025-10-17
+<strong>バージョン</strong>: 1.0
+<strong>次のレビューポイント</strong>: 2025-11-17（Phase 1完了予定）</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

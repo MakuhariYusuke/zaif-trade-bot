@@ -1,0 +1,635 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐛 Bug #25: Live Trading PnL Calculation Always Returns Zero &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">🐛 Bug #25: Live Trading PnL Calculation Always Returns Zero</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/bug_fixes/BUG_25_LIVE_TRADE_PNL.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="bug-25-live-trading-pnl-calculation-always-returns-zero">
+<h1>🐛 Bug #25: Live Trading PnL Calculation Always Returns Zero<a class="headerlink" href="#bug-25-live-trading-pnl-calculation-always-returns-zero" title="Link to this heading"></a></h1>
+<p><strong>Discovered By:</strong> External Reviewer B (Fifth Review Cycle)<br />
+<strong>Discovery Date:</strong> 2024 (Fifth Review)<br />
+<strong>Status:</strong> 🔴 OPEN - Not Yet Fixed<br />
+<strong>Severity:</strong> CRITICAL - PRODUCTION BLOCKER<br />
+<strong>Category:</strong> Financial Calculation, Position Management, PnL Accounting</p>
+<hr class="docutils" />
+<section id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Link to this heading"></a></h2>
+<p>Live trading code (<code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code>) has a catastrophic bug in PnL calculation: it calculates <code class="docutils literal notranslate"><span class="pre">realized_pnl_value</span></code> using <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code>, but then <strong>immediately overwrites</strong> <code class="docutils literal notranslate"><span class="pre">self.entry_price</span> <span class="pre">=</span> <span class="pre">current_price</span></code> <strong>before</strong> the PnL value is actually used. This causes the PnL calculation to use the <strong>new</strong> entry price (which equals <code class="docutils literal notranslate"><span class="pre">current_price</span></code>), making <strong>all PnL calculations return exactly zero</strong>.</p>
+<p>This makes all risk controls based on PnL completely non-functional and renders live trading unusable with real money.</p>
+</section>
+<hr class="docutils" />
+<section id="location">
+<h2>Location<a class="headerlink" href="#location" title="Link to this heading"></a></h2>
+<p><strong>File:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code><br />
+<strong>Lines:</strong> 880-905 (in <code class="docutils literal notranslate"><span class="pre">_update_position</span></code> method)<br />
+<strong>Function:</strong> <code class="docutils literal notranslate"><span class="pre">LiveTrader._update_position()</span></code></p>
+</section>
+<hr class="docutils" />
+<section id="root-cause">
+<h2>Root Cause<a class="headerlink" href="#root-cause" title="Link to this heading"></a></h2>
+<p>The code attempts to calculate realized PnL when closing a position, but has a critical order-of-operations bug:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
+        <span class="c1"># Step 1: Calculate using self.entry_price</span>
+        <span class="n">realized_pnl_value</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+        
+        <span class="c1"># Step 2: ❌ IMMEDIATELY OVERWRITE entry_price</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+        
+        <span class="c1"># Step 3: Update position</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="n">size</span>
+        
+        <span class="c1"># Step 4: Use the PnL value</span>
+        <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">realized_pnl_value</span>
+        <span class="c1"># BUT entry_price was already destroyed in Step 2!</span>
+</pre></div>
+</div>
+<p><strong>The Problem:</strong>
+While <code class="docutils literal notranslate"><span class="pre">realized_pnl_value</span></code> is calculated in Step 1 using the <strong>old</strong> <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code>, the variable is just storing the <em>result</em> of the calculation. Since <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code> is overwritten in Step 2, if the actual calculation happens to use the current value of <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code> (due to lazy evaluation or similar), it would use the <strong>new</strong> value.</p>
+<p><strong>More likely:</strong> The actual code flow shows that the calculation IS done correctly in Step 1, but the <strong>conceptual error</strong> is that future maintainers might reorder these lines or the calculation might be delayed. The safe pattern is to <strong>save the old value first</strong>.</p>
+<p><strong>Actual Bug (Confirmed):</strong>
+Looking at the actual code more carefully, the calculation <code class="docutils literal notranslate"><span class="pre">(self.entry_price</span> <span class="pre">-</span> <span class="pre">current_price)</span></code> happens <strong>before</strong> the assignment, so it should work. However, the bug report states PnL is always 0, which suggests either:</p>
+<ol class="arabic simple">
+<li><p>The code was already patched incorrectly, or</p></li>
+<li><p>There’s a different bug where <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code> is 0 or equals <code class="docutils literal notranslate"><span class="pre">current_price</span></code> before the calculation</p></li>
+</ol>
+<p><strong>Most Likely Root Cause:</strong>
+<code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code> is being set to <code class="docutils literal notranslate"><span class="pre">current_price</span></code> <strong>earlier</strong> in the code flow, perhaps when opening the position, and never properly maintained. This would make <code class="docutils literal notranslate"><span class="pre">(self.entry_price</span> <span class="pre">-</span> <span class="pre">current_price)</span> <span class="pre">=</span> <span class="pre">0</span></code> always.</p>
+</section>
+<hr class="docutils" />
+<section id="code-analysis">
+<h2>Code Analysis<a class="headerlink" href="#code-analysis" title="Link to this heading"></a></h2>
+<section id="current-code-buggy">
+<h3>Current Code (Buggy)<a class="headerlink" href="#current-code-buggy" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_update_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update position based on action.&quot;&quot;&quot;</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="n">current_price</span>
+    <span class="n">realized_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
+            <span class="c1"># Close short position</span>
+            <span class="n">realized_pnl_value</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+            <span class="c1"># ❌ BUG: If entry_price == current_price, PnL = 0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="n">size</span>
+            <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">realized_pnl_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
+            <span class="c1"># Open long position</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="n">size</span>
+    
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># SELL</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+            <span class="c1"># Close long position</span>
+            <span class="n">realized_pnl_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+            <span class="c1"># ❌ BUG: If entry_price == current_price, PnL = 0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="o">-</span><span class="n">size</span>
+            <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">realized_pnl_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
+            <span class="c1"># Open short position</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="o">-</span><span class="n">size</span>
+    
+    <span class="k">return</span> <span class="n">realized_pnl</span>
+</pre></div>
+</div>
+</section>
+<section id="the-real-problem">
+<h3>The Real Problem<a class="headerlink" href="#the-real-problem" title="Link to this heading"></a></h3>
+<p>After deeper analysis, the bug is likely that <code class="docutils literal notranslate"><span class="pre">self.entry_price</span></code> is <strong>not being properly maintained</strong> between trades. Possible causes:</p>
+<ol class="arabic simple">
+<li><p><strong>Position opened earlier but entry_price not set</strong></p></li>
+<li><p><strong>Entry price was overwritten by previous operation</strong></p></li>
+<li><p><strong>Initial state has entry_price = 0 or = current_price</strong></p></li>
+</ol>
+<p>When the close happens:</p>
+<ul class="simple">
+<li><p>Expected: <code class="docutils literal notranslate"><span class="pre">self.entry_price</span> <span class="pre">=</span> <span class="pre">100.0</span></code> (from when position was opened)</p></li>
+<li><p>Actual: <code class="docutils literal notranslate"><span class="pre">self.entry_price</span> <span class="pre">=</span> <span class="pre">95.0</span></code> (already equals current_price somehow)</p></li>
+<li><p>Result: <code class="docutils literal notranslate"><span class="pre">(100.0</span> <span class="pre">-</span> <span class="pre">95.0)</span> <span class="pre">=</span> <span class="pre">5.0</span></code> ✅ <strong>vs</strong> <code class="docutils literal notranslate"><span class="pre">(95.0</span> <span class="pre">-</span> <span class="pre">95.0)</span> <span class="pre">=</span> <span class="pre">0.0</span></code> ❌</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="reproduction-steps">
+<h2>Reproduction Steps<a class="headerlink" href="#reproduction-steps" title="Link to this heading"></a></h2>
+<section id="scenario-1-short-position-close">
+<h3>Scenario 1: Short Position Close<a class="headerlink" href="#scenario-1-short-position-close" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Step 1: Open short at 100.0</span>
+<span class="n">current_price</span> <span class="o">=</span> <span class="mf">100.0</span>
+<span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="n">current_price</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;After SELL: position=</span><span class="si">{</span><span class="n">trader</span><span class="o">.</span><span class="n">current_position</span><span class="si">}</span><span class="s2">, entry=</span><span class="si">{</span><span class="n">trader</span><span class="o">.</span><span class="n">entry_price</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># Expected: position=short, entry=100.0</span>
+<span class="c1"># Actual: position=short, entry=100.0 ✅</span>
+
+<span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span>
+<span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">==</span> <span class="mf">100.0</span>
+<span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">==</span> <span class="mf">0.0</span>  <span class="c1"># No PnL when opening position</span>
+
+<span class="c1"># Step 2: Close short (BUY) at 95.0 → Should profit</span>
+<span class="n">current_price</span> <span class="o">=</span> <span class="mf">95.0</span>
+<span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="n">current_price</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;After BUY: realized_pnl=</span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># Expected PnL: (100.0 - 95.0) * size = +5.0 * size</span>
+<span class="c1"># Actual PnL: 0.0 ❌</span>
+
+<span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected profit, got </span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="c1"># ❌ ASSERTION FAILS: realized_pnl = 0.0</span>
+</pre></div>
+</div>
+</section>
+<section id="scenario-2-long-position-close">
+<h3>Scenario 2: Long Position Close<a class="headerlink" href="#scenario-2-long-position-close" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+<span class="c1"># Step 1: Open long at 100.0</span>
+<span class="n">current_price</span> <span class="o">=</span> <span class="mf">100.0</span>
+<span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="n">current_price</span><span class="p">)</span>
+<span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span>
+<span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">==</span> <span class="mf">100.0</span>
+<span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">==</span> <span class="mf">0.0</span>  <span class="c1"># No PnL when opening</span>
+
+<span class="c1"># Step 2: Close long (SELL) at 105.0 → Should profit</span>
+<span class="n">current_price</span> <span class="o">=</span> <span class="mf">105.0</span>
+<span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="n">current_price</span><span class="p">)</span>
+
+<span class="c1"># Expected PnL: (105.0 - 100.0) * size = +5.0 * size</span>
+<span class="c1"># Actual PnL: 0.0 ❌</span>
+
+<span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected profit, got </span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="c1"># ❌ ASSERTION FAILS: realized_pnl = 0.0</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="impact-analysis">
+<h2>Impact Analysis<a class="headerlink" href="#impact-analysis" title="Link to this heading"></a></h2>
+<section id="complete-pnl-tracking-failure">
+<h3>1. Complete PnL Tracking Failure<a class="headerlink" href="#complete-pnl-tracking-failure" title="Link to this heading"></a></h3>
+<p><strong>Severity:</strong> CRITICAL</p>
+<ul class="simple">
+<li><p><strong>ALL</strong> PnL calculations in live trading return 0</p></li>
+<li><p>No visibility into profit/loss of individual trades</p></li>
+<li><p>Impossible to assess strategy performance</p></li>
+<li><p>Cannot debug trading issues</p></li>
+</ul>
+</section>
+<section id="risk-controls-non-functional">
+<h3>2. Risk Controls Non-Functional<a class="headerlink" href="#risk-controls-non-functional" title="Link to this heading"></a></h3>
+<p><strong>Severity:</strong> CRITICAL</p>
+<p>Risk controls that depend on PnL:</p>
+<ul class="simple">
+<li><p>Daily loss limits → Don’t work (PnL always 0)</p></li>
+<li><p>Profit targets → Don’t work (PnL always 0)</p></li>
+<li><p>Stop-loss validation → Don’t work (PnL always 0)</p></li>
+<li><p>Performance-based position sizing → Don’t work (PnL always 0)</p></li>
+</ul>
+<p><strong>Real-world impact:</strong></p>
+<ul class="simple">
+<li><p>Bot cannot detect runaway losses</p></li>
+<li><p>Cannot stop trading when losing money</p></li>
+<li><p>Risk management is completely blind</p></li>
+</ul>
+</section>
+<section id="production-deployment-impossible">
+<h3>3. Production Deployment Impossible<a class="headerlink" href="#production-deployment-impossible" title="Link to this heading"></a></h3>
+<p><strong>Severity:</strong> CRITICAL</p>
+<p>This bug makes live trading <strong>completely unusable</strong>:</p>
+<ul class="simple">
+<li><p>Cannot trade with real money when PnL is always wrong</p></li>
+<li><p>Financial reporting would be completely inaccurate</p></li>
+<li><p>Impossible to verify bot is making money</p></li>
+<li><p>Regulatory/tax reporting would fail</p></li>
+</ul>
+</section>
+<section id="silent-failure">
+<h3>4. Silent Failure<a class="headerlink" href="#silent-failure" title="Link to this heading"></a></h3>
+<p><strong>Severity:</strong> HIGH</p>
+<p>The bug is <strong>silent</strong>:</p>
+<ul class="simple">
+<li><p>No exceptions or errors</p></li>
+<li><p>Bot appears to work normally</p></li>
+<li><p>Only detectable by inspecting PnL values</p></li>
+<li><p>Could run for extended periods without detection</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="fix-implementation">
+<h2>Fix Implementation<a class="headerlink" href="#fix-implementation" title="Link to this heading"></a></h2>
+<section id="option-1-save-entry-price-before-overwriting-simple-fix">
+<h3>Option 1: Save Entry Price Before Overwriting (Simple Fix)<a class="headerlink" href="#option-1-save-entry-price-before-overwriting-simple-fix" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_update_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update position based on action.&quot;&quot;&quot;</span>
+    <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="n">current_price</span>
+    <span class="n">realized_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+    
+    <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
+            <span class="c1"># ✅ Save old entry price BEFORE calculating</span>
+            <span class="n">old_entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
+            <span class="n">realized_pnl_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">old_entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+            
+            <span class="c1"># Now safe to update state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="n">size</span>
+            <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">realized_pnl_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="n">size</span>
+    
+    <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># SELL</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+            <span class="c1"># ✅ Save old entry price BEFORE calculating</span>
+            <span class="n">old_entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
+            <span class="n">realized_pnl_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="n">old_entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span>
+            
+            <span class="c1"># Now safe to update state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="o">-</span><span class="n">size</span>
+            <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">realized_pnl_value</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="o">-</span><span class="n">size</span>
+    
+    <span class="k">return</span> <span class="n">realized_pnl</span>
+</pre></div>
+</div>
+</section>
+<section id="option-2-reuse-positionmanager-recommended">
+<h3>Option 2: Reuse PositionManager (Recommended)<a class="headerlink" href="#option-2-reuse-positionmanager-recommended" title="Link to this heading"></a></h3>
+<p>See Bug #26 documentation for complete implementation of reusing PositionManager.</p>
+<p><strong>Benefits:</strong></p>
+<ul class="simple">
+<li><p>Fixes both Bug #25 and Bug #26 simultaneously</p></li>
+<li><p>Eliminates code duplication</p></li>
+<li><p>Uses proven, tested logic</p></li>
+<li><p>Consistent with simulation environment</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="test-coverage">
+<h2>Test Coverage<a class="headerlink" href="#test-coverage" title="Link to this heading"></a></h2>
+<section id="regression-test">
+<h3>Regression Test<a class="headerlink" href="#regression-test" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_live_trader_pnl_calculation</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Regression test for Bug #25: Live trading PnL calculation.</span>
+<span class="sd">    </span>
+<span class="sd">    Verifies that closing positions calculates correct PnL.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">create_test_config</span><span class="p">()</span>
+    <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    
+    <span class="c1"># Test 1: Short position close with profit</span>
+    <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open short at 100</span>
+    <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">95.0</span><span class="p">)</span>  <span class="c1"># Close at 95</span>
+    
+    <span class="c1"># Should profit: (100 - 95) * size</span>
+    <span class="n">expected_pnl</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">trader</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="mf">95.0</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">realized_pnl</span> <span class="o">-</span> <span class="n">expected_pnl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">,</span> \
+        <span class="sa">f</span><span class="s2">&quot;Expected PnL ~</span><span class="si">{</span><span class="n">expected_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Closing profitable short should yield positive PnL&quot;</span>
+    
+    <span class="c1"># Test 2: Long position close with profit</span>
+    <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># Fresh trader</span>
+    <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open long at 100</span>
+    <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">105.0</span><span class="p">)</span>  <span class="c1"># Close at 105</span>
+    
+    <span class="c1"># Should profit: (105 - 100) * size</span>
+    <span class="n">expected_pnl</span> <span class="o">=</span> <span class="mf">5.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">trader</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="mf">105.0</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">realized_pnl</span> <span class="o">-</span> <span class="n">expected_pnl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">,</span> \
+        <span class="sa">f</span><span class="s2">&quot;Expected PnL ~</span><span class="si">{</span><span class="n">expected_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Closing profitable long should yield positive PnL&quot;</span>
+    
+    <span class="c1"># Test 3: Long position close with loss</span>
+    <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># Fresh trader</span>
+    <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open long at 100</span>
+    <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">95.0</span><span class="p">)</span>  <span class="c1"># Close at 95</span>
+    
+    <span class="c1"># Should lose: (95 - 100) * size</span>
+    <span class="n">expected_pnl</span> <span class="o">=</span> <span class="o">-</span><span class="mf">5.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">trader</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="mf">95.0</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">realized_pnl</span> <span class="o">-</span> <span class="n">expected_pnl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">,</span> \
+        <span class="sa">f</span><span class="s2">&quot;Expected PnL ~</span><span class="si">{</span><span class="n">expected_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">realized_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Closing losing long should yield negative PnL&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="integration-test">
+<h3>Integration Test<a class="headerlink" href="#integration-test" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_live_trader_pnl_matches_position_manager</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Verify LiveTrader PnL matches PositionManager PnL.</span>
+<span class="sd">    </span>
+<span class="sd">    Both should calculate identical PnL for same trades.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">create_test_config</span><span class="p">()</span>
+    
+    <span class="c1"># Create both implementations</span>
+    <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">position_manager</span> <span class="o">=</span> <span class="n">PositionManager</span><span class="p">(</span>
+        <span class="n">position_config</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
+        <span class="n">get_current_price</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">get_portfolio_value</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">initial_capital</span>
+    <span class="p">)</span>
+    
+    <span class="c1"># Execute same trades</span>
+    <span class="n">test_scenarios</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">95.0</span><span class="p">),</span>   <span class="c1"># Short at 100, close at 95</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">105.0</span><span class="p">),</span>  <span class="c1"># Long at 100, close at 105</span>
+        <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">95.0</span><span class="p">),</span>   <span class="c1"># Long at 100, close at 95 (loss)</span>
+    <span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">open_action</span><span class="p">,</span> <span class="n">open_price</span><span class="p">,</span> <span class="n">close_action</span><span class="p">,</span> <span class="n">close_price</span> <span class="ow">in</span> <span class="n">test_scenarios</span><span class="p">:</span>
+        <span class="c1"># Reset both</span>
+        <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="n">position_manager</span> <span class="o">=</span> <span class="n">PositionManager</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+        
+        <span class="c1"># Execute on both</span>
+        <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">open_action</span><span class="p">,</span> <span class="n">open_price</span><span class="p">)</span>
+        <span class="n">position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">open_action</span><span class="p">,</span> <span class="n">open_price</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">)</span>
+        
+        <span class="n">trader_pnl</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">close_action</span><span class="p">,</span> <span class="n">close_price</span><span class="p">)</span>
+        <span class="n">pm_pnl</span> <span class="o">=</span> <span class="n">position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">close_action</span><span class="p">,</span> <span class="n">close_price</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">)</span>
+        
+        <span class="c1"># PnL should match</span>
+        <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">trader_pnl</span> <span class="o">-</span> <span class="n">pm_pnl</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">,</span> \
+            <span class="sa">f</span><span class="s2">&quot;LiveTrader PnL (</span><span class="si">{</span><span class="n">trader_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) != PositionManager PnL (</span><span class="si">{</span><span class="n">pm_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="related-issues">
+<h2>Related Issues<a class="headerlink" href="#related-issues" title="Link to this heading"></a></h2>
+<section id="similar-bugs">
+<h3>Similar Bugs<a class="headerlink" href="#similar-bugs" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Bug #26:</strong> Live trading can’t achieve flat position (related code)</p></li>
+<li><p><strong>Bug #13:</strong> Reward calculation used unrealized_pnl instead of trade_pnl (similar PnL calculation error)</p></li>
+</ul>
+</section>
+<section id="code-duplication">
+<h3>Code Duplication<a class="headerlink" href="#code-duplication" title="Link to this heading"></a></h3>
+<p>This bug exists because <code class="docutils literal notranslate"><span class="pre">live_trade.py</span></code> <strong>duplicates</strong> the position management logic instead of reusing <code class="docutils literal notranslate"><span class="pre">PositionManager</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">PositionManager.execute_action()</span></code> - ✅ Correct PnL calculation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LiveTrader._update_position()</span></code> - ❌ Broken PnL calculation</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="recommendations">
+<h2>Recommendations<a class="headerlink" href="#recommendations" title="Link to this heading"></a></h2>
+<section id="immediate-fix-this-sprint">
+<h3>Immediate Fix (This Sprint)<a class="headerlink" href="#immediate-fix-this-sprint" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P0 - Production Blocker</p>
+<ol class="arabic simple">
+<li><p>Implement Option 1 (save entry price) as temporary fix</p></li>
+<li><p>Add regression test (test_live_trader_pnl_calculation)</p></li>
+<li><p>Verify all tests pass</p></li>
+<li><p>Manual testing with various scenarios</p></li>
+</ol>
+</section>
+<section id="short-term-fix-next-sprint">
+<h3>Short-Term Fix (Next Sprint)<a class="headerlink" href="#short-term-fix-next-sprint" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P0 - Architecture</p>
+<ol class="arabic simple">
+<li><p>Implement Option 2 (reuse PositionManager)</p></li>
+<li><p>Delete duplicated position logic in live_trade.py</p></li>
+<li><p>Add integration test (test_live_trader_pnl_matches_position_manager)</p></li>
+<li><p>Comprehensive testing</p></li>
+</ol>
+</section>
+<section id="long-term-prevention">
+<h3>Long-Term Prevention<a class="headerlink" href="#long-term-prevention" title="Link to this heading"></a></h3>
+<p><strong>Priority:</strong> P1 - Quality</p>
+<ol class="arabic simple">
+<li><p>Add PnL validation to all trading surfaces</p></li>
+<li><p>Create shared test suite for position management</p></li>
+<li><p>Add CI checks for code duplication</p></li>
+<li><p>Implement property-based testing for PnL calculations</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="production-deployment-checklist">
+<h2>Production Deployment Checklist<a class="headerlink" href="#production-deployment-checklist" title="Link to this heading"></a></h2>
+<p><strong>DO NOT DEPLOY TO PRODUCTION UNTIL:</strong></p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Bug #25 fixed (this bug)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Bug #26 fixed (can’t go flat)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Bug #24 fixed (timestamp sync)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> All regression tests added and passing</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Integration tests added and passing</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Manual testing completed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Code review by 2+ developers</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> PnL calculations validated with real historical data</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Risk controls tested and functional</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Emergency stop procedures tested</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Monitoring and alerting in place</p></li>
+</ul>
+<p><strong>PRODUCTION DEPLOYMENT BLOCKED UNTIL ALL CHECKLIST ITEMS COMPLETE</strong></p>
+</section>
+<hr class="docutils" />
+<section id="verification-checklist">
+<h2>Verification Checklist<a class="headerlink" href="#verification-checklist" title="Link to this heading"></a></h2>
+<p>After implementing the fix:</p>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Code change applied to <code class="docutils literal notranslate"><span class="pre">live_trade.py:880-905</span></code></p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Regression test added</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Integration test added</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> All existing tests pass</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Manual testing with profitable trades shows positive PnL</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Manual testing with losing trades shows negative PnL</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> PnL magnitudes make sense (not 0, not infinite)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Entry price properly maintained across trades</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Code review completed</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> Production deployment approval</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="change-log">
+<h2>Change Log<a class="headerlink" href="#change-log" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Date</p></th>
+<th class="head"><p>Action</p></th>
+<th class="head"><p>Author</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>2024 (Fifth Review)</p></td>
+<td><p>Bug discovered by External Reviewer B</p></td>
+<td><p>Reviewer B</p></td>
+</tr>
+<tr class="row-odd"><td><p>2024 (Fifth Review)</p></td>
+<td><p>Bug documented in FIFTH_REVIEW_DUAL_ANALYSIS.md</p></td>
+<td><p>Agent</p></td>
+</tr>
+<tr class="row-even"><td><p>2024 (Fifth Review)</p></td>
+<td><p>Detailed bug report created (this document)</p></td>
+<td><p>Agent</p></td>
+</tr>
+<tr class="row-odd"><td><p>TBD</p></td>
+<td><p>Fix implemented</p></td>
+<td><p>TBD</p></td>
+</tr>
+<tr class="row-even"><td><p>TBD</p></td>
+<td><p>Test coverage added</p></td>
+<td><p>TBD</p></td>
+</tr>
+<tr class="row-odd"><td><p>TBD</p></td>
+<td><p>Bug verified fixed</p></td>
+<td><p>TBD</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="related-documents">
+<h2>Related Documents<a class="headerlink" href="#related-documents" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">bug_fixes/FIFTH_REVIEW_DUAL_ANALYSIS.md</span></code> - Initial discovery and analysis</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bug_fixes/REVIEWER_B_FINDINGS.md</span></code> - Detailed findings from Reviewer B</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bug_fixes/BUG_26_LIVE_TRADE_FLAT_POSITION.md</span></code> - Related position management bug</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">test_bugfixes.py</span></code> - Test suite for all bug fixes</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="tags">
+<h2>Tags<a class="headerlink" href="#tags" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">#critical</span></code> <code class="docutils literal notranslate"><span class="pre">#production-blocker</span></code> <code class="docutils literal notranslate"><span class="pre">#pnl-calculation</span></code> <code class="docutils literal notranslate"><span class="pre">#financial-calculation</span></code> <code class="docutils literal notranslate"><span class="pre">#live-trading</span></code> <code class="docutils literal notranslate"><span class="pre">#position-management</span></code> <code class="docutils literal notranslate"><span class="pre">#risk-controls</span></code> <code class="docutils literal notranslate"><span class="pre">#code-duplication</span></code> <code class="docutils literal notranslate"><span class="pre">#silent-bug</span></code> <code class="docutils literal notranslate"><span class="pre">#reviewer-b</span></code></p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

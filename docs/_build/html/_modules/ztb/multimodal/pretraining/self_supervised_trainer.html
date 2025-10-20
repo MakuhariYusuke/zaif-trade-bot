@@ -1,0 +1,713 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.multimodal.pretraining.self_supervised_trainer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../multimodal.html">ztb.multimodal</a></li>
+      <li class="breadcrumb-item active">ztb.multimodal.pretraining.self_supervised_trainer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.multimodal.pretraining.self_supervised_trainer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Self-Supervised Learning Trainer for SAC v421</span>
+<span class="sd">SAC v421向け自己教師あり学習トレーナー</span>
+
+<span class="sd">This module integrates multiple self-supervised learning techniques:</span>
+<span class="sd">- Masked Price Modeling (MPM)</span>
+<span class="sd">- Contrastive Learning (SimCLR-style)</span>
+<span class="sd">- Anomaly Detection Pre-training</span>
+
+<span class="sd">実装内容:</span>
+<span class="sd">- 多様な事前学習手法の統合</span>
+<span class="sd">- 段階的学習戦略</span>
+<span class="sd">- 金融時系列データへの適応</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.masked_price_modeling</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskedPriceModel</span><span class="p">,</span> <span class="n">MaskedPriceModelingTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.contrastive_learning</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContrastiveLearningModel</span><span class="p">,</span> <span class="n">ContrastiveLearningTrainer</span><span class="p">,</span> <span class="n">TimeSeriesAugmentation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.anomaly_detection_pretraining</span><span class="w"> </span><span class="kn">import</span> <span class="n">HybridAnomalyDetector</span><span class="p">,</span> <span class="n">AnomalyDetectionPretrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core.encoders</span><span class="w"> </span><span class="kn">import</span> <span class="n">PriceEncoder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.components.memory_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">MemoryManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SelfSupervisedTrainer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Integrated self-supervised learning trainer for financial data</span>
+<span class="sd">    金融データ向け統合自己教師あり学習トレーナー</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">156</span><span class="p">,</span>
+                 <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">,</span>
+                 <span class="n">checkpoint_dir</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;checkpoints/pretraining&#39;</span><span class="p">,</span>
+                 <span class="n">memory_manager</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">MemoryManager</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Self-Supervised Trainer</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            input_dim: 入力特徴量次元</span>
+<span class="sd">            device: デバイス</span>
+<span class="sd">            checkpoint_dir: チェックポイント保存ディレクトリ</span>
+<span class="sd">            memory_manager: メモリマネージャー（オプション）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span> <span class="o">=</span> <span class="n">input_dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Initialize memory manager</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span> <span class="o">=</span> <span class="n">memory_manager</span> <span class="ow">or</span> <span class="n">MemoryManager</span><span class="p">(</span>
+            <span class="n">memory_logging_enabled</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">memory_log_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="o">/</span> <span class="s1">&#39;memory_log.csv&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Initialize models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Initialize trainers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Training history</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;mpm&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;train_loss&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;val_loss&#39;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="s1">&#39;contrastive&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;train_loss&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;val_loss&#39;</span><span class="p">:</span> <span class="p">[]},</span>
+            <span class="s1">&#39;anomaly&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;epochs&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;train_loss&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;val_loss&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="p">}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SelfSupervisedTrainer initialized on device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;SelfSupervisedTrainer_init&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.initialize_masked_price_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.initialize_masked_price_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initialize_masked_price_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                    <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
+                                    <span class="n">num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+                                    <span class="n">num_heads</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span>
+                                    <span class="n">dropout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+                                    <span class="n">max_seq_len</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                                    <span class="n">mask_prob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span>
+                                    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Masked Price Modeling components</span>
+<span class="sd">        マスク価格モデリングコンポーネントの初期化</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="o">=</span> <span class="n">MaskedPriceModel</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span><span class="p">,</span>
+            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="n">num_layers</span><span class="p">,</span>
+            <span class="n">num_heads</span><span class="o">=</span><span class="n">num_heads</span><span class="p">,</span>
+            <span class="n">dropout</span><span class="o">=</span><span class="n">dropout</span><span class="p">,</span>
+            <span class="n">max_seq_len</span><span class="o">=</span><span class="n">max_seq_len</span><span class="p">,</span>
+            <span class="n">mask_prob</span><span class="o">=</span><span class="n">mask_prob</span>
+        <span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span> <span class="o">=</span> <span class="n">MaskedPriceModelingTrainer</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Masked Price Model initialized&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.initialize_contrastive_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.initialize_contrastive_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initialize_contrastive_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                   <span class="n">hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span>
+                                   <span class="n">projection_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+                                   <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+                                   <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">,</span>
+                                   <span class="n">augmentation_params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Contrastive Learning components</span>
+<span class="sd">        コントラスト学習コンポーネントの初期化</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="o">=</span> <span class="n">ContrastiveLearningModel</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span><span class="p">,</span>
+            <span class="n">hidden_dim</span><span class="o">=</span><span class="n">hidden_dim</span><span class="p">,</span>
+            <span class="n">projection_dim</span><span class="o">=</span><span class="n">projection_dim</span><span class="p">,</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span>
+        <span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+
+        <span class="c1"># Default augmentation parameters</span>
+        <span class="k">if</span> <span class="n">augmentation_params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">augmentation_params</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;shift_prob&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s1">&#39;noise_prob&#39;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span>
+                <span class="s1">&#39;scale_prob&#39;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+                <span class="s1">&#39;max_shift&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+                <span class="s1">&#39;noise_std&#39;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>
+                <span class="s1">&#39;scale_range&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">)</span>
+            <span class="p">}</span>
+
+        <span class="n">augmentation</span> <span class="o">=</span> <span class="n">TimeSeriesAugmentation</span><span class="p">(</span><span class="o">**</span><span class="n">augmentation_params</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span> <span class="o">=</span> <span class="n">ContrastiveLearningTrainer</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">augmentation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Contrastive Learning Model initialized&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.initialize_anomaly_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.initialize_anomaly_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initialize_anomaly_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                               <span class="n">hidden_dims</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">256</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">64</span><span class="p">],</span>
+                               <span class="n">latent_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                               <span class="n">lstm_hidden_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+                               <span class="n">lstm_num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+                               <span class="n">seq_len</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                               <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+                               <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-4</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Anomaly Detection components</span>
+<span class="sd">        異常検知コンポーネントの初期化</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="o">=</span> <span class="n">HybridAnomalyDetector</span><span class="p">(</span>
+            <span class="n">input_dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_dim</span><span class="p">,</span>
+            <span class="n">hidden_dims</span><span class="o">=</span><span class="n">hidden_dims</span><span class="p">,</span>
+            <span class="n">latent_dim</span><span class="o">=</span><span class="n">latent_dim</span><span class="p">,</span>
+            <span class="n">lstm_hidden_dim</span><span class="o">=</span><span class="n">lstm_hidden_dim</span><span class="p">,</span>
+            <span class="n">lstm_num_layers</span><span class="o">=</span><span class="n">lstm_num_layers</span><span class="p">,</span>
+            <span class="n">seq_len</span><span class="o">=</span><span class="n">seq_len</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span>
+        <span class="p">)</span>
+
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">AdamW</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">learning_rate</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span> <span class="o">=</span> <span class="n">AnomalyDetectionPretrainer</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Anomaly Detection Model initialized&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.train_masked_price_modeling">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.train_masked_price_modeling">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_masked_price_modeling</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                  <span class="n">train_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">val_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                  <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                                  <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                                  <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+                                  <span class="n">save_best</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train Masked Price Modeling</span>
+<span class="sd">        マスク価格モデリングの学習</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Masked Price Model not initialized&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting Masked Price Modeling training for </span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> epochs&quot;</span><span class="p">)</span>
+
+        <span class="n">best_val_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+            <span class="c1"># Training</span>
+            <span class="n">train_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_epoch_mpm</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Validation</span>
+            <span class="n">val_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">val_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Log progress</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MPM Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> - &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Train Loss: </span><span class="si">{</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Val Loss: </span><span class="si">{</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Record history</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;mpm&#39;</span><span class="p">][</span><span class="s1">&#39;epochs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;mpm&#39;</span><span class="p">][</span><span class="s1">&#39;train_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;mpm&#39;</span><span class="p">][</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Memory management: log usage and force GC every 10 epochs</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MPM_epoch_</span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="c1"># Early stopping</span>
+            <span class="k">if</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best_val_loss</span><span class="p">:</span>
+                <span class="n">best_val_loss</span> <span class="o">=</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+                <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">save_best</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">(</span><span class="s1">&#39;mpm_best&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">patience_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">patience_counter</span> <span class="o">&gt;=</span> <span class="n">patience</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Early stopping at epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># Final memory cleanup</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;MPM_training_complete&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Masked Price Modeling training completed&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.train_contrastive_learning">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.train_contrastive_learning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_contrastive_learning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                 <span class="n">train_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                 <span class="n">val_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                                 <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                                 <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                                 <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+                                 <span class="n">save_best</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train Contrastive Learning</span>
+<span class="sd">        コントラスト学習の学習</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Contrastive Learning Model not initialized&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting Contrastive Learning training for </span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> epochs&quot;</span><span class="p">)</span>
+
+        <span class="n">best_val_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+            <span class="c1"># Training</span>
+            <span class="n">train_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_epoch_cl</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Validation</span>
+            <span class="n">val_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">val_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Log progress</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CL Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> - &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Train Loss: </span><span class="si">{</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Val Loss: </span><span class="si">{</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Record history</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;contrastive&#39;</span><span class="p">][</span><span class="s1">&#39;epochs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;contrastive&#39;</span><span class="p">][</span><span class="s1">&#39;train_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;contrastive&#39;</span><span class="p">][</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Memory management: log usage and force GC every 10 epochs</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;CL_epoch_</span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="c1"># Early stopping</span>
+            <span class="k">if</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best_val_loss</span><span class="p">:</span>
+                <span class="n">best_val_loss</span> <span class="o">=</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+                <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">save_best</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">(</span><span class="s1">&#39;cl_best&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">patience_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">patience_counter</span> <span class="o">&gt;=</span> <span class="n">patience</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Early stopping at epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># Final memory cleanup</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;CL_training_complete&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Contrastive Learning training completed&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.train_anomaly_detection">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.train_anomaly_detection">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_anomaly_detection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                              <span class="n">train_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                              <span class="n">val_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                              <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+                              <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                              <span class="n">patience</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+                              <span class="n">save_best</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train Anomaly Detection</span>
+<span class="sd">        異常検知の学習</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Anomaly Detection Model not initialized&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting Anomaly Detection training for </span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> epochs&quot;</span><span class="p">)</span>
+
+        <span class="n">best_val_loss</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;inf&#39;</span><span class="p">)</span>
+        <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epochs</span><span class="p">):</span>
+            <span class="c1"># Training</span>
+            <span class="n">train_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_epoch_ad</span><span class="p">(</span><span class="n">train_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Validation</span>
+            <span class="n">val_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span><span class="o">.</span><span class="n">validate</span><span class="p">(</span><span class="n">val_data</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">)</span>
+
+            <span class="c1"># Log progress</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AD Epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">epochs</span><span class="si">}</span><span class="s2"> - &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Train Loss: </span><span class="si">{</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;Val Loss: </span><span class="si">{</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># Record history</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;anomaly&#39;</span><span class="p">][</span><span class="s1">&#39;epochs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;anomaly&#39;</span><span class="p">][</span><span class="s1">&#39;train_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">train_metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">[</span><span class="s1">&#39;anomaly&#39;</span><span class="p">][</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">])</span>
+
+            <span class="c1"># Memory management: log usage and force GC every 10 epochs</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">10</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;AD_epoch_</span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+            <span class="c1"># Early stopping</span>
+            <span class="k">if</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">best_val_loss</span><span class="p">:</span>
+                <span class="n">best_val_loss</span> <span class="o">=</span> <span class="n">val_metrics</span><span class="p">[</span><span class="s1">&#39;val_loss&#39;</span><span class="p">]</span>
+                <span class="n">patience_counter</span> <span class="o">=</span> <span class="mi">0</span>
+                <span class="k">if</span> <span class="n">save_best</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">(</span><span class="s1">&#39;ad_best&#39;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">patience_counter</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">if</span> <span class="n">patience_counter</span> <span class="o">&gt;=</span> <span class="n">patience</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Early stopping at epoch </span><span class="si">{</span><span class="n">epoch</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="c1"># Final memory cleanup</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_manager</span><span class="o">.</span><span class="n">log_memory_usage</span><span class="p">(</span><span class="s2">&quot;AD_training_complete&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Anomaly Detection training completed&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.train_all_stages">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.train_all_stages">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_all_stages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                        <span class="n">train_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                        <span class="n">val_data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+                        <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Train all self-supervised learning stages sequentially</span>
+<span class="sd">        全自己教師あり学習段階の逐次学習</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting comprehensive self-supervised pre-training&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Stage 1: Masked Price Modeling</span>
+        <span class="k">if</span> <span class="s1">&#39;mpm&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stage 1: Masked Price Modeling&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initialize_masked_price_model</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;mpm&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_masked_price_modeling</span><span class="p">(</span>
+                <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;mpm_training&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Stage 2: Contrastive Learning</span>
+        <span class="k">if</span> <span class="s1">&#39;contrastive&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stage 2: Contrastive Learning&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initialize_contrastive_model</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;contrastive&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_contrastive_learning</span><span class="p">(</span>
+                <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;contrastive_training&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Stage 3: Anomaly Detection</span>
+        <span class="k">if</span> <span class="s1">&#39;anomaly&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Stage 3: Anomaly Detection&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initialize_anomaly_model</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;anomaly&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">train_anomaly_detection</span><span class="p">(</span>
+                <span class="n">train_data</span><span class="p">,</span> <span class="n">val_data</span><span class="p">,</span> <span class="o">**</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;anomaly_training&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Self-supervised pre-training completed&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.get_pretrained_encoders">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.get_pretrained_encoders">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_pretrained_encoders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get pretrained encoders for downstream tasks</span>
+<span class="sd">        ダウンストリームタスク向け事前学習済みエンコーダーの取得</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">encoders</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Extract encoder from MPM model</span>
+            <span class="n">encoders</span><span class="p">[</span><span class="s1">&#39;mpm_encoder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">transformer_encoder</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Use contrastive model&#39;s encoder</span>
+            <span class="n">encoders</span><span class="p">[</span><span class="s1">&#39;contrastive_encoder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span><span class="o">.</span><span class="n">encoder</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Extract encoder from anomaly model</span>
+            <span class="n">encoders</span><span class="p">[</span><span class="s1">&#39;anomaly_encoder&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span><span class="o">.</span><span class="n">reconstruction_detector</span><span class="o">.</span><span class="n">encoder</span>
+
+        <span class="k">return</span> <span class="n">encoders</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.compute_anomaly_scores">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.compute_anomaly_scores">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_anomaly_scores</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute anomaly scores using trained anomaly detector</span>
+<span class="sd">        学習済み異常検知器による異常スコア計算</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Anomaly detection model not trained&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span><span class="o">.</span><span class="n">compute_anomaly_scores</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.get_embeddings">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.get_embeddings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_embeddings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;contrastive&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get embeddings from specified method</span>
+<span class="sd">        指定手法によるエンベディング取得</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;contrastive&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span><span class="o">.</span><span class="n">get_embeddings</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;mpm&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Use MPM encoder for embeddings</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="c1"># Get encoded representations before projection</span>
+                <span class="n">batch_size</span><span class="p">,</span> <span class="n">seq_len</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="n">x_proj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">input_projection</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">x_proj</span> <span class="o">=</span> <span class="n">x_proj</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">positional_encoding</span><span class="p">[:,</span> <span class="p">:</span><span class="n">seq_len</span><span class="p">,</span> <span class="p">:]</span>
+                <span class="n">encoded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">transformer_encoder</span><span class="p">(</span><span class="n">x_proj</span><span class="p">)</span>
+                <span class="c1"># Global average pooling</span>
+                <span class="n">embeddings</span> <span class="o">=</span> <span class="n">encoded</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">embeddings</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Method </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2"> not available or not trained&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.save_checkpoint">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.save_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save checkpoint with timestamp&quot;&quot;&quot;</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.pt&quot;</span>
+
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">timestamp</span><span class="p">,</span>
+            <span class="s1">&#39;training_history&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span>
+        <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;mpm_model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;mpm_optimizer&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;cl_model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;cl_optimizer&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;ad_model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+            <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;ad_optimizer&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">state_dict</span><span class="p">()</span>
+
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checkpoint saved: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.load_checkpoint">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.load_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load checkpoint&quot;&quot;&quot;</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;mpm_model&#39;</span> <span class="ow">in</span> <span class="n">checkpoint</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">masked_price_model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;mpm_model&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;mpm_optimizer&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="s1">&#39;cl_model&#39;</span> <span class="ow">in</span> <span class="n">checkpoint</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contrastive_model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;cl_model&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;cl_optimizer&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="s1">&#39;ad_model&#39;</span> <span class="ow">in</span> <span class="n">checkpoint</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">anomaly_model</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;ad_model&#39;</span><span class="p">])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">load_state_dict</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;ad_optimizer&#39;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="s1">&#39;training_history&#39;</span> <span class="ow">in</span> <span class="n">checkpoint</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_history</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;training_history&#39;</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checkpoint loaded: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SelfSupervisedTrainer.save_training_history">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.pretraining.html#ztb.multimodal.pretraining.self_supervised_trainer.SelfSupervisedTrainer.save_training_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_training_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save training history to JSON&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">training_history</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_train_epoch_mpm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Train one epoch for MPM&quot;&quot;&quot;</span>
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">total_masked</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">num_batches</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpm_trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span>
+            <span class="n">total_masked</span> <span class="o">+=</span> <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;masked_ratio&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="n">num_batches</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;loss&#39;</span><span class="p">:</span> <span class="n">total_loss</span> <span class="o">/</span> <span class="n">num_batches</span><span class="p">,</span>
+            <span class="s1">&#39;masked_ratio&#39;</span><span class="p">:</span> <span class="n">total_masked</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_train_epoch_cl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Train one epoch for Contrastive Learning&quot;&quot;&quot;</span>
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">num_batches</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cl_trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span>
+            <span class="n">num_batches</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;loss&#39;</span><span class="p">:</span> <span class="n">total_loss</span> <span class="o">/</span> <span class="n">num_batches</span>
+        <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_train_epoch_ad</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Train one epoch for Anomaly Detection&quot;&quot;&quot;</span>
+        <span class="n">total_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">num_batches</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">batch</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">batch_size</span><span class="p">]</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ad_trainer</span><span class="o">.</span><span class="n">train_step</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+            <span class="n">total_loss</span> <span class="o">+=</span> <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;loss&#39;</span><span class="p">]</span>
+            <span class="n">num_batches</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;loss&#39;</span><span class="p">:</span> <span class="n">total_loss</span> <span class="o">/</span> <span class="n">num_batches</span>
+        <span class="p">}</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

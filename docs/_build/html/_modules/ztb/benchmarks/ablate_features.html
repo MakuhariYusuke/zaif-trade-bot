@@ -1,0 +1,512 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.benchmarks.ablate_features &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.benchmarks.ablate_features</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.benchmarks.ablate_features</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Feature ablation script for trading.</span>
+<span class="sd">特徴量アブレーションスクリプト</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data.data_generation</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_synthetic_data</span>
+
+<span class="c1"># ロギング設定</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> </span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># プロジェクトルートをパスに追加</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">as_posix</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">project_root</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCallback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.monitor</span><span class="w"> </span><span class="kn">import</span> <span class="n">Monitor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.vec_env</span><span class="w"> </span><span class="kn">import</span> <span class="n">DummyVecEnv</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.features</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_feature_manager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_operation</span>
+
+
+<div class="viewcode-block" id="MetricsCallback">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablate_features.MetricsCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MetricsCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;メトリクス収集コールバック&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_reward</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_length</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_reward</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_length</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="c1"># If using multiple environments, consider: if all(self.locals[&#39;dones&#39;])</span>
+        <span class="c1"># This code assumes a single environment.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;dones&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_episode_reward</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_episode_length</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_reward</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_length</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_episode_length</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="MetricsCallback.get_metrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablate_features.MetricsCallback.get_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s2">&quot;mean_reward&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;sharpe_like&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;trades_per_1k&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;fps&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s2">&quot;env_step_ms&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">}</span>
+
+        <span class="n">rewards</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">)</span>
+        <span class="n">mean_reward</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span>
+
+        <span class="c1"># win_rate: 報酬 &gt; 0 の割合</span>
+        <span class="n">win_rate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">rewards</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># sharpe_like: mean / std (簡易版)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">sharpe_like</span> <span class="o">=</span> <span class="n">mean_reward</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rewards</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sharpe_like</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># trades_per_1k: 環境から取得（複数環境時は平均を取る）</span>
+        <span class="n">trades_per_1k_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_env</span><span class="o">.</span><span class="n">env_method</span><span class="p">(</span><span class="s2">&quot;get_trades_per_1k&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trades_per_1k_values</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">trades_per_1k_values</span>
+        <span class="p">):</span>
+            <span class="n">trades_per_1k</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">trades_per_1k_values</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trades_per_1k</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># fps: ステップ数 / 時間</span>
+        <span class="n">total_steps</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="p">)</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="n">total_steps</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="c1"># env_step_ms: 環境ステップ時間</span>
+        <span class="c1"># Robustly handle env_method return value for get_last_step_time</span>
+        <span class="n">step_times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_env</span><span class="o">.</span><span class="n">env_method</span><span class="p">(</span><span class="s2">&quot;get_last_step_time&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">step_times</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_times</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+            <span class="n">env_step_ms</span> <span class="o">=</span> <span class="n">step_times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">1000</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">env_step_ms</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;mean_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">mean_reward</span><span class="p">),</span>
+            <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">win_rate</span><span class="p">),</span>
+            <span class="s2">&quot;sharpe_like&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">sharpe_like</span><span class="p">),</span>
+            <span class="s2">&quot;trades_per_1k&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">trades_per_1k</span><span class="p">),</span>
+            <span class="s2">&quot;fps&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">),</span>
+            <span class="s2">&quot;env_step_ms&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">env_step_ms</span><span class="p">),</span>
+        <span class="p">}</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_env_with_features">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablate_features.create_env_with_features">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_env_with_features</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量を有効化した環境を作成&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+        <span class="n">HeavyTradingEnv</span><span class="p">,</span>
+        <span class="n">safe_operation</span><span class="p">(</span>
+            <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default logger</span>
+            <span class="n">operation</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">_create_env_with_features_impl</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">),</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;environment_creation_with_features&quot;</span><span class="p">,</span>
+            <span class="n">default_result</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Return None on failure</span>
+        <span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_create_env_with_features_impl</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HeavyTradingEnv</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Implementation of environment creation with features.&quot;&quot;&quot;</span>
+    <span class="c1"># TODO: Implement proper feature filtering using FeatureRegistry API</span>
+    <span class="c1"># For now, create environment with all features</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Feature filtering not implemented, using all features: </span><span class="si">{</span><span class="n">enabled_features</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># 環境作成 (全特徴量使用)</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">env</span>
+
+
+<div class="viewcode-block" id="run_training">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablate_features.run_training">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_training</span><span class="p">(</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;学習実行&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span>
+        <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">safe_operation</span><span class="p">(</span>
+            <span class="n">logger</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># Use default logger</span>
+            <span class="n">operation</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">_run_training_impl</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">,</span> <span class="n">df</span><span class="p">),</span>
+            <span class="n">context</span><span class="o">=</span><span class="s2">&quot;training_execution&quot;</span><span class="p">,</span>
+            <span class="n">default_result</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># Return empty dict on failure</span>
+        <span class="p">),</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_run_training_impl</span><span class="p">(</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Implementation of training execution.&quot;&quot;&quot;</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="c1"># 環境作成</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_env</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_with_features</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">enabled_features</span><span class="p">)</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">Monitor</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>  <span class="c1"># type: ignore[assignment]</span>
+        <span class="k">return</span> <span class="n">env</span>
+
+    <span class="n">env</span> <span class="o">=</span> <span class="n">DummyVecEnv</span><span class="p">([</span><span class="n">make_env</span><span class="p">])</span>
+
+    <span class="c1"># PPO設定（テスト用）</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="p">(</span>
+        <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span>
+        <span class="n">env</span><span class="p">,</span>
+        <span class="n">learning_rate</span><span class="o">=</span><span class="mf">3e-4</span><span class="p">,</span>
+        <span class="n">n_steps</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+        <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+        <span class="n">n_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">gamma</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span>
+        <span class="n">gae_lambda</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+        <span class="n">clip_range</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">ent_coef</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">vf_coef</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">max_grad_norm</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># コールバック</span>
+    <span class="n">callback</span> <span class="o">=</span> <span class="n">MetricsCallback</span><span class="p">()</span>
+
+    <span class="c1"># 学習</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span><span class="n">total_timesteps</span><span class="o">=</span><span class="n">timesteps</span><span class="p">,</span> <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">)</span>
+
+    <span class="c1"># メトリクス取得</span>
+    <span class="n">metrics</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">get_metrics</span><span class="p">()</span>
+
+    <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">metrics</span>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/generated/ztb.benchmarks.html#ztb.benchmarks.ablate_features.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Feature ablation analysis&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--timesteps&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Training timesteps&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--seeds&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;42,123,2025&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Comma-separated seeds&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--waves&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Comma-separated waves&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--features&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Feature set to ablate (e.g., wave3)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--mode&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Special mode (e.g., wave3_refined)&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output CSV path&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--data-rows&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">5000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of data rows&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--float-precision&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Float precision for output&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--dump-metrics&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Dump individual run metrics to JSON&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="c1"># モード処理</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;wave3_refined&quot;</span><span class="p">:</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="s2">&quot;wave3&quot;</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">timesteps</span> <span class="o">=</span> <span class="mi">10000</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">seeds</span> <span class="o">=</span> <span class="s2">&quot;42,123&quot;</span>
+        <span class="n">args</span><span class="o">.</span><span class="n">float_precision</span> <span class="o">=</span> <span class="mi">6</span>
+
+    <span class="c1"># マネージャー初期化</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_feature_manager</span><span class="p">()</span>
+    <span class="c1"># シード</span>
+    <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">seeds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">generate_synthetic_data</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_rows</span><span class="p">)</span>
+
+    <span class="c1"># シード</span>
+    <span class="n">seeds</span> <span class="o">=</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">seeds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+
+    <span class="c1"># 特徴量セット</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">features</span> <span class="o">==</span> <span class="s2">&quot;wave3&quot;</span><span class="p">:</span>
+        <span class="c1"># Wave3のみをアブレーション（harmfulフラグを無視）</span>
+        <span class="n">all_features</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Ichimoku&quot;</span><span class="p">,</span> <span class="s2">&quot;Donchian&quot;</span><span class="p">,</span> <span class="s2">&quot;RegimeClustering&quot;</span><span class="p">,</span> <span class="s2">&quot;KalmanFilter&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># waves = [int(w.strip()) for w in args.waves.split(&quot;,&quot;) if w.strip()]  # Not used</span>
+        <span class="n">all_features</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>  <span class="c1"># Get all registered features</span>
+
+    <span class="c1"># 出力ディレクトリ</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;reports/feature_ranking&quot;</span><span class="p">)</span>
+    <span class="n">output_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">date_str</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;ablation_</span><span class="si">{</span><span class="n">date_str</span><span class="si">}</span><span class="s2">.csv&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">)</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Running ablation analysis with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">seeds</span><span class="p">)</span><span class="si">}</span><span class="s2"> seeds, </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">timesteps</span><span class="si">}</span><span class="s2"> timesteps each...&quot;</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ベースライン（全特徴量ON）</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Baseline (all features)...&quot;</span><span class="p">)</span>
+    <span class="n">baseline_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">seeds</span><span class="p">:</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">run_training</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">timesteps</span><span class="p">,</span> <span class="n">all_features</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">baseline_metrics</span><span class="p">:</span>
+                <span class="n">baseline_metrics</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">baseline_metrics</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="c1"># 平均</span>
+    <span class="n">baseline_avg</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">baseline_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="s2">&quot;baseline&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;mean_reward&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;mean_reward&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;win_rate&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;sharpe_like&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;sharpe_like&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;trades_per_1k&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;trades_per_1k&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;fps&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;fps&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;env_step_ms&quot;</span><span class="p">:</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;env_step_ms&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;delta_mean_reward&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;delta_win_rate&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;delta_sharpe_like&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;delta_trades_per_1k&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;delta_fps&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;delta_env_step_ms&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Leave-One-Outアブレーション</span>
+    <span class="k">for</span> <span class="n">ablated_feature</span> <span class="ow">in</span> <span class="n">all_features</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ablating </span><span class="si">{</span><span class="n">ablated_feature</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+        <span class="n">ablated_features</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">all_features</span> <span class="k">if</span> <span class="n">f</span> <span class="o">!=</span> <span class="n">ablated_feature</span><span class="p">]</span>
+
+        <span class="n">ablation_metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">seed</span> <span class="ow">in</span> <span class="n">seeds</span><span class="p">:</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">run_training</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">timesteps</span><span class="p">,</span> <span class="n">ablated_features</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ablation_metrics</span><span class="p">:</span>
+                    <span class="n">ablation_metrics</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">ablation_metrics</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="c1"># 平均</span>
+        <span class="n">ablation_avg</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">ablation_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;feature&quot;</span><span class="p">:</span> <span class="n">ablated_feature</span><span class="p">,</span>
+                <span class="s2">&quot;mean_reward&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;mean_reward&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;win_rate&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;sharpe_like&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;sharpe_like&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;trades_per_1k&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;trades_per_1k&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;fps&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;fps&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;env_step_ms&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;env_step_ms&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_mean_reward&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;mean_reward&quot;</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;mean_reward&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_win_rate&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;win_rate&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;win_rate&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_sharpe_like&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;sharpe_like&quot;</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;sharpe_like&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_trades_per_1k&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;trades_per_1k&quot;</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;trades_per_1k&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_fps&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;fps&quot;</span><span class="p">]</span> <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;fps&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;delta_env_step_ms&quot;</span><span class="p">:</span> <span class="n">ablation_avg</span><span class="p">[</span><span class="s2">&quot;env_step_ms&quot;</span><span class="p">]</span>
+                <span class="o">-</span> <span class="n">baseline_avg</span><span class="p">[</span><span class="s2">&quot;env_step_ms&quot;</span><span class="p">],</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="c1"># CSV出力</span>
+    <span class="c1"># float_format の指定例: float_format=&quot;%.3f&quot; で小数点以下3桁にフォーマット</span>
+    <span class="n">df_results</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+    <span class="n">df_results</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span>
+        <span class="n">output_file</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">float_format</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;%.</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">float_precision</span><span class="si">}</span><span class="s2">f&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dump_metrics</span><span class="p">:</span>
+        <span class="c1"># 個別metrics保存</span>
+        <span class="n">baseline_json</span> <span class="o">=</span> <span class="n">output_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;baseline_</span><span class="si">{</span><span class="n">date_str</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">baseline_json</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">baseline_metrics</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Top 5 most impactful features (by delta_sharpe_like):&quot;</span><span class="p">)</span>
+    <span class="n">ablation_results</span> <span class="o">=</span> <span class="n">df_results</span><span class="p">[</span><span class="n">df_results</span><span class="p">[</span><span class="s2">&quot;feature&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;baseline&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span>
+        <span class="s2">&quot;delta_sharpe_like&quot;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">ablation_results</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;delta_sharpe_like&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">float_precision</span><span class="si">}</span><span class="s2">f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;feature&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;delta_sharpe_like&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.</span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">float_precision</span><span class="si">}</span><span class="s2">f</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

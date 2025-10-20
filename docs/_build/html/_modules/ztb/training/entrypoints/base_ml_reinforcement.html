@@ -1,0 +1,392 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.entrypoints.base_ml_reinforcement &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.training.entrypoints.base_ml_reinforcement</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.entrypoints.base_ml_reinforcement</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Base class for ML reinforcement learning experiments</span>
+<span class="sd">ML強化学習実験の基底クラス</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">deque</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">psutil</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.experiments.base</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ExperimentMetrics</span><span class="p">,</span>
+    <span class="n">ExperimentResult</span><span class="p">,</span>
+    <span class="n">ScalingExperiment</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.checkpoint</span><span class="w"> </span><span class="kn">import</span> <span class="n">HAS_LZ4</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.file_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">safe_json_load</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.parallel_experiments</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceMonitor</span>
+
+
+<div class="viewcode-block" id="StepResult">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.StepResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">StepResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ステップ結果のデータ構造&quot;&quot;&quot;</span>
+
+    <span class="n">step</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">reward</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">done</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">info</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="CheckpointData">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.CheckpointData">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CheckpointData</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;チェックポイントデータのデータ構造&quot;&quot;&quot;</span>
+
+    <span class="n">episode</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">total_steps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">best_reward</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">model_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">optimizer_state</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">step_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]</span></div>
+
+
+
+<span class="n">MetricsData</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MLReinforcementExperiment</span><span class="p">(</span><span class="n">ScalingExperiment</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for ML reinforcement learning experiments&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">total_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;strategy&quot;</span><span class="p">,</span> <span class="s2">&quot;generalization&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 動的チェックポイント間隔設定</span>
+        <span class="k">if</span> <span class="n">total_steps</span> <span class="o">&gt;=</span> <span class="mi">100000</span><span class="p">:</span>
+            <span class="n">checkpoint_interval</span> <span class="o">=</span> <span class="mi">5000</span>  <span class="c1"># 5kステップごと</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">checkpoint_interval</span> <span class="o">=</span> <span class="mi">1000</span>  <span class="c1"># 通常は1kステップごと</span>
+
+        <span class="n">config</span><span class="p">[</span><span class="s2">&quot;checkpoint_interval&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">checkpoint_interval</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="n">total_steps</span><span class="p">)</span>  <span class="c1"># type: ignore[arg-type]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="s2">&quot;coingecko&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 現在のステップを追跡</span>
+
+        <span class="c1"># Logger initialization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">)</span>
+
+        <span class="c1"># CheckpointManager設定の最適化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">max_queue_size</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># キューサイズ削減</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">compress</span> <span class="o">=</span> <span class="s2">&quot;lz4&quot;</span> <span class="k">if</span> <span class="n">HAS_LZ4</span> <span class="k">else</span> <span class="s2">&quot;zstd&quot;</span>  <span class="c1"># 高速圧縮</span>
+
+        <span class="c1"># ライトモード有効化（100k実験のみ）</span>
+        <span class="k">if</span> <span class="n">total_steps</span> <span class="o">&gt;=</span> <span class="mi">100000</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_light</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># ResourceMonitor初期化（メモリリーク監視用）</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span> <span class="o">=</span> <span class="n">ResourceMonitor</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource_monitor</span><span class="o">.</span><span class="n">log_resources</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">)</span>
+
+        <span class="c1"># 実験状態</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">)</span>
+        <span class="c1"># Memory optimized: Limit step_results history to prevent unbounded growth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">:</span> <span class="n">deque</span><span class="p">[</span><span class="n">StepResult</span><span class="p">]</span> <span class="o">=</span> <span class="n">deque</span><span class="p">(</span><span class="n">maxlen</span><span class="o">=</span><span class="mi">1000</span><span class="p">)</span>  <span class="c1"># Keep last 1000 steps only</span>
+
+<div class="viewcode-block" id="MLReinforcementExperiment.run">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験実行&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting experiment with total_steps: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># チェックポイントから再開</span>
+            <span class="n">checkpoint_data</span><span class="p">,</span> <span class="n">start_step</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_load</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="n">start_step</span>
+
+            <span class="k">if</span> <span class="n">checkpoint_data</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_from_checkpoint</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resumed from step </span><span class="si">{</span><span class="n">start_step</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># メイン実行ループ</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">:</span>
+                <span class="c1"># 進捗ログ</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">%</span> <span class="mi">1000</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">progress</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Progress: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2"> &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">progress</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%) - Time: </span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+                <span class="c1"># ステップ実行</span>
+                <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
+
+                <span class="c1"># 定期的なチェックポイント保存</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># episodeは0で固定</span>
+
+                <span class="c1"># 定期的なレポート</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">should_report</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_report_metrics</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Experiment completed with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2"> steps&quot;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">ExperimentResult</span><span class="p">(</span>
+                <span class="n">experiment_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;completed&quot;</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                <span class="n">metrics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_current_metrics</span><span class="p">(),</span>
+                <span class="n">artifacts</span><span class="o">=</span><span class="p">{},</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Experiment failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span></div>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment.step">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.step">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StepResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ステップ実行&quot;&quot;&quot;</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.0001</span><span class="p">)</span>  <span class="c1"># テスト用遅延</span>
+        <span class="c1"># 学習ステップのシミュレーション</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+        <span class="n">done</span> <span class="o">=</span> <span class="n">step_num</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step_num</span><span class="p">,</span> <span class="s2">&quot;reward&quot;</span><span class="p">:</span> <span class="n">reward</span><span class="p">}</span>
+
+        <span class="n">step_result</span> <span class="o">=</span> <span class="n">StepResult</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">step_num</span><span class="p">,</span> <span class="n">reward</span><span class="o">=</span><span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="o">=</span><span class="n">done</span><span class="p">,</span> <span class="n">info</span><span class="o">=</span><span class="n">info</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step_result</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">reward</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span> <span class="o">=</span> <span class="n">reward</span>
+
+        <span class="k">return</span> <span class="n">step_result</span></div>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment.should_checkpoint">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.should_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイント保存が必要か&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">step</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="p">)</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_interval</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">step</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">-</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment.should_report">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.should_report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;レポート出力が必要か&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1000</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">step</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">-</span> <span class="mi">1</span>  <span class="c1"># 1kステップごと</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">episode</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイント保存&quot;&quot;&quot;</span>
+        <span class="n">checkpoint_data</span> <span class="o">=</span> <span class="n">CheckpointData</span><span class="p">(</span>
+            <span class="n">episode</span><span class="o">=</span><span class="n">episode</span><span class="p">,</span>
+            <span class="n">total_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">,</span>
+            <span class="n">best_reward</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">,</span>
+            <span class="n">model_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dummy&quot;</span><span class="p">:</span> <span class="s2">&quot;model&quot;</span><span class="p">},</span>
+            <span class="n">optimizer_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;dummy&quot;</span><span class="p">:</span> <span class="s2">&quot;optimizer&quot;</span><span class="p">},</span>
+            <span class="n">step_results</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">)[</span><span class="o">-</span><span class="mi">100</span><span class="p">:],</span>  <span class="c1"># Convert deque to list, last 100 steps</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">save_async</span><span class="p">(</span>
+            <span class="n">asdict</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">),</span>
+            <span class="n">step</span><span class="p">,</span>
+            <span class="p">{</span><span class="s2">&quot;episode&quot;</span><span class="p">:</span> <span class="n">episode</span><span class="p">,</span> <span class="s2">&quot;best_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">},</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_report_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクスレポート&quot;&quot;&quot;</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_metrics</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Metrics at step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_current_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MetricsData</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在のメトリクス取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;current_step&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
+            <span class="s2">&quot;total_steps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">,</span>
+            <span class="s2">&quot;best_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">,</span>
+            <span class="s2">&quot;memory_usage&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">virtual_memory</span><span class="p">()</span><span class="o">.</span><span class="n">percent</span><span class="p">,</span>
+            <span class="s2">&quot;cpu_usage&quot;</span><span class="p">:</span> <span class="n">psutil</span><span class="o">.</span><span class="n">cpu_percent</span><span class="p">(</span><span class="n">interval</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+            <span class="s2">&quot;experiment_name&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span>
+            <span class="s2">&quot;strategy&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span>
+            <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="MLReinforcementExperiment.get_checkpoint_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.get_checkpoint_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_checkpoint_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイント保存用のデータを返す&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;step_results&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span><span class="p">,</span> <span class="s2">&quot;best_reward&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment.load_from_checkpoint">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.load_from_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_from_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイントデータから状態を復元&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">step_results</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_results&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">best_reward</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;best_reward&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="MLReinforcementExperiment.collect_metrics">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.MLReinforcementExperiment.collect_metrics">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collect_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メトリクス収集&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_current_metrics</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.base_ml_reinforcement.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;メイン関数&quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;ML Reinforcement Learning Experiment&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--config&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Path to config file&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">&quot;--total-timesteps&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Total timesteps for training&quot;</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">safe_json_load</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config</span><span class="p">))</span>
+
+    <span class="n">config</span><span class="p">[</span><span class="s2">&quot;total_steps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">total_timesteps</span>
+
+    <span class="n">experiment</span> <span class="o">=</span> <span class="n">MLReinforcementExperiment</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">total_steps</span><span class="o">=</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;total_steps&quot;</span><span class="p">])</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">experiment</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Experiment completed: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,468 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>段階的検証プラン &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">段階的検証プラン</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/planning/STEP_BY_STEP_VALIDATION_PLAN.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>段階的検証プラン<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>現状サマリー<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>問題点<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ppo_100k_optimized.zip</strong>: SELL bias 99.5% → 使用不可</p>
+<ul>
+<li><p>バックテスト: -0.79% リターン、全トレード損失</p></li>
+<li><p>原因: curriculum_stage=“full” (forced_balanceを経由していない)</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="id4">
+<h3>対策実施中<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>ppo_balanced_test.json</strong>: 修正版設定で学習中 (30,000 steps)</p>
+<ul>
+<li><p>curriculum_stage: “forced_balance” に変更</p></li>
+<li><p>lagrange_r_target: 0.33 (33%均等分布)</p></li>
+<li><p>初期結果 (1024 steps): SELL率 21.9% (大幅改善!)</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>ステップ1: 修正版モデルの学習完了と基本検証 ✅<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>1.1 学習の完了 (進行中)<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_balanced_test.json
+</pre></div>
+</div>
+<p><strong>期待される結果:</strong></p>
+<ul class="simple">
+<li><p>学習完了時間: 約5-10分</p></li>
+<li><p>モデル保存先: <code class="docutils literal notranslate"><span class="pre">models/ppo_balanced_test.zip</span></code></p></li>
+<li><p>SELL率: 25-40% の範囲 (33%前後が理想)</p></li>
+</ul>
+</section>
+<section id="id7">
+<h3>1.2 アクション分布の確認<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>validate_model_behavior.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_balanced_test.zip<span class="w"> </span>--episodes<span class="w"> </span><span class="m">5</span>
+</pre></div>
+</div>
+<p><strong>合格基準:</strong></p>
+<ul class="simple">
+<li><p>✅ SELL率: 25-40%</p></li>
+<li><p>✅ BUY率: 25-40%</p></li>
+<li><p>✅ HOLD率: 20-50%</p></li>
+<li><p>✅ バランススコア: &gt;0.5</p></li>
+</ul>
+<p><strong>不合格の場合:</strong></p>
+<ul class="simple">
+<li><p>lagrange_r_target を調整 (0.30 or 0.35)</p></li>
+<li><p>lagrange_eta を増加 (0.1)</p></li>
+<li><p>再学習を実施</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>1.3 バックテスト検証<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>backtest_model.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model-path<span class="w"> </span>models/ppo_balanced_test.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>backtest_balanced_test.json
+</pre></div>
+</div>
+<p><strong>合格基準:</strong></p>
+<ul class="simple">
+<li><p>✅ 総リターン: &gt;-0.5% (損失が少ない)</p></li>
+<li><p>✅ 勝率: &gt;10% (少なくともいくつか勝ちトレードがある)</p></li>
+<li><p>✅ 利益係数: &gt;0 (利益があるトレードが存在)</p></li>
+</ul>
+<p><strong>不合格の場合:</strong></p>
+<ul class="simple">
+<li><p>reward_settings を調整</p></li>
+<li><p>より長い学習期間 (50,000 steps) で再実施</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>ステップ2: カリキュラム学習の段階的実施 🔄<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="stage-0-forced-balance">
+<h3>2.1 Stage 0: Forced Balance (完了)<a class="headerlink" href="#stage-0-forced-balance" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>目的</strong>: 33/33/33 の完全均等分布を強制学習</p></li>
+<li><p><strong>期間</strong>: 10,000 steps</p></li>
+<li><p><strong>設定</strong>: curriculum_stage=“forced_balance”</p></li>
+</ul>
+</section>
+<section id="stage-1-balanced-transition">
+<h3>2.2 Stage 1: Balanced Transition<a class="headerlink" href="#stage-1-balanced-transition" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>目的</strong>: 通常報酬 + バランスペナルティ</p></li>
+<li><p><strong>期間</strong>: 20,000 steps</p></li>
+<li><p><strong>設定</strong>: curriculum_stage=“balanced_transition”</p></li>
+</ul>
+<p><strong>設定ファイル作成:</strong></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_balanced_transition&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;balanced_transition&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_r_target&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.30</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checkpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;models/ppo_balanced_test.zip&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="stage-2-pnl-focused">
+<h3>2.3 Stage 2: PnL Focused<a class="headerlink" href="#stage-2-pnl-focused" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>目的</strong>: PnL重視、ただしバランス維持</p></li>
+<li><p><strong>期間</strong>: 70,000 steps</p></li>
+<li><p><strong>設定</strong>: curriculum_stage=“pnl_focused”</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>ステップ3: 長期学習とフル評価 📈<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="k">
+<h3>3.1 100K フル学習<a class="headerlink" href="#k" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;session_id&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;ppo_100k_balanced&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">100000</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;enable_forced_diversity&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;checkpoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;models/ppo_balanced_transition.zip&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>3.2 総合バックテスト<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 学習データでの検証</span>
+python<span class="w"> </span>backtest_model.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model-path<span class="w"> </span>models/ppo_100k_balanced.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># 実データでの検証</span>
+python<span class="w"> </span>backtest_model.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model-path<span class="w"> </span>models/ppo_100k_balanced.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-path<span class="w"> </span>btc_jpy_real_dataset.csv
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>3.3 詳細パフォーマンス分析<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 月次パフォーマンス</span>
+<span class="c1"># トレード分析</span>
+<span class="c1"># リスク指標</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>ステップ4: 本番展開前の最終確認 ✔️<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>4.1 ストレステスト<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 上昇トレンドでのテスト</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 下降トレンドでのテスト</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 横ばい相場でのテスト</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ボラティリティ変化への対応</p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>4.2 リスク管理<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 最大ドローダウンの確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ポジションサイズの適切性</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ストップロス機能の動作確認</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>4.3 ペーパートレーディング<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 1週間のペーパートレード</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 実データでのリアルタイム動作確認</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> アクション分布のモニタリング</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id17">
+<h2>チェックリスト: 各ステップの完了条件<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>✅ ステップ1 完了条件<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> 学習が正常に完了</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> アクション分布がバランス (25-40-35 程度)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バックテストで改善が確認できる</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バランススコア &gt;0.5</p></li>
+</ul>
+</section>
+<section id="id19">
+<h3>🔄 ステップ2 完了条件<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 各カリキュラムステージで学習完了</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 段階的にPnL重視へ移行</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> アクションバランスを維持しながら性能向上</p></li>
+</ul>
+</section>
+<section id="id20">
+<h3>📈 ステップ3 完了条件<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 100K学習が完了</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バックテストで正のリターン</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 勝率 &gt;40%</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> シャープレシオ &gt;0.5</p></li>
+</ul>
+</section>
+<section id="id21">
+<h3>✔️ ステップ4 完了条件<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 全ストレステスト合格</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> ペーパートレード成功</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 本番展開の承認</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id22">
+<h2>現在の進行状況<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h3>完了済み ✅<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>問題の特定 (SELL bias 99.5%)</p></li>
+<li><p>根本原因の分析 (curriculum_stage設定ミス)</p></li>
+<li><p>修正版設定ファイルの作成</p></li>
+<li><p>バックテストスクリプトの準備</p></li>
+<li><p>検証スクリプトの作成</p></li>
+</ol>
+</section>
+<section id="id24">
+<h3>進行中 🔄<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>ステップ1.1</strong>: 修正版モデルの学習 (30,000 steps)</p>
+<ul class="simple">
+<li><p>学習開始済み</p></li>
+<li><p>予想完了時間: 5-10分</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id25">
+<h3>次のアクション 🎯<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>学習完了を待つ (進行中)</p></li>
+<li><p>アクション分布を確認</p></li>
+<li><p>バックテストを実施</p></li>
+<li><p>結果に基づいて次のステップを決定</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id26">
+<h2>学習パラメータの調整履歴<a class="headerlink" href="#id26" title="Link to this heading"></a></h2>
+<section id="ppo-100k-optimized-json">
+<h3>ppo_100k_optimized.json (失敗)<a class="headerlink" href="#ppo-100k-optimized-json" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>curriculum_stage: &quot;full&quot;
+lagrange_r_target: 0.175
+→ 結果: SELL 99.5%, 使用不可
+</pre></div>
+</div>
+</section>
+<section id="ppo-balanced-test-json">
+<h3>ppo_balanced_test.json (テスト中)<a class="headerlink" href="#ppo-balanced-test-json" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>curriculum_stage: &quot;forced_balance&quot;
+lagrange_r_target: 0.33
+→ 初期結果 (1024 steps): SELL 21.9%, 改善確認
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>次の候補設定<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;balanced_transition&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_r_target&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.30</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_tolerance&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;lagrange_eta&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;total_timesteps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">50000</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id28">
+<h2>トラブルシューティング<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="q1">
+<h3>Q1: 学習が遅い<a class="headerlink" href="#q1" title="Link to this heading"></a></h3>
+<p><strong>A</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">n_steps</span></code> を 2048 に増加</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">batch_size</span></code> を 128 に増加</p></li>
+<li><p>マルチプロセス環境を使用</p></li>
+</ul>
+</section>
+<section id="q2">
+<h3>Q2: アクションバランスが改善しない<a class="headerlink" href="#q2" title="Link to this heading"></a></h3>
+<p><strong>A</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange_eta</span></code> を 0.1 に増加</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lagrange_r_target</span></code> を調整 (0.30-0.35)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">enable_forced_diversity</span></code> を true に</p></li>
+</ul>
+</section>
+<section id="q3">
+<h3>Q3: バックテストで損失<a class="headerlink" href="#q3" title="Link to this heading"></a></h3>
+<p><strong>A</strong>:</p>
+<ul class="simple">
+<li><p>より長い学習期間 (100K steps)</p></li>
+<li><p>reward_settings を確認</p></li>
+<li><p>データの多様性を増やす</p></li>
+</ul>
+</section>
+<section id="q4">
+<h3>Q4: 過学習の兆候<a class="headerlink" href="#q4" title="Link to this heading"></a></h3>
+<p><strong>A</strong>:</p>
+<ul class="simple">
+<li><p>正則化を強化</p></li>
+<li><p>エントロピー係数を増加</p></li>
+<li><p>早期停止を実装</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id29">
+<h2>参考資料<a class="headerlink" href="#id29" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>検証レポート</strong>: <code class="docutils literal notranslate"><span class="pre">MODEL_VALIDATION_REPORT.md</span></code></p></li>
+<li><p><strong>バックテストスクリプト</strong>: <code class="docutils literal notranslate"><span class="pre">backtest_model.py</span></code></p></li>
+<li><p><strong>行動検証スクリプト</strong>: <code class="docutils literal notranslate"><span class="pre">validate_model_behavior.py</span></code></p></li>
+<li><p><strong>学習設定</strong>: <code class="docutils literal notranslate"><span class="pre">configs/training/</span></code></p></li>
+<li><p><strong>学習ログ</strong>: <code class="docutils literal notranslate"><span class="pre">logs/ppo_balanced_test/</span></code></p></li>
+<li><p><strong>TensorBoard</strong>: <code class="docutils literal notranslate"><span class="pre">tensorboard/ppo_balanced_test/</span></code></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

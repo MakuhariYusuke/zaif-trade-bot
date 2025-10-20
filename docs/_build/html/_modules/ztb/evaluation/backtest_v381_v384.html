@@ -1,0 +1,518 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.evaluation.backtest_v381_v384 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.evaluation.backtest_v381_v384</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.evaluation.backtest_v381_v384</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Backtest Comparison: v381 (110 features) vs v384 (68 curated features)</span>
+
+<span class="sd">Tests both models on historical BTC/JPY market data to compare:</span>
+<span class="sd">1. Trading performance (PnL, Sharpe ratio)</span>
+<span class="sd">2. Action distribution (HOLD/BUY/SELL balance)</span>
+<span class="sd">3. Risk metrics (max drawdown, win rate)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="c1"># Add project root to path</span>
+<span class="n">project_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">project_root</span><span class="p">))</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_csv_data_optimized</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.environment</span><span class="w"> </span><span class="kn">import</span> <span class="n">HeavyTradingEnv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">predict_with_masks</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypedConfig</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="load_model">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.backtest_v381_v384.load_model">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_model</span><span class="p">(</span><span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Load PPO model (try MaskablePPO first, fallback to standard PPO).&quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2"> with MaskablePPO&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="s2">&quot;MaskablePPO&quot;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e1</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;MaskablePPO load failed: </span><span class="si">{</span><span class="n">e1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPO</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2"> with standard PPO&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">model</span><span class="p">,</span> <span class="s2">&quot;PPO&quot;</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e2</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model: </span><span class="si">{</span><span class="n">e2</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span></div>
+
+
+
+<div class="viewcode-block" id="run_backtest">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.backtest_v381_v384.run_backtest">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_backtest</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">episodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Model&quot;</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Run backtest for a single model.</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        model_path: Path to model .zip file</span>
+<span class="sd">        data_path: Path to CSV dataset</span>
+<span class="sd">        episodes: Number of episodes to run</span>
+<span class="sd">        model_name: Name for logging</span>
+<span class="sd">        </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with backtest results</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">80</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backtesting </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;=&#39;</span><span class="o">*</span><span class="mi">80</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Load data</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data_optimized</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows from </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data columns: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Date range: </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Create environment with optimized config</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.00505</span><span class="p">,</span>
+        <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="mf">1.05</span><span class="p">,</span>
+        <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+    <span class="p">}</span>
+    
+    <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created: </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> features expected&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Load model</span>
+    <span class="n">model</span><span class="p">,</span> <span class="n">model_type</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model type: </span><span class="si">{</span><span class="n">model_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Run episodes</span>
+    <span class="n">episode_rewards</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">episode_pnls</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">episode_returns</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">action_counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
+    <span class="n">all_pnls</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">trades</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">episode</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">episodes</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+            <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">truncated</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">steps</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">episode_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">episode_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">episode_actions</span> <span class="o">=</span> <span class="p">[]</span>
+            
+            <span class="k">while</span> <span class="ow">not</span> <span class="p">(</span><span class="n">done</span> <span class="ow">or</span> <span class="n">truncated</span><span class="p">):</span>
+                <span class="c1"># Predict action</span>
+                <span class="n">action</span><span class="p">,</span> <span class="n">_states</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+                    <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+                
+                <span class="c1"># Step environment</span>
+                <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                
+                <span class="n">episode_reward</span> <span class="o">+=</span> <span class="n">reward</span>
+                <span class="n">step_pnl</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pnl&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">episode_pnl</span> <span class="o">+=</span> <span class="n">step_pnl</span>
+                <span class="n">all_pnls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">step_pnl</span><span class="p">)</span>
+                <span class="n">episode_actions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                
+                <span class="c1"># Count actions</span>
+                <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;BUY&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;BUY&quot;</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">step_pnl</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;SELL&quot;</span><span class="p">,</span> <span class="n">steps</span><span class="p">,</span> <span class="n">step_pnl</span><span class="p">))</span>
+                
+                <span class="n">steps</span> <span class="o">+=</span> <span class="mi">1</span>
+            
+            <span class="c1"># Episode statistics</span>
+            <span class="n">episode_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_reward</span><span class="p">)</span>
+            <span class="n">episode_pnls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_pnl</span><span class="p">)</span>
+            
+            <span class="c1"># Calculate return</span>
+            <span class="n">initial_balance</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">,</span> <span class="mi">10000000</span><span class="p">)</span>
+            <span class="n">episode_return</span> <span class="o">=</span> <span class="p">(</span><span class="n">episode_pnl</span> <span class="o">/</span> <span class="n">initial_balance</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span> <span class="k">if</span> <span class="n">initial_balance</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">episode_returns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_return</span><span class="p">)</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="n">episode</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">episodes</span><span class="si">}</span><span class="s2">: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Reward=</span><span class="si">{</span><span class="n">episode_reward</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;PnL=</span><span class="si">{</span><span class="n">episode_pnl</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> JPY, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Return=</span><span class="si">{</span><span class="n">episode_return</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">%, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Steps=</span><span class="si">{</span><span class="n">steps</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="n">episode</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">continue</span>
+    
+    <span class="c1"># Calculate statistics</span>
+    <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">action_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span>
+        <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+        <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">,</span>
+        <span class="s2">&quot;episodes&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">episode_rewards</span><span class="p">),</span>
+        <span class="s2">&quot;avg_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">episode_rewards</span><span class="p">)),</span>
+        <span class="s2">&quot;std_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">episode_rewards</span><span class="p">)),</span>
+        <span class="s2">&quot;avg_pnl&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">episode_pnls</span><span class="p">)),</span>
+        <span class="s2">&quot;std_pnl&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">episode_pnls</span><span class="p">)),</span>
+        <span class="s2">&quot;total_pnl&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">episode_pnls</span><span class="p">)),</span>
+        <span class="s2">&quot;avg_return_pct&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">episode_returns</span><span class="p">)),</span>
+        <span class="s2">&quot;std_return_pct&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">episode_returns</span><span class="p">)),</span>
+        <span class="s2">&quot;action_distribution&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;BUY&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;HOLD_pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;BUY_pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;BUY&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;SELL_pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">total_actions</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_actions</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;total_actions&quot;</span><span class="p">:</span> <span class="n">total_actions</span><span class="p">,</span>
+        <span class="s2">&quot;num_trades&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">),</span>
+    <span class="p">}</span>
+    
+    <span class="c1"># Calculate risk metrics</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">cumulative_pnl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)</span>
+        <span class="n">max_drawdown</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">cumulative_pnl</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">cumulative_pnl</span><span class="p">)))</span>
+        
+        <span class="c1"># Sharpe ratio (annualized, assuming 15s intervals)</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">periods_per_year</span> <span class="o">=</span> <span class="mi">365</span> <span class="o">*</span> <span class="mi">24</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">4</span>  <span class="c1"># 15-second intervals</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_pnls</span><span class="p">))</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">periods_per_year</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+        
+        <span class="c1"># Win rate</span>
+        <span class="n">winning_trades</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">trades</span> <span class="k">if</span> <span class="n">t</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">win_rate</span> <span class="o">=</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">winning_trades</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        
+        <span class="n">results</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s2">&quot;max_drawdown&quot;</span><span class="p">:</span> <span class="n">max_drawdown</span><span class="p">,</span>
+            <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">sharpe_ratio</span><span class="p">),</span>
+            <span class="s2">&quot;win_rate_pct&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">win_rate</span><span class="p">),</span>
+            <span class="s2">&quot;num_winning_trades&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">winning_trades</span><span class="p">),</span>
+        <span class="p">})</span>
+    
+    <span class="k">return</span> <span class="n">results</span></div>
+
+
+
+<div class="viewcode-block" id="print_comparison">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.backtest_v381_v384.print_comparison">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_comparison</span><span class="p">(</span><span class="n">results_v381</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">results_v384</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print side-by-side comparison of results.&quot;&quot;&quot;</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;BACKTEST COMPARISON: v381 (110 features) vs v384 (68 curated features)&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;Metric&#39;</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;v381&#39;</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;v384&#39;</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="s1">&#39;Difference&#39;</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="c1"># Performance metrics</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;PERFORMANCE METRICS&#39;</span><span class="si">:</span><span class="s2">^100</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;Episodes&quot;</span><span class="p">,</span> <span class="s2">&quot;episodes&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.0f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Avg Reward&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_reward&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.2f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Std Reward&quot;</span><span class="p">,</span> <span class="s2">&quot;std_reward&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.2f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Avg PnL (JPY)&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_pnl&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Total PnL (JPY)&quot;</span><span class="p">,</span> <span class="s2">&quot;total_pnl&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Avg Return (%)&quot;</span><span class="p">,</span> <span class="s2">&quot;avg_return_pct&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.2f}</span><span class="s2">%&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Sharpe Ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.3f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Max Drawdown (JPY)&quot;</span><span class="p">,</span> <span class="s2">&quot;max_drawdown&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:,.0f}</span><span class="s2">&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;Win Rate (%)&quot;</span><span class="p">,</span> <span class="s2">&quot;win_rate_pct&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{:.1f}</span><span class="s2">%&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="n">v381_val</span> <span class="o">=</span> <span class="n">results_v381</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">v384_val</span> <span class="o">=</span> <span class="n">results_v384</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">diff</span> <span class="o">=</span> <span class="n">v384_val</span> <span class="o">-</span> <span class="n">v381_val</span>
+        
+        <span class="k">if</span> <span class="s2">&quot;%&quot;</span> <span class="ow">in</span> <span class="n">fmt</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v381_val</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v384_val</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v381_val</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v384_val</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">fmt</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">diff</span><span class="p">)</span><span class="si">:</span><span class="s2">&gt;20</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Action distribution</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;ACTION DISTRIBUTION&#39;</span><span class="si">:</span><span class="s2">^100</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="n">actions</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+        <span class="n">v381_pct</span> <span class="o">=</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;action_distribution&quot;</span><span class="p">][</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">_pct&quot;</span><span class="p">]</span>
+        <span class="n">v384_pct</span> <span class="o">=</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;action_distribution&quot;</span><span class="p">][</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">_pct&quot;</span><span class="p">]</span>
+        <span class="n">diff_pct</span> <span class="o">=</span> <span class="n">v384_pct</span> <span class="o">-</span> <span class="n">v381_pct</span>
+        
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">action</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">v381_pct</span><span class="si">:</span><span class="s2">&gt;19.1f</span><span class="si">}</span><span class="s2">% </span><span class="si">{</span><span class="n">v384_pct</span><span class="si">:</span><span class="s2">&gt;19.1f</span><span class="si">}</span><span class="s2">% </span><span class="si">{</span><span class="n">diff_pct</span><span class="si">:</span><span class="s2">&gt;19.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Trading activity</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;TRADING ACTIVITY&#39;</span><span class="si">:</span><span class="s2">^100</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Total Actions&#39;</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">results_v381</span><span class="p">[</span><span class="s1">&#39;total_actions&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;20,</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">results_v384</span><span class="p">[</span><span class="s1">&#39;total_actions&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;20,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Number of Trades&#39;</span><span class="si">:</span><span class="s2">&lt;30</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">results_v381</span><span class="p">[</span><span class="s1">&#39;num_trades&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;20,</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">results_v384</span><span class="p">[</span><span class="s1">&#39;num_trades&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;20,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Winner determination</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="si">{</span><span class="s1">&#39;OVERALL ASSESSMENT&#39;</span><span class="si">:</span><span class="s2">^100</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span>
+    
+    <span class="n">score_v381</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">score_v384</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Higher is better</span>
+    <span class="k">if</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">]:</span>
+        <span class="n">score_v381</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score_v384</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;total_pnl&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;total_pnl&quot;</span><span class="p">]:</span>
+        <span class="n">score_v381</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score_v384</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]:</span>
+        <span class="n">score_v381</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score_v384</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="k">if</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;win_rate_pct&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;win_rate_pct&quot;</span><span class="p">]:</span>
+        <span class="n">score_v381</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score_v384</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="c1"># Lower is better (more negative = worse)</span>
+    <span class="k">if</span> <span class="n">results_v381</span><span class="p">[</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">results_v384</span><span class="p">[</span><span class="s2">&quot;max_drawdown&quot;</span><span class="p">]:</span>  <span class="c1"># Less negative = better</span>
+        <span class="n">score_v381</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score_v384</span> <span class="o">+=</span> <span class="mi">1</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;v381 Score: </span><span class="si">{</span><span class="n">score_v381</span><span class="si">}</span><span class="s2">/5&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;v384 Score: </span><span class="si">{</span><span class="n">score_v384</span><span class="si">}</span><span class="s2">/5&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">score_v384</span> <span class="o">&gt;</span> <span class="n">score_v381</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🏆 WINNER: v384 (68 curated features)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   → Feature curation improved performance!&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">score_v381</span> <span class="o">&gt;</span> <span class="n">score_v384</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🏆 WINNER: v381 (110 features)&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   → More features provided better performance&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🤝 TIE: Both models performed similarly&quot;</span><span class="p">)</span>
+    
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.backtest_v381_v384.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main backtest comparison.&quot;&quot;&quot;</span>
+    
+    <span class="c1"># Configuration - use config-based model paths</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">TypedConfig</span><span class="p">()</span>
+    <span class="n">v381_model</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span><span class="s2">&quot;ppo_reward_v381_revised_profit_focused.zip&quot;</span><span class="p">)</span>
+    <span class="n">v384_model</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_model_path</span><span class="p">(</span><span class="s2">&quot;ppo_reward_v384_curated_60.zip&quot;</span><span class="p">)</span>
+    
+    <span class="c1"># Try both datasets</span>
+    <span class="n">datasets</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;btc_jpy_real_dataset.csv&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;btc_jpy_yahoo_real_dataset.csv&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+    
+    <span class="c1"># Find available dataset</span>
+    <span class="n">data_path</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">Path</span><span class="p">(</span><span class="n">ds</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">data_path</span> <span class="o">=</span> <span class="n">ds</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using dataset: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+    
+    <span class="k">if</span> <span class="n">data_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;No dataset found! Please ensure one of the following exists:&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">ds</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">ds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span>
+    
+    <span class="n">episodes</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># Number of backtest episodes</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Run backtests</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;STARTING BACKTEST COMPARISON&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
+        
+        <span class="n">results_v381</span> <span class="o">=</span> <span class="n">run_backtest</span><span class="p">(</span><span class="n">v381_model</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span> <span class="n">episodes</span><span class="p">,</span> <span class="s2">&quot;v381_revised_profit_focused&quot;</span><span class="p">)</span>
+        <span class="n">results_v384</span> <span class="o">=</span> <span class="n">run_backtest</span><span class="p">(</span><span class="n">v384_model</span><span class="p">,</span> <span class="n">data_path</span><span class="p">,</span> <span class="n">episodes</span><span class="p">,</span> <span class="s2">&quot;v384_curated_60&quot;</span><span class="p">)</span>
+        
+        <span class="c1"># Print comparison</span>
+        <span class="n">print_comparison</span><span class="p">(</span><span class="n">results_v381</span><span class="p">,</span> <span class="n">results_v384</span><span class="p">)</span>
+        
+        <span class="c1"># Save results to JSON</span>
+        <span class="n">output_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;backtest_comparison_v381_v384_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;dataset&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">,</span>
+            <span class="s2">&quot;episodes&quot;</span><span class="p">:</span> <span class="n">episodes</span><span class="p">,</span>
+            <span class="s2">&quot;v381&quot;</span><span class="p">:</span> <span class="n">results_v381</span><span class="p">,</span>
+            <span class="s2">&quot;v384&quot;</span><span class="p">:</span> <span class="n">results_v384</span><span class="p">,</span>
+        <span class="p">}</span>
+        
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Results saved to: </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="mi">0</span>
+        
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backtest failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mi">1</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

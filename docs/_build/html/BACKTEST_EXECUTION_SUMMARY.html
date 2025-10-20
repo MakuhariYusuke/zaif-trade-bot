@@ -1,0 +1,325 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>バックテスト実行結果サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">バックテスト実行結果サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/BACKTEST_EXECUTION_SUMMARY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>バックテスト実行結果サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>実行日時<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>2025年10月10日</p>
+</section>
+<section id="id3">
+<h2>目的<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<p>v381（110特徴量）とv384（68厳選特徴量）を過去のBTC/JPY市場データで検証</p>
+</section>
+<section id="id4">
+<h2>実行状況<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="v384-68">
+<h3>v384モデル（68特徴量）<a class="headerlink" href="#v384-68" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>モデルパス</strong>: <code class="docutils literal notranslate"><span class="pre">models/ppo_reward_v384_curated_60.zip</span></code></p></li>
+<li><p><strong>特徴量数</strong>: 68（厳選版）</p></li>
+<li><p><strong>訓練ステップ数</strong>: 50,000</p></li>
+<li><p><strong>環境との互換性</strong>: ✅ 完全互換（両方とも68特徴量）</p></li>
+</ul>
+</section>
+<section id="v381-110">
+<h3>v381モデル（110特徴量）<a class="headerlink" href="#v381-110" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>モデルパス</strong>: <code class="docutils literal notranslate"><span class="pre">models/ppo_reward_v381_revised_profit_focused.zip</span></code></p></li>
+<li><p><strong>特徴量数</strong>: 110（全特徴量）</p></li>
+<li><p><strong>訓練ステップ数</strong>: 不明（設定ファイルに記載なし）</p></li>
+<li><p><strong>環境との互換性</strong>: ❌ 次元不一致</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2>発見された問題<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>次元不一致エラー<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ne">ValueError</span><span class="p">:</span> <span class="n">Error</span><span class="p">:</span> <span class="n">Unexpected</span> <span class="n">observation</span> <span class="n">shape</span> <span class="p">(</span><span class="mi">68</span><span class="p">,)</span> <span class="k">for</span> <span class="n">Box</span> <span class="n">environment</span><span class="p">,</span> 
+<span class="n">please</span> <span class="n">use</span> <span class="p">(</span><span class="mi">110</span><span class="p">,)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">n_env</span><span class="p">,</span> <span class="mi">110</span><span class="p">)</span> <span class="k">for</span> <span class="n">the</span> <span class="n">observation</span> <span class="n">shape</span><span class="o">.</span>
+</pre></div>
+</div>
+<p><strong>原因</strong>:</p>
+<ol class="arabic simple">
+<li><p>環境（HeavyTradingEnv）は現在の<code class="docutils literal notranslate"><span class="pre">models/features_schema.json</span></code>を使用</p></li>
+<li><p>このschemaはv384訓練時に保存された68特徴量版</p></li>
+<li><p>v381モデルは110特徴量を期待</p></li>
+<li><p>→ 環境が生成する観測（68次元）とモデルの期待（110次元）が不一致</p></li>
+</ol>
+</section>
+<section id="v384">
+<h3>v384バックテスト結果（初期実行）<a class="headerlink" href="#v384" title="Link to this heading"></a></h3>
+<p><strong>10エピソード実行</strong>:</p>
+<ul class="simple">
+<li><p>全エピソード完了（エラーなし）</p></li>
+<li><p>総アクション数: 990</p></li>
+<li><p>アクション分布:</p>
+<ul>
+<li><p>HOLD: 990 (100%)</p></li>
+<li><p>BUY: 0 (0%)</p></li>
+<li><p>SELL: 0 (0%)</p></li>
+</ul>
+</li>
+</ul>
+<p><strong>分析</strong>:</p>
+<ul class="simple">
+<li><p>モデルは環境と完全互換✅</p></li>
+<li><p>ただし、全アクションがHOLDのみ</p></li>
+<li><p>これは以下のいずれかを示唆:</p>
+<ol class="arabic simple">
+<li><p>訓練期間が短すぎた（50kステップ）</p></li>
+<li><p>報酬関数が保守的すぎる</p></li>
+<li><p>初期状態が取引に不適</p></li>
+<li><p>エピソード長が短すぎる（99ステップ/エピソード）</p></li>
+</ol>
+</li>
+</ul>
+</section>
+</section>
+<section id="id7">
+<h2>解決策の方向性<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<section id="v381">
+<h3>オプション1: v381用の環境を再構築<a class="headerlink" href="#v381" title="Link to this heading"></a></h3>
+<p>特徴量フィルタリングを無効化してv381をテスト:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;enable_feature_filtering&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># 全110特徴量を使用</span>
+    <span class="c1"># ... other settings</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>課題</strong>:</p>
+<ul class="simple">
+<li><p>v381訓練時のfeature schemaが保存されていない</p></li>
+<li><p>110特徴量の順序が不明</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>オプション2: v384の長期訓練<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p>68特徴量でより長い訓練を実行:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_reward_v384_curated_60_extended.json<span class="w"> </span>--timesteps<span class="w"> </span><span class="m">200000</span>
+</pre></div>
+</div>
+<p><strong>メリット</strong>:</p>
+<ul class="simple">
+<li><p>現在の環境と完全互換</p></li>
+<li><p>より実戦的な動作を学習可能</p></li>
+</ul>
+</section>
+<section id="paper-trading">
+<h3>オプション3: 紙上取引（Paper Trading）<a class="headerlink" href="#paper-trading" title="Link to this heading"></a></h3>
+<p>実時間でのシミュレーション:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>live_trade.py<span class="w"> </span>--model<span class="w"> </span>models/ppo_reward_v384_curated_60.zip<span class="w"> </span>--paper-trade
+</pre></div>
+</div>
+<p><strong>メリット</strong>:</p>
+<ul class="simple">
+<li><p>リアルタイム市場データを使用</p></li>
+<li><p>バックテストの次元問題を回避</p></li>
+</ul>
+</section>
+</section>
+<section id="id9">
+<h2>推奨アクション<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>即時実行可能<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <strong>v384の延長訓練</strong>: 200k-500kステップで再訓練</p></li>
+<li><p>✅ <strong>紙上取引テスト</strong>: 実時間シミュレーションで検証</p></li>
+<li><p>⏳ <strong>TensorBoard分析</strong>: v381とv384の訓練曲線比較（既に起動済み）</p></li>
+</ol>
+</section>
+<section id="id11">
+<h3>中期的対応<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>⏳ <strong>特徴量スキーマ管理の改善</strong>:</p>
+<ul class="simple">
+<li><p>モデルごとにfeature schemaを保存</p></li>
+<li><p>推論時に自動で適切なschemaを選択</p></li>
+</ul>
+</li>
+<li><p>⏳ <strong>バックテスト環境の改善</strong>:</p>
+<ul class="simple">
+<li><p>モデルの期待次元を自動検出</p></li>
+<li><p>動的に環境の観測空間を調整</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<section id="id12">
+<h2>技術的詳細<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h3>現在の環境設定<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+    <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.00505</span><span class="p">,</span>
+    <span class="s2">&quot;max_position_size&quot;</span><span class="p">:</span> <span class="mf">1.05</span><span class="p">,</span>
+    <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="id14">
+<h3>データセット<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>優先</strong>: <code class="docutils literal notranslate"><span class="pre">ml-dataset-enhanced.csv</span></code></p></li>
+<li><p><strong>代替1</strong>: <code class="docutils literal notranslate"><span class="pre">btc_jpy_real_dataset.csv</span></code></p></li>
+<li><p><strong>代替2</strong>: <code class="docutils literal notranslate"><span class="pre">btc_jpy_yahoo_real_dataset.csv</span></code></p></li>
+</ul>
+</section>
+<section id="id15">
+<h3>実行ログ<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Loaded</span> <span class="n">X</span><span class="p">,</span><span class="n">XXX</span> <span class="n">rows</span> <span class="kn">from</span><span class="w"> </span><span class="nn">ml</span><span class="o">-</span><span class="n">dataset</span><span class="o">-</span><span class="n">enhanced</span><span class="o">.</span><span class="n">csv</span>
+<span class="n">Data</span> <span class="n">columns</span><span class="p">:</span> <span class="mi">73</span>
+<span class="n">Environment</span> <span class="n">observation</span> <span class="n">space</span><span class="p">:</span> <span class="mi">68</span> <span class="n">features</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id16">
+<h2>結論<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<p><strong>v384モデル（68特徴量）</strong>:</p>
+<ul class="simple">
+<li><p>✅ 訓練成功</p></li>
+<li><p>✅ 環境互換性確認</p></li>
+<li><p>⚠️ 実戦性不明（HOLDのみ）</p></li>
+<li><p>📊 TensorBoard分析待ち</p></li>
+</ul>
+<p><strong>v381モデル（110特徴量）</strong>:</p>
+<ul class="simple">
+<li><p>✅ 訓練成功（履歴あり）</p></li>
+<li><p>❌ バックテスト不可（次元不一致）</p></li>
+<li><p>💡 紙上取引で検証可能</p></li>
+</ul>
+<p><strong>次のステップ</strong>:</p>
+<ol class="arabic simple">
+<li><p>TensorBoardでv381/v384の訓練メトリクスを比較</p></li>
+<li><p>v384を200k-500kステップで再訓練</p></li>
+<li><p>紙上取引で両モデルを実時間テスト</p></li>
+</ol>
+<hr class="docutils" />
+<p><strong>作成日</strong>: 2025-10-10<br />
+<strong>ステータス</strong>: バックテスト実行中（v384）</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

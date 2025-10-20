@@ -1,0 +1,343 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC Entropy Tuning - Critical Insight &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SAC環境診断レポート" href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html" />
+    <link rel="prev" title="PPO Refactoring Plan - アルゴリズム差し替え可能な設計へ" href="PPO_REFACTORING_PLAN.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Algorithms</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="PPO_REFACTORING_COMPLETE.html">PPO整理完了レポート - アルゴリズム差し替え可能な設計</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PPO_REFACTORING_PLAN.html">PPO Refactoring Plan - アルゴリズム差し替え可能な設計へ</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">SAC Entropy Tuning - Critical Insight</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#root-cause-analysis">🚨 Root Cause Analysis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#problem">Problem</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#why-target-entropy-0-5-alone-is-not-enough">Why target_entropy=-0.5 Alone is Not Enough</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#the-entropy-auto-tuning-mechanism">The Entropy Auto-Tuning Mechanism</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#real-problem-excessive-initial-entropy">💡 Real Problem: Excessive Initial Entropy</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#hypothesis">Hypothesis</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#why-negative-target-entropy">Why Negative Target Entropy?</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#solution">🎯 Solution</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#option-1-adjust-target-entropy-to-positive">Option 1: Adjust target_entropy to Positive</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#option-2-reduce-initial-policy-std">Option 2: Reduce Initial Policy Std</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#option-3-disable-auto-tuning-use-fixed-ent-coef">Option 3: Disable Auto-Tuning, Use Fixed ent_coef</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#recommended-approach-v395e">📊 Recommended Approach: v395e</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#expected-behavior">Expected Behavior</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#alternative-v395f-conservative">📋 Alternative: v395f (Conservative)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#testing-plan">🔬 Testing Plan</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html">SAC環境診断レポート</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id2">🚨 主要な問題点</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id3">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id4">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id5">💡 推奨パラメータ調整</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id6">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id7">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#v395b">📋 推奨パラメータセット v395b</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id8">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id9">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#v395c">📋 保守的な調整 v395c（段階的アプローチ）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id10">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id11">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id12">🔬 実験計画</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id13">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id14">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id15">📊 評価指標</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id16">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id19">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id20">🎯 次のアクション</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_PARAMETER_TUNING_GUIDE.html#id21">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_TUNING_ANALYSIS_REPORT.html">SAC Parameter Tuning Analysis Report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Algorithms</a></li>
+      <li class="breadcrumb-item active">SAC Entropy Tuning - Critical Insight</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/algorithms/SAC_ENTROPY_ANALYSIS.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-entropy-tuning-critical-insight">
+<h1>SAC Entropy Tuning - Critical Insight<a class="headerlink" href="#sac-entropy-tuning-critical-insight" title="Link to this heading"></a></h1>
+<section id="root-cause-analysis">
+<h2>🚨 Root Cause Analysis<a class="headerlink" href="#root-cause-analysis" title="Link to this heading"></a></h2>
+<section id="problem">
+<h3>Problem<a class="headerlink" href="#problem" title="Link to this heading"></a></h3>
+<p>すべてのバージョン（v395a-d）で<code class="docutils literal notranslate"><span class="pre">ent_coef</span></code>が訓練中に上昇し続ける：</p>
+<ul class="simple">
+<li><p>v395a: 1.09 → 4.03</p></li>
+<li><p>v395b: 1.03 → 1.53</p></li>
+<li><p>v395c: 1.03 → 1.53</p></li>
+<li><p>v395d: 1.09 → 3.58</p></li>
+</ul>
+</section>
+<section id="why-target-entropy-0-5-alone-is-not-enough">
+<h3>Why target_entropy=-0.5 Alone is Not Enough<a class="headerlink" href="#why-target-entropy-0-5-alone-is-not-enough" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">ent_coef_loss</span></code>を見ると：</p>
+<ul class="simple">
+<li><p>常に負の値（-0.8 → -12.6）</p></li>
+<li><p>絶対値が増加している</p></li>
+</ul>
+<p>これは <strong>エントロピーが目標値より常に大きい</strong> ことを意味します。</p>
+</section>
+<section id="the-entropy-auto-tuning-mechanism">
+<h3>The Entropy Auto-Tuning Mechanism<a class="headerlink" href="#the-entropy-auto-tuning-mechanism" title="Link to this heading"></a></h3>
+<p>SACのエントロピー自動調整：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ent_coef_loss</span> <span class="o">=</span> <span class="o">-</span><span class="n">log</span><span class="p">(</span><span class="n">ent_coef</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">entropy</span> <span class="o">-</span> <span class="n">target_entropy</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">entropy</span> <span class="pre">&gt;</span> <span class="pre">target_entropy</span></code> の場合
+→ <code class="docutils literal notranslate"><span class="pre">ent_coef_loss</span> <span class="pre">&lt;</span> <span class="pre">0</span></code>
+→ <code class="docutils literal notranslate"><span class="pre">ent_coef</span></code>を増やす（探索を抑制）</p></li>
+</ul>
+<p>しかし、<code class="docutils literal notranslate"><span class="pre">ent_coef</span></code>を増やすと探索が減るはずが、なぜかエントロピーが下がらない！</p>
+</section>
+</section>
+<section id="real-problem-excessive-initial-entropy">
+<h2>💡 Real Problem: Excessive Initial Entropy<a class="headerlink" href="#real-problem-excessive-initial-entropy" title="Link to this heading"></a></h2>
+<section id="hypothesis">
+<h3>Hypothesis<a class="headerlink" href="#hypothesis" title="Link to this heading"></a></h3>
+<p>連続行動空間（Box[-1, 1]）では、初期の方策がガウス分布で：</p>
+<ul class="simple">
+<li><p>mean = 0.0</p></li>
+<li><p>std = 1.0 (デフォルト)</p></li>
+</ul>
+<p>この場合、連続分布のエントロピーは：</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>H = 0.5 * log(2πe * σ²)
+  = 0.5 * log(2πe * 1.0)
+  ≈ 1.42
+</pre></div>
+</div>
+<p>しかし、我々の<code class="docutils literal notranslate"><span class="pre">target_entropy</span> <span class="pre">=</span> <span class="pre">-0.5</span></code>は<strong>負の値</strong>！</p>
+</section>
+<section id="why-negative-target-entropy">
+<h3>Why Negative Target Entropy?<a class="headerlink" href="#why-negative-target-entropy" title="Link to this heading"></a></h3>
+<p>SB3のSACでは、離散行動空間の場合：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">target_entropy</span> <span class="o">=</span> <span class="o">-</span><span class="n">dim</span><span class="p">(</span><span class="n">action_space</span><span class="p">)</span>  <span class="c1"># e.g., -3 for 3 actions</span>
+</pre></div>
+</div>
+<p>連続行動空間では：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">target_entropy</span> <span class="o">=</span> <span class="o">-</span><span class="n">dim</span><span class="p">(</span><span class="n">action_space</span><span class="p">)</span>  <span class="c1"># -1 for dim=1</span>
+</pre></div>
+</div>
+<p>しかし、連続分布のエントロピーは通常<strong>正の値</strong>（ガウス分布 ≈ 1.42）</p>
+</section>
+</section>
+<section id="solution">
+<h2>🎯 Solution<a class="headerlink" href="#solution" title="Link to this heading"></a></h2>
+<section id="option-1-adjust-target-entropy-to-positive">
+<h3>Option 1: Adjust target_entropy to Positive<a class="headerlink" href="#option-1-adjust-target-entropy-to-positive" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;target_entropy&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span><span class="w">  </span><span class="c1">// ガウス分布のエントロピーより小さい値</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="option-2-reduce-initial-policy-std">
+<h3>Option 2: Reduce Initial Policy Std<a class="headerlink" href="#option-2-reduce-initial-policy-std" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;policy_kwargs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;log_std_init&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-2.0</span><span class="p">,</span><span class="w">  </span><span class="c1">// std = exp(-2.0) ≈ 0.135</span>
+<span class="w">    </span><span class="nt">&quot;net_arch&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">]</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="option-3-disable-auto-tuning-use-fixed-ent-coef">
+<h3>Option 3: Disable Auto-Tuning, Use Fixed ent_coef<a class="headerlink" href="#option-3-disable-auto-tuning-use-fixed-ent-coef" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="w">  </span><span class="c1">// 固定値を使用</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="recommended-approach-v395e">
+<h2>📊 Recommended Approach: v395e<a class="headerlink" href="#recommended-approach-v395e" title="Link to this heading"></a></h2>
+<p><strong>Hybrid Approach</strong>: 小さい正の<code class="docutils literal notranslate"><span class="pre">target_entropy</span></code> + 低めの<code class="docutils literal notranslate"><span class="pre">log_std_init</span></code></p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sac_hyperparameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0003</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;buffer_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;learning_starts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;tau&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.005</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;train_freq&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gradient_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;auto&quot;</span><span class="p">,</span><span class="w">              </span><span class="c1">// 自動調整を継続</span>
+<span class="w">    </span><span class="nt">&quot;target_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;target_entropy&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.3</span><span class="p">,</span><span class="w">           </span><span class="c1">// ✅ 正の値に変更！</span>
+<span class="w">    </span><span class="nt">&quot;policy_kwargs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;log_std_init&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-1.0</span><span class="p">,</span><span class="w">          </span><span class="c1">// ✅ std ≈ 0.37に制限</span>
+<span class="w">      </span><span class="nt">&quot;net_arch&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mi">256</span><span class="p">,</span><span class="w"> </span><span class="mi">256</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="expected-behavior">
+<h3>Expected Behavior<a class="headerlink" href="#expected-behavior" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>初期policy std = exp(-1.0) ≈ 0.37</p></li>
+<li><p>初期entropy ≈ 0.5 * log(2πe * 0.37²) ≈ 0.2</p></li>
+<li><p>target_entropy = 0.3 → entropy を少し増やす方向</p></li>
+<li><p>ent_coef は小さい値（0.5-1.5）で安定</p></li>
+</ul>
+</section>
+</section>
+<section id="alternative-v395f-conservative">
+<h2>📋 Alternative: v395f (Conservative)<a class="headerlink" href="#alternative-v395f-conservative" title="Link to this heading"></a></h2>
+<p>固定<code class="docutils literal notranslate"><span class="pre">ent_coef</span></code>アプローチ：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;sac_hyperparameters&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.0003</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;buffer_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">20000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;learning_starts&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">128</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;tau&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.005</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gamma&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.99</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;train_freq&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;gradient_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.2</span><span class="p">,</span><span class="w">                 </span><span class="c1">// ✅ 固定値（PPO v394fと同じ）</span>
+<span class="w">    </span><span class="nt">&quot;target_update_interval&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="testing-plan">
+<h2>🔬 Testing Plan<a class="headerlink" href="#testing-plan" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>v395e</strong>: target_entropy=0.3 + log_std_init=-1.0</p></li>
+<li><p><strong>v395f</strong>: ent_coef=0.2 (fixed)</p></li>
+<li><p><strong>v395g</strong>: target_entropy=0.5 + log_std_init=-2.0 (very conservative)</p></li>
+</ol>
+<p>各バージョンで5k timesteps訓練し、最良の設定を特定。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="PPO_REFACTORING_PLAN.html" class="btn btn-neutral float-left" title="PPO Refactoring Plan - アルゴリズム差し替え可能な設計へ" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html" class="btn btn-neutral float-right" title="SAC環境診断レポート" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

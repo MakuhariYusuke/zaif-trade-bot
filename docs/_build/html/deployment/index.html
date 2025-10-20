@@ -1,0 +1,776 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deployment Guide &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Deployment Guide</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/deployment/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="deployment-guide">
+<h1>Deployment Guide<a class="headerlink" href="#deployment-guide" title="Link to this heading"></a></h1>
+<p>This section covers model deployment, production setup, and operational considerations for Zaif Trade Bot.</p>
+<section id="deployment-overview">
+<h2>Deployment Overview<a class="headerlink" href="#deployment-overview" title="Link to this heading"></a></h2>
+<p>Deploying trading models to production requires careful consideration of reliability, monitoring, and risk management. Zaif Trade Bot provides tools for safe and efficient model deployment.</p>
+</section>
+<section id="deployment-workflow">
+<h2>Deployment Workflow<a class="headerlink" href="#deployment-workflow" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Model Validation</strong>: Ensure model meets performance criteria</p></li>
+<li><p><strong>Infrastructure Setup</strong>: Configure production environment</p></li>
+<li><p><strong>Risk Controls</strong>: Implement safety measures</p></li>
+<li><p><strong>Monitoring Setup</strong>: Configure logging and alerting</p></li>
+<li><p><strong>Gradual Rollout</strong>: Start with small position sizes</p></li>
+<li><p><strong>Performance Tracking</strong>: Monitor live performance</p></li>
+</ol>
+</section>
+<section id="production-environment">
+<h2>Production Environment<a class="headerlink" href="#production-environment" title="Link to this heading"></a></h2>
+<section id="infrastructure-requirements">
+<h3>Infrastructure Requirements<a class="headerlink" href="#infrastructure-requirements" title="Link to this heading"></a></h3>
+<p>Recommended production setup:</p>
+<p><strong>Hardware Requirements</strong>
+* CPU: 4+ cores (8+ recommended)
+* RAM: 16GB+ (32GB recommended)
+* Storage: 100GB+ SSD
+* Network: Stable low-latency connection</p>
+<p><strong>Software Requirements</strong>
+* Python 3.8+
+* Docker (recommended)
+* Monitoring tools (Prometheus, Grafana)
+* Database (PostgreSQL, Redis)</p>
+</section>
+<section id="docker-deployment">
+<h3>Docker Deployment<a class="headerlink" href="#docker-deployment" title="Link to this heading"></a></h3>
+<p>Deploy using Docker for consistency:</p>
+<div class="highlight-dockerfile notranslate"><div class="highlight"><pre><span></span><span class="c"># Dockerfile.production</span>
+<span class="k">FROM</span><span class="w"> </span><span class="s">python:3.11-slim</span>
+
+<span class="c"># Install system dependencies</span>
+<span class="k">RUN</span><span class="w"> </span>apt-get<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>build-essential<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-rf<span class="w"> </span>/var/lib/apt/lists/*
+
+<span class="c"># Create app directory</span>
+<span class="k">WORKDIR</span><span class="w"> </span><span class="s">/app</span>
+
+<span class="c"># Copy requirements first for better caching</span>
+<span class="k">COPY</span><span class="w"> </span>requirements.txt<span class="w"> </span>.
+<span class="k">RUN</span><span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--no-cache-dir<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+
+<span class="c"># Copy application code</span>
+<span class="k">COPY</span><span class="w"> </span>.<span class="w"> </span>.
+
+<span class="c"># Create non-root user</span>
+<span class="k">RUN</span><span class="w"> </span>useradd<span class="w"> </span>--create-home<span class="w"> </span>--shell<span class="w"> </span>/bin/bash<span class="w"> </span>app<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="o">&amp;&amp;</span><span class="w"> </span>chown<span class="w"> </span>-R<span class="w"> </span>app:app<span class="w"> </span>/app
+<span class="k">USER</span><span class="w"> </span><span class="s">app</span>
+
+<span class="c"># Expose port for monitoring</span>
+<span class="k">EXPOSE</span><span class="w"> </span><span class="s">8000</span>
+
+<span class="c"># Health check</span>
+<span class="k">HEALTHCHECK</span><span class="w"> </span>--interval<span class="o">=</span>30s<span class="w"> </span>--timeout<span class="o">=</span>10s<span class="w"> </span>--start-period<span class="o">=</span>5s<span class="w"> </span>--retries<span class="o">=</span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>CMD<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import requests; requests.get(&#39;http://localhost:8000/health&#39;)&quot;</span>
+
+<span class="c"># Run application</span>
+<span class="k">CMD</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;python&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;run_production.py&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Build and run the container:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build production image</span>
+docker<span class="w"> </span>build<span class="w"> </span>-f<span class="w"> </span>Dockerfile.production<span class="w"> </span>-t<span class="w"> </span>ztb-production<span class="w"> </span>.
+
+<span class="c1"># Run container</span>
+docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--name<span class="w"> </span>ztb-trading<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="m">8000</span>:8000<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/data:/app/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-e<span class="w"> </span><span class="nv">CONFIG_PATH</span><span class="o">=</span>/app/config/production.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ztb-production
+</pre></div>
+</div>
+</section>
+<section id="kubernetes-deployment">
+<h3>Kubernetes Deployment<a class="headerlink" href="#kubernetes-deployment" title="Link to this heading"></a></h3>
+<p>Deploy to Kubernetes for scalability:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># deployment.yaml</span>
+<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-trading</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">replicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">matchLabels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-trading</span>
+<span class="w">  </span><span class="nt">template</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">metadata</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-trading</span>
+<span class="w">    </span><span class="nt">spec</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">containers</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb</span>
+<span class="w">        </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-production:latest</span>
+<span class="w">        </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">containerPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<span class="w">        </span><span class="nt">env</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CONFIG_PATH</span>
+<span class="w">          </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/app/config/production.yaml&quot;</span>
+<span class="w">        </span><span class="nt">resources</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">requests</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2Gi&quot;</span>
+<span class="w">            </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1000m&quot;</span>
+<span class="w">          </span><span class="nt">limits</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">memory</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;4Gi&quot;</span>
+<span class="w">            </span><span class="nt">cpu</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2000m&quot;</span>
+<span class="w">        </span><span class="nt">livenessProbe</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/health</span>
+<span class="w">            </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<span class="w">          </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30</span>
+<span class="w">          </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">        </span><span class="nt">readinessProbe</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">httpGet</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/ready</span>
+<span class="w">            </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<span class="w">          </span><span class="nt">initialDelaySeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">          </span><span class="nt">periodSeconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">        </span><span class="nt">volumeMounts</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">config-volume</span>
+<span class="w">          </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/app/config</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-volume</span>
+<span class="w">          </span><span class="nt">mountPath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/app/data</span>
+<span class="w">      </span><span class="nt">volumes</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">config-volume</span>
+<span class="w">        </span><span class="nt">configMap</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-config</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">data-volume</span>
+<span class="w">        </span><span class="nt">persistentVolumeClaim</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">claimName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-data-pvc</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="risk-management">
+<h2>Risk Management<a class="headerlink" href="#risk-management" title="Link to this heading"></a></h2>
+<section id="position-size-limits">
+<h3>Position Size Limits<a class="headerlink" href="#position-size-limits" title="Link to this heading"></a></h3>
+<p>Implement strict position size controls:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config/production.yaml</span>
+<span class="nt">trading</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">max_position_size</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span><span class="w">      </span><span class="c1"># Maximum 5% of portfolio</span>
+<span class="w">  </span><span class="nt">max_portfolio_risk</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.02</span><span class="w">     </span><span class="c1"># Maximum 2% portfolio risk per trade</span>
+<span class="w">  </span><span class="nt">max_daily_loss</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span><span class="w">         </span><span class="c1"># Stop trading after 5% daily loss</span>
+<span class="w">  </span><span class="nt">max_open_positions</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span><span class="w">         </span><span class="c1"># Maximum 3 open positions</span>
+</pre></div>
+</div>
+</section>
+<section id="circuit-breakers">
+<h3>Circuit Breakers<a class="headerlink" href="#circuit-breakers" title="Link to this heading"></a></h3>
+<p>Implement automatic circuit breakers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.risk</span><span class="w"> </span><span class="kn">import</span> <span class="n">CircuitBreaker</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductionCircuitBreaker</span><span class="p">(</span><span class="n">CircuitBreaker</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_loss_limit</span> <span class="o">=</span> <span class="mf">0.05</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volatility_threshold</span> <span class="o">=</span> <span class="mf">0.03</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">liquidity_threshold</span> <span class="o">=</span> <span class="mf">0.7</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">should_stop_trading</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">portfolio</span><span class="p">,</span> <span class="n">market_data</span><span class="p">):</span>
+        <span class="c1"># Check daily loss</span>
+        <span class="k">if</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">daily_pnl</span> <span class="o">&lt;</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">daily_loss_limit</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;Daily loss limit exceeded&quot;</span>
+
+        <span class="c1"># Check volatility</span>
+        <span class="k">if</span> <span class="n">market_data</span><span class="o">.</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;High volatility detected&quot;</span>
+
+        <span class="c1"># Check liquidity</span>
+        <span class="k">if</span> <span class="n">market_data</span><span class="o">.</span><span class="n">liquidity_score</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">liquidity_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;Low liquidity detected&quot;</span>
+
+        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="kc">None</span>
+</pre></div>
+</div>
+</section>
+<section id="emergency-stop">
+<h3>Emergency Stop<a class="headerlink" href="#emergency-stop" title="Link to this heading"></a></h3>
+<p>Implement emergency stop functionality:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading</span><span class="w"> </span><span class="kn">import</span> <span class="n">EmergencyStop</span>
+
+<span class="c1"># Initialize emergency stop</span>
+<span class="n">emergency_stop</span> <span class="o">=</span> <span class="n">EmergencyStop</span><span class="p">(</span>
+    <span class="n">stop_file</span><span class="o">=</span><span class="s2">&quot;/tmp/ztb_emergency_stop&quot;</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;your_api_key&quot;</span>
+<span class="p">)</span>
+
+<span class="c1"># Check for emergency stop</span>
+<span class="k">if</span> <span class="n">emergency_stop</span><span class="o">.</span><span class="n">should_stop</span><span class="p">():</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="s2">&quot;Emergency stop activated&quot;</span><span class="p">)</span>
+    <span class="c1"># Close all positions</span>
+    <span class="n">portfolio</span><span class="o">.</span><span class="n">close_all_positions</span><span class="p">()</span>
+    <span class="c1"># Shutdown trading</span>
+    <span class="n">trading_engine</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="monitoring-alerting">
+<h2>Monitoring &amp; Alerting<a class="headerlink" href="#monitoring-alerting" title="Link to this heading"></a></h2>
+<section id="application-monitoring">
+<h3>Application Monitoring<a class="headerlink" href="#application-monitoring" title="Link to this heading"></a></h3>
+<p>Monitor application health and performance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.monitoring</span><span class="w"> </span><span class="kn">import</span> <span class="n">ApplicationMonitor</span>
+
+<span class="c1"># Initialize monitoring</span>
+<span class="n">monitor</span> <span class="o">=</span> <span class="n">ApplicationMonitor</span><span class="p">()</span>
+
+<span class="c1"># Track key metrics</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">track_metric</span><span class="p">(</span><span class="s1">&#39;portfolio_value&#39;</span><span class="p">,</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">total_value</span><span class="p">)</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">track_metric</span><span class="p">(</span><span class="s1">&#39;open_positions&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">positions</span><span class="p">))</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">track_metric</span><span class="p">(</span><span class="s1">&#39;daily_pnl&#39;</span><span class="p">,</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">daily_pnl</span><span class="p">)</span>
+
+<span class="c1"># Health check endpoint</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">health_check</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;healthy&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+        <span class="s2">&quot;portfolio_value&quot;</span><span class="p">:</span> <span class="n">portfolio</span><span class="o">.</span><span class="n">total_value</span>
+    <span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="prometheus-metrics">
+<h3>Prometheus Metrics<a class="headerlink" href="#prometheus-metrics" title="Link to this heading"></a></h3>
+<p>Export metrics for Prometheus monitoring:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">prometheus_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Gauge</span><span class="p">,</span> <span class="n">Counter</span><span class="p">,</span> <span class="n">Histogram</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">prometheus_client</span>
+
+<span class="c1"># Define metrics</span>
+<span class="n">PORTFOLIO_VALUE</span> <span class="o">=</span> <span class="n">Gauge</span><span class="p">(</span><span class="s1">&#39;ztb_portfolio_value&#39;</span><span class="p">,</span> <span class="s1">&#39;Current portfolio value&#39;</span><span class="p">)</span>
+<span class="n">TRADES_TOTAL</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="s1">&#39;ztb_trades_total&#39;</span><span class="p">,</span> <span class="s1">&#39;Total number of trades&#39;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;outcome&#39;</span><span class="p">])</span>
+<span class="n">TRADE_LATENCY</span> <span class="o">=</span> <span class="n">Histogram</span><span class="p">(</span><span class="s1">&#39;ztb_trade_latency_seconds&#39;</span><span class="p">,</span> <span class="s1">&#39;Trade execution latency&#39;</span><span class="p">)</span>
+
+<span class="c1"># Update metrics</span>
+<span class="n">PORTFOLIO_VALUE</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">portfolio</span><span class="o">.</span><span class="n">total_value</span><span class="p">)</span>
+<span class="n">TRADES_TOTAL</span><span class="o">.</span><span class="n">labels</span><span class="p">(</span><span class="n">outcome</span><span class="o">=</span><span class="s1">&#39;profit&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">inc</span><span class="p">()</span>
+<span class="n">TRADE_LATENCY</span><span class="o">.</span><span class="n">observe</span><span class="p">(</span><span class="n">trade_duration</span><span class="p">)</span>
+
+<span class="c1"># Expose metrics endpoint</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/metrics&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">metrics</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">prometheus_client</span><span class="o">.</span><span class="n">generate_latest</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="alerting-rules">
+<h3>Alerting Rules<a class="headerlink" href="#alerting-rules" title="Link to this heading"></a></h3>
+<p>Configure alerting for critical events:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># alert_rules.yaml</span>
+<span class="nt">groups</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb_alerts</span>
+<span class="w">  </span><span class="nt">rules</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HighPortfolioLoss</span>
+<span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb_portfolio_daily_pnl &lt; -0.05</span>
+<span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Portfolio</span><span class="nv"> </span><span class="s">loss</span><span class="nv"> </span><span class="s">exceeds</span><span class="nv"> </span><span class="s">5%&quot;</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">TradingStopped</span>
+<span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">up{job=&quot;ztb-trading&quot;} == 0</span>
+<span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">critical</span>
+<span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Trading</span><span class="nv"> </span><span class="s">service</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">down&quot;</span>
+
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">alert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HighVolatility</span>
+<span class="w">    </span><span class="nt">expr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb_market_volatility &gt; 0.05</span>
+<span class="w">    </span><span class="nt">for</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10m</span>
+<span class="w">    </span><span class="nt">labels</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">severity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">warning</span>
+<span class="w">    </span><span class="nt">annotations</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">summary</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Market</span><span class="nv"> </span><span class="s">volatility</span><span class="nv"> </span><span class="s">is</span><span class="nv"> </span><span class="s">high&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="logging-auditing">
+<h2>Logging &amp; Auditing<a class="headerlink" href="#logging-auditing" title="Link to this heading"></a></h2>
+<section id="production-logging">
+<h3>Production Logging<a class="headerlink" href="#production-logging" title="Link to this heading"></a></h3>
+<p>Configure comprehensive logging for production:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config/production.yaml</span>
+<span class="nt">logging</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;INFO&quot;</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;%(asctime)s</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">%(name)s</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">%(levelname)s</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">%(message)s&quot;</span>
+<span class="w">  </span><span class="nt">handlers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;file&quot;</span>
+<span class="w">      </span><span class="nt">filename</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/var/log/ztb/trading.log&quot;</span>
+<span class="w">      </span><span class="nt">maxBytes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10485760</span><span class="w">  </span><span class="c1"># 10MB</span>
+<span class="w">      </span><span class="nt">backupCount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;syslog&quot;</span>
+<span class="w">      </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">(&quot;logs.papertrailapp.com&quot;, 12345)</span>
+<span class="w">  </span><span class="nt">loggers</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ztb.trading</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;DEBUG&quot;</span>
+<span class="w">    </span><span class="nt">ztb.risk</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;INFO&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="audit-logging">
+<h3>Audit Logging<a class="headerlink" href="#audit-logging" title="Link to this heading"></a></h3>
+<p>Log all trading decisions and actions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">AuditLogger</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">&#39;ztb.audit&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_trade</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trade_data</span><span class="p">):</span>
+        <span class="n">audit_entry</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;trade_executed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;trade_id&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;symbol&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="p">[</span><span class="s1">&#39;symbol&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;side&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="p">[</span><span class="s1">&#39;side&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;quantity&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="p">[</span><span class="s1">&#39;quantity&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">trade_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;reason&#39;</span><span class="p">,</span> <span class="s1">&#39;automated&#39;</span><span class="p">)</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">audit_entry</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">log_risk_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event_data</span><span class="p">):</span>
+        <span class="n">audit_entry</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;risk_event&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;event_type&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;severity&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">event_data</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">audit_entry</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="backup-recovery">
+<h2>Backup &amp; Recovery<a class="headerlink" href="#backup-recovery" title="Link to this heading"></a></h2>
+<section id="data-backup">
+<h3>Data Backup<a class="headerlink" href="#data-backup" title="Link to this heading"></a></h3>
+<p>Implement regular data backups:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/bin/bash</span>
+<span class="c1"># backup.sh</span>
+
+<span class="nv">BACKUP_DIR</span><span class="o">=</span><span class="s2">&quot;/backups&quot;</span>
+<span class="nv">TIMESTAMP</span><span class="o">=</span><span class="k">$(</span>date<span class="w"> </span>+<span class="s2">&quot;%Y%m%d_%H%M%S&quot;</span><span class="k">)</span>
+
+<span class="c1"># Backup database</span>
+pg_dump<span class="w"> </span>ztb_production<span class="w"> </span>&gt;<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP_DIR</span><span class="s2">/db_</span><span class="nv">$TIMESTAMP</span><span class="s2">.sql&quot;</span>
+
+<span class="c1"># Backup models</span>
+tar<span class="w"> </span>-czf<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP_DIR</span><span class="s2">/models_</span><span class="nv">$TIMESTAMP</span><span class="s2">.tar.gz&quot;</span><span class="w"> </span>/app/models/
+
+<span class="c1"># Backup configuration</span>
+cp<span class="w"> </span>/app/config/production.yaml<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP_DIR</span><span class="s2">/config_</span><span class="nv">$TIMESTAMP</span><span class="s2">.yaml&quot;</span>
+
+<span class="c1"># Clean old backups (keep last 30 days)</span>
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP_DIR</span><span class="s2">&quot;</span><span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.sql&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+30<span class="w"> </span>-delete
+find<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$BACKUP_DIR</span><span class="s2">&quot;</span><span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.tar.gz&quot;</span><span class="w"> </span>-mtime<span class="w"> </span>+30<span class="w"> </span>-delete
+</pre></div>
+</div>
+</section>
+<section id="recovery-procedures">
+<h3>Recovery Procedures<a class="headerlink" href="#recovery-procedures" title="Link to this heading"></a></h3>
+<p>Document recovery procedures:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.recovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">RecoveryManager</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ProductionRecoveryManager</span><span class="p">(</span><span class="n">RecoveryManager</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover_from_crash</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover from system crash&quot;&quot;&quot;</span>
+        <span class="c1"># Load last known good state</span>
+        <span class="n">last_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_last_backup</span><span class="p">()</span>
+
+        <span class="c1"># Reconcile positions with broker</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reconcile_positions</span><span class="p">(</span><span class="n">last_state</span><span class="p">)</span>
+
+        <span class="c1"># Resume trading with reduced position sizes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resume_trading</span><span class="p">(</span><span class="n">safe_mode</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">recover_from_data_loss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Recover from data corruption&quot;&quot;&quot;</span>
+        <span class="c1"># Restore from backup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">restore_from_backup</span><span class="p">()</span>
+
+        <span class="c1"># Validate data integrity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validate_data_integrity</span><span class="p">()</span>
+
+        <span class="c1"># Rebuild derived data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rebuild_derived_data</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="performance-optimization">
+<h2>Performance Optimization<a class="headerlink" href="#performance-optimization" title="Link to this heading"></a></h2>
+<section id="production-optimizations">
+<h3>Production Optimizations<a class="headerlink" href="#production-optimizations" title="Link to this heading"></a></h3>
+<p>Optimize for production performance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># config/production.yaml</span>
+<span class="n">optimization</span><span class="p">:</span>
+  <span class="n">use_gpu</span><span class="p">:</span> <span class="n">true</span>                    <span class="c1"># Use GPU if available</span>
+  <span class="n">batch_size</span><span class="p">:</span> <span class="mi">1024</span>                 <span class="c1"># Larger batch sizes for inference</span>
+  <span class="n">cache_predictions</span><span class="p">:</span> <span class="n">true</span>          <span class="c1"># Cache model predictions</span>
+  <span class="n">async_execution</span><span class="p">:</span> <span class="n">true</span>            <span class="c1"># Asynchronous trade execution</span>
+  <span class="n">memory_optimization</span><span class="p">:</span> <span class="n">true</span>        <span class="c1"># Memory-efficient data structures</span>
+</pre></div>
+</div>
+</section>
+<section id="model-serving-optimization">
+<h3>Model Serving Optimization<a class="headerlink" href="#model-serving-optimization" title="Link to this heading"></a></h3>
+<p>Optimize model inference for low latency:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.serving</span><span class="w"> </span><span class="kn">import</span> <span class="n">OptimizedModelServer</span>
+
+<span class="c1"># Initialize optimized server</span>
+<span class="n">server</span> <span class="o">=</span> <span class="n">OptimizedModelServer</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="o">=</span><span class="s1">&#39;models/production_model.zip&#39;</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+    <span class="n">use_gpu</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">num_workers</span><span class="o">=</span><span class="mi">4</span>
+<span class="p">)</span>
+
+<span class="c1"># Warm up model</span>
+<span class="n">server</span><span class="o">.</span><span class="n">warm_up</span><span class="p">()</span>
+
+<span class="c1"># Serve predictions</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="n">server</span><span class="o">.</span><span class="n">predict_batch</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="scaling-considerations">
+<h2>Scaling Considerations<a class="headerlink" href="#scaling-considerations" title="Link to this heading"></a></h2>
+<section id="horizontal-scaling">
+<h3>Horizontal Scaling<a class="headerlink" href="#horizontal-scaling" title="Link to this heading"></a></h3>
+<p>Scale horizontally for high throughput:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># k8s/hpa.yaml</span>
+<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">autoscaling/v2</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HorizontalPodAutoscaler</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-hpa</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scaleTargetRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apps/v1</span>
+<span class="w">    </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-trading</span>
+<span class="w">  </span><span class="nt">minReplicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+<span class="w">  </span><span class="nt">maxReplicas</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Resource</span>
+<span class="w">    </span><span class="nt">resource</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cpu</span>
+<span class="w">      </span><span class="nt">target</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Utilization</span>
+<span class="w">        </span><span class="nt">averageUtilization</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">70</span>
+</pre></div>
+</div>
+</section>
+<section id="load-balancing">
+<h3>Load Balancing<a class="headerlink" href="#load-balancing" title="Link to this heading"></a></h3>
+<p>Distribute load across multiple instances:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># k8s/service.yaml</span>
+<span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Service</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-service</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">selector</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">app</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ztb-trading</span>
+<span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">80</span>
+<span class="w">    </span><span class="nt">targetPort</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LoadBalancer</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="testing-validation">
+<h2>Testing &amp; Validation<a class="headerlink" href="#testing-validation" title="Link to this heading"></a></h2>
+<section id="pre-deployment-testing">
+<h3>Pre-Deployment Testing<a class="headerlink" href="#pre-deployment-testing" title="Link to this heading"></a></h3>
+<p>Comprehensive testing before deployment:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProductionTester</span>
+
+<span class="c1"># Run production readiness tests</span>
+<span class="n">tester</span> <span class="o">=</span> <span class="n">ProductionTester</span><span class="p">()</span>
+
+<span class="c1"># Test scenarios</span>
+<span class="n">test_results</span> <span class="o">=</span> <span class="n">tester</span><span class="o">.</span><span class="n">run_tests</span><span class="p">([</span>
+    <span class="s1">&#39;performance_test&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;stress_test&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;failover_test&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;data_integrity_test&#39;</span>
+<span class="p">])</span>
+
+<span class="c1"># Validate results</span>
+<span class="k">if</span> <span class="n">test_results</span><span class="o">.</span><span class="n">all_passed</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Ready for production deployment&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Fix issues before deployment:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">failure</span> <span class="ow">in</span> <span class="n">test_results</span><span class="o">.</span><span class="n">failures</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">failure</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="a-b-testing">
+<h3>A/B Testing<a class="headerlink" href="#a-b-testing" title="Link to this heading"></a></h3>
+<p>Test new models against production:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.testing</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTester</span>
+
+<span class="c1"># Setup A/B test</span>
+<span class="n">ab_tester</span> <span class="o">=</span> <span class="n">ABTester</span><span class="p">(</span>
+    <span class="n">control_model</span><span class="o">=</span><span class="s1">&#39;models/current_production.zip&#39;</span><span class="p">,</span>
+    <span class="n">variant_model</span><span class="o">=</span><span class="s1">&#39;models/new_candidate.zip&#39;</span><span class="p">,</span>
+    <span class="n">traffic_split</span><span class="o">=</span><span class="mf">0.1</span>  <span class="c1"># 10% to new model</span>
+<span class="p">)</span>
+
+<span class="c1"># Run A/B test</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">ab_tester</span><span class="o">.</span><span class="n">run_test</span><span class="p">(</span><span class="n">duration_days</span><span class="o">=</span><span class="mi">7</span><span class="p">)</span>
+
+<span class="c1"># Analyze results</span>
+<span class="k">if</span> <span class="n">results</span><span class="o">.</span><span class="n">variant_better</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;New model performs better - consider deployment&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Stick with current model&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="gradual-rollout">
+<h3>Gradual Rollout<a class="headerlink" href="#gradual-rollout" title="Link to this heading"></a></h3>
+<p>Deploy new versions gradually:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.deployment</span><span class="w"> </span><span class="kn">import</span> <span class="n">GradualRollout</span>
+
+<span class="c1"># Configure gradual rollout</span>
+<span class="n">rollout</span> <span class="o">=</span> <span class="n">GradualRollout</span><span class="p">(</span>
+    <span class="n">new_version</span><span class="o">=</span><span class="s1">&#39;v2.1.0&#39;</span><span class="p">,</span>
+    <span class="n">rollout_percentage</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>  <span class="c1"># Start with 5%</span>
+    <span class="n">increase_interval_hours</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span>
+    <span class="n">max_percentage</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+
+<span class="c1"># Monitor rollout</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="n">rollout</span><span class="o">.</span><span class="n">is_complete</span><span class="p">():</span>
+    <span class="n">current_percentage</span> <span class="o">=</span> <span class="n">rollout</span><span class="o">.</span><span class="n">get_current_percentage</span><span class="p">()</span>
+    <span class="n">performance</span> <span class="o">=</span> <span class="n">rollout</span><span class="o">.</span><span class="n">monitor_performance</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">performance</span><span class="o">.</span><span class="n">is_acceptable</span><span class="p">():</span>
+        <span class="n">rollout</span><span class="o">.</span><span class="n">increase_percentage</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>  <span class="c1"># Increase by 5%</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">rollout</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>
+
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3600</span><span class="p">)</span>  <span class="c1"># Check every hour</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="compliance-security">
+<h2>Compliance &amp; Security<a class="headerlink" href="#compliance-security" title="Link to this heading"></a></h2>
+<section id="regulatory-compliance">
+<h3>Regulatory Compliance<a class="headerlink" href="#regulatory-compliance" title="Link to this heading"></a></h3>
+<p>Ensure regulatory compliance:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.compliance</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComplianceManager</span>
+
+<span class="c1"># Initialize compliance</span>
+<span class="n">compliance</span> <span class="o">=</span> <span class="n">ComplianceManager</span><span class="p">(</span>
+    <span class="n">jurisdiction</span><span class="o">=</span><span class="s1">&#39;japan&#39;</span><span class="p">,</span>
+    <span class="n">regulations</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;fsa_guidelines&#39;</span><span class="p">,</span> <span class="s1">&#39;tax_reporting&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Check trade compliance</span>
+<span class="k">if</span> <span class="n">compliance</span><span class="o">.</span><span class="n">is_trade_allowed</span><span class="p">(</span><span class="n">trade</span><span class="p">):</span>
+    <span class="n">execute_trade</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">log_compliance_violation</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="security-best-practices">
+<h3>Security Best Practices<a class="headerlink" href="#security-best-practices" title="Link to this heading"></a></h3>
+<p>Implement security measures:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># config/security.yaml</span>
+<span class="nt">security</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">api_keys_encrypted</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">secrets_management</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;vault&quot;</span>
+<span class="w">  </span><span class="nt">network_isolation</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">audit_logging</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">access_control</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;rbac&quot;</span>
+
+<span class="nt">authentication</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">method</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;oauth2&quot;</span>
+<span class="w">  </span><span class="nt">mfa_required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">session_timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3600</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-deployment-issues">
+<h3>Common Deployment Issues<a class="headerlink" href="#common-deployment-issues" title="Link to this heading"></a></h3>
+<p><strong>High Latency</strong>
+* Optimize model inference
+* Use GPU acceleration
+* Implement caching</p>
+<p><strong>Memory Issues</strong>
+* Monitor memory usage
+* Implement memory limits
+* Use memory-efficient data structures</p>
+<p><strong>Trading Halts</strong>
+* Check circuit breaker conditions
+* Verify market data connectivity
+* Review risk limits</p>
+<p><strong>Data Corruption</strong>
+* Implement data validation
+* Regular backups
+* Use transactional databases</p>
+</section>
+</section>
+<section id="best-practices">
+<h2>Best Practices<a class="headerlink" href="#best-practices" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Start Small</strong>: Begin with small position sizes in production</p></li>
+<li><p><strong>Monitor Everything</strong>: Implement comprehensive monitoring and alerting</p></li>
+<li><p><strong>Automate Recovery</strong>: Have automated procedures for common issues</p></li>
+<li><p><strong>Regular Backups</strong>: Backup data and models regularly</p></li>
+<li><p><strong>Security First</strong>: Implement proper security measures</p></li>
+<li><p><strong>Compliance</strong>: Ensure regulatory compliance</p></li>
+<li><p><strong>Testing</strong>: Thoroughly test before deployment</p></li>
+<li><p><strong>Gradual Rollout</strong>: Roll out changes gradually with monitoring</p></li>
+</ol>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api/index.html"><span class="doc">API Reference</span></a> - Explore the API reference</p></li>
+<li><p><a class="reference internal" href="../examples/index.html"><span class="doc">Examples</span></a> - See deployment examples</p></li>
+<li><p><span class="xref std std-doc">../troubleshooting/index</span> - Get help with common issues</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

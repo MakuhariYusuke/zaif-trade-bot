@@ -1,0 +1,584 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.benchmarks package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.config package" href="ztb.config.html" />
+    <link rel="prev" title="ztb.analysis package" href="ztb.analysis.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+      <li class="breadcrumb-item active">ztb.benchmarks package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.benchmarks.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-benchmarks-package">
+<h1>ztb.benchmarks package<a class="headerlink" href="#ztb-benchmarks-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.benchmarks.ablate_features">
+<span id="ztb-benchmarks-ablate-features-module"></span><h2>ztb.benchmarks.ablate_features module<a class="headerlink" href="#module-ztb.benchmarks.ablate_features" title="Link to this heading"></a></h2>
+<p>Feature ablation script for trading.
+特徴量アブレーションスクリプト</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablate_features.MetricsCallback">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablate_features.</span></span><span class="sig-name descname"><span class="pre">MetricsCallback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablate_features.html#MetricsCallback"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablate_features.MetricsCallback" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://stable-baselines3.readthedocs.io/en/master/guide/callbacks.html#stable_baselines3.common.callbacks.BaseCallback" title="(in Stable Baselines3 vmaster (2.7.1a3 ))"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCallback</span></code></a></p>
+<p>メトリクス収集コールバック</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablate_features.MetricsCallback.get_metrics">
+<span class="sig-name descname"><span class="pre">get_metrics</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablate_features.html#MetricsCallback.get_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablate_features.MetricsCallback.get_metrics" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablate_features.create_env_with_features">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablate_features.</span></span><span class="sig-name descname"><span class="pre">create_env_with_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.trading.environment.heavy_env.html#ztb.trading.environment.heavy_env.core.HeavyTradingEnv" title="ztb.trading.environment.heavy_env.core.HeavyTradingEnv"><span class="pre">HeavyTradingEnv</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablate_features.html#create_env_with_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablate_features.create_env_with_features" title="Link to this definition"></a></dt>
+<dd><p>特徴量を有効化した環境を作成</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablate_features.run_training">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablate_features.</span></span><span class="sig-name descname"><span class="pre">run_training</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">timesteps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">enabled_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablate_features.html#run_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablate_features.run_training" title="Link to this definition"></a></dt>
+<dd><p>学習実行</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablate_features.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablate_features.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablate_features.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablate_features.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks.ablation_runner">
+<span id="ztb-benchmarks-ablation-runner-module"></span><h2>ztb.benchmarks.ablation_runner module<a class="headerlink" href="#module-ztb.benchmarks.ablation_runner" title="Link to this heading"></a></h2>
+<p>ablation_runner.py
+特徴量アブレーション分析実行スクリプト
+experimental特徴量の評価も統合</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.evaluate_experimental_features">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">evaluate_experimental_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">experimental_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline_sharpe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#evaluate_experimental_features"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.evaluate_experimental_features" title="Link to this definition"></a></dt>
+<dd><p>Stub implementation for experimental features evaluation
+TODO: Implement proper evaluation logic</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.load_config">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">load_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#load_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.load_config" title="Link to this definition"></a></dt>
+<dd><p>設定ファイルを読み込み</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.load_evaluation_config">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">load_evaluation_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#load_evaluation_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.load_evaluation_config" title="Link to this definition"></a></dt>
+<dd><p>評価設定を読み込み</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.load_feature_sets">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">load_feature_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sets_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#load_feature_sets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.load_feature_sets" title="Link to this definition"></a></dt>
+<dd><p>特徴量セットを読み込み</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.run_ablation_analysis">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">run_ablation_analysis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">experimental_features</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_runs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">evaluation_config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#run_ablation_analysis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.run_ablation_analysis" title="Link to this definition"></a></dt>
+<dd><p>アブレーション分析を実行</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_features</strong> – ベースとなる特徴量リスト</p></li>
+<li><p><strong>experimental_features</strong> – 実験的特徴量リスト（オプション）</p></li>
+<li><p><strong>data_path</strong> – データファイルパス</p></li>
+<li><p><strong>num_runs</strong> – 実行回数</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>分析結果</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.save_results">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">save_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#save_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.save_results" title="Link to this definition"></a></dt>
+<dd><p>結果をJSONファイルとCSVファイルに保存</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.ablation_runner.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.ablation_runner.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/ablation_runner.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.ablation_runner.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks.bench_features">
+<span id="ztb-benchmarks-bench-features-module"></span><h2>ztb.benchmarks.bench_features module<a class="headerlink" href="#module-ztb.benchmarks.bench_features" title="Link to this heading"></a></h2>
+<p>Feature benchmarking script.
+特徴量ベンチマークスクリプト</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_features.load_real_data">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_features.</span></span><span class="sig-name descname"><span class="pre">load_real_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_features.html#load_real_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_features.load_real_data" title="Link to this definition"></a></dt>
+<dd><p>実データを読み込み</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_features.benchmark_feature">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_features.</span></span><span class="sig-name descname"><span class="pre">benchmark_feature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.features.html#ztb.features.registry.FeatureRegistry" title="ztb.features.registry.FeatureRegistry"><span class="pre">FeatureRegistry</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_runs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_features.html#benchmark_feature"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_features.benchmark_feature" title="Link to this definition"></a></dt>
+<dd><p>単一特徴量のベンチマーク</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_features.benchmark_bundle">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_features.</span></span><span class="sig-name descname"><span class="pre">benchmark_bundle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">manager</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.features.html#ztb.features.registry.FeatureRegistry" title="ztb.features.registry.FeatureRegistry"><span class="pre">FeatureRegistry</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">waves</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_runs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_features.html#benchmark_bundle"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_features.benchmark_bundle" title="Link to this definition"></a></dt>
+<dd><p>バンドルのベンチマーク（指定されたwavesで実行）</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_features.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_features.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_features.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_features.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks.bench_io">
+<span id="ztb-benchmarks-bench-io-module"></span><h2>ztb.benchmarks.bench_io module<a class="headerlink" href="#module-ztb.benchmarks.bench_io" title="Link to this heading"></a></h2>
+<p>bench_io.py
+I/O benchmarking script for Parquet compression, chunking, and column projection.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.ParquetConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">ParquetConfig</span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#ParquetConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.ParquetConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<p>Configuration for Parquet I/O operations.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.ParquetConfig.compression">
+<span class="sig-name descname"><span class="pre">compression</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.benchmarks.bench_io.ParquetConfig.compression" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.ParquetConfig.row_group_size">
+<span class="sig-name descname"><span class="pre">row_group_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#ztb.benchmarks.bench_io.ParquetConfig.row_group_size" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.ParquetConfig.use_columns">
+<span class="sig-name descname"><span class="pre">use_columns</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.benchmarks.bench_io.ParquetConfig.use_columns" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.ParquetConfig.engine">
+<span class="sig-name descname"><span class="pre">engine</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.benchmarks.bench_io.ParquetConfig.engine" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.BenchmarkConfig">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">BenchmarkConfig</span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#BenchmarkConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.BenchmarkConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.TypedDict" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">TypedDict</span></code></a></p>
+<p>Configuration for benchmark runs.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.BenchmarkConfig.parquet">
+<span class="sig-name descname"><span class="pre">parquet</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#ztb.benchmarks.bench_io.ParquetConfig" title="ztb.benchmarks.bench_io.ParquetConfig"><span class="pre">ParquetConfig</span></a></em><a class="headerlink" href="#ztb.benchmarks.bench_io.BenchmarkConfig.parquet" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.BenchmarkConfig.limits">
+<span class="sig-name descname"><span class="pre">limits</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.benchmarks.bench_io.BenchmarkConfig.limits" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.generate_test_data">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">generate_test_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#generate_test_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.generate_test_data" title="Link to this definition"></a></dt>
+<dd><p>Generate test DataFrame similar to trading data</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.measure_io_performance">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">measure_io_performance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.benchmarks.bench_io.BenchmarkConfig" title="ztb.benchmarks.bench_io.BenchmarkConfig"><span class="pre">BenchmarkConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#measure_io_performance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.measure_io_performance" title="Link to this definition"></a></dt>
+<dd><p>Measure I/O performance for given config</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.run_benchmark">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">run_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_rows</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#run_benchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.run_benchmark" title="Link to this definition"></a></dt>
+<dd><p>Run comprehensive I/O benchmark</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.generate_plots">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">generate_plots</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results_df</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#generate_plots"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.generate_plots" title="Link to this definition"></a></dt>
+<dd><p>Generate performance comparison plots</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.generate_weekly_report_section">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">generate_weekly_report_section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#generate_weekly_report_section"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.generate_weekly_report_section" title="Link to this definition"></a></dt>
+<dd><p>Generate markdown section for weekly report</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>results</strong> – Benchmark results DataFrame</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Markdown content for weekly report</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.update_weekly_report">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">update_weekly_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">benchmark_results</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v2.3.3)"><span class="pre">DataFrame</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">weekly_report_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'weekly_report.md'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#update_weekly_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.update_weekly_report" title="Link to this definition"></a></dt>
+<dd><p>Update weekly report with I/O benchmark results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>benchmark_results</strong> – Results from I/O benchmarking</p></li>
+<li><p><strong>weekly_report_path</strong> – Path to weekly report file</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.bench_io.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.bench_io.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/bench_io.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.bench_io.main" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks.checkpoint_benchmark">
+<span id="ztb-benchmarks-checkpoint-benchmark-module"></span><h2>ztb.benchmarks.checkpoint_benchmark module<a class="headerlink" href="#module-ztb.benchmarks.checkpoint_benchmark" title="Link to this heading"></a></h2>
+<p>Checkpoint performance benchmark for Zaif Trade Bot.</p>
+<p>Measures model checkpoint save/load performance with soft performance gates.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.checkpoint_benchmark.</span></span><span class="sig-name descname"><span class="pre">CheckpointResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">throughput_mb_per_second</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_size_mb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">passed_gates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_violations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Result of a checkpoint benchmark.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.duration_seconds">
+<span class="sig-name descname"><span class="pre">duration_seconds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.duration_seconds" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.throughput_mb_per_second">
+<span class="sig-name descname"><span class="pre">throughput_mb_per_second</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.throughput_mb_per_second" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.file_size_mb">
+<span class="sig-name descname"><span class="pre">file_size_mb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.file_size_mb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.passed_gates">
+<span class="sig-name descname"><span class="pre">passed_gates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.passed_gates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointResult.gate_violations">
+<span class="sig-name descname"><span class="pre">gate_violations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult.gate_violations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.checkpoint_benchmark.</span></span><span class="sig-name descname"><span class="pre">CheckpointBenchmark</span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Benchmark for checkpoint save/load operations.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.create_test_model">
+<span class="sig-name descname"><span class="pre">create_test_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.create_test_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.create_test_model" title="Link to this definition"></a></dt>
+<dd><p>Create a test model/checkpoint data structure.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.get_data_size_mb">
+<span class="sig-name descname"><span class="pre">get_data_size_mb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.get_data_size_mb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.get_data_size_mb" title="Link to this definition"></a></dt>
+<dd><p>Estimate size of data in MB.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_pickle_save">
+<span class="sig-name descname"><span class="pre">benchmark_pickle_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.benchmark_pickle_save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_pickle_save" title="Link to this definition"></a></dt>
+<dd><p>Benchmark pickle-based checkpoint saving.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_pickle_load">
+<span class="sig-name descname"><span class="pre">benchmark_pickle_load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.benchmark_pickle_load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_pickle_load" title="Link to this definition"></a></dt>
+<dd><p>Benchmark pickle-based checkpoint loading.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_json_save">
+<span class="sig-name descname"><span class="pre">benchmark_json_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.benchmark_json_save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_json_save" title="Link to this definition"></a></dt>
+<dd><p>Benchmark JSON-based checkpoint saving (metadata only).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_numpy_save">
+<span class="sig-name descname"><span class="pre">benchmark_numpy_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><span class="pre">Path</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.benchmark_numpy_save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.benchmark_numpy_save" title="Link to this definition"></a></dt>
+<dd><p>Benchmark numpy .npz save.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.print_result">
+<span class="sig-name descname"><span class="pre">print_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.print_result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.print_result" title="Link to this definition"></a></dt>
+<dd><p>Print checkpoint benchmark result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.run_checkpoint_benchmarks">
+<span class="sig-name descname"><span class="pre">run_checkpoint_benchmarks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'medium'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointResult" title="ztb.benchmarks.checkpoint_benchmark.CheckpointResult"><span class="pre">CheckpointResult</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#CheckpointBenchmark.run_checkpoint_benchmarks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.CheckpointBenchmark.run_checkpoint_benchmarks" title="Link to this definition"></a></dt>
+<dd><p>Run all checkpoint benchmarks.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.checkpoint_benchmark.main">
+<span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.checkpoint_benchmark.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/checkpoint_benchmark.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.checkpoint_benchmark.main" title="Link to this definition"></a></dt>
+<dd><p>Main benchmark runner.</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks.streaming_benchmark">
+<span id="ztb-benchmarks-streaming-benchmark-module"></span><h2>ztb.benchmarks.streaming_benchmark module<a class="headerlink" href="#module-ztb.benchmarks.streaming_benchmark" title="Link to this heading"></a></h2>
+<p>Streaming performance benchmark for Zaif Trade Bot.</p>
+<p>Measures real-time data processing performance with soft performance gates.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.streaming_benchmark.</span></span><span class="sig-name descname"><span class="pre">BenchmarkResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">operations_per_second</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">latency_p50</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">latency_p95</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">latency_p99</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_mb</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">passed_gates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">gate_violations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#BenchmarkResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Result of a benchmark run.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.duration_seconds">
+<span class="sig-name descname"><span class="pre">duration_seconds</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.duration_seconds" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.operations_per_second">
+<span class="sig-name descname"><span class="pre">operations_per_second</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.operations_per_second" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p50">
+<span class="sig-name descname"><span class="pre">latency_p50</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p50" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p95">
+<span class="sig-name descname"><span class="pre">latency_p95</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p95" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p99">
+<span class="sig-name descname"><span class="pre">latency_p99</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.latency_p99" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.memory_mb">
+<span class="sig-name descname"><span class="pre">memory_mb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.memory_mb" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.passed_gates">
+<span class="sig-name descname"><span class="pre">passed_gates</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.passed_gates" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.BenchmarkResult.gate_violations">
+<span class="sig-name descname"><span class="pre">gate_violations</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult.gate_violations" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.streaming_benchmark.</span></span><span class="sig-name descname"><span class="pre">StreamingBenchmark</span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Benchmark for streaming data processing.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_data_ingestion">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">benchmark_data_ingestion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_messages</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="ztb.benchmarks.streaming_benchmark.BenchmarkResult"><span class="pre">BenchmarkResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark.benchmark_data_ingestion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_data_ingestion" title="Link to this definition"></a></dt>
+<dd><p>Benchmark data ingestion from streaming source.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_signal_processing">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">benchmark_signal_processing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_signals</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="ztb.benchmarks.streaming_benchmark.BenchmarkResult"><span class="pre">BenchmarkResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark.benchmark_signal_processing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_signal_processing" title="Link to this definition"></a></dt>
+<dd><p>Benchmark real-time signal processing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_order_execution">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">benchmark_order_execution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_orders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="ztb.benchmarks.streaming_benchmark.BenchmarkResult"><span class="pre">BenchmarkResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark.benchmark_order_execution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark.benchmark_order_execution" title="Link to this definition"></a></dt>
+<dd><p>Benchmark order execution simulation.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark.print_result">
+<span class="sig-name descname"><span class="pre">print_result</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">result</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="ztb.benchmarks.streaming_benchmark.BenchmarkResult"><span class="pre">BenchmarkResult</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark.print_result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark.print_result" title="Link to this definition"></a></dt>
+<dd><p>Print benchmark result.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.StreamingBenchmark.run_all_benchmarks">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">run_all_benchmarks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#ztb.benchmarks.streaming_benchmark.BenchmarkResult" title="ztb.benchmarks.streaming_benchmark.BenchmarkResult"><span class="pre">BenchmarkResult</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#StreamingBenchmark.run_all_benchmarks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.StreamingBenchmark.run_all_benchmarks" title="Link to this definition"></a></dt>
+<dd><p>Run all streaming benchmarks.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="ztb.benchmarks.streaming_benchmark.main">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.benchmarks.streaming_benchmark.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../_modules/ztb/benchmarks/streaming_benchmark.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.benchmarks.streaming_benchmark.main" title="Link to this definition"></a></dt>
+<dd><p>Main benchmark runner.</p>
+</dd></dl>
+
+</section>
+<section id="module-ztb.benchmarks">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.benchmarks" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.analysis.html" class="btn btn-neutral float-left" title="ztb.analysis package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.config.html" class="btn btn-neutral float-right" title="ztb.config package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

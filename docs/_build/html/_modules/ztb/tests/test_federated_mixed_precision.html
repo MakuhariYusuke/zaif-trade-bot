@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.test_federated_mixed_precision &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.test_federated_mixed_precision</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.test_federated_mixed_precision</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Test suite for Federated Learning and Mixed Precision Training in UnifiedTrainer.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">unittest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mock</span><span class="p">,</span> <span class="n">patch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainerConfig</span><span class="p">,</span> <span class="n">UnifiedAlgorithm</span>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestFederatedMixedPrecision</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Test cases for federated learning and mixed precision training.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.setUp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.setUp">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set up test fixtures.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;algorithm&#39;</span><span class="p">:</span> <span class="s1">&#39;ppo&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;total_timesteps&#39;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+            <span class="s1">&#39;model_name&#39;</span><span class="p">:</span> <span class="s1">&#39;test_model&#39;</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_federated_learning_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_federated_learning_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_federated_learning_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test federated learning configuration setup.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;enable_federated&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;num_clients&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+            <span class="s1">&#39;federated_rounds&#39;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="s1">&#39;privacy_budget&#39;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+            <span class="s1">&#39;client_fraction&#39;</span><span class="p">:</span> <span class="mf">0.8</span>
+        <span class="p">})</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Check if federated components are initialized</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># Not initialized until _setup_federated_learning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">global_model_state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_mixed_precision_config">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_mixed_precision_config">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_mixed_precision_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test mixed precision training configuration setup.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;enable_mixed_precision&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;precision&#39;</span><span class="p">:</span> <span class="s1">&#39;fp16&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;gradient_scaling&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;gradient_clip_norm&#39;</span><span class="p">:</span> <span class="mf">1.0</span>
+        <span class="p">})</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Check if mixed precision components are initialized</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">grad_scaler</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># On CPU, GradScaler might not be initialized</span>
+            <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_setup_federated_learning_success">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_setup_federated_learning_success">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_setup_federated_learning_success</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test successful federated learning setup.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;enable_federated&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;num_clients&#39;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">})</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Test setup</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_federated_learning</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># Check client configurations</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">client_config</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">client_config</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">],</span> <span class="n">i</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_setup_federated_learning_without_opacus">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_setup_federated_learning_without_opacus">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.OPACUS_AVAILABLE&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_setup_federated_learning_without_opacus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test federated learning setup without Opacus (warning logged).&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;enable_federated&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;num_clients&#39;</span><span class="p">:</span> <span class="mi">2</span>
+        <span class="p">})</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Should still work without Opacus</span>
+        <span class="n">success</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_federated_learning</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_setup_mixed_precision_success">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_setup_mixed_precision_success">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.AMP_AVAILABLE&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;torch.cuda.is_available&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_setup_mixed_precision_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_cuda</span><span class="p">,</span> <span class="n">mock_amp</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test successful mixed precision setup.&quot;&quot;&quot;</span>
+        <span class="n">mock_amp</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">mock_cuda</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="p">[</span><span class="s1">&#39;enable_mixed_precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">success</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_mixed_precision</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">success</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNotNone</span><span class="p">(</span><span class="n">trainer</span><span class="o">.</span><span class="n">grad_scaler</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_setup_mixed_precision_without_amp">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_setup_mixed_precision_without_amp">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.AMP_AVAILABLE&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_setup_mixed_precision_without_amp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test mixed precision setup failure without AMP.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="p">[</span><span class="s1">&#39;enable_mixed_precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">success</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_setup_mixed_precision</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertFalse</span><span class="p">(</span><span class="n">success</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_federated_average_simple">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_federated_average_simple">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_federated_average_simple</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test simple federated averaging.&quot;&quot;&quot;</span>
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Mock client updates (simple tensors)</span>
+        <span class="n">client_updates</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">{</span><span class="s1">&#39;param1&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]),</span> <span class="s1">&#39;param2&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">])},</span>
+            <span class="p">{</span><span class="s1">&#39;param1&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]),</span> <span class="s1">&#39;param2&#39;</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">5.0</span><span class="p">])},</span>
+        <span class="p">]</span>
+
+        <span class="n">averaged</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_federated_average</span><span class="p">(</span><span class="n">client_updates</span><span class="p">)</span>
+
+        <span class="c1"># Check averaged values</span>
+        <span class="n">expected_param1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">])</span>  <span class="c1"># Average of [1,2] and [3,4]</span>
+        <span class="n">expected_param2</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">4.0</span><span class="p">])</span>       <span class="c1"># Average of [3] and [5]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">averaged</span><span class="p">[</span><span class="s1">&#39;param1&#39;</span><span class="p">],</span> <span class="n">expected_param1</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">averaged</span><span class="p">[</span><span class="s1">&#39;param2&#39;</span><span class="p">],</span> <span class="n">expected_param2</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_apply_mixed_precision_with_scaler">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_apply_mixed_precision_with_scaler">[docs]</a>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;ztb.training.unified_trainer.trainer.AMP_AVAILABLE&#39;</span><span class="p">)</span>
+    <span class="nd">@patch</span><span class="p">(</span><span class="s1">&#39;torch.cuda.is_available&#39;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_apply_mixed_precision_with_scaler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_cuda</span><span class="p">,</span> <span class="n">mock_amp</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test mixed precision loss scaling.&quot;&quot;&quot;</span>
+        <span class="n">mock_amp</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">mock_cuda</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="p">[</span><span class="s1">&#39;enable_mixed_precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Mock loss tensor</span>
+        <span class="n">loss</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trainer</span><span class="o">.</span><span class="n">grad_scaler</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">scaled_loss</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_apply_mixed_precision</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+            <span class="c1"># With CUDA available, scaled loss should be scaled</span>
+            <span class="c1"># Note: The actual scaling factor depends on GradScaler&#39;s internal state</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">scaled_loss</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Without scaler, should return original loss</span>
+            <span class="n">scaled_loss</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">_apply_mixed_precision</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">scaled_loss</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="TestFederatedMixedPrecision.test_step_optimizer_with_scaler">
+<a class="viewcode-back" href="../../../api/generated/ztb.tests.html#ztb.tests.test_federated_mixed_precision.TestFederatedMixedPrecision.test_step_optimizer_with_scaler">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_step_optimizer_with_scaler</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test optimizer step with gradient scaler.&quot;&quot;&quot;</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">config</span><span class="p">[</span><span class="s1">&#39;enable_mixed_precision&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># Mock optimizer</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">optimizer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">optim</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># This should not raise an exception</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">trainer</span><span class="o">.</span><span class="n">_step_optimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Optimizer step failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">unittest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

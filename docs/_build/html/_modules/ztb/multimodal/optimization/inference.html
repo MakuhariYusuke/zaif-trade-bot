@@ -1,0 +1,482 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.multimodal.optimization.inference &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../multimodal.html">ztb.multimodal</a></li>
+      <li class="breadcrumb-item active">ztb.multimodal.optimization.inference</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.multimodal.optimization.inference</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;推論最適化モジュール</span>
+
+<span class="sd">リアルタイム推論の高速化とメモリ最適化を提供。</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>  <span class="c1"># type: ignore</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>  <span class="c1"># type: ignore</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<div class="viewcode-block" id="InferenceOptimizer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InferenceOptimizer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;推論最適化クラス</span>
+
+<span class="sd">    モデル推論の高速化とメモリ最適化を行う。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;auto&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            model: 最適化対象のモデル</span>
+<span class="sd">            device: 推論デバイス (&#39;cpu&#39;, &#39;cuda&#39;, &#39;auto&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+        <span class="c1"># 最適化設定</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_jit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_onnx</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_tensorrt</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># JITコンパイルモデル</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">jit_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># ONNXモデル</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">onnx_model</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;推論最適化初期化: device=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_device</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;デバイスを取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">device</span> <span class="o">==</span> <span class="s1">&#39;auto&#39;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s1">&#39;cuda&#39;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s1">&#39;cpu&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+
+<div class="viewcode-block" id="InferenceOptimizer.enable_jit_compilation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer.enable_jit_compilation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enable_jit_compilation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;InferenceOptimizer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;JITコンパイルを有効化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># ダミー入力でJITコンパイル（シーケンス対応）</span>
+            <span class="n">dummy_price</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">156</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># [batch, seq_len, feature_dim]</span>
+            <span class="n">dummy_text</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">768</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">dummy_economic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">jit_model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">jit</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="p">(</span><span class="n">dummy_price</span><span class="p">,</span> <span class="n">dummy_text</span><span class="p">,</span> <span class="n">dummy_economic</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_jit</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;JITコンパイル有効化完了&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;JITコンパイル失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="InferenceOptimizer.enable_onnx_optimization">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer.enable_onnx_optimization">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enable_onnx_optimization</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">onnx_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;InferenceOptimizer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ONNX最適化を有効化&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">onnxruntime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ort</span>
+
+            <span class="k">if</span> <span class="n">onnx_path</span><span class="p">:</span>
+                <span class="c1"># 既存のONNXモデルを読み込み</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">onnx_session</span> <span class="o">=</span> <span class="n">ort</span><span class="o">.</span><span class="n">InferenceSession</span><span class="p">(</span><span class="n">onnx_path</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># PyTorchモデルからONNXに変換</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_onnx</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_onnx</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;ONNX最適化有効化完了&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;ONNX Runtimeがインストールされていません&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ONNX最適化失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_convert_to_onnx</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;PyTorchモデルをONNXに変換&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">onnxruntime</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ort</span>
+
+        <span class="n">dummy_price</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">156</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>  <span class="c1"># [batch, seq_len, feature_dim]</span>
+        <span class="n">dummy_text</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">768</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">dummy_economic</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">50</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># ONNXに変換</span>
+        <span class="n">onnx_path</span> <span class="o">=</span> <span class="s2">&quot;temp_model.onnx&quot;</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">onnx</span><span class="o">.</span><span class="n">export</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">dummy_price</span><span class="p">,</span> <span class="n">dummy_text</span><span class="p">,</span> <span class="n">dummy_economic</span><span class="p">),</span>
+            <span class="n">onnx_path</span><span class="p">,</span>
+            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;price&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;economic&#39;</span><span class="p">],</span>
+            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;output&#39;</span><span class="p">],</span>
+            <span class="n">dynamic_axes</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;seq_len&#39;</span><span class="p">},</span>
+                <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;seq_len&#39;</span><span class="p">},</span>
+                <span class="s1">&#39;economic&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;seq_len&#39;</span><span class="p">},</span>
+                <span class="s1">&#39;output&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;seq_len&#39;</span><span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">onnx_session</span> <span class="o">=</span> <span class="n">ort</span><span class="o">.</span><span class="n">InferenceSession</span><span class="p">(</span><span class="n">onnx_path</span><span class="p">)</span>
+
+        <span class="c1"># 一時ファイルを削除</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">onnx_path</span><span class="p">)</span>
+
+<div class="viewcode-block" id="InferenceOptimizer.enable_tensorrt">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer.enable_tensorrt">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">enable_tensorrt</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;InferenceOptimizer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;TensorRT最適化を有効化（GPUのみ）&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;TensorRTはCUDA環境でのみ利用可能です&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># TensorRTの初期化と最適化</span>
+            <span class="c1"># 実際の実装ではtorch_tensorrtを使用</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">use_tensorrt</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;TensorRT最適化有効化完了&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TensorRT最適化失敗: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="InferenceOptimizer.optimize_memory">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer.optimize_memory">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">optimize_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;InferenceOptimizer&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ最適化を実行&quot;&quot;&quot;</span>
+        <span class="c1"># 不要なグラフを削除</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="c1"># メモリ効率的な設定</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">set_grad_enabled</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;メモリ最適化完了&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+
+<div class="viewcode-block" id="InferenceOptimizer.predict">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.InferenceOptimizer.predict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">inputs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最適化された推論を実行&quot;&quot;&quot;</span>
+        <span class="c1"># 入力をデバイスに移動</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="k">else</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_onnx</span><span class="p">:</span>
+            <span class="c1"># ONNX推論</span>
+            <span class="n">ort_inputs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;price&#39;</span><span class="p">:</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+                <span class="s1">&#39;economic&#39;</span><span class="p">:</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+            <span class="p">}</span>
+            <span class="n">ort_outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">onnx_session</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">ort_inputs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">ort_outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_jit</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">jit_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># JIT推論</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">jit_model</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 通常のPyTorch推論</span>
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">inputs</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="BatchProcessor">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.BatchProcessor">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BatchProcessor</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;バッチ処理最適化クラス</span>
+
+<span class="sd">    複数の推論リクエストを効率的に処理。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">model</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span>
+                 <span class="n">max_batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+                 <span class="n">num_workers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            model: 推論対象のモデル</span>
+<span class="sd">            max_batch_size: 最大バッチサイズ</span>
+<span class="sd">            num_workers: ワーカー数</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_batch_size</span> <span class="o">=</span> <span class="n">max_batch_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_workers</span> <span class="o">=</span> <span class="n">num_workers</span>
+
+        <span class="c1"># 推論キュー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">result_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+
+        <span class="c1"># スレッドプール</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">executor</span> <span class="o">=</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">num_workers</span><span class="p">)</span>
+
+        <span class="c1"># バッチ処理タイマー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_timer</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="BatchProcessor.submit_request">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.BatchProcessor.submit_request">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">submit_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;推論リクエストを送信&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">request_id</span><span class="p">,</span> <span class="n">inputs</span><span class="p">))</span>
+
+        <span class="c1"># バッチ処理タイマーを開始/リセット</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_timer</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">batch_timer</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_timer</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_process_batch</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">batch_timer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="BatchProcessor.get_result">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.BatchProcessor.get_result">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;推論結果を取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">result_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">request_id</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_process_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;バッチ処理を実行&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">lock</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="c1"># キューからリクエストを取得</span>
+            <span class="n">batch_requests</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">max_batch_size</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request_queue</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">max_batch_size</span><span class="p">:]</span>
+
+        <span class="c1"># バッチを作成</span>
+        <span class="n">batch_inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collate_batch</span><span class="p">([</span><span class="n">req</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">req</span> <span class="ow">in</span> <span class="n">batch_requests</span><span class="p">])</span>
+
+        <span class="c1"># バッチ推論を実行</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">batch_outputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">(</span><span class="o">*</span><span class="n">batch_inputs</span><span class="p">)</span>
+
+            <span class="c1"># 結果を個別に保存</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">request_id</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">batch_requests</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">result_dict</span><span class="p">[</span><span class="n">request_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">batch_outputs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;バッチ処理エラー: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collate_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;入力をバッチ化&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">inputs_list</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">()</span>
+
+        <span class="c1"># 各入力タイプをバッチ化</span>
+        <span class="n">batched_inputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs_list</span><span class="p">[</span><span class="mi">0</span><span class="p">])):</span>
+            <span class="n">tensor_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">inputs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">inputs</span> <span class="ow">in</span> <span class="n">inputs_list</span><span class="p">]</span>
+            <span class="n">batched</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">tensor_list</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">batched_inputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">batched</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">batched_inputs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="MemoryManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.MemoryManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MemoryManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;メモリ管理クラス</span>
+
+<span class="sd">    GPUメモリの効率的な管理を行う。</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_memory_gb</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            max_memory_gb: 最大メモリ使用量（GB）</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_memory_gb</span> <span class="o">=</span> <span class="n">max_memory_gb</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="MemoryManager.monitor_memory">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.MemoryManager.monitor_memory">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">monitor_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ使用量を監視&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">allocated</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_allocated</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>  <span class="c1"># GB</span>
+            <span class="n">reserved</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">memory_reserved</span><span class="p">()</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span> <span class="o">/</span> <span class="mi">1024</span>   <span class="c1"># GB</span>
+
+            <span class="n">memory_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;allocated_gb&#39;</span><span class="p">:</span> <span class="n">allocated</span><span class="p">,</span>
+                <span class="s1">&#39;reserved_gb&#39;</span><span class="p">:</span> <span class="n">reserved</span><span class="p">,</span>
+                <span class="s1">&#39;utilization_percent&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">allocated</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_memory_gb</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">memory_info</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;allocated_gb&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s1">&#39;reserved_gb&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="s1">&#39;utilization_percent&#39;</span><span class="p">:</span> <span class="mf">0.0</span>
+            <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">memory_info</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">memory_info</span></div>
+
+
+<div class="viewcode-block" id="MemoryManager.cleanup_memory">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.MemoryManager.cleanup_memory">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cleanup_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリクリーンアップ&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+        <span class="c1"># 古い履歴を削除</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">[</span><span class="o">-</span><span class="mi">500</span><span class="p">:]</span></div>
+
+
+<div class="viewcode-block" id="MemoryManager.get_memory_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.multimodal.optimization.html#ztb.multimodal.optimization.inference.MemoryManager.get_memory_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_memory_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ統計を取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">recent_memory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>  <span class="c1"># 最近10件</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;current&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="s1">&#39;average&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;allocated_gb&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;allocated_gb&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">recent_memory</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_memory</span><span class="p">),</span>
+                <span class="s1">&#39;utilization_percent&#39;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;utilization_percent&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">recent_memory</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_memory</span><span class="p">)</span>
+            <span class="p">},</span>
+            <span class="s1">&#39;peak&#39;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s1">&#39;allocated_gb&#39;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;allocated_gb&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">),</span>
+                <span class="s1">&#39;utilization_percent&#39;</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">m</span><span class="p">[</span><span class="s1">&#39;utilization_percent&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">memory_history</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

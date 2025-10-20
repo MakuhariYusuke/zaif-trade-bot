@@ -1,0 +1,465 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>======================================== &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SAC Parameter Tuning Analysis Report" href="SAC_TUNING_ANALYSIS_REPORT.html" />
+    <link rel="prev" title="SAC環境診断レポート" href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Algorithms</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="PPO_REFACTORING_COMPLETE.html">PPO整理完了レポート - アルゴリズム差し替え可能な設計</a></li>
+<li class="toctree-l2"><a class="reference internal" href="PPO_REFACTORING_PLAN.html">PPO Refactoring Plan - アルゴリズム差し替え可能な設計へ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_ENTROPY_ANALYSIS.html">SAC Entropy Tuning - Critical Insight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html">SAC環境診断レポート</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">🚨 主要な問題点</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">========================================</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#critic-loss">1. Critic Loss の爆発的増加 ⚠️⚠️⚠️</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#entropy-coefficient">2. Entropy Coefficient の異常な増加 ⚠️</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#entropy-coefficient-loss">3. Entropy Coefficient Loss の大幅な減少</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">💡 推奨パラメータ調整</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">========================================</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#a-critic-loss">A. 緊急対応（Critic Loss の安定化）</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#learning-rate">1. Learning Rate を下げる</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#batch-size">2. Batch Size を増やす</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gamma">3. Gamma (割引率) を下げる</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gradient-clipping">4. Gradient Clipping を追加</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#b">B. エントロピー調整（探索の最適化）</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#target-entropy">5. Target Entropy を明示的に設定</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#learning-starts">6. Learning Starts を増やす</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#c">C. バッファとサンプリング</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#buffer-size">7. Buffer Size の調整</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#train-frequency">8. Train Frequency</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#gradient-steps">9. Gradient Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#d">D. ネットワーク構造（次のステップで検討）</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#policy-value-network">10. Policy と Value Network のサイズ調整</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v395b">📋 推奨パラメータセット v395b</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id8">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id9">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#v395c">📋 保守的な調整 v395c（段階的アプローチ）</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id10">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id11">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id12">🔬 実験計画</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id13">========================================</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#phase-1-v395b">Phase 1: 基本的な安定化（v395b）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#phase-2-v395c">Phase 2: 最適化（v395c）</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#phase-3">Phase 3: 長期訓練</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id14">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id15">📊 評価指標</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id16">========================================</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id17">成功基準:</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id18">失敗の兆候:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id19">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id20">🎯 次のアクション</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id21">========================================</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SAC_TUNING_ANALYSIS_REPORT.html">SAC Parameter Tuning Analysis Report</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Algorithms</a></li>
+      <li class="breadcrumb-item active">========================================</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/algorithms/SAC_PARAMETER_TUNING_GUIDE.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <p>“””
+SAC v395a ログ分析結果と推奨パラメータ調整</p>
+<p>分析日: 2025-10-11
+データソース: SAC_5 (5000 timesteps)
+“””</p>
+<section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>========================================<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id2">
+<h1>🚨 主要な問題点<a class="headerlink" href="#id2" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id3">
+<h1>========================================<a class="headerlink" href="#id3" title="Link to this heading"></a></h1>
+<section id="critic-loss">
+<h2>1. Critic Loss の爆発的増加 ⚠️⚠️⚠️<a class="headerlink" href="#critic-loss" title="Link to this heading"></a></h2>
+<p>初期値: 2.60e+04
+最終値: 4.34e+07
+最大値: 2.64e+08
+増加率: +166,939.5%</p>
+<p><strong>問題</strong>: Critic networkが不安定で、Q値の推定が発散している
+<strong>影響</strong>: 学習が不安定化し、最適な方策を見つけられない</p>
+</section>
+<section id="entropy-coefficient">
+<h2>2. Entropy Coefficient の異常な増加 ⚠️<a class="headerlink" href="#entropy-coefficient" title="Link to this heading"></a></h2>
+<p>初期値: 1.09
+最終値: 4.03
+増加率: +269.4%</p>
+<p><strong>問題</strong>: エントロピー係数が高すぎる
+<strong>影響</strong>: 過度な探索により、学習した知識が活用されない</p>
+</section>
+<section id="entropy-coefficient-loss">
+<h2>3. Entropy Coefficient Loss の大幅な減少<a class="headerlink" href="#entropy-coefficient-loss" title="Link to this heading"></a></h2>
+<p>初期値: -0.84
+最終値: -13.13
+変化率: -1,470.8%</p>
+<p><strong>問題</strong>: エントロピーが目標値より大きすぎることを示す
+<strong>影響</strong>: 自動調整がエントロピーを下げようとしているが、追いつかない</p>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id4">
+<h1>========================================<a class="headerlink" href="#id4" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id5">
+<h1>💡 推奨パラメータ調整<a class="headerlink" href="#id5" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id6">
+<h1>========================================<a class="headerlink" href="#id6" title="Link to this heading"></a></h1>
+<section id="a-critic-loss">
+<h2>A. 緊急対応（Critic Loss の安定化）<a class="headerlink" href="#a-critic-loss" title="Link to this heading"></a></h2>
+<section id="learning-rate">
+<h3>1. Learning Rate を下げる<a class="headerlink" href="#learning-rate" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 0.0003
+<strong>推奨</strong>: 0.0001 (67%減) または 0.00005 (83%減)
+<strong>理由</strong>: Critic Lossの爆発を防ぐ。小さいステップで安定的に学習。</p>
+</section>
+<section id="batch-size">
+<h3>2. Batch Size を増やす<a class="headerlink" href="#batch-size" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 64
+<strong>推奨</strong>: 128 または 256
+<strong>理由</strong>: より多くのサンプルで勾配を安定化。分散を減らす。</p>
+</section>
+<section id="gamma">
+<h3>3. Gamma (割引率) を下げる<a class="headerlink" href="#gamma" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 0.99
+<strong>推奨</strong>: 0.95 または 0.98
+<strong>理由</strong>: 将来の報酬への依存度を下げ、Q値の爆発を防ぐ。</p>
+</section>
+<section id="gradient-clipping">
+<h3>4. Gradient Clipping を追加<a class="headerlink" href="#gradient-clipping" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: なし
+<strong>推奨</strong>: max_grad_norm = 0.5 または 1.0
+<strong>理由</strong>: 勾配の大きさを制限し、学習を安定化。</p>
+</section>
+</section>
+<section id="b">
+<h2>B. エントロピー調整（探索の最適化）<a class="headerlink" href="#b" title="Link to this heading"></a></h2>
+<section id="target-entropy">
+<h3>5. Target Entropy を明示的に設定<a class="headerlink" href="#target-entropy" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: “auto” (おそらく -1.0 for continuous action space dim=1)
+<strong>推奨</strong>: -0.5 または -0.3
+<strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>連続行動空間の次元が1なので、target_entropy = -dim(A) = -1.0</p></li>
+<li><p>これだと探索が強すぎる可能性</p></li>
+<li><p>より小さい絶対値（-0.5など）で適度な探索を維持</p></li>
+</ul>
+</section>
+<section id="learning-starts">
+<h3>6. Learning Starts を増やす<a class="headerlink" href="#learning-starts" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 100
+<strong>推奨</strong>: 500 または 1000
+<strong>理由</strong>: 十分なランダムサンプルを集めてから学習開始。初期の不安定性を回避。</p>
+</section>
+</section>
+<section id="c">
+<h2>C. バッファとサンプリング<a class="headerlink" href="#c" title="Link to this heading"></a></h2>
+<section id="buffer-size">
+<h3>7. Buffer Size の調整<a class="headerlink" href="#buffer-size" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 10000
+<strong>推奨</strong>:</p>
+<ul class="simple">
+<li><p>短期訓練（&lt;10k）: 10000 (現状維持)</p></li>
+<li><p>中長期（10k-50k）: 20000</p></li>
+<li><p>長期（100k）: 50000
+<strong>理由</strong>: より多様な経験から学習。ただし、メモリ使用量とのバランス。</p></li>
+</ul>
+</section>
+<section id="train-frequency">
+<h3>8. Train Frequency<a class="headerlink" href="#train-frequency" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 1 (毎ステップ)
+<strong>推奨</strong>: 4 または 8
+<strong>理由</strong>:</p>
+<ul class="simple">
+<li><p>計算効率の向上</p></li>
+<li><p>より多くのデータ収集後に学習（安定性向上）</p></li>
+</ul>
+</section>
+<section id="gradient-steps">
+<h3>9. Gradient Steps<a class="headerlink" href="#gradient-steps" title="Link to this heading"></a></h3>
+<p><strong>現在</strong>: 1
+<strong>推奨</strong>: 4 (train_freq=4と合わせて)
+<strong>理由</strong>: データ収集とネットワーク更新のバランス</p>
+</section>
+</section>
+<section id="d">
+<h2>D. ネットワーク構造（次のステップで検討）<a class="headerlink" href="#d" title="Link to this heading"></a></h2>
+<section id="policy-value-network">
+<h3>10. Policy と Value Network のサイズ調整<a class="headerlink" href="#policy-value-network" title="Link to this heading"></a></h3>
+<p><strong>検討事項</strong>:</p>
+<ul class="simple">
+<li><p>より小さいネットワーク（過学習防止）</p></li>
+<li><p>Layer Normalization の追加</p></li>
+<li><p>より浅いネットワーク</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id7">
+<h1>========================================<a class="headerlink" href="#id7" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="v395b">
+<h1>📋 推奨パラメータセット v395b<a class="headerlink" href="#v395b" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id8">
+<h1>========================================<a class="headerlink" href="#id8" title="Link to this heading"></a></h1>
+<p>{
+“sac_hyperparameters”: {
+“learning_rate”: 0.0001,           # ← 0.0003から減少
+“buffer_size”: 20000,              # ← 10000から増加
+“learning_starts”: 500,            # ← 100から増加
+“batch_size”: 128,                 # ← 64から増加
+“tau”: 0.005,                      # 変更なし
+“gamma”: 0.95,                     # ← 0.99から減少
+“train_freq”: 4,                   # ← 1から増加
+“gradient_steps”: 4,               # ← 1から増加
+“ent_coef”: “auto”,                # 変更なし
+“target_update_interval”: 1,       # 変更なし
+“target_entropy”: -0.5,            # ← “auto”から明示的に設定
+“policy_kwargs”: {
+“net_arch”: [64, 64]             # より小さいネットワーク
+}
+}
+}</p>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id9">
+<h1>========================================<a class="headerlink" href="#id9" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="v395c">
+<h1>📋 保守的な調整 v395c（段階的アプローチ）<a class="headerlink" href="#v395c" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id10">
+<h1>========================================<a class="headerlink" href="#id10" title="Link to this heading"></a></h1>
+<p>{
+“sac_hyperparameters”: {
+“learning_rate”: 0.0001,           # まず学習率だけ下げる
+“buffer_size”: 10000,              # 変更なし
+“learning_starts”: 500,            # learning_startsを増やす
+“batch_size”: 128,                 # batch_sizeを増やす
+“tau”: 0.005,                      # 変更なし
+“gamma”: 0.98,                     # 少しだけ下げる
+“train_freq”: 1,                   # 変更なし
+“gradient_steps”: 1,               # 変更なし
+“ent_coef”: “auto”,                # 変更なし
+“target_update_interval”: 1,       # 変更なし
+“target_entropy”: -0.5             # target_entropyを調整
+}
+}</p>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id11">
+<h1>========================================<a class="headerlink" href="#id11" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id12">
+<h1>🔬 実験計画<a class="headerlink" href="#id12" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id13">
+<h1>========================================<a class="headerlink" href="#id13" title="Link to this heading"></a></h1>
+<section id="phase-1-v395b">
+<h2>Phase 1: 基本的な安定化（v395b）<a class="headerlink" href="#phase-1-v395b" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>learning_rate: 0.0001</p></li>
+<li><p>batch_size: 128</p></li>
+<li><p>target_entropy: -0.5</p></li>
+<li><p>5k timesteps で評価</p></li>
+<li><p>目標: Critic Loss &lt; 1e7</p></li>
+</ul>
+</section>
+<section id="phase-2-v395c">
+<h2>Phase 2: 最適化（v395c）<a class="headerlink" href="#phase-2-v395c" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Phase 1が成功したら</p></li>
+<li><p>train_freq, gradient_steps を調整</p></li>
+<li><p>buffer_size を増やす</p></li>
+<li><p>10k timesteps で評価</p></li>
+</ul>
+</section>
+<section id="phase-3">
+<h2>Phase 3: 長期訓練<a class="headerlink" href="#phase-3" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>最も安定した設定で</p></li>
+<li><p>50k → 100k timesteps</p></li>
+<li><p>PPOと比較評価</p></li>
+</ul>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id14">
+<h1>========================================<a class="headerlink" href="#id14" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id15">
+<h1>📊 評価指標<a class="headerlink" href="#id15" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id16">
+<h1>========================================<a class="headerlink" href="#id16" title="Link to this heading"></a></h1>
+<section id="id17">
+<h2>成功基準:<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Critic Loss &lt; 1e7 (最終値)</p></li>
+<li><p>Critic Loss が減少傾向または安定</p></li>
+<li><p>ent_coef が 0.5 ~ 2.0 の範囲</p></li>
+<li><p>Actor Loss が減少傾向</p></li>
+<li><p>エピソード報酬が向上</p></li>
+</ol>
+</section>
+<section id="id18">
+<h2>失敗の兆候:<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Critic Loss &gt; 1e8</p></li>
+<li><p>Loss が発散（NaNになる）</p></li>
+<li><p>ent_coef &gt; 5.0</p></li>
+<li><p>訓練が途中で停止</p></li>
+</ol>
+</section>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id19">
+<h1>========================================<a class="headerlink" href="#id19" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id20">
+<h1>🎯 次のアクション<a class="headerlink" href="#id20" title="Link to this heading"></a></h1>
+</section>
+<section class="tex2jax_ignore mathjax_ignore" id="id21">
+<h1>========================================<a class="headerlink" href="#id21" title="Link to this heading"></a></h1>
+<ol class="arabic simple">
+<li><p>✅ v395b 設定ファイル作成</p></li>
+<li><p>✅ 5k timesteps で訓練</p></li>
+<li><p>✅ ログ分析</p></li>
+<li><p>✅ v395c 設定ファイル作成（保守的）</p></li>
+<li><p>✅ 5k timesteps で訓練</p></li>
+<li><p>✅ 最良設定で 10k → 50k → 100k</p></li>
+</ol>
+<p>“””</p>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="SAC_ENVIRONMENT_DIAGNOSTICS_REPORT.html" class="btn btn-neutral float-left" title="SAC環境診断レポート" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="SAC_TUNING_ANALYSIS_REPORT.html" class="btn btn-neutral float-right" title="SAC Parameter Tuning Analysis Report" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

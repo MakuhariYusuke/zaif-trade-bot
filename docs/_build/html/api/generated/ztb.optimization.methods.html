@@ -1,0 +1,449 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.optimization.methods package &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb.risk package" href="ztb.risk.html" />
+    <link rel="prev" title="ztb.optimization package" href="ztb.optimization.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="modules.html">ztb</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="ztb.html">ztb package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="modules.html">ztb</a></li>
+          <li class="breadcrumb-item"><a href="ztb.html">ztb package</a></li>
+          <li class="breadcrumb-item"><a href="ztb.optimization.html">ztb.optimization package</a></li>
+      <li class="breadcrumb-item active">ztb.optimization.methods package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/ztb.optimization.methods.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb-optimization-methods-package">
+<h1>ztb.optimization.methods package<a class="headerlink" href="#ztb-optimization-methods-package" title="Link to this heading"></a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+</section>
+<section id="module-ztb.optimization.methods.bayesian_optimization">
+<span id="ztb-optimization-methods-bayesian-optimization-module"></span><h2>ztb.optimization.methods.bayesian_optimization module<a class="headerlink" href="#module-ztb.optimization.methods.bayesian_optimization" title="Link to this heading"></a></h2>
+<p>Bayesian Optimization: ベイズ最適化による効率的探索</p>
+<p>ガウス過程（Gaussian Process）を使ってパラメータ空間をモデル化し、
+獲得関数（Acquisition Function）を使って次に試すべきパラメータを賢く選択します。</p>
+<p>利点:
+- 少ない試行回数で良い結果を得られる
+- 過去の試行結果を活用して効率的に探索
+- 高コストな評価関数に最適
+- 探索と活用のバランスを自動調整</p>
+<p>欠点:
+- 低次元空間（~20次元）で効果的
+- 高次元では性能低下
+- カテゴリカル変数の扱いが難しい
+- 実装が複雑</p>
+<p>実装: scikit-optimizeを使用</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.bayesian_optimization.BayesianOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.bayesian_optimization.</span></span><span class="sig-name descname"><span class="pre">BayesianOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_initial_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acquisition_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'EI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/bayesian_optimization.html#BayesianOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.bayesian_optimization.BayesianOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Bayesian Optimization</p>
+<p>scikit-optimize (skopt) を使用した実装</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">BayesianOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_initial_points</span><span class="o">=</span><span class="mi">10</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.bayesian_optimization.BayesianOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/bayesian_optimization.html#BayesianOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.bayesian_optimization.BayesianOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Bayesian Optimizationで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.optimization.methods.binary_search">
+<span id="ztb-optimization-methods-binary-search-module"></span><h2>ztb.optimization.methods.binary_search module<a class="headerlink" href="#module-ztb.optimization.methods.binary_search" title="Link to this heading"></a></h2>
+<p>Binary Search: 二分探索法（単一パラメータ向け）</p>
+<p>単一の連続パラメータを効率的に探索します。
+目的関数が単峰性（unimodal）の場合に最適です。</p>
+<p>利点:
+- 非常に効率的（O(log n)）
+- 実装がシンプル
+- 少ない試行回数で最適値に近づける</p>
+<p>欠点:
+- 単一パラメータのみ
+- 単峰性の仮定が必要
+- 多峰性の場合は局所最適解に陥る</p>
+<p>推奨:
+- Learning Rateなど、単一パラメータの微調整
+- 目的関数が単峰性であることが分かっている場合</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.binary_search.BinarySearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.binary_search.</span></span><span class="sig-name descname"><span class="pre">BinarySearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/binary_search.html#BinarySearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.binary_search.BinarySearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Binary Search最適化（単一パラメータ向け）</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_space</span> <span class="o">=</span> <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                             <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                             <span class="n">low</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">BinarySearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">tolerance</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">20</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.binary_search.BinarySearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/binary_search.html#BinarySearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.binary_search.BinarySearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Binary Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.optimization.methods.grid_search">
+<span id="ztb-optimization-methods-grid-search-module"></span><h2>ztb.optimization.methods.grid_search module<a class="headerlink" href="#module-ztb.optimization.methods.grid_search" title="Link to this heading"></a></h2>
+<p>Grid Search: 全組み合わせを網羅的に探索</p>
+<p>パラメータの全組み合わせを試行し、最良のものを見つけます。
+小規模な探索空間で確実に最適解を見つけたい場合に有効です。</p>
+<p>利点:
+- 最適解を見逃さない（探索空間内で）
+- 実装がシンプル
+- 各パラメータの効果を体系的に評価可能</p>
+<p>欠点:
+- パラメータ数が増えると組み合わせ爆発
+- 計算コストが高い
+- 連続値パラメータは離散化が必要</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.grid_search.GridSearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.grid_search.</span></span><span class="sig-name descname"><span class="pre">GridSearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_resolution</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/grid_search.html#GridSearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.grid_search.GridSearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Grid Search最適化</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">])</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">GridSearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">grid_resolution</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="mf">5e-4</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.grid_search.GridSearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/grid_search.html#GridSearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.grid_search.GridSearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Grid Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.optimization.methods.random_search">
+<span id="ztb-optimization-methods-random-search-module"></span><h2>ztb.optimization.methods.random_search module<a class="headerlink" href="#module-ztb.optimization.methods.random_search" title="Link to this heading"></a></h2>
+<p>Random Search: ランダムサンプリングによる探索</p>
+<p>パラメータ空間からランダムにサンプリングして最良のものを見つけます。
+Bergstra &amp; Bengio (2012)の研究で、Grid Searchより効率的であることが示されています。</p>
+<p>利点:
+- Grid Searchより効率的（特に高次元空間）
+- 重要なパラメータに対して密に探索
+- 連続値パラメータを直接扱える
+- 並列化が容易</p>
+<p>欠点:
+- 最適解を見逃す可能性
+- 運が必要</p>
+<p>推奨:
+- パラメータ数が3つ以上
+- 連続値パラメータを含む
+- 計算リソースが限られている</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.random_search.RandomSearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.random_search.</span></span><span class="sig-name descname"><span class="pre">RandomSearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/random_search.html#RandomSearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.random_search.RandomSearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Random Search最適化</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">]),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">RandomSearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">20</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.random_search.RandomSearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/random_search.html#RandomSearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.random_search.RandomSearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Random Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-ztb.optimization.methods">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-ztb.optimization.methods" title="Link to this heading"></a></h2>
+<p>最適化手法の実装モジュール</p>
+<p>各種ハイパーパラメータ最適化手法を提供します。</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.GridSearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.</span></span><span class="sig-name descname"><span class="pre">GridSearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid_resolution</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.14)"><span class="pre">Dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/grid_search.html#GridSearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.GridSearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Grid Search最適化</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">])</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">GridSearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">grid_resolution</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="mf">5e-4</span><span class="p">,</span> <span class="mf">1e-3</span><span class="p">]}</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.GridSearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/grid_search.html#GridSearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.GridSearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Grid Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.RandomSearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.</span></span><span class="sig-name descname"><span class="pre">RandomSearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/random_search.html#RandomSearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.RandomSearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Random Search最適化</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;batch_size&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="mi">64</span><span class="p">,</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">256</span><span class="p">]),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">RandomSearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">20</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.RandomSearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/random_search.html#RandomSearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.RandomSearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Random Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.BinarySearchOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.</span></span><span class="sig-name descname"><span class="pre">BinarySearchOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tolerance</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/binary_search.html#BinarySearchOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.BinarySearchOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Binary Search最適化（単一パラメータ向け）</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_space</span> <span class="o">=</span> <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span>
+<span class="gp">... </span>                             <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                             <span class="n">low</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">BinarySearchOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_space</span><span class="o">=</span><span class="n">param_space</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">tolerance</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">max_iterations</span><span class="o">=</span><span class="mi">20</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.BinarySearchOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/binary_search.html#BinarySearchOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.BinarySearchOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Binary Searchで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="ztb.optimization.methods.BayesianOptimizer">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">ztb.optimization.methods.</span></span><span class="sig-name descname"><span class="pre">BayesianOptimizer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_spaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.14)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.ParameterSpace" title="ztb.optimization.base.ParameterSpace"><span class="pre">ParameterSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">objective_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.TrialResult" title="ztb.optimization.base.TrialResult"><span class="pre">TrialResult</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_initial_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">acquisition_function</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'EI'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/ztb/optimization/methods/bayesian_optimization.html#BayesianOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.BayesianOptimizer" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizerBase" title="ztb.optimization.base.OptimizerBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">OptimizerBase</span></code></a></p>
+<p>Bayesian Optimization</p>
+<p>scikit-optimize (skopt) を使用した実装</p>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">param_spaces</span> <span class="o">=</span> <span class="p">[</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="n">ParameterSpace</span><span class="p">(</span><span class="s1">&#39;gamma&#39;</span><span class="p">,</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">,</span>
+<span class="gp">... </span>                   <span class="n">low</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">0.999</span><span class="p">)</span>
+<span class="gp">... </span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">BayesianOptimizer</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">parameter_spaces</span><span class="o">=</span><span class="n">param_spaces</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">objective_function</span><span class="o">=</span><span class="n">my_objective</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_trials</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">n_initial_points</span><span class="o">=</span><span class="mi">10</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">optimize</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="ztb.optimization.methods.BayesianOptimizer.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="ztb.optimization.html#ztb.optimization.base.OptimizationResult" title="ztb.optimization.base.OptimizationResult"><span class="pre">OptimizationResult</span></a></span></span><a class="reference internal" href="../../_modules/ztb/optimization/methods/bayesian_optimization.html#BayesianOptimizer.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ztb.optimization.methods.BayesianOptimizer.optimize" title="Link to this definition"></a></dt>
+<dd><p>Bayesian Optimizationで最適化を実行</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="ztb.optimization.html" class="btn btn-neutral float-left" title="ztb.optimization package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.risk.html" class="btn btn-neutral float-right" title="ztb.risk package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

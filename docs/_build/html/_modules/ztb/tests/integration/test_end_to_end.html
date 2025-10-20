@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.integration.test_end_to_end &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.integration.test_end_to_end</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.integration.test_end_to_end</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">End-to-End Integration Tests</span>
+<span class="sd">エンドツーエンド統合テスト</span>
+
+<span class="sd">This module contains integration tests for the complete RL pipeline,</span>
+<span class="sd">including equivalence tests between TS and Python implementations.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">unittest.mock</span><span class="w"> </span><span class="kn">import</span> <span class="n">MagicMock</span><span class="p">,</span> <span class="n">patch</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="c1"># Import modules to test</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.training.ppo_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPOTrainer</span>
+
+<span class="c1"># from scripts.main import run_training_pipeline</span>
+
+
+<div class="viewcode-block" id="TestEndToEnd">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestEndToEnd">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestEndToEnd</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;End-to-end integration tests&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestEndToEnd.test_short_training_smoke">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestEndToEnd.test_short_training_smoke">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_short_training_smoke</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test short training run (10k steps) produces checkpoints&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">temp_dir</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;training&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>  <span class="c1"># Short training for smoke test</span>
+                    <span class="s2">&quot;eval_freq&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+                    <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
+                    <span class="s2">&quot;n_steps&quot;</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
+                    <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="mf">0.99</span><span class="p">,</span>
+                    <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">3e-4</span><span class="p">,</span>
+                    <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span>
+                    <span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="mi">42</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;paths&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;log_dir&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">temp_dir</span><span class="si">}</span><span class="s2">/logs&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;model_dir&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">temp_dir</span><span class="si">}</span><span class="s2">/models&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;results_dir&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">temp_dir</span><span class="si">}</span><span class="s2">/results&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;train_data&quot;</span><span class="p">:</span> <span class="s2">&quot;dummy_path&quot;</span><span class="p">},</span>  <span class="c1"># Will be mocked</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Mock data loading</span>
+            <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;pandas.read_parquet&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_read</span><span class="p">:</span>
+                <span class="n">mock_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;feature1&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span>
+                        <span class="s2">&quot;feature2&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span>
+                        <span class="s2">&quot;target&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">1000</span><span class="p">),</span>
+                    <span class="p">}</span>
+                <span class="p">)</span>
+                <span class="n">mock_read</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_df</span>
+
+                <span class="c1"># Mock environment</span>
+                <span class="k">with</span> <span class="n">patch</span><span class="p">(</span><span class="s2">&quot;envs.heavy_trading_env.HeavyTradingEnv&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">mock_env</span><span class="p">:</span>
+                    <span class="n">mock_env_instance</span> <span class="o">=</span> <span class="n">MagicMock</span><span class="p">()</span>
+                    <span class="n">mock_env</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock_env_instance</span>
+
+                    <span class="c1"># This should not raise exceptions and create checkpoints</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">trainer</span> <span class="o">=</span> <span class="n">PPOTrainer</span><span class="p">(</span><span class="s2">&quot;dummy_data_path&quot;</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;training&quot;</span><span class="p">])</span>
+                        <span class="c1"># Note: Full training would require actual environment setup</span>
+                        <span class="c1"># For smoke test, we just verify instantiation works</span>
+                        <span class="k">assert</span> <span class="n">trainer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Short training smoke test passed&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Short training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestEndToEnd.test_etl_pipeline_smoke">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestEndToEnd.test_etl_pipeline_smoke">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;ETLPipeline is TypeScript class, not available in Python&quot;</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_etl_pipeline_smoke</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ETL pipeline basic functionality&quot;&quot;&quot;</span></div>
+
+        <span class="c1"># Skipped due to TypeScript dependency</span>
+
+<div class="viewcode-block" id="TestEndToEnd.test_ts_python_equivalence">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestEndToEnd.test_ts_python_equivalence">[docs]</a>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span>
+        <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;Equivalence test scaffold - implement when TS data available&quot;</span>
+    <span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_ts_python_equivalence</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Test equivalence between TS-generated and Python-generated features</span>
+
+<span class="sd">        This is a scaffold for future implementation when TS data becomes available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;Equivalence test not yet implemented - waiting for TS data&quot;</span><span class="p">)</span></div>
+
+        <span class="c1"># TODO: Implement when TS-generated Parquet files are available</span>
+        <span class="c1"># TODO: TS生成のParquetファイルが利用可能になったら実装</span>
+
+        <span class="c1"># Load TS-generated features</span>
+        <span class="c1"># ts_features_path = &quot;path/to/ts/generated/features.parquet&quot;</span>
+        <span class="c1"># ts_data = pd.read_parquet(ts_features_path)</span>
+
+        <span class="c1"># Load Python-generated features</span>
+        <span class="c1"># py_features_path = &quot;path/to/python/generated/features.parquet&quot;</span>
+        <span class="c1"># py_data = pd.read_parquet(py_features_path)</span>
+
+        <span class="c1"># Compare with tolerance</span>
+        <span class="c1"># tolerance = 1e-6  # Adjust based on expected precision differences</span>
+
+        <span class="c1"># assert np.allclose(ts_data.values, py_data.values, rtol=tolerance, atol=tolerance)</span>
+        <span class="c1"># assert list(ts_data.columns) == list(py_data.columns)</span>
+
+<div class="viewcode-block" id="TestEndToEnd.test_feature_parity_scaffold">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestEndToEnd.test_feature_parity_scaffold">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_feature_parity_scaffold</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scaffold for feature parity testing between TS and Python implementations</span>
+
+<span class="sd">        This test provides the structure for comparing features generated by</span>
+<span class="sd">        TypeScript ETL vs Python ETL pipelines.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Placeholder for future implementation</span>
+        <span class="c1"># 将来の実装のためのプレースホルダー</span>
+
+        <span class="c1"># 1. Load reference TS-generated features</span>
+        <span class="c1"># ts_features = self._load_ts_reference_features()</span>
+
+        <span class="c1"># 2. Generate Python features using same input data</span>
+        <span class="c1"># py_features = self._generate_python_features()</span>
+
+        <span class="c1"># 3. Compare with statistical tests</span>
+        <span class="c1"># self._compare_feature_distributions(ts_features, py_features)</span>
+
+        <span class="c1"># 4. Check for outliers and anomalies</span>
+        <span class="c1"># self._check_for_anomalies(ts_features, py_features)</span>
+
+        <span class="k">assert</span> <span class="kc">True</span>  <span class="c1"># Placeholder assertion</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;Feature parity test not yet implemented&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_ts_reference_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load reference features generated by TypeScript ETL&quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement loading of TS-generated features</span>
+        <span class="c1"># TODO: TS生成特徴量の読み込みを実装</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_python_features</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate features using Python ETL pipeline&quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement Python feature generation</span>
+        <span class="c1"># TODO: Python特徴量生成を実装</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compare_feature_distributions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">ts_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">_py_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compare feature distributions between TS and Python&quot;&quot;&quot;</span>
+        <span class="c1"># TODO: Implement statistical comparison</span>
+        <span class="c1"># TODO: 統計比較を実装</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check_for_anomalies</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ts_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">_py_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check for anomalies in feature differences&quot;&quot;&quot;</span></div>
+
+        <span class="c1"># TODO: Implement anomaly detection</span>
+        <span class="c1"># TODO: 異常検知を実装</span>
+
+
+<div class="viewcode-block" id="TestTSPythonBridge">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestTSPythonBridge">[docs]</a>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;ETLPipeline is TypeScript class, not available in Python&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestTSPythonBridge</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tests for TS to Python migration bridge&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestTSPythonBridge.test_extract_prices_placeholder">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestTSPythonBridge.test_extract_prices_placeholder">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_extract_prices_placeholder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test extract_prices function placeholder&quot;&quot;&quot;</span></div>
+
+        <span class="c1"># Skipped due to TypeScript dependency</span>
+
+<div class="viewcode-block" id="TestTSPythonBridge.test_transform_features_placeholder">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestTSPythonBridge.test_transform_features_placeholder">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_transform_features_placeholder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test transform_features function placeholder&quot;&quot;&quot;</span></div>
+
+        <span class="c1"># Skipped due to TypeScript dependency</span>
+
+<div class="viewcode-block" id="TestTSPythonBridge.test_load_to_storage_placeholder">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestTSPythonBridge.test_load_to_storage_placeholder">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_load_to_storage_placeholder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test load_to_storage function placeholder&quot;&quot;&quot;</span>
+        <span class="c1"># Skipped due to TypeScript dependency</span>
+        <span class="n">dummy_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">101</span><span class="p">,</span> <span class="mi">102</span><span class="p">]})</span>
+
+        <span class="c1"># This should not raise NotImplementedError</span>
+        <span class="c1"># TODO: Replace with actual implementation</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">transform_features</span><span class="p">(</span><span class="n">dummy_data</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span>
+            <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">dummy_data</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">NotImplementedError</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;extract_prices not yet implemented&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestTSPythonBridge.test_save_parquet_placeholder">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.integration.html#ztb.tests.integration.test_end_to_end.TestTSPythonBridge.test_save_parquet_placeholder">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_save_parquet_placeholder</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test save_parquet function placeholder&quot;&quot;&quot;</span></div>
+</div>
+
+        <span class="c1"># Skipped due to TypeScript dependency</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

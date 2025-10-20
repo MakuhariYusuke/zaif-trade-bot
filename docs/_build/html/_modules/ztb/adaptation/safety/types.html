@@ -1,0 +1,404 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.safety.types &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.safety.types</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.safety.types</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Type definitions for Safety Mechanisms and Fallback</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+
+<div class="viewcode-block" id="SafetyLevel">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyLevel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyLevel</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全レベル&quot;&quot;&quot;</span>
+    <span class="n">LOW</span> <span class="o">=</span> <span class="s2">&quot;low&quot;</span>
+    <span class="n">MEDIUM</span> <span class="o">=</span> <span class="s2">&quot;medium&quot;</span>
+    <span class="n">HIGH</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+    <span class="n">CRITICAL</span> <span class="o">=</span> <span class="s2">&quot;critical&quot;</span>
+    <span class="n">WARNING</span> <span class="o">=</span> <span class="s2">&quot;warning&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackStrategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.FallbackStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackStrategy</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバック戦略&quot;&quot;&quot;</span>
+    <span class="n">ROLLBACK_TO_PREVIOUS</span> <span class="o">=</span> <span class="s2">&quot;rollback_to_previous&quot;</span>
+    <span class="n">SWITCH_TO_BASELINE</span> <span class="o">=</span> <span class="s2">&quot;switch_to_baseline&quot;</span>
+    <span class="n">REDUCE_POSITION_SIZE</span> <span class="o">=</span> <span class="s2">&quot;reduce_position_size&quot;</span>
+    <span class="n">STOP_TRADING</span> <span class="o">=</span> <span class="s2">&quot;stop_trading&quot;</span>
+    <span class="n">MANUAL_INTERVENTION</span> <span class="o">=</span> <span class="s2">&quot;manual_intervention&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="CircuitBreakerState">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.CircuitBreakerState">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CircuitBreakerState</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;サーキットブレーカー状態&quot;&quot;&quot;</span>
+    <span class="n">CLOSED</span> <span class="o">=</span> <span class="s2">&quot;closed&quot;</span>       <span class="c1"># 正常動作</span>
+    <span class="n">OPEN</span> <span class="o">=</span> <span class="s2">&quot;open&quot;</span>          <span class="c1"># 遮断中</span>
+    <span class="n">HALF_OPEN</span> <span class="o">=</span> <span class="s2">&quot;half_open&quot;</span> <span class="c1"># テスト中</span></div>
+
+
+
+<div class="viewcode-block" id="DeploymentPhase">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.DeploymentPhase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeploymentPhase</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;デプロイメントフェーズ&quot;&quot;&quot;</span>
+    <span class="n">DEVELOPMENT</span> <span class="o">=</span> <span class="s2">&quot;development&quot;</span>
+    <span class="n">STAGING</span> <span class="o">=</span> <span class="s2">&quot;staging&quot;</span>
+    <span class="n">PRODUCTION</span> <span class="o">=</span> <span class="s2">&quot;production&quot;</span>
+    <span class="n">ROLLED_BACK</span> <span class="o">=</span> <span class="s2">&quot;rolled_back&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SafetyThreshold">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyThreshold">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyThreshold</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全閾値&quot;&quot;&quot;</span>
+    <span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">threshold_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">comparison</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;gt&quot;, &quot;lt&quot;, &quot;gte&quot;, &quot;lte&quot;</span>
+    <span class="n">safety_level</span><span class="p">:</span> <span class="n">SafetyLevel</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="CircuitBreakerConfig">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.CircuitBreakerConfig">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CircuitBreakerConfig</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;サーキットブレーカー設定&quot;&quot;&quot;</span>
+    <span class="n">failure_threshold</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">recovery_timeout_seconds</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">monitoring_window_seconds</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">success_threshold</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="CircuitBreaker">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.CircuitBreaker">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CircuitBreaker</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;サーキットブレーカー&quot;&quot;&quot;</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">CircuitBreakerConfig</span>
+    <span class="n">state</span><span class="p">:</span> <span class="n">CircuitBreakerState</span>
+    <span class="n">failure_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">success_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">last_failure_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span>
+    <span class="n">last_state_change</span><span class="p">:</span> <span class="n">datetime</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackAction">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.FallbackAction">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackAction</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバックアクション&quot;&quot;&quot;</span>
+    <span class="n">strategy</span><span class="p">:</span> <span class="n">FallbackStrategy</span>
+    <span class="n">trigger_conditions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyThreshold</span><span class="p">]</span>
+    <span class="n">execution_order</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">requires_approval</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">rollback_model_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackStatus">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.FallbackStatus">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバック状態&quot;&quot;&quot;</span>
+    <span class="n">ACTIVE</span> <span class="o">=</span> <span class="s2">&quot;active&quot;</span>
+    <span class="n">INACTIVE</span> <span class="o">=</span> <span class="s2">&quot;inactive&quot;</span>
+    <span class="n">TRIGGERED</span> <span class="o">=</span> <span class="s2">&quot;triggered&quot;</span>
+    <span class="n">EXECUTING</span> <span class="o">=</span> <span class="s2">&quot;executing&quot;</span>
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+    <span class="n">ROLLED_BACK</span> <span class="o">=</span> <span class="s2">&quot;rolled_back&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="DeploymentStage">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.DeploymentStage">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeploymentStage</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;デプロイメントステージ&quot;&quot;&quot;</span>
+    <span class="n">phase</span><span class="p">:</span> <span class="n">DeploymentPhase</span>
+    <span class="n">traffic_percentage</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">duration_hours</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">success_criteria</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyThreshold</span><span class="p">]</span>
+    <span class="n">rollback_triggers</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SafetyThreshold</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="SafetyIncident">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyIncident">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyIncident</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全インシデント&quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">safety_level</span><span class="p">:</span> <span class="n">SafetyLevel</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">triggered_by</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># メトリクス名</span>
+    <span class="n">current_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">threshold_value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">actions_taken</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">resolved</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">resolution_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="RiskAssessment">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.RiskAssessment">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RiskAssessment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;リスク評価&quot;&quot;&quot;</span>
+    <span class="n">overall_risk_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">risk_factors</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">mitigation_measures</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">acceptable_risk_threshold</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">assessment_time</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">recommended_actions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="AnomalyPattern">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.AnomalyPattern">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnomalyPattern</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;異常パターン&quot;&quot;&quot;</span>
+    <span class="n">pattern_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">detection_method</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">severity_score</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">false_positive_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">affected_metrics</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">mitigation_strategy</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="AnomalyType">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.AnomalyType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnomalyType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;異常タイプ&quot;&quot;&quot;</span>
+    <span class="n">STATISTICAL_OUTLIER</span> <span class="o">=</span> <span class="s2">&quot;statistical_outlier&quot;</span>
+    <span class="n">TREND_CHANGE</span> <span class="o">=</span> <span class="s2">&quot;trend_change&quot;</span>
+    <span class="n">DISTRIBUTION_SHIFT</span> <span class="o">=</span> <span class="s2">&quot;distribution_shift&quot;</span>
+    <span class="n">PERFORMANCE_DROP</span> <span class="o">=</span> <span class="s2">&quot;performance_drop&quot;</span>
+    <span class="n">SYSTEM_ERROR</span> <span class="o">=</span> <span class="s2">&quot;system_error&quot;</span>
+    <span class="n">MARKET_ANOMALY</span> <span class="o">=</span> <span class="s2">&quot;market_anomaly&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="AnomalyDetection">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.AnomalyDetection">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnomalyDetection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;異常検知結果&quot;&quot;&quot;</span>
+    <span class="n">anomaly_type</span><span class="p">:</span> <span class="n">AnomalyType</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">severity</span><span class="p">:</span> <span class="n">SafetyLevel</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">affected_metrics</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">detection_method</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="RecoveryStatus">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.RecoveryStatus">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RecoveryStatus</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;リカバリー状態&quot;&quot;&quot;</span>
+    <span class="n">PENDING</span> <span class="o">=</span> <span class="s2">&quot;pending&quot;</span>
+    <span class="n">IN_PROGRESS</span> <span class="o">=</span> <span class="s2">&quot;in_progress&quot;</span>
+    <span class="n">SUCCESSFUL</span> <span class="o">=</span> <span class="s2">&quot;successful&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>
+    <span class="n">ROLLED_BACK</span> <span class="o">=</span> <span class="s2">&quot;rolled_back&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="RecoveryStrategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.RecoveryStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RecoveryStrategy</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;リカバリ戦略&quot;&quot;&quot;</span>
+    <span class="n">GRADUAL_RECOVERY</span> <span class="o">=</span> <span class="s2">&quot;gradual_recovery&quot;</span>
+    <span class="n">IMMEDIATE_RECOVERY</span> <span class="o">=</span> <span class="s2">&quot;immediate_recovery&quot;</span>
+    <span class="n">CONSERVATIVE_RECOVERY</span> <span class="o">=</span> <span class="s2">&quot;conservative_recovery&quot;</span>
+    <span class="n">AGGRESSIVE_RECOVERY</span> <span class="o">=</span> <span class="s2">&quot;aggressive_recovery&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SafetyEvent">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyEvent">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyEvent</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全イベント&quot;&quot;&quot;</span>
+    <span class="n">ANOMALY_DETECTED</span> <span class="o">=</span> <span class="s2">&quot;anomaly_detected&quot;</span>
+    <span class="n">THRESHOLD_EXCEEDED</span> <span class="o">=</span> <span class="s2">&quot;threshold_exceeded&quot;</span>
+    <span class="n">SYSTEM_DEGRADED</span> <span class="o">=</span> <span class="s2">&quot;system_degraded&quot;</span>
+    <span class="n">RECOVERY_INITIATED</span> <span class="o">=</span> <span class="s2">&quot;recovery_initiated&quot;</span>
+    <span class="n">FALLBACK_ACTIVATED</span> <span class="o">=</span> <span class="s2">&quot;fallback_activated&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SafetyAction">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyAction">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyAction</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全アクション&quot;&quot;&quot;</span>
+    <span class="n">MONITOR</span> <span class="o">=</span> <span class="s2">&quot;monitor&quot;</span>
+    <span class="n">ALERT</span> <span class="o">=</span> <span class="s2">&quot;alert&quot;</span>
+    <span class="n">REDUCE_RISK</span> <span class="o">=</span> <span class="s2">&quot;reduce_risk&quot;</span>
+    <span class="n">STOP_TRADING</span> <span class="o">=</span> <span class="s2">&quot;stop_trading&quot;</span>
+    <span class="n">ROLLBACK</span> <span class="o">=</span> <span class="s2">&quot;rollback&quot;</span>
+    <span class="n">RECOVERY</span> <span class="o">=</span> <span class="s2">&quot;recovery&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="FallbackMode">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.FallbackMode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FallbackMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;フォールバックモード&quot;&quot;&quot;</span>
+    <span class="n">AUTOMATIC</span> <span class="o">=</span> <span class="s2">&quot;automatic&quot;</span>
+    <span class="n">MANUAL</span> <span class="o">=</span> <span class="s2">&quot;manual&quot;</span>
+    <span class="n">GRADUAL</span> <span class="o">=</span> <span class="s2">&quot;gradual&quot;</span>
+    <span class="n">IMMEDIATE</span> <span class="o">=</span> <span class="s2">&quot;immediate&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="SafetyMetrics">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.safety.html#ztb.adaptation.safety.config.SafetyMetrics">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SafetyMetrics</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;安全メトリクス&quot;&quot;&quot;</span>
+    <span class="n">circuit_breakers_active</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">incidents_last_24h</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">fallback_activations</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">manual_interventions</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">system_uptime_percent</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">risk_score_current</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

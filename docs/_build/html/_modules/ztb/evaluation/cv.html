@@ -1,0 +1,312 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.evaluation.cv &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.evaluation.cv</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.evaluation.cv</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Cross-validation utilities for ZTB evaluation.</span>
+
+<span class="sd">This module provides time series cross-validation functionality</span>
+<span class="sd">including rolling forward validation and multiple testing correction.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSeriesSplit</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">statsmodels.stats.multitest</span><span class="w"> </span><span class="kn">import</span> <span class="n">fdrcorrection</span>  <span class="c1"># type: ignore[import-untyped]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.metrics.metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">calculate_all_metrics</span>
+
+
+<div class="viewcode-block" id="rolling_forward_cv">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.cv.rolling_forward_cv">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rolling_forward_cv</span><span class="p">(</span>
+    <span class="n">returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">n_splits</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">gap</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform rolling forward cross-validation on time series data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        returns: Time series of returns</span>
+<span class="sd">        n_splits: Number of CV splits</span>
+<span class="sd">        test_size: Size of test set in periods</span>
+<span class="sd">        gap: Gap between train and test sets</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of CV results for each split</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">returns</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Returns must have DatetimeIndex&quot;</span><span class="p">)</span>
+
+    <span class="n">tscv</span> <span class="o">=</span> <span class="n">TimeSeriesSplit</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">n_splits</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="n">test_size</span><span class="p">,</span> <span class="n">gap</span><span class="o">=</span><span class="n">gap</span><span class="p">)</span>
+    <span class="n">cv_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">fold</span><span class="p">,</span> <span class="p">(</span><span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+        <span class="n">tscv</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">))</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="p">):</span>
+        <span class="n">train_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">]</span>  <span class="c1"># pd.Series</span>
+        <span class="n">test_returns</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>  <span class="c1"># pd.Series</span>
+
+        <span class="c1"># Calculate metrics for this fold</span>
+        <span class="n">train_metrics</span> <span class="o">=</span> <span class="n">calculate_all_metrics</span><span class="p">(</span><span class="n">train_returns</span><span class="p">)</span>
+        <span class="n">test_metrics</span> <span class="o">=</span> <span class="n">calculate_all_metrics</span><span class="p">(</span><span class="n">test_returns</span><span class="p">)</span>
+
+        <span class="n">cv_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;fold&quot;</span><span class="p">:</span> <span class="n">fold</span><span class="p">,</span>
+                <span class="s2">&quot;train_period&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">train_returns</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">train_returns</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">train_returns</span><span class="p">),</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;test_period&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">test_returns</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                    <span class="s2">&quot;end&quot;</span><span class="p">:</span> <span class="n">test_returns</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+                    <span class="s2">&quot;length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">test_returns</span><span class="p">),</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;train_metrics&quot;</span><span class="p">:</span> <span class="n">train_metrics</span><span class="p">,</span>
+                <span class="s2">&quot;test_metrics&quot;</span><span class="p">:</span> <span class="n">test_metrics</span><span class="p">,</span>
+                <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="n">test_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cv_results</span></div>
+
+
+
+<div class="viewcode-block" id="aggregate_cv_results">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.cv.aggregate_cv_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">aggregate_cv_results</span><span class="p">(</span><span class="n">cv_results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Aggregate cross-validation results across all folds.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cv_results: List of CV results from rolling_forward_cv</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Aggregated statistics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cv_results</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">sharpe_ratios</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">cv_results</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;mean_sharpe&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+        <span class="s2">&quot;std_sharpe&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+        <span class="s2">&quot;min_sharpe&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+        <span class="s2">&quot;max_sharpe&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+        <span class="s2">&quot;sharpe_ci_95&quot;</span><span class="p">:</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">sharpe_ratios</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="s2">&quot;n_folds&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">cv_results</span><span class="p">),</span>
+        <span class="s2">&quot;fold_results&quot;</span><span class="p">:</span> <span class="n">cv_results</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="apply_multiple_testing_correction">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.cv.apply_multiple_testing_correction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_multiple_testing_correction</span><span class="p">(</span>
+    <span class="n">p_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fdr_bh&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">[</span><span class="n">Any</span><span class="p">]]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply multiple testing correction to p-values.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        p_values: List of p-values to correct</span>
+<span class="sd">        method: Correction method (&#39;fdr_bh&#39; for Benjamini-Hochberg)</span>
+<span class="sd">        alpha: Significance level</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Tuple of (rejected, corrected_p_values)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;fdr_bh&quot;</span><span class="p">:</span>
+        <span class="n">rejected</span><span class="p">,</span> <span class="n">corrected_p</span> <span class="o">=</span> <span class="n">fdrcorrection</span><span class="p">(</span><span class="n">p_values</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported correction method: </span><span class="si">{</span><span class="n">method</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">rejected</span><span class="p">,</span> <span class="n">corrected_p</span></div>
+
+
+
+<div class="viewcode-block" id="evaluate_with_cv">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.cv.evaluate_with_cv">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">evaluate_with_cv</span><span class="p">(</span>
+    <span class="n">feature_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">n_splits</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">test_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">60</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Evaluate features with cross-validation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        feature_df: DataFrame of features</span>
+<span class="sd">        returns: Series of returns</span>
+<span class="sd">        n_splits: Number of CV splits</span>
+<span class="sd">        test_size: Test set size</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Evaluation results with CV metrics</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Align data</span>
+    <span class="n">aligned_data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">feature_df</span><span class="p">,</span> <span class="n">returns</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="s2">&quot;returns&quot;</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">test_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;insufficient_data_for_cv&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;available_periods&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">),</span>
+            <span class="s2">&quot;required_periods&quot;</span><span class="p">:</span> <span class="n">test_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="p">}</span>
+
+    <span class="c1"># Perform CV</span>
+    <span class="n">cv_results</span> <span class="o">=</span> <span class="n">rolling_forward_cv</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">],</span> <span class="n">n_splits</span><span class="p">,</span> <span class="n">test_size</span><span class="p">)</span>
+    <span class="n">cv_summary</span> <span class="o">=</span> <span class="n">aggregate_cv_results</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span>
+
+    <span class="c1"># Calculate feature correlations with CV-adjusted significance</span>
+    <span class="n">correlations</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">p_values</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">aligned_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">corr</span> <span class="o">=</span> <span class="n">aligned_data</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">corr</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">])</span>
+            <span class="c1"># Simple p-value approximation (for demonstration)</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">)</span>
+            <span class="n">t_stat</span> <span class="o">=</span> <span class="n">corr</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">corr</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+            <span class="n">p_val</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="nb">abs</span><span class="p">(</span><span class="n">t_stat</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="mf">1.0</span>
+            <span class="n">p_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p_val</span><span class="p">)</span>
+            <span class="n">correlations</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;correlation&quot;</span><span class="p">:</span> <span class="n">corr</span><span class="p">,</span> <span class="s2">&quot;p_value&quot;</span><span class="p">:</span> <span class="n">p_val</span><span class="p">}</span>
+
+    <span class="c1"># Apply multiple testing correction</span>
+    <span class="k">if</span> <span class="n">p_values</span><span class="p">:</span>
+        <span class="n">rejected</span><span class="p">,</span> <span class="n">corrected_p</span> <span class="o">=</span> <span class="n">apply_multiple_testing_correction</span><span class="p">(</span><span class="n">p_values</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_df</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">correlations</span><span class="p">:</span>
+                <span class="n">correlations</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="s2">&quot;corrected_p_value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_p</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">correlations</span><span class="p">[</span><span class="n">col</span><span class="p">][</span><span class="s2">&quot;significant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rejected</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;success&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;cv_summary&quot;</span><span class="p">:</span> <span class="n">cv_summary</span><span class="p">,</span>
+        <span class="s2">&quot;correlations&quot;</span><span class="p">:</span> <span class="n">correlations</span><span class="p">,</span>
+        <span class="s2">&quot;total_features&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">feature_df</span><span class="o">.</span><span class="n">columns</span><span class="p">),</span>
+        <span class="s2">&quot;aligned_periods&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">aligned_data</span><span class="p">),</span>
+    <span class="p">}</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

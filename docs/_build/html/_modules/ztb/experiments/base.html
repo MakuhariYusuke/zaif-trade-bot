@@ -1,0 +1,806 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.experiments.base &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.experiments.base</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.experiments.base</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Base classes for experiments in the trading RL system.</span>
+<span class="sd">実験基底クラス - 取引RLシステムの実験実行を統一</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">glob</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">asdict</span><span class="p">,</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TYPE_CHECKING</span><span class="p">,</span>
+    <span class="n">Any</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Optional</span><span class="p">,</span>
+    <span class="n">Protocol</span><span class="p">,</span>
+    <span class="n">Tuple</span><span class="p">,</span>
+    <span class="n">TypedDict</span><span class="p">,</span>
+    <span class="n">Union</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.checkpoint</span><span class="w"> </span><span class="kn">import</span> <span class="n">CheckpointManager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.run_metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunMetadata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.trading_metrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">sharpe_ratio</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.data.streaming_pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">PipelineStats</span><span class="p">,</span> <span class="n">StreamingPipeline</span>
+
+
+<div class="viewcode-block" id="ExperimentConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;実験設定の型定義&quot;&quot;&quot;</span>
+
+    <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">report_interval</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">max_episodes</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">test_split</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">validation_split</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">random_seed</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="AggregationResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.AggregationResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">AggregationResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;集約結果のデータ構造&quot;&quot;&quot;</span>
+
+    <span class="n">aggregation_timestamp</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">experiment_pattern</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_experiments</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span></div>
+
+
+
+<span class="n">MetricsValue</span> <span class="o">=</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+<span class="n">ExperimentMetrics</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">MetricsValue</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="Notifiable">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.Notifiable">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Notifiable</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;通知可能インターフェース&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Notifiable.notify">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.Notifiable.notify">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">notify</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;info&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="Checkpointable">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.Checkpointable">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Checkpointable</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;チェックポイント可能インターフェース&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Checkpointable.save_checkpoint">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.Checkpointable.save_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span></div>
+
+<div class="viewcode-block" id="Checkpointable.load_checkpoint">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.Checkpointable.load_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExperimentResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentResult">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;実験結果の標準データ構造&quot;&quot;&quot;</span>
+
+    <span class="n">experiment_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># &quot;success&quot;, &quot;failed&quot;, &quot;partial&quot;</span>
+    <span class="n">config</span><span class="p">:</span> <span class="n">ExperimentConfig</span>
+    <span class="n">metrics</span><span class="p">:</span> <span class="n">ExperimentMetrics</span>
+    <span class="n">artifacts</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>  <span class="c1"># ファイルパス</span>
+    <span class="n">error_message</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">execution_time_seconds</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<div class="viewcode-block" id="ExperimentResult.to_dict">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentResult.to_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ExperimentBase">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ExperimentBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    実験実行の基底クラス</span>
+<span class="sd">    すべての実験スクリプトはこのクラスを継承する</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ExperimentConfig</span><span class="p">,</span> <span class="n">experiment_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="c1"># 統一された命名規則: サブクラスは experiment_name を明示的に渡すか、クラス名から &#39;Experiment&#39; を除去して小文字化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span> <span class="o">=</span> <span class="n">experiment_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_default_experiment_name</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+
+        <span class="c1"># 結果保存ディレクトリ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;experiments&quot;</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># チェックポイントディレクトリ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># チェックポイントマネージャー</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span> <span class="o">=</span> <span class="n">CheckpointManager</span><span class="p">(</span>
+            <span class="n">save_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="p">),</span> <span class="n">keep_last</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">compress</span><span class="o">=</span><span class="s2">&quot;zstd&quot;</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;StreamingPipeline&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_streaming_metadata</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_default_experiment_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;サブクラス名から一貫した experiment_name を生成&quot;&quot;&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;Experiment&quot;</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="s2">&quot;Experiment&quot;</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ExperimentBase.run">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.run">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        実験のメイン実行ロジック</span>
+<span class="sd">        サブクラスで実装必須</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ExperimentBase.attach_streaming_pipeline">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.attach_streaming_pipeline">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">attach_streaming_pipeline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pipeline</span><span class="p">:</span> <span class="s2">&quot;StreamingPipeline&quot;</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Register a streaming pipeline for the experiment lifecycle.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span> <span class="o">=</span> <span class="n">pipeline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_streaming_metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pipeline</span><span class="p">,</span> <span class="s2">&quot;describe&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">description</span><span class="p">):</span>
+            <span class="n">desc</span> <span class="o">=</span> <span class="n">description</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">desc</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Streaming pipeline attached: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">desc</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExperimentBase.get_streaming_stats">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.get_streaming_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_streaming_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;PipelineStats&quot;</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_collect_streaming_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+        <span class="n">stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">streaming_pipeline</span><span class="o">.</span><span class="n">stats</span><span class="p">()</span>
+        <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;stream_buffer_rows&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">rows</span><span class="p">,</span>
+            <span class="s2">&quot;stream_buffer_capacity&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">capacity</span><span class="p">,</span>
+            <span class="s2">&quot;stream_buffer_memory_bytes&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">memory_bytes</span><span class="p">,</span>
+            <span class="s2">&quot;stream_total_rows_streamed&quot;</span><span class="p">:</span> <span class="n">stats</span><span class="o">.</span><span class="n">total_rows_streamed</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">stats</span><span class="o">.</span><span class="n">last_batch_at</span><span class="p">:</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;stream_last_batch_timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">last_batch_at</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;stream_last_batch_rows&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">last_batch_rows</span>
+        <span class="k">return</span> <span class="n">metrics</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject_streaming_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">ExperimentResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_collect_streaming_metrics</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">metrics</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_streaming_metadata</span><span class="p">:</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;stream_metadata&quot;</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_streaming_metadata</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ExperimentBase.execute">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.execute">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        実験実行の標準フロー</span>
+<span class="sd">        エラーハンドリングと結果保存を含む</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="c1"># 実行メタデータをキャプチャ</span>
+        <span class="n">run_metadata</span> <span class="o">=</span> <span class="n">RunMetadata</span><span class="p">()</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">run_metadata</span><span class="o">.</span><span class="n">capture_all_metadata</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Starting experiment: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2"> with config: </span><span class="si">{</span><span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># result を初期化してバインドされていない問題を回避</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;success&quot;</span>
+            <span class="c1"># 実行メタデータをartifactsに追加</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">artifacts</span><span class="p">[</span><span class="s2">&quot;run_metadata&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Experiment completed successfully: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Experiment failed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2">, error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 致命的なエラーの場合は強制終了</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="p">(</span><span class="ne">KeyboardInterrupt</span><span class="p">,</span> <span class="ne">SystemExit</span><span class="p">,</span> <span class="ne">MemoryError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">)):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Fatal error occurred: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">. Terminating process.&quot;</span>
+                <span class="p">)</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="n">ExperimentResult</span><span class="p">(</span>
+                <span class="n">experiment_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;failed&quot;</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                <span class="n">metrics</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;run_metadata&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">metadata</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)},</span>
+                <span class="n">error_message</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># チェックを簡略化</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">execution_time_seconds</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">()</span>
+
+            <span class="c1"># Shutdown checkpoint manager</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;checkpoint_manager&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">shutdown</span><span class="p">()</span>
+
+        <span class="c1"># resultがNoneでないことを確認</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Experiment execution failed to produce a result&quot;</span><span class="p">)</span>
+
+        <span class="c1"># ストリーミングメトリクスを結果に付与</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_inject_streaming_metrics</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="c1"># リスク調整指標を計算して追加</span>
+        <span class="c1"># self._add_risk_adjusted_metrics(result)  # TODO: Implement risk-adjusted metrics</span>
+
+        <span class="c1"># 結果保存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">save_results</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="c1"># 通知送信</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">notify_results</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="ExperimentBase.aggregate_results">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.aggregate_results">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">aggregate_results</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">experiment_pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">output_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AggregationResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        複数の実験結果を集約してレポート生成</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            experiment_pattern: 集約対象の実験パターン（例: &quot;ml_reinforcement*&quot;）</span>
+<span class="sd">            output_file: 出力ファイルパス（指定しない場合は自動生成）</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            集約された結果データ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+        <span class="n">results_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;experiments&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">results_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">return</span> <span class="n">AggregationResult</span><span class="p">(</span>
+                <span class="n">aggregation_timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="n">experiment_pattern</span><span class="o">=</span><span class="n">experiment_pattern</span><span class="p">,</span>
+                <span class="n">total_experiments</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">results</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">summary</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;No results directory found&quot;</span><span class="p">},</span>
+            <span class="p">)</span>
+
+        <span class="c1"># パターンにマッチする結果ファイルを検索</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">results_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">experiment_pattern</span><span class="si">}</span><span class="s2">_*.json&quot;</span><span class="p">)</span>
+        <span class="n">result_files</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result_files</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">AggregationResult</span><span class="p">(</span>
+                <span class="n">aggregation_timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="n">experiment_pattern</span><span class="o">=</span><span class="n">experiment_pattern</span><span class="p">,</span>
+                <span class="n">total_experiments</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">results</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">summary</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;No result files found matching pattern: </span><span class="si">{</span><span class="n">experiment_pattern</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+
+        <span class="c1"># 結果を集約</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">summary</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;success_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;failed_count&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="s2">&quot;total_execution_time&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;avg_execution_time&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;best_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;-inf&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;worst_reward&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">),</span>
+            <span class="s2">&quot;total_pnl&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">file_path</span> <span class="ow">in</span> <span class="n">result_files</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+                <span class="c1"># サマリー統計更新</span>
+                <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;success&quot;</span><span class="p">:</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;success_count&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                    <span class="n">metrics</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                    <span class="n">execution_time</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">reward</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="n">pnl</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_pnl&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;total_execution_time&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">execution_time</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;best_reward&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">&quot;best_reward&quot;</span><span class="p">],</span> <span class="n">reward</span><span class="p">)</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;worst_reward&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">&quot;worst_reward&quot;</span><span class="p">],</span> <span class="n">reward</span><span class="p">)</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;total_pnl&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">pnl</span>
+
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;failed_count&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Failed to load </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
+
+        <span class="c1"># 統計計算の拡張</span>
+        <span class="n">success_count</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;success_count&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">success_count</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;avg_execution_time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;total_execution_time&quot;</span><span class="p">]</span> <span class="o">/</span> <span class="n">success_count</span>
+            <span class="p">)</span>
+
+            <span class="c1"># 詳細な統計情報</span>
+            <span class="n">all_rewards</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">all_execution_times</span> <span class="o">=</span> <span class="p">[]</span>
+
+            <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;success&quot;</span><span class="p">:</span>
+                    <span class="n">metrics</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metrics&quot;</span><span class="p">,</span> <span class="p">{})</span>
+                    <span class="k">if</span> <span class="s2">&quot;avg_reward&quot;</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+                        <span class="n">all_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;avg_reward&quot;</span><span class="p">])</span>
+                    <span class="n">execution_time</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;execution_time_seconds&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">execution_time</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">all_execution_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">execution_time</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">all_rewards</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+                <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;reward_stats&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+                    <span class="s2">&quot;median&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+                    <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+                    <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">)),</span>
+                    <span class="s2">&quot;percentile_25&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">,</span> <span class="mi">25</span><span class="p">)),</span>
+                    <span class="s2">&quot;percentile_75&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">,</span> <span class="mi">75</span><span class="p">)),</span>
+                    <span class="s2">&quot;percentile_95&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">all_rewards</span><span class="p">,</span> <span class="mi">95</span><span class="p">)),</span>
+                <span class="p">}</span>
+
+            <span class="k">if</span> <span class="n">all_execution_times</span><span class="p">:</span>
+                <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;execution_time_stats&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">all_execution_times</span><span class="p">)),</span>
+                    <span class="s2">&quot;median&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">all_execution_times</span><span class="p">)),</span>
+                    <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">all_execution_times</span><span class="p">)),</span>
+                    <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">all_execution_times</span><span class="p">)),</span>
+                    <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">all_execution_times</span><span class="p">)),</span>
+                <span class="p">}</span>
+
+        <span class="c1"># 出力ファイル保存</span>
+        <span class="k">if</span> <span class="n">output_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+            <span class="n">output_file</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;reports/aggregated_results_</span><span class="si">{</span><span class="n">experiment_pattern</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.json&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">output_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span>
+        <span class="n">output_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">aggregated</span> <span class="o">=</span> <span class="n">AggregationResult</span><span class="p">(</span>
+            <span class="n">aggregation_timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="n">experiment_pattern</span><span class="o">=</span><span class="n">experiment_pattern</span><span class="p">,</span>
+            <span class="n">total_experiments</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">result_files</span><span class="p">),</span>
+            <span class="n">results</span><span class="o">=</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">summary</span><span class="o">=</span><span class="n">summary</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">aggregated</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Aggregated results saved to: </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># レポートローテーション（古いファイルを削除）</span>
+        <span class="bp">cls</span><span class="o">.</span><span class="n">_rotate_old_reports</span><span class="p">(</span><span class="n">results_dir</span><span class="p">,</span> <span class="n">experiment_pattern</span><span class="p">,</span> <span class="n">max_reports</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">aggregated</span></div>
+
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_rotate_old_reports</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">results_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">max_reports</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;古いレポートファイルをローテーション&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># パターンにマッチするファイルを検索</span>
+            <span class="n">report_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">results_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pattern</span><span class="si">}</span><span class="s2">_*.json&quot;</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">report_files</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">max_reports</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="c1"># 作成日時でソート（古い順）</span>
+            <span class="n">report_files</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span><span class="p">)</span>
+
+            <span class="c1"># 古いファイルを削除</span>
+            <span class="n">files_to_delete</span> <span class="o">=</span> <span class="n">report_files</span><span class="p">[:</span><span class="o">-</span><span class="n">max_reports</span><span class="p">]</span>  <span class="c1"># 最新max_reports個を残す</span>
+            <span class="k">for</span> <span class="n">old_file</span> <span class="ow">in</span> <span class="n">files_to_delete</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">old_file</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rotated old report: </span><span class="si">{</span><span class="n">old_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to delete </span><span class="si">{</span><span class="n">old_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Report rotation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExperimentBase.save_results">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.save_results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">ExperimentResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験結果をJSONファイルに保存&quot;&quot;&quot;</span>
+        <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">.json&quot;</span>
+        <span class="n">filepath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span> <span class="o">/</span> <span class="n">filename</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to: </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ExperimentBase.notify_results">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ExperimentBase.notify_results">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">notify_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">ExperimentResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験結果をDiscordに通知&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">pass</span>  <span class="c1"># Notification removed</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to send notification: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ScalingExperiment">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ScalingExperiment</span><span class="p">(</span><span class="n">ExperimentBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    大規模実験用の基底クラス</span>
+<span class="sd">    ステップベースの実行と定期的なチェックポイント保存をサポート</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">config</span><span class="p">:</span> <span class="n">ExperimentConfig</span><span class="p">,</span>
+        <span class="n">total_steps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span> <span class="o">=</span> <span class="n">total_steps</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_interval</span> <span class="o">=</span> <span class="n">checkpoint_interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="mi">0</span>
+
+<div class="viewcode-block" id="ScalingExperiment.run">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ステップベースの実験実行</span>
+<span class="sd">        サブクラスで step() メソッドを実装する</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting scaling experiment with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2"> steps&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># チェックポイントから再開</span>
+            <span class="n">checkpoint_data</span><span class="p">,</span> <span class="n">start_step</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_load</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="n">start_step</span>
+
+            <span class="k">if</span> <span class="n">checkpoint_data</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">load_from_checkpoint</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resumed from step </span><span class="si">{</span><span class="n">start_step</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1"># メイン実行ループ</span>
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">:</span>
+                <span class="c1"># ステップ実行</span>
+                <span class="n">step_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">)</span>
+
+                <span class="c1"># 定期的なチェックポイント保存</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_interval</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">()</span>
+
+                <span class="c1"># 進捗ログ</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">progress</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Progress: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">progress</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="c1"># 致命的なエラーチェック</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">step_result</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="n">step_result</span>
+
+            <span class="c1"># 最終チェックポイント保存</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">()</span>
+
+            <span class="c1"># メトリクス収集</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">collect_metrics</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">ExperimentResult</span><span class="p">(</span>
+                <span class="n">experiment_name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">experiment_name</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+                <span class="n">status</span><span class="o">=</span><span class="s2">&quot;success&quot;</span><span class="p">,</span>
+                <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
+                <span class="n">artifacts</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">collect_artifacts</span><span class="p">(),</span>
+            <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Scaling experiment failed at step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+            <span class="k">raise</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.step">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.step">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step_num</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        単一ステップの実行</span>
+<span class="sd">        サブクラスで実装必須</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.save_checkpoint">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.save_checkpoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;現在の状態をチェックポイント保存&quot;&quot;&quot;</span>
+        <span class="n">checkpoint_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_checkpoint_data</span><span class="p">()</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;current_step&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span>
+            <span class="s2">&quot;total_steps&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_steps</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_save</span><span class="p">(</span><span class="n">checkpoint_data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.get_checkpoint_data">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.get_checkpoint_data">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_checkpoint_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイント保存用のデータを返す&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.load_from_checkpoint">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.load_from_checkpoint">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_from_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイントデータから状態を復元&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.collect_metrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.collect_metrics">[docs]</a>
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collect_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExperimentMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験メトリクスを収集&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.collect_artifacts">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.collect_artifacts">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">collect_artifacts</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験アーティファクトを収集&quot;&quot;&quot;</span>
+        <span class="n">artifacts</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># チェックポイントディレクトリ</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">artifacts</span><span class="p">[</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="p">)</span>
+        <span class="c1"># 結果ディレクトリ</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">artifacts</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results_dir</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">artifacts</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.checkpoint_load">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.checkpoint_load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_load</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;最新のチェックポイントを読み込み&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">load_latest</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;No checkpoint found, starting fresh&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">{}</span></div>
+
+
+<div class="viewcode-block" id="ScalingExperiment.checkpoint_save">
+<a class="viewcode-back" href="../../../api/generated/ztb.experiments.html#ztb.experiments.base.ScalingExperiment.checkpoint_save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">checkpoint_save</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;チェックポイントを非同期保存&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_manager</span><span class="o">.</span><span class="n">save_async</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span> <span class="n">metadata</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_add_risk_adjusted_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">:</span> <span class="n">ExperimentResult</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;実験結果にリスク調整指標を追加&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;returns&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">:</span>
+            <span class="n">returns</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">returns</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="c1"># returnsをfloatのリストに変換</span>
+                    <span class="n">returns_float</span> <span class="o">=</span> <span class="p">[</span><span class="nb">float</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">returns</span><span class="p">]</span>
+                    <span class="c1"># Sharpe ratioを計算して追加</span>
+                    <span class="n">sharpe</span> <span class="o">=</span> <span class="n">sharpe_ratio</span><span class="p">(</span><span class="n">returns_float</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">sharpe</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">sharpe</span><span class="p">):</span>
+                        <span class="n">result</span><span class="o">.</span><span class="n">metrics</span><span class="p">[</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">sharpe</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to calculate Sharpe ratio: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

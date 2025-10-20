@@ -1,0 +1,753 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.callbacks.callbacks_legacy &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.training.callbacks.callbacks_legacy</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.callbacks.callbacks_legacy</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Base training callback classes for common functionality.</span>
+
+<span class="sd">This module provides abstract base classes and common implementations</span>
+<span class="sd">for training callbacks to reduce code duplication across training scripts.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">TYPE_CHECKING</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.callbacks</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseCallback</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">continuous_to_discrete_action</span>
+
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.base_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseTrainer</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">Progress</span><span class="p">,</span> <span class="n">TaskID</span>
+
+
+<div class="viewcode-block" id="BaseTrainingCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.BaseTrainingCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BaseTrainingCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">,</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for training callbacks with common functionality.</span>
+
+<span class="sd">    This class provides common attributes and methods for tracking training</span>
+<span class="sd">    progress, episode statistics, and action distributions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_values</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Default step handler - can be overridden by subclasses.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_rollout_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Abstract method for handling rollout end - must be implemented by subclasses.&quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="BaseTrainingCallback.get_episode_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.BaseTrainingCallback.get_episode_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_episode_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current episode statistics.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;episode_count&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span><span class="p">,</span>
+            <span class="s2">&quot;episode_rewards&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s2">&quot;episode_lengths&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s2">&quot;action_counts&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s2">&quot;portfolio_values&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_values</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="BaseTrainingCallback.reset_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.BaseTrainingCallback.reset_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset all statistics.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_values</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">=</span> <span class="mi">0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="SimpleTrainingCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.SimpleTrainingCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SimpleTrainingCallback</span><span class="p">(</span><span class="n">BaseTrainingCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simple training callback for basic episode tracking.</span>
+
+<span class="sd">    This callback tracks episode rewards, lengths, and basic action counts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_rollout_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle rollout end by logging episode info.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;locals&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;rewards&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Log episode info</span>
+        <span class="n">episode_reward</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">])</span>
+        <span class="n">episode_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">])</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_reward</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_length</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Basic action counting</span>
+        <span class="n">action_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+            <span class="n">action_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+            <span class="n">action_count</span><span class="p">[</span><span class="n">action_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">action_count</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action_str</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action_count</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="TradingTrainingCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.TradingTrainingCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TradingTrainingCallback</span><span class="p">(</span><span class="n">BaseTrainingCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Training callback specialized for trading environments.</span>
+
+<span class="sd">    This callback includes portfolio value tracking and trading-specific metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_sizes</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_counts</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_rollout_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Handle rollout end with trading-specific metrics.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;locals&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="s1">&#39;rewards&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Basic episode tracking</span>
+        <span class="n">episode_reward</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">])</span>
+        <span class="n">episode_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="p">[</span><span class="s2">&quot;rewards&quot;</span><span class="p">])</span>
+        <span class="n">actions</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;actions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_reward</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">episode_length</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">episode_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Trading-specific metrics</span>
+        <span class="c1"># Note: These would need to be extracted from the environment info</span>
+        <span class="c1"># This is a placeholder for actual implementation</span>
+        <span class="n">portfolio_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_last_portfolio_value&#39;</span><span class="p">,</span> <span class="mf">10000.0</span><span class="p">)</span>
+        <span class="n">position_size</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_last_position_size&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">portfolio_value</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">position_sizes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">position_size</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">actions</span><span class="p">))</span>  <span class="c1"># Simplified trade count</span>
+
+        <span class="c1"># Action counting with trading semantics</span>
+        <span class="n">action_count</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s1">&#39;__iter__&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">action</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">action_val</span> <span class="o">=</span> <span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="n">action</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">action_val</span> <span class="o">=</span> <span class="n">action</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action_val</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">)):</span>
+                <span class="c1"># Use centralized function for consistent action classification</span>
+                <span class="n">discrete_action</span> <span class="o">=</span> <span class="n">continuous_to_discrete_action</span><span class="p">(</span><span class="n">action_val</span><span class="p">)</span>
+                <span class="n">action_names</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">]</span>
+                <span class="n">action_name</span> <span class="o">=</span> <span class="n">action_names</span><span class="p">[</span><span class="n">discrete_action</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">action_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">action_val</span><span class="p">)</span>
+
+            <span class="n">action_count</span><span class="p">[</span><span class="n">action_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">action_count</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action_name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action_count</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TradingTrainingCallback.get_trading_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.TradingTrainingCallback.get_trading_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_trading_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get trading-specific statistics.&quot;&quot;&quot;</span>
+        <span class="n">base_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_episode_stats</span><span class="p">()</span>
+        <span class="n">base_stats</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s2">&quot;position_sizes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_sizes</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+            <span class="s2">&quot;trade_counts&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_counts</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+        <span class="p">})</span>
+        <span class="k">return</span> <span class="n">base_stats</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ProgressTrainingCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.ProgressTrainingCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProgressTrainingCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Training callback with integrated progress tracking.</span>
+<span class="sd">    </span>
+<span class="sd">    This callback integrates with BaseTrainer to update training progress</span>
+<span class="sd">    and optionally display a progress bar using the rich library.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">trainer</span><span class="p">:</span> <span class="s2">&quot;BaseTrainer&quot;</span><span class="p">,</span>
+        <span class="n">enable_progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span> <span class="o">=</span> <span class="n">trainer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span> <span class="o">=</span> <span class="n">enable_progress_bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;Progress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;TaskID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_training_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize progress bar when training starts.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">Progress</span>
+
+            <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="n">Progress</span><span class="p">(</span><span class="n">console</span><span class="o">=</span><span class="n">console</span><span class="p">)</span>
+            
+            <span class="c1"># Get total timesteps from trainer config if available</span>
+            <span class="n">total_timesteps</span> <span class="o">=</span> <span class="mi">100000</span>  <span class="c1"># Default</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">):</span>
+                <span class="n">total_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span>
+                <span class="s2">&quot;[green]Training...&quot;</span><span class="p">,</span>
+                <span class="n">total</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
+                <span class="n">completed</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+            <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Rich not available, progress bar disabled&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+            <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to start progress bar: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update progress on each step.&quot;&quot;&quot;</span>
+        <span class="c1"># Update trainer progress</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">):</span>
+            <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rewards&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">reward</span> <span class="o">=</span> <span class="n">reward</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">reward_float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">update_progress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">,</span> <span class="n">reward_float</span><span class="p">)</span>
+
+        <span class="c1"># Update progress bar</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">completed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_training_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up progress bar when training ends.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="EntropyScheduleCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.EntropyScheduleCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EntropyScheduleCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Callback for applying entropy coefficient scheduling during training.</span>
+<span class="sd">    </span>
+<span class="sd">    This callback supports various entropy schedules like cosine decay</span>
+<span class="sd">    to gradually reduce exploration as training progresses.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">schedule_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cosine_decay&quot;</span><span class="p">,</span>
+        <span class="n">initial_ent_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">final_ent_coef</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100000</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span> <span class="o">=</span> <span class="n">schedule_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_ent_coef</span> <span class="o">=</span> <span class="n">initial_ent_coef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_ent_coef</span> <span class="o">=</span> <span class="n">final_ent_coef</span> <span class="k">if</span> <span class="n">final_ent_coef</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">initial_ent_coef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">total_timesteps</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update entropy coefficient based on schedule.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span> <span class="o">==</span> <span class="s2">&quot;cosine_decay&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_cosine_decay_entropy</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+            
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">MaskablePPO</span><span class="p">):</span>
+                <span class="n">apply_cosine_decay_entropy</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">initial_ent_coef</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">final_ent_coef</span><span class="p">,</span>
+                <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="CompositeTrainingCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.CompositeTrainingCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CompositeTrainingCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Composite callback that combines multiple callbacks.</span>
+<span class="sd">    </span>
+<span class="sd">    This callback allows combining progress tracking, entropy scheduling,</span>
+<span class="sd">    gradient probe guard, and trainer updates in a single callback instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">trainer</span><span class="p">:</span> <span class="s2">&quot;BaseTrainer&quot;</span><span class="p">,</span>
+        <span class="n">enable_progress_bar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">enable_entropy_schedule</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">entropy_schedule_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cosine_decay&quot;</span><span class="p">,</span>
+        <span class="n">initial_ent_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">final_ent_coef</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">enable_grad_probe_guard</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">grad_probe_config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">enable_tensorboard_metrics</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">action_labels</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span> <span class="o">=</span> <span class="n">trainer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span> <span class="o">=</span> <span class="n">enable_progress_bar</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_entropy_schedule</span> <span class="o">=</span> <span class="n">enable_entropy_schedule</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span> <span class="o">=</span> <span class="n">enable_grad_probe_guard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">enable_tensorboard_metrics</span> <span class="o">=</span> <span class="n">enable_tensorboard_metrics</span>
+        
+        <span class="c1"># Progress tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;Progress&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="s2">&quot;TaskID&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="c1"># Entropy scheduling</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span> <span class="o">=</span> <span class="n">entropy_schedule_type</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">initial_ent_coef</span> <span class="o">=</span> <span class="n">initial_ent_coef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">final_ent_coef</span> <span class="o">=</span> <span class="n">final_ent_coef</span> <span class="k">if</span> <span class="n">final_ent_coef</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">initial_ent_coef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span> <span class="o">=</span> <span class="mi">100000</span>  <span class="c1"># Will be updated in _on_training_start</span>
+        
+        <span class="c1"># Gradient probe guard</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.utils.grad_probe_guard</span><span class="w"> </span><span class="kn">import</span> <span class="n">GradProbeGuard</span><span class="p">,</span> <span class="n">GradProbeConfig</span>
+                
+                <span class="c1"># Create config from dict if provided</span>
+                <span class="k">if</span> <span class="n">grad_probe_config</span><span class="p">:</span>
+                    <span class="n">config</span> <span class="o">=</span> <span class="n">GradProbeConfig</span><span class="p">(</span><span class="o">**</span><span class="n">grad_probe_config</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">config</span> <span class="o">=</span> <span class="n">GradProbeConfig</span><span class="p">()</span>
+                
+                <span class="c1"># Get checkpoint_dir and session_id from trainer</span>
+                <span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;checkpoint_dir&quot;</span><span class="p">,</span> <span class="s2">&quot;checkpoints&quot;</span><span class="p">)</span>
+                <span class="n">session_id</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                
+                <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span> <span class="o">=</span> <span class="n">GradProbeGuard</span><span class="p">(</span>
+                    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+                    <span class="n">checkpoint_dir</span><span class="o">=</span><span class="n">checkpoint_dir</span><span class="p">,</span>
+                    <span class="n">session_id</span><span class="o">=</span><span class="n">session_id</span><span class="p">,</span>
+                    <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                <span class="p">)</span>
+                
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;GradProbeGuard enabled&quot;</span><span class="p">)</span>
+                
+            <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;GradProbeGuard disabled: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># TensorBoard metric configuration</span>
+        <span class="n">default_action_labels</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;buy&quot;</span><span class="p">,</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;sell&quot;</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_labels</span> <span class="o">=</span> <span class="n">default_action_labels</span> <span class="k">if</span> <span class="n">action_labels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">action_labels</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_log_tensorboard_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record rollout statistics and action distribution to TensorBoard.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_tensorboard_metrics</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">model</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">rollout_buffer</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s2">&quot;rollout_buffer&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rollout_buffer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">actions</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rollout_buffer</span><span class="p">,</span> <span class="s2">&quot;actions&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">actions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">actions_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">actions_np</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">max_action_index</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_labels</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span> <span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">actions_np</span><span class="p">,</span> <span class="n">minlength</span><span class="o">=</span><span class="n">max_action_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="n">total</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">counts</span><span class="p">))</span>
+
+                <span class="k">for</span> <span class="n">action_idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_labels</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">action_idx</span><span class="p">])</span> <span class="k">if</span> <span class="n">action_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                    <span class="n">ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">count</span> <span class="o">/</span> <span class="n">total</span><span class="p">)</span> <span class="k">if</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;pan_action_counts/</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">count</span><span class="p">,</span>
+                        <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;pan_action_pct/</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                        <span class="n">ratio</span><span class="p">,</span>
+                        <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                    <span class="p">)</span>
+
+        <span class="n">rewards</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rollout_buffer</span><span class="p">,</span> <span class="s2">&quot;rewards&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rewards</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rewards_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">rewards</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rewards_np</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                    <span class="s2">&quot;rollout/reward_mean&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">rewards_np</span><span class="p">)),</span>
+                    <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                    <span class="s2">&quot;rollout/reward_std&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">rewards_np</span><span class="p">)),</span>
+                    <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                <span class="p">)</span>
+
+        <span class="n">advantages</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rollout_buffer</span><span class="p">,</span> <span class="s2">&quot;advantages&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">advantages</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">advantages_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">advantages</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">advantages_np</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                    <span class="s2">&quot;rollout/adv_mean&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">advantages_np</span><span class="p">)),</span>
+                    <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span>
+                    <span class="s2">&quot;rollout/adv_std&quot;</span><span class="p">,</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">advantages_np</span><span class="p">)),</span>
+                    <span class="n">exclude</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;stdout&quot;</span><span class="p">,),</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_training_start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize progress bar and entropy schedule.&quot;&quot;&quot;</span>
+        <span class="c1"># Get total timesteps from trainer config</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
+        
+        <span class="c1"># Initialize progress bar</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">rich.console</span><span class="w"> </span><span class="kn">import</span> <span class="n">Console</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">rich.progress</span><span class="w"> </span><span class="kn">import</span> <span class="n">Progress</span>
+
+                <span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="n">Progress</span><span class="p">(</span><span class="n">console</span><span class="o">=</span><span class="n">console</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span>
+                    <span class="s2">&quot;[green]Training...&quot;</span><span class="p">,</span>
+                    <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span><span class="p">,</span>
+                    <span class="n">completed</span><span class="o">=</span><span class="mi">0</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">Exception</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Progress bar disabled: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">enable_progress_bar</span> <span class="o">=</span> <span class="kc">False</span>
+        
+        <span class="c1"># Initialize grad probe guard</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">init_callback</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">training_env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_env</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update progress, entropy coefficient, and check gradient probes on each step.&quot;&quot;&quot;</span>
+        <span class="c1"># Update trainer progress</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;done&quot;</span><span class="p">):</span>
+            <span class="n">reward</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;rewards&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">reward</span> <span class="o">=</span> <span class="n">reward</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">reward_float</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">reward</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trainer</span><span class="o">.</span><span class="n">update_progress</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">,</span> <span class="n">reward_float</span><span class="p">)</span>
+
+        <span class="c1"># Update progress bar</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span> <span class="n">completed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">)</span>
+
+        <span class="c1"># Update entropy coefficient</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_entropy_schedule</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">schedule_type</span> <span class="o">==</span> <span class="s2">&quot;cosine_decay&quot;</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.policies.policy_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_cosine_decay_entropy</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+            
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">MaskablePPO</span><span class="p">):</span>
+                <span class="n">apply_cosine_decay_entropy</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">initial_ent_coef</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">final_ent_coef</span><span class="p">,</span>
+                <span class="p">)</span>
+        
+        <span class="c1"># Check gradient probes</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">locals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locals</span>
+            
+            <span class="c1"># Call grad probe guard&#39;s _on_step</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">_on_step</span><span class="p">():</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;🛑 Training halted by GradProbeGuard&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">False</span>  <span class="c1"># Halt training</span>
+
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_rollout_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record additional statistics at the end of each rollout.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_tensorboard_metrics</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_log_tensorboard_metrics</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">enable_grad_probe_guard</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="p">:</span>
+            <span class="c1"># Expose rollout end event to guard when available</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="p">,</span> <span class="s2">&quot;_on_rollout_end&quot;</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">grad_probe_guard</span><span class="o">.</span><span class="n">_on_rollout_end</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_training_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up progress bar when training ends.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">progress</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="CheckpointGCCallback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.callbacks.html#ztb.training.callbacks.callbacks.CheckpointGCCallback">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CheckpointGCCallback</span><span class="p">(</span><span class="n">BaseCallback</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Callback to run checkpoint garbage collection after each checkpoint save.</span>
+<span class="sd">    </span>
+<span class="sd">    Integrates with CheckpointGarbageCollector from scripts/gc_artifacts.py</span>
+<span class="sd">    to automatically clean up old checkpoints during 1M long-run training.</span>
+<span class="sd">    </span>
+<span class="sd">    Usage:</span>
+<span class="sd">        from ztb.training.callbacks import CheckpointGCCallback</span>
+<span class="sd">        </span>
+<span class="sd">        gc_callback = CheckpointGCCallback(</span>
+<span class="sd">            checkpoint_dir=&quot;checkpoints/ensemble_C_1M&quot;,</span>
+<span class="sd">            keep_last=4,</span>
+<span class="sd">            keep_best=3,</span>
+<span class="sd">            ttl_days=14,</span>
+<span class="sd">            check_interval=25000,  # Run GC every 25k steps</span>
+<span class="sd">        )</span>
+<span class="sd">        </span>
+<span class="sd">        model.learn(total_timesteps=1_000_000, callback=gc_callback)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">checkpoint_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">keep_last</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="n">keep_best</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="n">ttl_days</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span>
+        <span class="n">check_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25000</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span> <span class="o">=</span> <span class="n">checkpoint_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_last</span> <span class="o">=</span> <span class="n">keep_last</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keep_best</span> <span class="o">=</span> <span class="n">keep_best</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ttl_days</span> <span class="o">=</span> <span class="n">ttl_days</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">check_interval</span> <span class="o">=</span> <span class="n">check_interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_gc_step</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run GC at specified intervals.&quot;&quot;&quot;</span>
+        <span class="c1"># Check if we should run GC</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_gc_step</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">check_interval</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_run_gc</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_gc_step</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_gc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute checkpoint garbage collection.&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Import here to avoid circular dependency</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+
+            <span class="c1"># Add scripts directory to path</span>
+            <span class="n">scripts_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">&quot;scripts&quot;</span>
+            <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">scripts_dir</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">:</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">scripts_dir</span><span class="p">))</span>
+
+            <span class="kn">from</span><span class="w"> </span><span class="nn">gc_artifacts</span><span class="w"> </span><span class="kn">import</span> <span class="n">CheckpointGarbageCollector</span>  <span class="c1"># type: ignore</span>
+
+            <span class="n">gc</span> <span class="o">=</span> <span class="n">CheckpointGarbageCollector</span><span class="p">(</span>
+                <span class="n">checkpoint_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">checkpoint_dir</span><span class="p">),</span>
+                <span class="n">keep_last</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keep_last</span><span class="p">,</span>
+                <span class="n">keep_best</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">keep_best</span><span class="p">,</span>
+                <span class="n">ttl_days</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">ttl_days</span><span class="p">,</span>
+                <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># Execute cleanup</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+                <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Running checkpoint GC at step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;(interval=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">check_interval</span><span class="si">}</span><span class="s2">)&quot;</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Run GC (will log summary)</span>
+            <span class="n">gc</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># Don&#39;t halt training on GC failure</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+            <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Checkpoint GC failed at step </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">num_timesteps</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

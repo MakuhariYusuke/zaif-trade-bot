@@ -1,0 +1,302 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>10k Smoke Test - 結果分析レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">10k Smoke Test - 結果分析レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/smoke_test_analysis.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="k-smoke-test">
+<h1>10k Smoke Test - 結果分析レポート<a class="headerlink" href="#k-smoke-test" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>⚠️ 重大な問題: プローブデータが記録されていない<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>🔴 問題の概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p><strong>プローブCSVが空</strong>: ヘッダーのみでデータ行が0件</p>
+<ul class="simple">
+<li><p>ファイルサイズ: 95バイト（ヘッダーのみ）</p></li>
+<li><p>期待: 数千行のステップごとのデータ</p></li>
+<li><p>実際: データ行0件</p></li>
+</ul>
+</section>
+<section id="id3">
+<h3>📊 トレーニングログからの観測<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<section id="id4">
+<h4>✅ 正常に動作した部分<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>トレーニング完了</strong>: 10,240 timesteps (目標10,000達成)</p></li>
+<li><p><strong>FPS</strong>: 76 (正常)</p></li>
+<li><p><strong>Iterations</strong>: 5回</p></li>
+<li><p><strong>実行時間</strong>: 134秒 (約2分)</p></li>
+</ol>
+</section>
+<section id="id5">
+<h4>🟡 統計情報（最終イテレーション）<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">entropy</span><span class="o">/</span>
+  <span class="n">current_alpha</span><span class="p">:</span> <span class="mf">0.01</span>          <span class="c1"># Target Entropy: 初期値のまま</span>
+  <span class="n">target_entropy</span><span class="p">:</span> <span class="mf">0.769</span>        <span class="c1"># ✓ 正しく設定されている</span>
+
+<span class="n">lagrange</span><span class="o">/</span>
+  <span class="n">lambda_dual</span><span class="p">:</span> <span class="mi">0</span>               <span class="c1"># ⚠️ 全く動作していない</span>
+  <span class="n">r_sell_mean</span><span class="p">:</span> <span class="mi">0</span>               <span class="c1"># ⚠️ SELL率0%</span>
+
+<span class="n">pan</span><span class="o">/</span>
+  <span class="n">action_counts</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>     <span class="c1"># ⚠️ 統計が記録されていない</span>
+  <span class="n">action_means</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
+  <span class="n">action_stds</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]</span>
+  <span class="n">total_samples</span><span class="p">:</span> <span class="mi">0</span>
+
+<span class="n">probe</span><span class="o">/</span>
+  <span class="n">is_healthy</span><span class="p">:</span> <span class="kc">False</span>            <span class="c1"># ⚠️ 不健全状態</span>
+  <span class="n">grad_norm_mean</span><span class="p">:</span> <span class="mi">0</span>            <span class="c1"># ⚠️ データなし</span>
+  <span class="n">advantage_mean</span><span class="p">:</span> <span class="mi">0</span>
+
+<span class="n">stratified</span><span class="o">/</span>
+  <span class="n">bucket_r0_a0</span><span class="o">~</span><span class="n">r2_a2</span><span class="p">:</span> <span class="n">ALL</span> <span class="mi">0</span>    <span class="c1"># ⚠️ 全く動作していない</span>
+
+<span class="n">train</span><span class="o">/</span>
+  <span class="n">approx_kl</span><span class="p">:</span> <span class="mf">0.000948</span>          <span class="c1"># 正常</span>
+  <span class="n">entropy_loss</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.616</span>         <span class="c1"># 正常</span>
+  <span class="n">policy_gradient_loss</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.000984</span>
+  <span class="n">value_loss</span><span class="p">:</span> <span class="mi">709</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h4>🔴 警告メッセージ<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>⚠️ SELL bias mitigation targets not fully achieved
+   - SELL rate below 15%: 0.0%
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id7">
+<h3>🔍 根本原因分析<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<section id="forced-balance">
+<h4>問題1: forced_balanceモード<a class="headerlink" href="#forced-balance" title="Link to this heading"></a></h4>
+<p>ログに <code class="docutils literal notranslate"><span class="pre">curriculum_stage:</span> <span class="pre">forced_balance</span></code> が出力されていました。
+これは <strong>強制バランスモード</strong> で、環境が action を強制的にバランスさせている可能性があります。</p>
+<p><strong>推測</strong>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">forced_balance</span></code>モードでは、環境が内部的にアクションを調整している</p></li>
+<li><p>そのため、プローブやPAN/Stratified Samplerが正しくフックされていない</p></li>
+<li><p>実際の学習ループと統計収集が切り離されている</p></li>
+</ul>
+</section>
+<section id="id8">
+<h4>問題2: コールバック統合の不備<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<p>以下の統計がすべて0:</p>
+<ul class="simple">
+<li><p>PAN: <code class="docutils literal notranslate"><span class="pre">total_samples:</span> <span class="pre">0</span></code></p></li>
+<li><p>Stratified: すべてのバケットが0</p></li>
+<li><p>Probe: データなし</p></li>
+</ul>
+<p><strong>推測</strong>:</p>
+<ul class="simple">
+<li><p>コールバックは呼ばれているが、データが渡されていない</p></li>
+<li><p>または、データ収集のタイミングが学習ループとずれている</p></li>
+<li><p>SB3のコールバック機構との統合が不完全</p></li>
+</ul>
+</section>
+<section id="lagrange">
+<h4>問題3: Lagrange制約が動作していない<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h4>
+<p><code class="docutils literal notranslate"><span class="pre">lambda_dual:</span> <span class="pre">0</span></code>, <code class="docutils literal notranslate"><span class="pre">r_sell_mean:</span> <span class="pre">0</span></code> は異常です。</p>
+<p><strong>推測</strong>:</p>
+<ul class="simple">
+<li><p>Lagrange制約の更新ロジックが呼ばれていない</p></li>
+<li><p>または、データソースが接続されていない</p></li>
+</ul>
+</section>
+</section>
+<section id="id9">
+<h3>🐛 バグの可能性<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>SELLBiasMitigationCallback の統合不備</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">_on_step()</span></code> は呼ばれているが、データが空</p></li>
+<li><p>統計取得メソッドが正しく呼ばれていない可能性</p></li>
+</ul>
+</li>
+<li><p><strong>PPOTrainer との互換性問題</strong></p>
+<ul class="simple">
+<li><p>親クラスの <code class="docutils literal notranslate"><span class="pre">train()</span></code> メソッドが、新しいコンポーネントを認識していない</p></li>
+<li><p>カスタムコールバックが適切にフックされていない</p></li>
+</ul>
+</li>
+<li><p><strong>forced_balance モードとの競合</strong></p>
+<ul class="simple">
+<li><p>強制バランスモードが、カスタムロジックをバイパスしている</p></li>
+<li><p>環境レベルでアクションが上書きされている</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id10">
+<h3>📋 次のアクション候補<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<section id="option-a">
+<h4>Option A: デバッグモードで再実行<a class="headerlink" href="#option-a" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 詳細ログを有効にして再実行</span>
+<span class="c1"># ztb/training/sell_mitigation_ppo_trainer.py にログ追加</span>
+</pre></div>
+</div>
+</section>
+<section id="option-b">
+<h4>Option B: 統合テストの作成<a class="headerlink" href="#option-b" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># コールバックが正しくデータを受け取るかテスト</span>
+<span class="c1"># PAN/Entropy/Stratifiedが実際に呼ばれるかテスト</span>
+</pre></div>
+</div>
+</section>
+<section id="option-c-forced-balance">
+<h4>Option C: forced_balance を無効化<a class="headerlink" href="#option-c-forced-balance" title="Link to this heading"></a></h4>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="c1">// smoke_test_10k_config.json</span>
+<span class="nt">&quot;environment&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;curriculum_stage&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;full&quot;</span><span class="w">  </span><span class="c1">// forced_balanceを避ける</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="option-d">
+<h4>Option D: 簡易版トレーナーで検証<a class="headerlink" href="#option-d" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># SB3の標準PPOを直接使用</span>
+<span class="c1"># カスタムコールバックなしでベースラインを確立</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id11">
+<h3>🎯 推奨アクション<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>即座に実行</strong>: コールバックのデバッグログを追加</p></li>
+<li><p><strong>検証</strong>: 統合テストで各コンポーネントが呼ばれることを確認</p></li>
+<li><p><strong>再実行</strong>: デバッグモードで10k再実行</p></li>
+</ol>
+</section>
+<section id="id12">
+<h3>📝 現時点での結論<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<p><strong>判定</strong>: ❌ テスト失敗（データ収集不備により評価不可）</p>
+<p><strong>原因</strong>:</p>
+<ul class="simple">
+<li><p>4つの改修機能が実装されているが、トレーニングループに統合されていない</p></li>
+<li><p>コールバックは動作しているが、データが空</p></li>
+<li><p>統計収集メカニズムが機能していない</p></li>
+</ul>
+<p><strong>次の優先事項</strong>: 統合デバッグ</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

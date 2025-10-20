@@ -1,0 +1,345 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>特徴量評価ドキュメント &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">特徴量評価ドキュメント</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/evaluation/evaluation.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>特徴量評価ドキュメント<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>このドキュメントでは、特徴量の評価方法、特にSharpe ratioベースの定量評価について説明します。</p>
+</section>
+<section id="sharpe-ratio">
+<h2>Sharpe Ratioの定義<a class="headerlink" href="#sharpe-ratio" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>基本計算式<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">=</span> <span class="mi">252</span>
+<span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean_return</span> <span class="o">/</span> <span class="n">std_return</span><span class="p">)</span> <span class="o">*</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>無リスク金利対応<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>超過リターンを計算する際に無リスク金利を考慮：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">=</span> <span class="mi">252</span>
+<span class="n">excess_returns</span> <span class="o">=</span> <span class="n">returns</span> <span class="o">-</span> <span class="n">risk_free_rate</span> <span class="o">/</span> <span class="n">TRADING_DAYS_PER_YEAR</span>  <span class="c1"># 日次無リスク金利</span>
+<span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">excess_returns</span><span class="p">)</span> <span class="o">/</span> <span class="n">std</span><span class="p">(</span><span class="n">excess_returns</span><span class="p">))</span> <span class="o">*</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id5">
+<h3>ゼロ除算防止<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<p>標準偏差が0の場合の処理：</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">std_return</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">return</span> <span class="mf">0.0</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="delta-sharpe">
+<h2>delta_sharpeの統計化<a class="headerlink" href="#delta-sharpe" title="Link to this heading"></a></h2>
+<section id="id6">
+<h3>定義<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p>delta_sharpe = 特徴量追加後のSharpe - ベースラインSharpe</p>
+</section>
+<section id="id7">
+<h3>安定化処理<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>最低試行数チェック</strong>: <code class="docutils literal notranslate"><span class="pre">seeds</span> <span class="pre">×</span> <span class="pre">timesteps</span> <span class="pre">&gt;</span> <span class="pre">10,000</span></code> を満たさない場合はNaN</p></li>
+<li><p><strong>統計情報</strong>: 平均/標準偏差/95%信頼区間を計算</p></li>
+</ul>
+</section>
+<section id="id8">
+<h3>計算例<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ベースラインSharpe: [0.1, 0.15, 0.12, 0.18, 0.09]</span>
+<span class="c1"># 特徴量追加後: [0.13, 0.17, 0.15, 0.21, 0.11]</span>
+
+<span class="n">delta_sharpe</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="mf">0.032</span><span class="p">,</span>      <span class="c1"># 平均改善</span>
+    <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="mf">0.015</span><span class="p">,</span>       <span class="c1"># 標準偏差</span>
+    <span class="s2">&quot;ci95&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.012</span><span class="p">,</span> <span class="mf">0.052</span><span class="p">]</span>  <span class="c1"># 95%信頼区間</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="harmful-md">
+<h2>harmful.mdとの接続<a class="headerlink" href="#harmful-md" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>再評価条件<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p>harmful判定された特徴量の再評価基準：</p>
+<ul class="simple">
+<li><p><strong>Wave間の補完効果</strong>: Wave1/2特徴量との組み合わせ効果</p></li>
+<li><p><strong>特徴変換の導入</strong>: 差分化・正規化・次元削減</p></li>
+<li><p><strong>Ablationの定量基準</strong>: <code class="docutils literal notranslate"><span class="pre">delta_sharpe.mean</span> <span class="pre">&gt;</span> <span class="pre">+0.05</span></code></p></li>
+<li><p><strong>局面依存性の確認</strong>: 特定Regimeでの有効性</p></li>
+<li><p><strong>軽量化後の見直し</strong>: 計算効率改善</p></li>
+</ul>
+</section>
+<section id="id10">
+<h3>自動判定<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">should_re_evaluate</span><span class="p">(</span><span class="n">feature_result</span><span class="p">):</span>
+    <span class="n">ds</span> <span class="o">=</span> <span class="n">feature_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;delta_sharpe&#39;</span><span class="p">,</span> <span class="p">{})</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># 基準: mean &gt; +0.05 かつ ci95下限 &gt; 0</span>
+    <span class="k">return</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.05</span> <span class="ow">and</span> <span class="n">ds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ci95&#39;</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id11">
+<h2>出力フォーマット<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="json">
+<h3>JSONフォーマット<a class="headerlink" href="#json" title="Link to this heading"></a></h3>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;feature&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Ichimoku&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;sharpe_stats&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;mean&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.234</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;std&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.089</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ci95&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">0.123</span><span class="p">,</span><span class="w"> </span><span class="mf">0.345</span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;delta_sharpe&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;mean&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">-0.037</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;std&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.012</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;ci95&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="mf">-0.061</span><span class="p">,</span><span class="w"> </span><span class="mf">-0.013</span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;runs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;is_experimental&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="csv">
+<h3>CSVフォーマット<a class="headerlink" href="#csv" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>feature</p></th>
+<th class="head"><p>is_experimental</p></th>
+<th class="head"><p>success</p></th>
+<th class="head"><p>runs</p></th>
+<th class="head"><p>sharpe_mean</p></th>
+<th class="head"><p>sharpe_std</p></th>
+<th class="head"><p>sharpe_ci_low</p></th>
+<th class="head"><p>sharpe_ci_high</p></th>
+<th class="head"><p>delta_sharpe_mean</p></th>
+<th class="head"><p>delta_sharpe_std</p></th>
+<th class="head"><p>delta_sharpe_ci_low</p></th>
+<th class="head"><p>delta_sharpe_ci_high</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Ichimoku</p></td>
+<td><p>false</p></td>
+<td><p>true</p></td>
+<td><p>5</p></td>
+<td><p>0.234</p></td>
+<td><p>0.089</p></td>
+<td><p>0.123</p></td>
+<td><p>0.345</p></td>
+<td><p>-0.037</p></td>
+<td><p>0.012</p></td>
+<td><p>-0.061</p></td>
+<td><p>-0.013</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="ci-cd">
+<h2>CI/CD統合<a class="headerlink" href="#ci-cd" title="Link to this heading"></a></h2>
+<section id="weekly">
+<h3>Weeklyレポート生成<a class="headerlink" href="#weekly" title="Link to this heading"></a></h3>
+<p>毎週のablation実行結果から以下の情報を集計：</p>
+<ul class="simple">
+<li><p>各特徴量のdelta_sharpe統計</p></li>
+<li><p>harmful再評価候補の自動判定</p></li>
+<li><p>実験的特徴量の評価結果</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>レポート例<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-markdown notranslate"><div class="highlight"><pre><span></span><span class="gh"># Weekly Feature Evaluation Report</span>
+
+<span class="gu">## Summary</span>
+<span class="k">-</span><span class="w"> </span>Total features evaluated: 15
+<span class="k">-</span><span class="w"> </span>Re-evaluation candidates: 2
+<span class="k">-</span><span class="w"> </span>Valid results: 12/15
+
+<span class="gu">## Delta Sharpe Results</span>
+
+| Feature | Mean | Std | CI95 Low | CI95 High | Status |
+|---------|------|-----|----------|-----------|--------|
+| Ichimoku | -0.037 | 0.012 | -0.061 | -0.013 | Maintain |
+| RegimeClustering | 0.089 | 0.034 | 0.045 | 0.133 | <span class="gs">**Re-evaluate**</span> |
+| Donchian | 0.023 | 0.018 | 0.002 | 0.044 | Monitor |
+
+<span class="gu">## Experimental Features</span>
+
+| Feature | Duration (ms) | NaN Rate | Delta Sharpe |
+|---------|---------------|----------|--------------|
+| MovingAverages | 5.2 | 0.012 | 0.034 |
+| GradientSign | 1.1 | 0.000 | -0.008 |
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id13">
+<h2>使用方法<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h3>ローカル実行<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 基本実行</span>
+python<span class="w"> </span>benchmarks/ablation_runner.py<span class="w"> </span>--set<span class="w"> </span>balanced<span class="w"> </span>--include-experimental
+
+<span class="c1"># 詳細設定</span>
+python<span class="w"> </span>benchmarks/ablation_runner.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>extended<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--include-experimental<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--num-runs<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>results/custom_eval.json
+</pre></div>
+</div>
+</section>
+<section id="ci">
+<h3>CI実行<a class="headerlink" href="#ci" title="Link to this heading"></a></h3>
+<p>GitHub Actionsで毎週自動実行：</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run ablation analysis</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">python benchmarks/ablation_runner.py \</span>
+<span class="w">      </span><span class="no">--set extended \</span>
+<span class="w">      </span><span class="no">--include-experimental \</span>
+<span class="w">      </span><span class="no">--num-runs 5</span>
+
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Generate weekly report</span>
+<span class="w">  </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">python scripts/generate_weekly_report.py</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id15">
+<h2>注意事項<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>delta_sharpeの計算には十分な試行回数（&gt;10,000サンプル）が必要</p></li>
+<li><p>統計的有意性を確保するため、95%信頼区間を必ず確認</p></li>
+<li><p>experimental特徴量は本番環境での安定性を別途検証すること</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

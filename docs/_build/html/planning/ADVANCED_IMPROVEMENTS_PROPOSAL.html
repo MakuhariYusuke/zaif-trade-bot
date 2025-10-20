@@ -1,0 +1,967 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIエージェント提案: 高度な改善案の検討 &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">AIエージェント提案: 高度な改善案の検討</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/planning/ADVANCED_IMPROVEMENTS_PROPOSAL.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="ai">
+<h1>AIエージェント提案: 高度な改善案の検討<a class="headerlink" href="#ai" title="Link to this heading"></a></h1>
+<p><strong>日時</strong>: 2025年10月6日<br />
+<strong>目的</strong>: RecurrentPPO/LSTM化、連続ポジションサイズ化、自己教師タスク併用の技術的検討</p>
+<hr class="docutils" />
+<section id="id1">
+<h2>エグゼクティブサマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>外部AIエージェントから提案された3つの高度な改善案について、技術的実現可能性、期待効果、実装コストを分析しました。</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>提案</p></th>
+<th class="head"><p>実現可能性</p></th>
+<th class="head"><p>期待効果</p></th>
+<th class="head"><p>実装コスト</p></th>
+<th class="head"><p>優先度</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1. RecurrentPPO/LSTM化</p></td>
+<td><p>⭐⭐⭐⭐⭐</p></td>
+<td><p>🔥🔥🔥🔥</p></td>
+<td><p>中 (2-3週間)</p></td>
+<td><p><strong>高</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>2. 連続ポジションサイズ化</p></td>
+<td><p>⭐⭐⭐⭐</p></td>
+<td><p>🔥🔥🔥</p></td>
+<td><p>中 (1-2週間)</p></td>
+<td><p>中</p></td>
+</tr>
+<tr class="row-even"><td><p>3. 自己教師タスク併用</p></td>
+<td><p>⭐⭐⭐</p></td>
+<td><p>🔥🔥🔥🔥🔥</p></td>
+<td><p>高 (3-4週間)</p></td>
+<td><p><strong>高</strong></p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>推奨順序</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>RecurrentPPO/LSTM化</strong> → 時系列依存性を捉える (最も影響大)</p></li>
+<li><p><strong>自己教師タスク併用</strong> → 表現学習を強化 (長期的価値)</p></li>
+<li><p><strong>連続ポジションサイズ化</strong> → アクション空間拡張 (追加の柔軟性)</p></li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="recurrentppo-lstm">
+<h2>提案1: RecurrentPPO/LSTM化<a class="headerlink" href="#recurrentppo-lstm" title="Link to this heading"></a></h2>
+<section id="id2">
+<h3>概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>現在のMLP (Multi-Layer Perceptron) ポリシーをLSTM (Long Short-Term Memory) ベースのRecurrentPPOに置き換え、時系列依存性を明示的にモデル化します。</p>
+</section>
+<section id="id3">
+<h3>技術的詳細<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<p><strong>現状のMLP</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 現在: 各ステップ独立</span>
+<span class="n">observation_t</span> <span class="err">→</span> <span class="n">MLP</span> <span class="err">→</span> <span class="n">action_t</span>
+<span class="n">observation_t</span><span class="o">+</span><span class="mi">1</span> <span class="err">→</span> <span class="n">MLP</span> <span class="err">→</span> <span class="n">action_t</span><span class="o">+</span><span class="mi">1</span>
+</pre></div>
+</div>
+<p><strong>提案のLSTM</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 提案: 隠れ状態で時系列情報を保持</span>
+<span class="p">(</span><span class="n">observation_t</span><span class="p">,</span> <span class="n">hidden_t</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="err">→</span> <span class="n">LSTM</span> <span class="err">→</span> <span class="p">(</span><span class="n">action_t</span><span class="p">,</span> <span class="n">hidden_t</span><span class="p">)</span>
+<span class="p">(</span><span class="n">observation_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_t</span><span class="p">)</span> <span class="err">→</span> <span class="n">LSTM</span> <span class="err">→</span> <span class="p">(</span><span class="n">action_t</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_t</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id4">
+<h3>実装アプローチ<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<section id="option-a-sb3-contrib-recurrentppo">
+<h4>Option A: sb3-contrib RecurrentPPO (推奨)<a class="headerlink" href="#option-a-sb3-contrib-recurrentppo" title="Link to this heading"></a></h4>
+<p><strong>利用可能性</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># sb3-contrib v2.0+</span>
+from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class="w"> </span>RecurrentPPO
+</pre></div>
+</div>
+<p><strong>実装例</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">RecurrentPPO</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">RecurrentPPO</span><span class="p">(</span>
+    <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;MlpLstmPolicy&quot;</span><span class="p">,</span>  <span class="c1"># LSTMポリシー</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">3e-4</span><span class="p">,</span>
+    <span class="n">n_steps</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="c1"># LSTM specific</span>
+    <span class="n">n_lstm_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">lstm_hidden_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+    <span class="n">enable_critic_lstm</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Criticにもchars使用</span>
+    <span class="c1"># ... 既存のPPOパラメータ ...</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>利点</strong>:</p>
+<ul class="simple">
+<li><p>✅ Stable-Baselines3公式サポート</p></li>
+<li><p>✅ MaskablePPOと同様のAPI</p></li>
+<li><p>✅ 既存コードベースとの互換性高い</p></li>
+<li><p>✅ テスト済み実装</p></li>
+</ul>
+<p><strong>課題</strong>:</p>
+<ul class="simple">
+<li><p>❌ CustomPPOの改修と統合が必要</p></li>
+<li><p>❌ エピソード長の管理が複雑化</p></li>
+</ul>
+</section>
+<section id="option-b-custom-lstm-policy">
+<h4>Option B: Custom LSTM Policy<a class="headerlink" href="#option-b-custom-lstm-policy" title="Link to this heading"></a></h4>
+<p><strong>実装例</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.policies</span><span class="w"> </span><span class="kn">import</span> <span class="n">ActorCriticPolicy</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">CustomLSTMPolicy</span><span class="p">(</span><span class="n">ActorCriticPolicy</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">lstm_hidden_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">n_lstm_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+        <span class="c1"># LSTM layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span>
+            <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span>
+            <span class="n">hidden_size</span><span class="o">=</span><span class="n">lstm_hidden_size</span><span class="p">,</span>
+            <span class="n">num_layers</span><span class="o">=</span><span class="n">n_lstm_layers</span><span class="p">,</span>
+            <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        
+        <span class="c1"># Policy head (actor)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">lstm_hidden_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+        
+        <span class="c1"># Value head (critic)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">lstm_hidden_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">lstm_states</span><span class="p">,</span> <span class="n">episode_starts</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># LSTM forward pass</span>
+        <span class="n">lstm_out</span><span class="p">,</span> <span class="n">lstm_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">lstm_states</span><span class="p">)</span>
+        
+        <span class="c1"># Policy and value</span>
+        <span class="n">action_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">action_logits</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">lstm_states</span>
+</pre></div>
+</div>
+<p><strong>利点</strong>:</p>
+<ul class="simple">
+<li><p>✅ 完全なカスタマイズ可能</p></li>
+<li><p>✅ CustomPPOと統合しやすい</p></li>
+</ul>
+<p><strong>課題</strong>:</p>
+<ul class="simple">
+<li><p>❌ 実装コスト高い</p></li>
+<li><p>❌ デバッグが困難</p></li>
+<li><p>❌ テストカバレッジ必要</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h3>期待効果<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>時系列パターン認識</strong>:</p>
+<ul class="simple">
+<li><p>トレンド検出の改善</p></li>
+<li><p>モメンタム変化の捕捉</p></li>
+<li><p>過去N時点の文脈を考慮</p></li>
+</ul>
+</li>
+<li><p><strong>SELL率改善</strong>:</p>
+<ul class="simple">
+<li><p>「買った後に売る」という時系列関係を学習</p></li>
+<li><p>ポジション保持期間の最適化</p></li>
+<li><p>エントリー/エグジットタイミングの改善</p></li>
+</ul>
+</li>
+<li><p><strong>収益性向上</strong>:</p>
+<ul class="simple">
+<li><p>より洗練された取引戦略</p></li>
+<li><p>市場レジーム変化への適応</p></li>
+<li><p>リスク管理の向上</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id6">
+<h3>実装計画<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<p><strong>Phase 1: 調査 (3-5日)</strong></p>
+<ol class="arabic simple">
+<li><p>sb3-contrib RecurrentPPOのAPI調査</p></li>
+<li><p>LSTM policy設定の検証</p></li>
+<li><p>エピソード管理の理解</p></li>
+</ol>
+<p><strong>Phase 2: 統合 (5-7日)</strong></p>
+<ol class="arabic simple">
+<li><p>CustomRecurrentPPOクラス作成</p></li>
+<li><p>RecurrentPPO + PAN統合</p></li>
+<li><p>RecurrentPPO + Target Entropy統合</p></li>
+<li><p>LSTMState管理実装</p></li>
+</ol>
+<p><strong>Phase 3: テスト (3-5日)</strong></p>
+<ol class="arabic simple">
+<li><p>10kスモークテスト</p></li>
+<li><p>50k収束テスト</p></li>
+<li><p>バックテスト検証</p></li>
+</ol>
+<p><strong>総所要時間</strong>: 2-3週間</p>
+</section>
+<section id="id7">
+<h3>リスクと制約<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><strong>技術的リスク</strong>:</p>
+<ul class="simple">
+<li><p>エピソード境界でのLSTM状態リセット必要</p></li>
+<li><p>メモリ使用量増加 (LSTM状態保存)</p></li>
+<li><p>学習速度低下の可能性</p></li>
+</ul>
+<p><strong>軽減策</strong>:</p>
+<ul class="simple">
+<li><p>Truncated BPTT (Backpropagation Through Time) 使用</p></li>
+<li><p>LSTM hidden size調整 (256→128)</p></li>
+<li><p>Gradient clipping強化</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h2>提案2: 連続ポジションサイズ化<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="id9">
+<h3>概要<a class="headerlink" href="#id9" title="Link to this heading"></a></h3>
+<p>現在の離散的な3アクション (BUY/HOLD/SELL) を、連続的なポジションサイズ (-1.0 ~ +1.0) に拡張します。</p>
+</section>
+<section id="id10">
+<h3>技術的詳細<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<p><strong>現状の離散アクション</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Discrete</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="c1"># 0: BUY (1.0ポジション)</span>
+<span class="c1"># 1: HOLD (ポジション変更なし)</span>
+<span class="c1"># 2: SELL (0.0ポジション)</span>
+</pre></div>
+</div>
+<p><strong>提案の連続アクション</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">low</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+<span class="c1"># -1.0: 最大ショート</span>
+<span class="c1"># 0.0: ポジションなし (HOLD)</span>
+<span class="c1"># +1.0: 最大ロング</span>
+<span class="c1"># 例: +0.5 = 50%ロングポジション</span>
+</pre></div>
+</div>
+</section>
+<section id="id11">
+<h3>実装アプローチ<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<section id="id12">
+<h4>アクション空間変更<a class="headerlink" href="#id12" title="Link to this heading"></a></h4>
+<p><strong>environment.py修正</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">gym.spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">Box</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">(</span><span class="n">gym</span><span class="o">.</span><span class="n">Env</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">use_continuous_actions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_continuous_actions</span> <span class="o">=</span> <span class="n">use_continuous_actions</span>
+        
+        <span class="k">if</span> <span class="n">use_continuous_actions</span><span class="p">:</span>
+            <span class="c1"># 連続アクション: ポジションサイズ</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span>
+                <span class="n">low</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">1.0</span><span class="p">]),</span>
+                <span class="n">high</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">]),</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 従来の離散アクション</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Discrete</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_continuous_actions</span><span class="p">:</span>
+            <span class="c1"># actionは-1.0~1.0の連続値</span>
+            <span class="n">target_position</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            
+            <span class="c1"># ポジション調整</span>
+            <span class="n">current_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
+            <span class="n">position_change</span> <span class="o">=</span> <span class="n">target_position</span> <span class="o">-</span> <span class="n">current_position</span>
+            
+            <span class="c1"># トレード実行</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position_change</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.01</span><span class="p">:</span>  <span class="c1"># 閾値</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_execute_trade</span><span class="p">(</span><span class="n">position_change</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># 従来の離散アクション処理</span>
+            <span class="c1"># ...</span>
+</pre></div>
+</div>
+</section>
+<section id="ppoppo-continuous">
+<h4>PPOからPPO (Continuous)への移行<a class="headerlink" href="#ppoppo-continuous" title="Link to this heading"></a></h4>
+<p><strong>PolicyType変更</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 離散アクション用</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
+
+<span class="c1"># 連続アクション用</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPO</span>  <span class="c1"># 標準PPO (連続対応)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="p">(</span>
+    <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;MlpPolicy&quot;</span><span class="p">,</span>
+    <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+    <span class="c1"># ... 既存のPPOパラメータ ...</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Action Maskingの代替</strong>:
+連続アクション空間ではAction Maskingが使えないため、以下で対応:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
+    <span class="n">target_position</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    
+    <span class="c1"># 制約チェック</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_invalid_trade</span><span class="p">(</span><span class="n">target_position</span><span class="p">):</span>
+        <span class="c1"># 無効なアクションには大きなペナルティ</span>
+        <span class="n">reward</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10.0</span>
+        <span class="c1"># ポジションは変更しない</span>
+        <span class="n">target_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
+    
+    <span class="c1"># ...</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id13">
+<h3>期待効果<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>ポジションサイズ最適化</strong>:</p>
+<ul class="simple">
+<li><p>確信度に応じたポジションサイジング</p></li>
+<li><p>リスク管理の向上</p></li>
+<li><p>部分利確/損切りが可能</p></li>
+</ul>
+</li>
+<li><p><strong>アクション柔軟性</strong>:</p>
+<ul class="simple">
+<li><p>“50%売却”などの中間アクション</p></li>
+<li><p>グラデーショナルなポジション調整</p></li>
+<li><p>市場状況に応じた微調整</p></li>
+</ul>
+</li>
+<li><p><strong>収益性向上</strong>:</p>
+<ul class="simple">
+<li><p>ドローダウン削減</p></li>
+<li><p>リスク調整後リターン改善</p></li>
+<li><p>資金効率の最適化</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id14">
+<h3>実装計画<a class="headerlink" href="#id14" title="Link to this heading"></a></h3>
+<p><strong>Phase 1: 環境拡張 (3-5日)</strong></p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">use_continuous_actions</span></code>フラグ追加</p></li>
+<li><p>連続アクション処理実装</p></li>
+<li><p>報酬関数調整</p></li>
+</ol>
+<p><strong>Phase 2: ポリシー移行 (3-5日)</strong></p>
+<ol class="arabic simple">
+<li><p>PPO (continuous) 統合</p></li>
+<li><p>Action constraint実装</p></li>
+<li><p>CustomPPO適応</p></li>
+</ol>
+<p><strong>Phase 3: テスト (3-5日)</strong></p>
+<ol class="arabic simple">
+<li><p>単体テスト</p></li>
+<li><p>統合テスト</p></li>
+<li><p>バックテスト比較</p></li>
+</ol>
+<p><strong>総所要時間</strong>: 1-2週間</p>
+</section>
+<section id="id15">
+<h3>リスクと制約<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<p><strong>技術的リスク</strong>:</p>
+<ul class="simple">
+<li><p>Action Maskingが使えない</p></li>
+<li><p>無効アクション処理が複雑化</p></li>
+<li><p>学習が不安定になる可能性</p></li>
+</ul>
+<p><strong>軽減策</strong>:</p>
+<ul class="simple">
+<li><p>Reward shapingで制約を表現</p></li>
+<li><p>Action normalizationを強化</p></li>
+<li><p>Entropy regularization調整</p></li>
+</ul>
+<p><strong>互換性</strong>:</p>
+<ul class="simple">
+<li><p>MaskablePPOが使えない</p></li>
+<li><p>CustomPPO全面改修が必要</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id16">
+<h2>提案3: 自己教師タスク併用<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h3>概要<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<p>取引タスク (メインタスク) に加えて、価格予測などの補助タスク (自己教師あり学習) を併用し、より良い特徴表現を学習します。</p>
+</section>
+<section id="id18">
+<h3>技術的詳細<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<p><strong>Multi-task Learning アーキテクチャ</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                     ┌─────────────────┐
+                     │  Shared Encoder │
+                     │   (LSTM/MLP)    │
+                     └────────┬────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 │                         │
+         ┌───────▼────────┐       ┌───────▼────────┐
+         │  Policy Head   │       │ Auxiliary Head │
+         │   (Actor)      │       │  (Predictor)   │
+         └───────┬────────┘       └───────┬────────┘
+                 │                         │
+         ┌───────▼────────┐       ┌───────▼────────┐
+         │Trading Actions │       │ Price Prediction│
+         │ (BUY/HOLD/SELL)│       │  (next_price)   │
+         └────────────────┘       └────────────────┘
+</pre></div>
+</div>
+</section>
+<section id="id19">
+<h3>実装アプローチ<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<section id="auxiliary-task">
+<h4>Auxiliary Task候補<a class="headerlink" href="#auxiliary-task" title="Link to this heading"></a></h4>
+<ol class="arabic simple">
+<li><p><strong>価格予測</strong> (最有力):</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 次のN時点の価格変化を予測</span>
+<span class="n">next_price_change</span> <span class="o">=</span> <span class="p">(</span><span class="n">price_t</span><span class="o">+</span><span class="n">N</span> <span class="o">-</span> <span class="n">price_t</span><span class="p">)</span> <span class="o">/</span> <span class="n">price_t</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="2">
+<li><p><strong>トレンド分類</strong>:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 上昇/下降/横ばいのトレンド分類</span>
+<span class="n">trend</span> <span class="o">=</span> <span class="n">classify_trend</span><span class="p">(</span><span class="n">price_history</span><span class="p">)</span>  <span class="c1"># 0/1/2</span>
+</pre></div>
+</div>
+<ol class="arabic simple" start="3">
+<li><p><strong>ボラティリティ予測</strong>:</p></li>
+</ol>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 次のN時点のボラティリティ予測</span>
+<span class="n">volatility</span> <span class="o">=</span> <span class="n">std</span><span class="p">(</span><span class="n">price_t</span><span class="o">+</span><span class="mi">1</span><span class="p">:</span><span class="n">t</span><span class="o">+</span><span class="n">N</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id20">
+<h4>カスタムポリシー実装<a class="headerlink" href="#id20" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3.common.policies</span><span class="w"> </span><span class="kn">import</span> <span class="n">ActorCriticPolicy</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">MultiTaskPolicy</span><span class="p">(</span><span class="n">ActorCriticPolicy</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">aux_task_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+        <span class="c1"># Shared feature extractor (既存)</span>
+        <span class="c1"># self.features_extractor = ...</span>
+        
+        <span class="c1"># Policy head (Actor) - 既存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
+        
+        <span class="c1"># Value head (Critic) - 既存</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        
+        <span class="c1"># Auxiliary task head - 新規</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
+            <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># 価格変化予測</span>
+        <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">=</span> <span class="n">aux_task_weight</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        
+        <span class="c1"># Main task: Policy and Value</span>
+        <span class="n">action_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+        
+        <span class="c1"># Auxiliary task: Price prediction</span>
+        <span class="n">price_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">action_logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">price_pred</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
+        <span class="c1"># Standard PPO loss</span>
+        <span class="n">action_log_probs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">entropy</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">evaluate_actions</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
+        
+        <span class="c1"># Auxiliary task loss</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">price_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        
+        <span class="c1"># 価格変化のground truth (環境から取得)</span>
+        <span class="n">next_price_change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_next_price_change</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
+        <span class="n">aux_loss</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()(</span><span class="n">price_pred</span><span class="p">,</span> <span class="n">next_price_change</span><span class="p">)</span>
+        
+        <span class="c1"># Total loss = PPO loss + aux_weight * aux_loss</span>
+        <span class="c1"># (CustomPPO内で統合)</span>
+        
+        <span class="k">return</span> <span class="n">action_log_probs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">entropy</span><span class="p">,</span> <span class="n">aux_loss</span>
+</pre></div>
+</div>
+</section>
+<section id="customppo">
+<h4>CustomPPOへの統合<a class="headerlink" href="#customppo" title="Link to this heading"></a></h4>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">CustomMultiTaskPPO</span><span class="p">(</span><span class="n">CustomPPO</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">aux_task_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">=</span> <span class="n">aux_task_weight</span>
+        
+    <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">rollout_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollout_buffer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">):</span>
+            <span class="c1"># ... 既存のPPO train処理 ...</span>
+            
+            <span class="c1"># Auxiliary task loss追加</span>
+            <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">aux_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">evaluate_actions</span><span class="p">(</span>
+                <span class="n">rollout_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">rollout_data</span><span class="o">.</span><span class="n">actions</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># Total loss</span>
+            <span class="n">total_loss</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">policy_loss</span>
+                <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">vf_coef</span> <span class="o">*</span> <span class="n">value_loss</span>
+                <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ent_coef</span> <span class="o">*</span> <span class="n">entropy_loss</span>
+                <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">*</span> <span class="n">aux_loss</span>  <span class="c1"># ← 追加</span>
+            <span class="p">)</span>
+            
+            <span class="c1"># Backward and optimize</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+            <span class="n">total_loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            
+            <span class="c1"># Logging</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="s2">&quot;train/aux_loss&quot;</span><span class="p">,</span> <span class="n">aux_loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id21">
+<h3>期待効果<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>表現学習の改善</strong>:</p>
+<ul class="simple">
+<li><p>より豊かな特徴表現</p></li>
+<li><p>一般化性能向上</p></li>
+<li><p>Transfer learning効果</p></li>
+</ul>
+</li>
+<li><p><strong>収益性向上</strong>:</p>
+<ul class="simple">
+<li><p>価格変動の理解向上</p></li>
+<li><p>トレンド検出精度向上</p></li>
+<li><p>リスク管理の改善</p></li>
+</ul>
+</li>
+<li><p><strong>学習効率向上</strong>:</p>
+<ul class="simple">
+<li><p>少ないデータで学習可能</p></li>
+<li><p>オーバーフィッティング抑制</p></li>
+<li><p>安定した学習</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id22">
+<h3>実装計画<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<p><strong>Phase 1: Auxiliary Task設計 (5-7日)</strong></p>
+<ol class="arabic simple">
+<li><p>価格予測タスク実装</p></li>
+<li><p>Ground truthラベル生成</p></li>
+<li><p>Loss function設計</p></li>
+</ol>
+<p><strong>Phase 2: MultiTaskPolicy実装 (7-10日)</strong></p>
+<ol class="arabic simple">
+<li><p>カスタムポリシークラス作成</p></li>
+<li><p>Auxiliary head追加</p></li>
+<li><p>Multi-task loss実装</p></li>
+</ol>
+<p><strong>Phase 3: CustomPPO統合 (5-7日)</strong></p>
+<ol class="arabic simple">
+<li><p>CustomMultiTaskPPO作成</p></li>
+<li><p>Loss weightingバランス調整</p></li>
+<li><p>Logging追加</p></li>
+</ol>
+<p><strong>Phase 4: テスト (5-7日)</strong></p>
+<ol class="arabic simple">
+<li><p>単体テスト</p></li>
+<li><p>10kスモークテスト</p></li>
+<li><p>Ablation study (aux taskあり/なし比較)</p></li>
+</ol>
+<p><strong>総所要時間</strong>: 3-4週間</p>
+</section>
+<section id="id23">
+<h3>リスクと制約<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<p><strong>技術的リスク</strong>:</p>
+<ul class="simple">
+<li><p>Multi-task学習のバランス調整が困難</p></li>
+<li><p>Auxiliary taskがメインタスクを阻害する可能性</p></li>
+<li><p>計算コスト増加</p></li>
+</ul>
+<p><strong>軽減策</strong>:</p>
+<ul class="simple">
+<li><p>Loss weightingを慎重に調整 (0.01~0.1)</p></li>
+<li><p>Auxiliary task勾配のクリッピング</p></li>
+<li><p>段階的統合 (最初は低weight)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id24">
+<h2>統合実装ロードマップ<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
+<section id="short-term-1-2">
+<h3>Short-term (1-2ヶ月)<a class="headerlink" href="#short-term-1-2" title="Link to this heading"></a></h3>
+<p><strong>Week 1-3: RecurrentPPO/LSTM化</strong></p>
+<ul class="simple">
+<li><p>優先度: <strong>最高</strong></p></li>
+<li><p>理由: 時系列特性を最も活かせる</p></li>
+<li><p>期待効果: SELL率改善、収益性向上</p></li>
+</ul>
+<p><strong>Week 4-5: 10k→50k検証</strong></p>
+<ul class="simple">
+<li><p>RecurrentPPO動作確認</p></li>
+<li><p>バックテスト実施</p></li>
+<li><p>パフォーマンス評価</p></li>
+</ul>
+</section>
+<section id="mid-term-2-4">
+<h3>Mid-term (2-4ヶ月)<a class="headerlink" href="#mid-term-2-4" title="Link to this heading"></a></h3>
+<p><strong>Week 6-9: 自己教師タスク併用</strong></p>
+<ul class="simple">
+<li><p>優先度: <strong>高</strong></p></li>
+<li><p>理由: 長期的な表現学習改善</p></li>
+<li><p>期待効果: 一般化性能向上</p></li>
+</ul>
+<p><strong>Week 10-11: 統合テスト</strong></p>
+<ul class="simple">
+<li><p>RecurrentPPO + Multi-task learning</p></li>
+<li><p>Ablation study</p></li>
+<li><p>ハイパーパラメータ最適化</p></li>
+</ul>
+</section>
+<section id="long-term-4-6">
+<h3>Long-term (4-6ヶ月)<a class="headerlink" href="#long-term-4-6" title="Link to this heading"></a></h3>
+<p><strong>Week 12-14: 連続ポジションサイズ化</strong> (オプション)</p>
+<ul class="simple">
+<li><p>優先度: <strong>中</strong></p></li>
+<li><p>理由: 追加の柔軟性</p></li>
+<li><p>期待効果: ポジション最適化</p></li>
+</ul>
+<p><strong>Week 15-16: 最終統合</strong></p>
+<ul class="simple">
+<li><p>全機能統合</p></li>
+<li><p>本番環境テスト</p></li>
+<li><p>ドキュメント作成</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>技術スタック<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>必要なライブラリ<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Stable-Baselines3 ecosystem</span>
+<span class="n">stable</span><span class="o">-</span><span class="n">baselines3</span><span class="o">&gt;=</span><span class="mf">2.0.0</span>
+<span class="n">sb3</span><span class="o">-</span><span class="n">contrib</span><span class="o">&gt;=</span><span class="mf">2.0.0</span>  <span class="c1"># RecurrentPPO, MaskablePPO</span>
+
+<span class="c1"># Deep Learning</span>
+<span class="n">torch</span><span class="o">&gt;=</span><span class="mf">2.0.0</span>
+<span class="n">torch</span><span class="o">-</span><span class="n">tb</span><span class="o">-</span><span class="n">profiler</span>  <span class="c1"># TensorBoard profiling</span>
+
+<span class="c1"># Auxiliary task</span>
+<span class="n">scikit</span><span class="o">-</span><span class="n">learn</span>  <span class="c1"># Preprocessing, metrics</span>
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>開発環境<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># RecurrentPPO検証環境</span>
+python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv_recurrent
+pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span class="o">[</span>extra<span class="o">]</span><span class="w"> </span>sb3-contrib<span class="w"> </span>torch
+
+<span class="c1"># Multi-task learning検証環境</span>
+python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv_multitask
+pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span class="w"> </span>torch<span class="w"> </span>tensorboard
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id28">
+<h2>成功基準<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<section id="id29">
+<h3>RecurrentPPO/LSTM化<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>現状 (MLP)</p></th>
+<th class="head"><p>目標 (LSTM)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SELL率</p></td>
+<td><p>0-5%</p></td>
+<td><p><strong>≥15%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>Sharpe Ratio</p></td>
+<td><p>0.5</p></td>
+<td><p><strong>≥1.0</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>Max Drawdown</p></td>
+<td><p>-20%</p></td>
+<td><p><strong>≤-15%</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>学習時間</p></td>
+<td><p>100%</p></td>
+<td><p>≤150%</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id30">
+<h3>自己教師タスク併用<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>Single-task</p></th>
+<th class="head"><p>Multi-task目標</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>価格予測MSE</p></td>
+<td><p>N/A</p></td>
+<td><p><strong>≤0.01</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>収益性</p></td>
+<td><p>100%</p></td>
+<td><p><strong>≥120%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>過学習度</p></td>
+<td><p>train/val=1.5</p></td>
+<td><p><strong>≤1.2</strong></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="id31">
+<h3>連続ポジションサイズ化<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>離散</p></th>
+<th class="head"><p>連続目標</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>ポジション利用率</p></td>
+<td><p>0/50/100%</p></td>
+<td><p><strong>0-100%連続</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p>リスク調整後リターン</p></td>
+<td><p>100%</p></td>
+<td><p><strong>≥110%</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>取引頻度</p></td>
+<td><p>同じ</p></td>
+<td><p>同じ</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id32">
+<h2>推奨事項<a class="headerlink" href="#id32" title="Link to this heading"></a></h2>
+<section id="id33">
+<h3>即座に実施<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>✅ <strong>RecurrentPPO/LSTM化の調査開始</strong></p>
+<ul class="simple">
+<li><p>sb3-contrib RecurrentPPO API確認</p></li>
+<li><p>簡単なLSTMポリシー実験</p></li>
+<li><p>エピソード管理の理解</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id34">
+<h3>短期的 (1-2週間)<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="2">
+<li><p>✅ <strong>RecurrentPPO Prototypeング</strong></p>
+<ul class="simple">
+<li><p>10kスモークテスト実施</p></li>
+<li><p>PAN/Target Entropy統合確認</p></li>
+<li><p>パフォーマンス初期評価</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id35">
+<h3>中期的 (1-2ヶ月)<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="3">
+<li><p>✅ <strong>自己教師タスク設計</strong></p>
+<ul class="simple">
+<li><p>価格予測タスク仕様策定</p></li>
+<li><p>Multi-taskポリシー設計</p></li>
+<li><p>Loss weightingプロトタイピング</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="id36">
+<h3>長期的 (2-3ヶ月)<a class="headerlink" href="#id36" title="Link to this heading"></a></h3>
+<ol class="arabic simple" start="4">
+<li><p>🔄 <strong>連続ポジションサイズ検討</strong></p>
+<ul class="simple">
+<li><p>RecurrentPPO安定後に評価</p></li>
+<li><p>プロトタイプ作成</p></li>
+<li><p>効果測定</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id37">
+<h2>結論<a class="headerlink" href="#id37" title="Link to this heading"></a></h2>
+<p>3つの提案はいずれも技術的に実現可能であり、大きな改善効果が期待できます。</p>
+<p><strong>推奨実装順序</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>RecurrentPPO/LSTM化</strong> (最優先) → 時系列モデリング</p></li>
+<li><p><strong>自己教師タスク併用</strong> (高優先度) → 表現学習強化</p></li>
+<li><p><strong>連続ポジションサイズ化</strong> (中優先度) → 追加の柔軟性</p></li>
+</ol>
+<p><strong>次のステップ</strong>:</p>
+<ul class="simple">
+<li><p>RecurrentPPO調査開始</p></li>
+<li><p>sb3-contrib RecurrentPPO APIドキュメント確認</p></li>
+<li><p>簡単なLSTMポリシー実験</p></li>
+</ul>
+<p>これらの改善は、CustomPPOと相補的であり、統合することでさらに強力なトレーディングシステムを構築できます。</p>
+<hr class="docutils" />
+<p><strong>レポート作成日</strong>: 2025年10月6日<br />
+<strong>作成者</strong>: GitHub Copilot<br />
+<strong>ステータス</strong>: 検討資料<br />
+<strong>次回更新</strong>: RecurrentPPO調査完了後</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

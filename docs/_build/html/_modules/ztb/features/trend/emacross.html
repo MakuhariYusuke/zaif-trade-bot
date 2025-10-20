@@ -1,0 +1,347 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.features.trend.emacross &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+          <li class="breadcrumb-item"><a href="../../features.html">ztb.features</a></li>
+      <li class="breadcrumb-item active">ztb.features.trend.emacross</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.features.trend.emacross</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">EMACross feature implementation.</span>
+<span class="sd">EMA/SMA cross signals for trend detection with multi-timeframe support.</span>
+
+<span class="sd">Output columns:</span>
+<span class="sd">  - ema_sma_cross: Normalized difference between EMA and SMA</span>
+<span class="sd">  - ema_above_sma: Binary indicator (1 if EMA &gt; SMA, 0 otherwise)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..base</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParameterizedFeature</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..registry</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureRegistry</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..timeframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">Timeframe</span>
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference (normalized)&quot;&quot;&quot;</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">EMACross</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">timeframe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Adjust periods based on timeframe</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..timeframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_timeframe_params</span>
+        <span class="n">tf_params</span> <span class="o">=</span> <span class="n">get_timeframe_params</span><span class="p">(</span><span class="n">timeframe</span><span class="p">)</span>
+        <span class="n">feature</span><span class="o">.</span><span class="n">default_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;fast_period&quot;</span><span class="p">:</span> <span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;short_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># EMA period</span>
+            <span class="s2">&quot;slow_period&quot;</span><span class="p">:</span> <span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;medium_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">4</span>  <span class="c1"># SMA period</span>
+        <span class="p">}</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result_df</span><span class="p">[</span><span class="s2">&quot;ema_sma_cross&quot;</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">timeframe</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Timeframe</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal (1 if EMA &gt; SMA, 0 otherwise)&quot;&quot;&quot;</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">EMACross</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">timeframe</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Adjust periods based on timeframe</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..timeframe</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_timeframe_params</span>
+        <span class="n">tf_params</span> <span class="o">=</span> <span class="n">get_timeframe_params</span><span class="p">(</span><span class="n">timeframe</span><span class="p">)</span>
+        <span class="n">feature</span><span class="o">.</span><span class="n">default_params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;fast_period&quot;</span><span class="p">:</span> <span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;short_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># EMA period</span>
+            <span class="s2">&quot;slow_period&quot;</span><span class="p">:</span> <span class="n">tf_params</span><span class="p">[</span><span class="s2">&quot;medium_period&quot;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">4</span>  <span class="c1"># SMA period</span>
+        <span class="p">}</span>
+    <span class="n">result_df</span> <span class="o">=</span> <span class="n">feature</span><span class="o">.</span><span class="n">compute</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result_df</span><span class="p">[</span><span class="s2">&quot;ema_above_sma&quot;</span><span class="p">]</span></div>
+
+
+
+<span class="c1"># === Multi-Timeframe EMACross Features ===</span>
+
+<div class="viewcode-block" id="compute_ema_cross_diff_m1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_m1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_M1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_m1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for 1-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff_m5">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_m5">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_M5&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_m5</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for 5-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M5</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff_m15">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_m15">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_M15&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_m15</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for 15-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M15</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff_h1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_h1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_H1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_h1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for 1-hour timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">H1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff_h4">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_h4">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_H4&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_h4</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for 4-hour timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">H4</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_diff_d1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_diff_d1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Diff_D1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_diff_d1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Difference for daily timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_diff</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">D1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_m1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_m1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_M1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_m1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for 1-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_m5">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_m5">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_M5&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_m5</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for 5-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M5</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_m15">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_m15">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_M15&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_m15</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for 15-minute timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">M15</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_h1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_h1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_H1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_h1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for 1-hour timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">H1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_h4">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_h4">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_H4&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_h4</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for 4-hour timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">H4</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="compute_ema_cross_signal_d1">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.compute_ema_cross_signal_d1">[docs]</a>
+<span class="nd">@FeatureRegistry</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="s2">&quot;EMACross_Signal_D1&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_ema_cross_signal_d1</span><span class="p">(</span><span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;EMA/SMA Cross Signal for daily timeframe&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">compute_ema_cross_signal</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">timeframe</span><span class="o">=</span><span class="n">Timeframe</span><span class="o">.</span><span class="n">D1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="EMACross">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.EMACross">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EMACross</span><span class="p">(</span><span class="n">ParameterizedFeature</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    EMA/SMA Cross signals for trend detection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="s2">&quot;EMACross&quot;</span><span class="p">,</span>
+            <span class="n">deps</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># Will be set dynamically</span>
+            <span class="n">default_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fast_period&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span> <span class="s2">&quot;slow_period&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">},</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="EMACross.get_deps">
+<a class="viewcode-back" href="../../../../api/generated/ztb.features.trend.html#ztb.features.trend.emacross.EMACross.get_deps">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_deps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">params</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_params</span>
+        <span class="n">fast_period</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fast_period&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+        <span class="n">slow_period</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slow_period&quot;</span><span class="p">,</span> <span class="mi">20</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;ema_</span><span class="si">{</span><span class="n">fast_period</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;rolling_mean_</span><span class="si">{</span><span class="n">slow_period</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_with_params</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute EMA/SMA cross signals with configurable periods.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fast_period</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="nb">int</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fast_period&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_params</span><span class="p">[</span><span class="s2">&quot;fast_period&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">slow_period</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+            <span class="nb">int</span><span class="p">,</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;slow_period&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">default_params</span><span class="p">[</span><span class="s2">&quot;slow_period&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
+        <span class="n">fast_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;ema_</span><span class="si">{</span><span class="n">fast_period</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">slow_col</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;rolling_mean_</span><span class="si">{</span><span class="n">slow_period</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="c1"># Only compute EMA/SMA if not already present, and avoid overwriting</span>
+        <span class="k">if</span> <span class="n">fast_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.talib_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaLibWrapper</span>
+            <span class="n">talib</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="p">()</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">fast_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">talib</span><span class="o">.</span><span class="n">ema</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">fast_period</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">slow_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.talib_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaLibWrapper</span>
+            <span class="n">talib</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="p">()</span>
+            <span class="n">df</span><span class="p">[</span><span class="n">slow_col</span><span class="p">]</span> <span class="o">=</span> <span class="n">talib</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">slow_period</span><span class="p">)</span>
+
+        <span class="c1"># Prevent division by zero by replacing zeros with np.nan</span>
+        <span class="n">slow_col_safe</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">slow_col</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">NA</span><span class="p">)</span>
+        <span class="n">ema_sma_cross</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">fast_col</span><span class="p">]</span> <span class="o">-</span> <span class="n">slow_col_safe</span><span class="p">)</span> <span class="o">/</span> <span class="n">slow_col_safe</span>
+        <span class="n">ema_above_sma</span> <span class="o">=</span> <span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">fast_col</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">df</span><span class="p">[</span><span class="n">slow_col</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;ema_sma_cross&quot;</span><span class="p">:</span> <span class="n">ema_sma_cross</span><span class="p">,</span> <span class="s2">&quot;ema_above_sma&quot;</span><span class="p">:</span> <span class="n">ema_above_sma</span><span class="p">}</span>
+        <span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

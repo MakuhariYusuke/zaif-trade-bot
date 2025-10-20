@@ -1,0 +1,314 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC v396 Live Trading System &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">SAC v396 Live Trading System</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/SAC_V396_LIVE_TRADING.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-v396-live-trading-system">
+<h1>SAC v396 Live Trading System<a class="headerlink" href="#sac-v396-live-trading-system" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>This is a live trading system for Bitcoin/JPY using the SAC v396 model. The system implements automated trading with risk management and monitoring capabilities.</p>
+</section>
+<section id="features">
+<h2>Features<a class="headerlink" href="#features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>Multi-Algorithm Support</strong>: Supports both PPO and SAC models</p></li>
+<li><p><strong>Multi-Venue Support</strong>: Coincheck and BitFlyer exchanges</p></li>
+<li><p><strong>SAC Model Integration</strong>: Uses the trained SAC v396 model for trading decisions</p></li>
+<li><p><strong>Continuous to Discrete Action Conversion</strong>: Converts SAC’s continuous actions to discrete trading actions (HOLD/BUY/SELL)</p></li>
+<li><p><strong>Flexible Risk Management</strong>: Configurable risk limits (disabled by default as requested)</p></li>
+<li><p><strong>Dry Run Mode</strong>: Test the system without real trades</p></li>
+<li><p><strong>Comprehensive Logging</strong>: Detailed logging for monitoring and debugging</p></li>
+<li><p><strong>Zaif Removed</strong>: Zaif support removed due to API issues</p></li>
+</ul>
+</section>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Python 3.11</p></li>
+<li><p>Required packages (see requirements.txt)</p></li>
+<li><p>Trained SAC v396 model (checkpoints/sac_session/sac_v396_50k_final.zip)</p></li>
+<li><p>Model configuration (configs/sac_v396_optimized.json)</p></li>
+</ul>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p>Activate the Python 3.11 environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>venv311<span class="se">\S</span>cripts<span class="se">\a</span>ctivate
+</pre></div>
+</div>
+</li>
+<li><p>Install dependencies:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<section id="dry-run-recommended-for-testing">
+<h3>Dry Run (Recommended for Testing)<a class="headerlink" href="#dry-run-recommended-for-testing" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># SAC model on Coincheck</span>
+python<span class="w"> </span>ztb/trading/live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>checkpoints/sac_session/sac_v396_50k_final.zip<span class="w"> </span>--algorithm<span class="w"> </span>sac<span class="w"> </span>--venue<span class="w"> </span>coincheck<span class="w"> </span>--dry-run<span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># PPO model on BitFlyer</span>
+python<span class="w"> </span>ztb/trading/live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>checkpoints/ppo_session/ppo_model.zip<span class="w"> </span>--algorithm<span class="w"> </span>ppo<span class="w"> </span>--venue<span class="w"> </span>bitflyer<span class="w"> </span>--dry-run<span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">1</span>
+</pre></div>
+</div>
+</section>
+<section id="live-trading-use-with-caution-risk-limits-disabled-by-default">
+<h3>Live Trading (Use with Caution - Risk Limits Disabled by Default)<a class="headerlink" href="#live-trading-use-with-caution-risk-limits-disabled-by-default" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># SAC model on Coincheck (live trading)</span>
+python<span class="w"> </span>ztb/trading/live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>checkpoints/sac_session/sac_v396_50k_final.zip<span class="w"> </span>--algorithm<span class="w"> </span>sac<span class="w"> </span>--venue<span class="w"> </span>coincheck<span class="w"> </span>--dry-run<span class="w"> </span><span class="nb">false</span><span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">24</span>
+
+<span class="c1"># PPO model on BitFlyer (live trading)</span>
+python<span class="w"> </span>ztb/trading/live_trade.py<span class="w"> </span>--model-path<span class="w"> </span>checkpoints/ppo_session/ppo_model.zip<span class="w"> </span>--algorithm<span class="w"> </span>ppo<span class="w"> </span>--venue<span class="w"> </span>bitflyer<span class="w"> </span>--dry-run<span class="w"> </span><span class="nb">false</span><span class="w"> </span>--duration-hours<span class="w"> </span><span class="m">24</span>
+</pre></div>
+</div>
+</section>
+<section id="command-line-options">
+<h3>Command Line Options<a class="headerlink" href="#command-line-options" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--model-path</span></code>: Path to trained model (.zip) [required]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--algorithm</span></code>: Algorithm type (ppo or sac) [default: ppo]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--venue</span></code>: Trading venue (coincheck or bitflyer) [default: coincheck]</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--duration-hours</span></code>: Trading duration in hours (default: 1)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--disable-risk-limits</span></code>: Disable all risk limits (default: True - as requested)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--dry-run</span></code>: Enable dry run mode (default: True)</p></li>
+</ul>
+</section>
+</section>
+<section id="risk-management">
+<h2>Risk Management<a class="headerlink" href="#risk-management" title="Link to this heading"></a></h2>
+<p><strong>Important</strong>: Risk limits are disabled by default as per your request. The system operates without safety restrictions.</p>
+<p>When risk limits are enabled (<code class="docutils literal notranslate"><span class="pre">--disable-risk-limits</span> <span class="pre">false</span></code>):</p>
+<ul class="simple">
+<li><p>Daily loss limits</p></li>
+<li><p>Hourly trade limits</p></li>
+<li><p>Emergency stop on low balance</p></li>
+<li><p>Position size limits</p></li>
+</ul>
+</section>
+<section id="architecture">
+<h2>Architecture<a class="headerlink" href="#architecture" title="Link to this heading"></a></h2>
+<section id="core-components">
+<h3>Core Components<a class="headerlink" href="#core-components" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>LiveTrader</strong>: Main trading class supporting PPO/SAC and multiple venues</p></li>
+<li><p><strong>Model Loading</strong>: Loads PPO, MaskablePPO, or SAC models</p></li>
+<li><p><strong>Environment</strong>: Trading environment for observation generation</p></li>
+<li><p><strong>Action Conversion</strong>: Converts continuous SAC actions to discrete trades</p></li>
+<li><p><strong>Exchange Adapters</strong>: Coincheck and BitFlyer API integration</p></li>
+<li><p><strong>Risk Manager</strong>: Configurable risk limits (disabled by default)</p></li>
+</ul>
+</section>
+<section id="data-flow">
+<h3>Data Flow<a class="headerlink" href="#data-flow" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Fetch live BTC/JPY data from selected exchange</p></li>
+<li><p>Generate observation using trading environment</p></li>
+<li><p>Model predicts action (continuous for SAC, discrete for PPO)</p></li>
+<li><p>Convert to discrete action if needed</p></li>
+<li><p>Check risk limits (if enabled)</p></li>
+<li><p>Execute trade if safe</p></li>
+<li><p>Log results and repeat</p></li>
+</ol>
+</section>
+</section>
+<section id="exchange-configuration">
+<h2>Exchange Configuration<a class="headerlink" href="#exchange-configuration" title="Link to this heading"></a></h2>
+<section id="coincheck">
+<h3>Coincheck<a class="headerlink" href="#coincheck" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>API Keys: <code class="docutils literal notranslate"><span class="pre">COINCHECK_API_KEY</span></code>, <code class="docutils literal notranslate"><span class="pre">COINCHECK_API_SECRET</span></code></p></li>
+<li><p>Base URL: <a class="reference external" href="https://coincheck.com/api">https://coincheck.com/api</a></p></li>
+<li><p>Rate Limit: 300 requests/minute</p></li>
+</ul>
+</section>
+<section id="bitflyer">
+<h3>BitFlyer<a class="headerlink" href="#bitflyer" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>API Keys: <code class="docutils literal notranslate"><span class="pre">BITFLYER_API_KEY</span></code>, <code class="docutils literal notranslate"><span class="pre">BITFLYER_API_SECRET</span></code></p></li>
+<li><p>Base URL: <a class="reference external" href="https://api.bitflyer.com">https://api.bitflyer.com</a></p></li>
+<li><p>Rate Limit: 500 requests/minute</p></li>
+</ul>
+</section>
+</section>
+<section id="monitoring">
+<h2>Monitoring<a class="headerlink" href="#monitoring" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Logs are written to <code class="docutils literal notranslate"><span class="pre">logs/live_trading_*.log</span></code></p></li>
+<li><p>Monitor balance, position, and trade frequency</p></li>
+<li><p>Check for risk limit violations (if enabled)</p></li>
+<li><p>Review action distributions</p></li>
+</ul>
+</section>
+<section id="backtesting">
+<h2>Backtesting<a class="headerlink" href="#backtesting" title="Link to this heading"></a></h2>
+<p>Before live trading, validate with backtesting:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/evaluation/backtest_sac_v396.py<span class="w"> </span>--max-steps<span class="w"> </span><span class="m">1000</span>
+</pre></div>
+</div>
+<p>Expected results for v396:</p>
+<ul class="simple">
+<li><p>Total Return: ~2-5%</p></li>
+<li><p>Sharpe Ratio: &gt;0.5</p></li>
+<li><p>Win Rate: ~45-55%</p></li>
+<li><p>HOLD: ~89%</p></li>
+<li><p>BUY/SELL: ~5.5% each</p></li>
+</ul>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading"></a></h2>
+<section id="common-issues">
+<h3>Common Issues<a class="headerlink" href="#common-issues" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Model Loading Failed</strong>: Check model path and algorithm type</p></li>
+<li><p><strong>Exchange API Error</strong>: Verify API credentials and venue selection</p></li>
+<li><p><strong>No Trades Executed</strong>: Check dry-run mode and risk limits</p></li>
+<li><p><strong>Import Errors</strong>: Ensure PYTHONPATH is set correctly</p></li>
+</ol>
+</section>
+<section id="logs-analysis">
+<h3>Logs Analysis<a class="headerlink" href="#logs-analysis" title="Link to this heading"></a></h3>
+<p>Check logs for:</p>
+<ul class="simple">
+<li><p>Model loading confirmation</p></li>
+<li><p>Exchange adapter initialization</p></li>
+<li><p>Action predictions and conversions</p></li>
+<li><p>Trade executions</p></li>
+<li><p>Error messages</p></li>
+</ul>
+</section>
+</section>
+<section id="future-improvements">
+<h2>Future Improvements<a class="headerlink" href="#future-improvements" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>Real-time dashboard for monitoring</p></li>
+<li><p>Advanced risk management (VaR, drawdown limits)</p></li>
+<li><p>Multi-asset support</p></li>
+<li><p>Automated model switching</p></li>
+<li><p>Performance analytics</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

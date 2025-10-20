@@ -1,0 +1,566 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.ab_test.selector &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.ab_test.selector</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.ab_test.selector</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Model Selection and Rollback Logic for A/B Testing</span>
+<span class="sd">リスク管理と自動化を重視した実装</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ABTestResultSummary</span><span class="p">,</span> <span class="n">ABTestResult</span><span class="p">,</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+    <span class="n">ABTestConfiguration</span><span class="p">,</span> <span class="n">ABTestState</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ABTestConfig</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ModelSelector">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelSelector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;モデル選択・ロールバックエンジン&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ABTestConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deployment_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Callable</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="ModelSelector.select_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector.select_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">select_model</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">,</span>
+        <span class="n">result_summary</span><span class="p">:</span> <span class="n">ABTestResultSummary</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        テスト結果に基づいてモデルを選択</span>
+<span class="sd">        リスク評価と自動化を考慮</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">decision</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;selected_variant&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span>  <span class="c1"># &quot;deploy&quot;, &quot;rollback&quot;, &quot;hold&quot;</span>
+            <span class="s2">&quot;confidence_level&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;risk_assessment&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;reasoning&quot;</span><span class="p">:</span> <span class="p">[],</span>
+            <span class="s2">&quot;recommended_traffic_percentage&quot;</span><span class="p">:</span> <span class="mf">0.0</span>
+        <span class="p">}</span>
+
+        <span class="c1"># 勝者の決定</span>
+        <span class="k">if</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">result</span> <span class="o">==</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_A</span><span class="p">:</span>
+            <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;selected_variant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">variant_a</span>
+            <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;deploy&quot;</span>
+        <span class="k">elif</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">result</span> <span class="o">==</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span><span class="p">:</span>
+            <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;selected_variant&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">variant_b</span>
+            <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;deploy&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;reasoning&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;No clear winner - continuing with current model&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">decision</span>
+
+        <span class="c1"># リスク評価</span>
+        <span class="n">risk_assessment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_assess_deployment_risks</span><span class="p">(</span>
+            <span class="n">test_config</span><span class="p">,</span> <span class="n">test_state</span><span class="p">,</span> <span class="n">result_summary</span>
+        <span class="p">)</span>
+        <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;risk_assessment&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">risk_assessment</span>
+
+        <span class="c1"># 信頼性チェック</span>
+        <span class="n">confidence_level</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_confidence_level</span><span class="p">(</span><span class="n">result_summary</span><span class="p">)</span>
+        <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;confidence_level&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">confidence_level</span>
+
+        <span class="c1"># アクション決定</span>
+        <span class="n">action</span><span class="p">,</span> <span class="n">reasoning</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_determine_action</span><span class="p">(</span>
+            <span class="n">result_summary</span><span class="p">,</span> <span class="n">risk_assessment</span><span class="p">,</span> <span class="n">confidence_level</span>
+        <span class="p">)</span>
+        <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;action&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">action</span>
+        <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;reasoning&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">reasoning</span><span class="p">)</span>
+
+        <span class="c1"># トラフィック割合の決定</span>
+        <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;recommended_traffic_percentage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_traffic_percentage</span><span class="p">(</span>
+            <span class="n">confidence_level</span><span class="p">,</span> <span class="n">risk_assessment</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ロールバックトリガーの設定</span>
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;deploy&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setup_rollback_triggers</span><span class="p">(</span>
+                <span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="p">,</span>
+                <span class="n">decision</span><span class="p">[</span><span class="s2">&quot;selected_variant&quot;</span><span class="p">],</span>
+                <span class="n">risk_assessment</span>
+            <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model selection decision for </span><span class="si">{</span><span class="n">test_config</span><span class="o">.</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">decision</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">decision</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assess_deployment_risks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_config</span><span class="p">:</span> <span class="n">ABTestConfiguration</span><span class="p">,</span>
+        <span class="n">test_state</span><span class="p">:</span> <span class="n">ABTestState</span><span class="p">,</span>
+        <span class="n">result_summary</span><span class="p">:</span> <span class="n">ABTestResultSummary</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;デプロイメントリスクを評価&quot;&quot;&quot;</span>
+        <span class="n">risks</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;regression_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;sample_size_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;statistical_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;performance_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;overall_risk&quot;</span><span class="p">:</span> <span class="s2">&quot;low&quot;</span>
+        <span class="p">}</span>
+
+        <span class="c1"># サンプルサイズリスク</span>
+        <span class="n">min_samples</span> <span class="o">=</span> <span class="n">test_config</span><span class="o">.</span><span class="n">minimum_sample_size</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">test_state</span><span class="o">.</span><span class="n">metrics_a</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&lt;</span> <span class="n">min_samples</span> <span class="ow">or</span>
+            <span class="n">test_state</span><span class="o">.</span><span class="n">metrics_b</span><span class="o">.</span><span class="n">sample_count</span> <span class="o">&lt;</span> <span class="n">min_samples</span><span class="p">):</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;sample_size_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+
+        <span class="c1"># 統計的リスク</span>
+        <span class="k">if</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">statistical_result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&gt;</span> <span class="mf">0.1</span><span class="p">:</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;statistical_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">],</span> <span class="s2">&quot;medium&quot;</span><span class="p">)</span>
+
+        <span class="c1"># 回帰リスク</span>
+        <span class="k">if</span> <span class="n">test_state</span><span class="o">.</span><span class="n">regression_detected</span><span class="p">:</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;regression_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;high&quot;</span>
+
+        <span class="c1"># パフォーマンスリスク</span>
+        <span class="n">effect_size</span> <span class="o">=</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">statistical_result</span><span class="o">.</span><span class="n">effect_size</span>
+        <span class="k">if</span> <span class="n">effect_size</span> <span class="o">&lt;</span> <span class="n">test_config</span><span class="o">.</span><span class="n">minimum_effect_size</span><span class="p">:</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;performance_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;medium&quot;</span>
+            <span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">risks</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">],</span> <span class="s2">&quot;medium&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">risks</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_confidence_level</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result_summary</span><span class="p">:</span> <span class="n">ABTestResultSummary</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;信頼性を計算&quot;&quot;&quot;</span>
+        <span class="n">stat_result</span> <span class="o">=</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">statistical_result</span>
+
+        <span class="c1"># p値に基づく信頼性</span>
+        <span class="k">if</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.001</span><span class="p">:</span>
+            <span class="n">p_confidence</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">elif</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>
+            <span class="n">p_confidence</span> <span class="o">=</span> <span class="mf">0.9</span>
+        <span class="k">elif</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">p_value</span> <span class="o">&lt;</span> <span class="mf">0.05</span><span class="p">:</span>
+            <span class="n">p_confidence</span> <span class="o">=</span> <span class="mf">0.8</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p_confidence</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 効果量に基づく信頼性</span>
+        <span class="k">if</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">effect_size</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+            <span class="n">effect_confidence</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">elif</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">effect_size</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
+            <span class="n">effect_confidence</span> <span class="o">=</span> <span class="mf">0.9</span>
+        <span class="k">elif</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">effect_size</span> <span class="o">&gt;</span> <span class="mf">0.2</span><span class="p">:</span>
+            <span class="n">effect_confidence</span> <span class="o">=</span> <span class="mf">0.7</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">effect_confidence</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+        <span class="c1"># サンプルサイズに基づく信頼性</span>
+        <span class="n">total_samples</span> <span class="o">=</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">sample_size_a</span> <span class="o">+</span> <span class="n">stat_result</span><span class="o">.</span><span class="n">sample_size_b</span>
+        <span class="k">if</span> <span class="n">total_samples</span> <span class="o">&gt;</span> <span class="mi">10000</span><span class="p">:</span>
+            <span class="n">sample_confidence</span> <span class="o">=</span> <span class="mf">1.0</span>
+        <span class="k">elif</span> <span class="n">total_samples</span> <span class="o">&gt;</span> <span class="mi">5000</span><span class="p">:</span>
+            <span class="n">sample_confidence</span> <span class="o">=</span> <span class="mf">0.9</span>
+        <span class="k">elif</span> <span class="n">total_samples</span> <span class="o">&gt;</span> <span class="mi">1000</span><span class="p">:</span>
+            <span class="n">sample_confidence</span> <span class="o">=</span> <span class="mf">0.7</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sample_confidence</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 総合信頼性</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">p_confidence</span> <span class="o">*</span> <span class="mf">0.4</span> <span class="o">+</span> <span class="n">effect_confidence</span> <span class="o">*</span> <span class="mf">0.4</span> <span class="o">+</span> <span class="n">sample_confidence</span> <span class="o">*</span> <span class="mf">0.2</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_determine_action</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">result_summary</span><span class="p">:</span> <span class="n">ABTestResultSummary</span><span class="p">,</span>
+        <span class="n">risk_assessment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アクションを決定&quot;&quot;&quot;</span>
+        <span class="n">reasoning</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 高リスクの場合は保留</span>
+        <span class="k">if</span> <span class="n">risk_assessment</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span>
+            <span class="n">reasoning</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;High risk detected - holding deployment&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="n">reasoning</span>
+
+        <span class="c1"># 信頼性が不十分な場合は保留</span>
+        <span class="k">if</span> <span class="n">confidence_level</span> <span class="o">&lt;</span> <span class="mf">0.7</span><span class="p">:</span>
+            <span class="n">reasoning</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Low confidence (</span><span class="si">{</span><span class="n">confidence_level</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) - continuing testing&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="n">reasoning</span>
+
+        <span class="c1"># 勝者がいてリスクが許容範囲内ならデプロイ</span>
+        <span class="k">if</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">result</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_A</span><span class="p">,</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_B</span><span class="p">]:</span>
+            <span class="n">winner</span> <span class="o">=</span> <span class="s2">&quot;A&quot;</span> <span class="k">if</span> <span class="n">result_summary</span><span class="o">.</span><span class="n">result</span> <span class="o">==</span> <span class="n">ABTestResult</span><span class="o">.</span><span class="n">WINNER_A</span> <span class="k">else</span> <span class="s2">&quot;B&quot;</span>
+            <span class="n">reasoning</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Variant </span><span class="si">{</span><span class="n">winner</span><span class="si">}</span><span class="s2"> shows clear improvement with acceptable risk&quot;</span><span class="p">)</span>
+            <span class="n">reasoning</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Confidence level: </span><span class="si">{</span><span class="n">confidence_level</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="s2">&quot;deploy&quot;</span><span class="p">,</span> <span class="n">reasoning</span>
+
+        <span class="c1"># それ以外の場合は保留</span>
+        <span class="n">reasoning</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;No clear winner or insufficient confidence&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;hold&quot;</span><span class="p">,</span> <span class="n">reasoning</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_traffic_percentage</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">confidence_level</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">risk_assessment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;推奨トラフィック割合を計算&quot;&quot;&quot;</span>
+        <span class="n">base_percentage</span> <span class="o">=</span> <span class="n">confidence_level</span> <span class="o">*</span> <span class="mi">50</span>  <span class="c1"># 最大50%</span>
+
+        <span class="c1"># リスクに応じて調整</span>
+        <span class="k">if</span> <span class="n">risk_assessment</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span>
+            <span class="n">base_percentage</span> <span class="o">*=</span> <span class="mf">0.3</span>
+        <span class="k">elif</span> <span class="n">risk_assessment</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;medium&quot;</span><span class="p">:</span>
+            <span class="n">base_percentage</span> <span class="o">*=</span> <span class="mf">0.6</span>
+
+        <span class="c1"># 最小・最大値の制限</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">base_percentage</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">))</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_setup_rollback_triggers</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">selected_variant</span><span class="p">:</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+        <span class="n">risk_assessment</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバックトリガーを設定&quot;&quot;&quot;</span>
+        <span class="n">trigger_conditions</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># 高リスクの場合は厳格なトリガーを設定</span>
+        <span class="k">if</span> <span class="n">risk_assessment</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;high&quot;</span><span class="p">:</span>
+            <span class="n">trigger_conditions</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;error_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;performance_degradation&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">}</span>
+            <span class="p">])</span>
+
+        <span class="c1"># 中リスクの場合は中程度のトリガー</span>
+        <span class="k">elif</span> <span class="n">risk_assessment</span><span class="p">[</span><span class="s2">&quot;overall_risk&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;medium&quot;</span><span class="p">:</span>
+            <span class="n">trigger_conditions</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;error_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;performance_degradation&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">}</span>
+            <span class="p">])</span>
+
+        <span class="c1"># 低リスクの場合は緩いトリガー</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trigger_conditions</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;error_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">30</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">&quot;metric&quot;</span><span class="p">:</span> <span class="s2">&quot;performance_degradation&quot;</span><span class="p">,</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;duration_minutes&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">}</span>
+            <span class="p">])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_rollback_trigger</span><span class="p">(</span>
+            <span class="n">test_id</span><span class="p">,</span> <span class="n">selected_variant</span><span class="p">,</span> <span class="n">trigger_conditions</span>
+        <span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rollback triggers set up for test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_rollback_trigger</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">selected_variant</span><span class="p">:</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+        <span class="n">conditions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバックトリガーを作成&quot;&quot;&quot;</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">rollback_trigger</span><span class="p">(</span><span class="n">metric_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;ロールバックを実行&quot;&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">conditions</span><span class="p">:</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">metric_name</span> <span class="o">==</span> <span class="n">condition</span><span class="p">[</span><span class="s2">&quot;metric&quot;</span><span class="p">]</span> <span class="ow">and</span>
+                    <span class="n">value</span> <span class="o">&gt;</span> <span class="n">condition</span><span class="p">[</span><span class="s2">&quot;threshold&quot;</span><span class="p">]):</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rollback triggered for </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_execute_rollback</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="n">selected_variant</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">metric_name</span><span class="si">}</span><span class="s2"> exceeded threshold&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">rollback_trigger</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_execute_rollback</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">deployed_variant</span><span class="p">:</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+        <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバックを実行&quot;&quot;&quot;</span>
+        <span class="n">rollback_record</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;test_id&quot;</span><span class="p">:</span> <span class="n">test_id</span><span class="p">,</span>
+            <span class="s2">&quot;deployed_variant&quot;</span><span class="p">:</span> <span class="n">deployed_variant</span><span class="o">.</span><span class="n">variant_id</span><span class="p">,</span>
+            <span class="s2">&quot;rollback_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="s2">&quot;reason&quot;</span><span class="p">:</span> <span class="n">reason</span><span class="p">,</span>
+            <span class="s2">&quot;action&quot;</span><span class="p">:</span> <span class="s2">&quot;rolled_back_to_previous&quot;</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">deployment_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rollback_record</span><span class="p">)</span>
+
+        <span class="c1"># ロールバックトリガーを削除</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Executed rollback for test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ModelSelector.check_rollback_conditions">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector.check_rollback_conditions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_rollback_conditions</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span>
+        <span class="n">timestamp</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ロールバック条件をチェック&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">trigger</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+
+        <span class="c1"># 各メトリクスをチェック</span>
+        <span class="k">for</span> <span class="n">metric_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">trigger</span><span class="p">(</span><span class="n">metric_name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">timestamp</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="ModelSelector.get_deployment_history">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector.get_deployment_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_deployment_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;デプロイメント履歴を取得&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">record</span> <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">deployment_history</span> <span class="k">if</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;test_id&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">test_id</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deployment_history</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ModelSelector.get_active_rollback_triggers">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector.get_active_rollback_triggers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_active_rollback_triggers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;アクティブなロールバックトリガーを取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="ModelSelector.force_rollback">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.ModelSelector.force_rollback">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">force_rollback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Manual rollback&quot;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;強制ロールバックを実行&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollback_triggers</span><span class="p">:</span>
+            <span class="c1"># デプロイされたバリアントを取得（簡易実装）</span>
+            <span class="n">deployed_variant</span> <span class="o">=</span> <span class="n">ABTestVariant</span><span class="p">(</span>
+                <span class="n">variant_id</span><span class="o">=</span><span class="s2">&quot;unknown&quot;</span><span class="p">,</span>
+                <span class="n">model_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="n">model_version</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Force rolled back&quot;</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_execute_rollback</span><span class="p">(</span><span class="n">test_id</span><span class="p">,</span> <span class="n">deployed_variant</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TrafficManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.TrafficManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrafficManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;トラフィック管理エンジン&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ABTestConfig</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="TrafficManager.allocate_traffic">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.TrafficManager.allocate_traffic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">allocate_traffic</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">variant_a</span><span class="p">:</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+        <span class="n">variant_b</span><span class="p">:</span> <span class="n">ABTestVariant</span><span class="p">,</span>
+        <span class="n">percentage</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;トラフィックを割り当て&quot;&quot;&quot;</span>
+        <span class="n">allocation</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">variant_a</span><span class="o">.</span><span class="n">variant_id</span><span class="p">:</span> <span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">percentage</span><span class="p">)</span> <span class="o">/</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="n">variant_b</span><span class="o">.</span><span class="n">variant_id</span><span class="p">:</span> <span class="n">percentage</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">allocation</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Traffic allocated for </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">allocation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">allocation</span></div>
+
+
+<div class="viewcode-block" id="TrafficManager.ramp_up_traffic">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.TrafficManager.ramp_up_traffic">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ramp_up_traffic</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">target_percentage</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+        <span class="n">interval_minutes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;トラフィックを段階的に増加&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+
+        <span class="n">current_allocation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+        <span class="n">current_percentage</span> <span class="o">=</span> <span class="n">current_allocation</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">current_allocation</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">100</span>
+
+        <span class="n">ramp_schedule</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">step_size</span> <span class="o">=</span> <span class="p">(</span><span class="n">target_percentage</span> <span class="o">-</span> <span class="n">current_percentage</span><span class="p">)</span> <span class="o">/</span> <span class="n">steps</span>
+
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">new_percentage</span> <span class="o">=</span> <span class="n">current_percentage</span> <span class="o">+</span> <span class="p">(</span><span class="n">step_size</span> <span class="o">*</span> <span class="n">step</span><span class="p">)</span>
+            <span class="n">new_percentage</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">new_percentage</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
+
+            <span class="n">schedule_item</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;step&quot;</span><span class="p">:</span> <span class="n">step</span><span class="p">,</span>
+                <span class="s2">&quot;percentage&quot;</span><span class="p">:</span> <span class="n">new_percentage</span><span class="p">,</span>
+                <span class="s2">&quot;scheduled_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">interval_minutes</span> <span class="o">*</span> <span class="n">step</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="n">ramp_schedule</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">schedule_item</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ramp_schedule</span></div>
+
+
+<div class="viewcode-block" id="TrafficManager.get_traffic_allocation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.TrafficManager.get_traffic_allocation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_traffic_allocation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;トラフィック割り当てを取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">test_id</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TrafficManager.update_traffic_allocation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.ab_test.html#ztb.adaptation.ab_test.selector.TrafficManager.update_traffic_allocation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_traffic_allocation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">test_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">new_percentage</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;トラフィック割り当てを更新&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">test_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="n">allocation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traffic_allocations</span><span class="p">[</span><span class="n">test_id</span><span class="p">]</span>
+        <span class="n">variant_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">allocation</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
+        <span class="n">allocation</span><span class="p">[</span><span class="n">variant_ids</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">new_percentage</span><span class="p">)</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="n">allocation</span><span class="p">[</span><span class="n">variant_ids</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">new_percentage</span> <span class="o">/</span> <span class="mi">100</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Updated traffic allocation for </span><span class="si">{</span><span class="n">test_id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">allocation</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

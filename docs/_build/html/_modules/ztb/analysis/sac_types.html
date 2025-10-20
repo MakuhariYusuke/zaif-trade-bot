@@ -1,0 +1,383 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.analysis.sac_types &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.analysis.sac_types</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.analysis.sac_types</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Type definitions for SAC training reports and analysis.</span>
+
+<span class="sd">This module provides comprehensive type definitions for SAC (Soft Actor-Critic)</span>
+<span class="sd">training reports and analysis results to improve type safety across the codebase.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">TypedDict</span>
+
+
+<div class="viewcode-block" id="Metadata">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.Metadata">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Metadata</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Metadata section of training report.&quot;&quot;&quot;</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">success</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="SACHyperparameters">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.SACHyperparameters">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SACHyperparameters</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SAC hyperparameters configuration.&quot;&quot;&quot;</span>
+    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">buffer_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">learning_starts</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">tau</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">gamma</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">train_freq</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">gradient_steps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">ent_coef</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">target_update_interval</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">target_entropy</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="EnvironmentConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.EnvironmentConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">EnvironmentConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Environment configuration.&quot;&quot;&quot;</span>
+    <span class="n">initial_balance</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">transaction_cost</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_position_size</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">enable_action_masking</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">use_continuous_actions</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">use_standardized_observations</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">random_start</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">curriculum_stage</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">continuous_to_discrete_threshold</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="RewardSettings">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.RewardSettings">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RewardSettings</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reward function settings.&quot;&quot;&quot;</span>
+    <span class="n">reward_scale</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">reward_clip_min</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">reward_clip_max</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">profit_bonuses</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Complex nested structure</span>
+    <span class="n">action_bonuses</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Complex nested structure</span>
+    <span class="n">behavior_penalties</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Complex nested structure</span>
+    <span class="n">risk_penalties</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>  <span class="c1"># Complex nested structure</span>
+    <span class="n">flags</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bool</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="Configuration">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.Configuration">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Configuration</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration section of training report.&quot;&quot;&quot;</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">data_source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">data_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">sac_hyperparameters</span><span class="p">:</span> <span class="n">SACHyperparameters</span>
+    <span class="n">environment</span><span class="p">:</span> <span class="n">EnvironmentConfig</span>
+    <span class="n">reward_settings</span><span class="p">:</span> <span class="n">RewardSettings</span>
+    <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">notes</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">fixes_implemented</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="ActionDistribution">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.ActionDistribution">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionDistribution</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Action distribution statistics.&quot;&quot;&quot;</span>
+    <span class="n">HOLD</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">BUY</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">SELL</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="OptimizationStats">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.OptimizationStats">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OptimizationStats</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Optimization and performance statistics.&quot;&quot;&quot;</span>
+    <span class="n">memory_stats</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">performance_profile</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">parallel_processing_enabled</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">cache_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">data_optimization_applied</span><span class="p">:</span> <span class="nb">bool</span></div>
+
+
+
+<div class="viewcode-block" id="TrainingStats">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.TrainingStats">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingStats</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Training statistics section.&quot;&quot;&quot;</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">training_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">steps_per_second</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">final_reward</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">action_distribution</span><span class="p">:</span> <span class="n">ActionDistribution</span>
+    <span class="n">optimization</span><span class="p">:</span> <span class="n">OptimizationStats</span></div>
+
+
+
+<div class="viewcode-block" id="PerformanceMetrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.PerformanceMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performance metrics section.&quot;&quot;&quot;</span>
+    <span class="n">steps_per_second</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">training_efficiency</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">action_diversity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dominant_action</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">dominant_action_ratio</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="SystemInfo">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.SystemInfo">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SystemInfo</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;System information section.&quot;&quot;&quot;</span>
+    <span class="n">platform</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">python_version</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">cpu_count</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">memory_total</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">memory_available</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="TrainingReport">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.TrainingReport">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingReport</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Complete training report structure.&quot;&quot;&quot;</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Metadata</span>
+    <span class="n">configuration</span><span class="p">:</span> <span class="n">Configuration</span>
+    <span class="n">training_stats</span><span class="p">:</span> <span class="n">TrainingStats</span>
+    <span class="n">performance_metrics</span><span class="p">:</span> <span class="n">PerformanceMetrics</span>
+    <span class="n">system_info</span><span class="p">:</span> <span class="n">SystemInfo</span></div>
+
+
+
+<span class="c1"># Analysis result types</span>
+<div class="viewcode-block" id="AnalysisSummary">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.AnalysisSummary">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AnalysisSummary</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Summary of analysis results.&quot;&quot;&quot;</span>
+    <span class="n">total_reports</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">successful_runs</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">failed_runs</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">average_training_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">average_steps_per_second</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dominant_actions</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="ActionPattern">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.ActionPattern">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionPattern</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Action pattern analysis result.&quot;&quot;&quot;</span>
+    <span class="n">action</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">frequency</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">percentage</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trend</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="PerformanceComparison">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.PerformanceComparison">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PerformanceComparison</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performance comparison between runs.&quot;&quot;&quot;</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">training_time</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">steps_per_second</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">action_diversity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dominant_action</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+<div class="viewcode-block" id="SACAnalysisResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.SACAnalysisResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SACAnalysisResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Complete SAC analysis result.&quot;&quot;&quot;</span>
+    <span class="n">summary</span><span class="p">:</span> <span class="n">AnalysisSummary</span>
+    <span class="n">action_patterns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ActionPattern</span><span class="p">]</span>
+    <span class="n">performance_comparisons</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">PerformanceComparison</span><span class="p">]</span>
+    <span class="n">recommendations</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="TrainingMetrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.TrainingMetrics">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainingMetrics</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Training metrics extracted from reports.&quot;&quot;&quot;</span>
+    <span class="n">final_episode_reward</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">best_episode_reward</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">training_time_seconds</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">action_distribution</span><span class="p">:</span> <span class="n">ActionDistribution</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<div class="viewcode-block" id="ModelConfig">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.ModelConfig">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelConfig</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model configuration extracted from reports.&quot;&quot;&quot;</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">algorithm</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">data_source</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">sac_hyperparameters</span><span class="p">:</span> <span class="n">SACHyperparameters</span>
+    <span class="n">environment</span><span class="p">:</span> <span class="n">EnvironmentConfig</span>
+    <span class="n">reward_settings</span><span class="p">:</span> <span class="n">RewardSettings</span></div>
+
+
+
+<div class="viewcode-block" id="ActionAnalysisResult">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.ActionAnalysisResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ActionAnalysisResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of action distribution analysis.&quot;&quot;&quot;</span>
+    <span class="n">total_actions</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">action_counts</span><span class="p">:</span> <span class="n">ActionDistribution</span>
+    <span class="n">action_percentages</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">action_ratios</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span>
+    <span class="n">dominant_action</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">dominant_ratio</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">action_diversity</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trading_intensity</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="PositionHoldingAnalysis">
+<a class="viewcode-back" href="../../../api/generated/ztb.analysis.html#ztb.analysis.sac_types.PositionHoldingAnalysis">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PositionHoldingAnalysis</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Result of position holding interval analysis.&quot;&quot;&quot;</span>
+    <span class="n">avg_hold_interval</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trades_per_timestep</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">position_turnover_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">estimated_avg_position_duration</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trading_frequency_category</span><span class="p">:</span> <span class="nb">str</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

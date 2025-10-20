@@ -1,0 +1,247 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.training.entrypoints.generate_sample_data &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.training.entrypoints.generate_sample_data</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.training.entrypoints.generate_sample_data</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># サンプルデータ生成スクリプト</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.talib_wrapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">TaLibWrapper</span>
+
+
+<div class="viewcode-block" id="generate_sample_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.generate_sample_data.generate_sample_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_sample_data</span><span class="p">(</span><span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">end_date</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">filename</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;サンプル取引データを生成&quot;&quot;&quot;</span>
+    <span class="c1"># 日付範囲の作成</span>
+    <span class="n">date_range</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end_date</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">&quot;1min&quot;</span><span class="p">)</span>
+
+    <span class="n">n_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">date_range</span><span class="p">)</span>
+
+    <span class="c1"># 基本価格データ（ランダムウォーク）</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+    <span class="n">price_changes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)</span>  <span class="c1"># 0.1%の標準偏差</span>
+    <span class="n">base_price</span> <span class="o">=</span> <span class="mi">50000</span>  <span class="c1"># BTC価格のベース</span>
+    <span class="n">prices</span> <span class="o">=</span> <span class="n">base_price</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">price_changes</span><span class="p">))</span>
+
+    <span class="c1"># テクニカル指標の生成</span>
+    <span class="c1"># MACDを先に計算</span>
+    <span class="n">macd</span><span class="p">,</span> <span class="n">macd_signal</span><span class="p">,</span> <span class="n">macd_hist</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">macd</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span>
+    <span class="c1"># ボリンジャーバンドを先に計算</span>
+    <span class="n">bb_upper</span><span class="p">,</span> <span class="n">bb_middle</span><span class="p">,</span> <span class="n">bb_lower</span> <span class="o">=</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">bbands</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+    
+    <span class="c1"># 価格変動率とボラティリティを先に計算</span>
+    <span class="n">price_changes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+    <span class="n">price_change_1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+    <span class="n">price_change_5</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]])</span>
+    <span class="n">price_change_10</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span> <span class="o">/</span> <span class="n">prices</span><span class="p">[:</span><span class="o">-</span><span class="mi">10</span><span class="p">]])</span>
+    <span class="n">volatility_5</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">price_changes</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">volatility_10</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">price_changes</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+    <span class="n">volatility_20</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">price_changes</span><span class="p">)</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">values</span>
+    
+    <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;ts&quot;</span><span class="p">:</span> <span class="n">date_range</span><span class="p">,</span>
+        <span class="s2">&quot;price&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>
+        <span class="s2">&quot;close&quot;</span><span class="p">:</span> <span class="n">prices</span><span class="p">,</span>  <span class="c1"># 環境が期待するcloseカラム</span>
+        <span class="s2">&quot;volume&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">exponential</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">n_points</span><span class="p">),</span>
+        <span class="c1"># 移動平均</span>
+        <span class="s2">&quot;sma_5&quot;</span><span class="p">:</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
+        <span class="s2">&quot;sma_10&quot;</span><span class="p">:</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+        <span class="s2">&quot;sma_20&quot;</span><span class="p">:</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span>
+        <span class="s2">&quot;sma_50&quot;</span><span class="p">:</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">sma</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>
+        <span class="c1"># RSI</span>
+        <span class="s2">&quot;rsi_14&quot;</span><span class="p">:</span> <span class="mi">50</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)),</span>
+        <span class="c1"># MACD</span>
+        <span class="s2">&quot;macd&quot;</span><span class="p">:</span> <span class="n">macd</span><span class="p">,</span>
+        <span class="s2">&quot;macd_signal&quot;</span><span class="p">:</span> <span class="n">macd_signal</span><span class="p">,</span>
+        <span class="s2">&quot;macd_hist&quot;</span><span class="p">:</span> <span class="n">macd_hist</span><span class="p">,</span>
+        <span class="c1"># ボリンジャーバンド</span>
+        <span class="s2">&quot;bb_upper&quot;</span><span class="p">:</span> <span class="n">bb_upper</span><span class="p">,</span>
+        <span class="s2">&quot;bb_middle&quot;</span><span class="p">:</span> <span class="n">bb_middle</span><span class="p">,</span>
+        <span class="s2">&quot;bb_lower&quot;</span><span class="p">:</span> <span class="n">bb_lower</span><span class="p">,</span>
+        <span class="c1"># ATR (Average True Range) - high/lowをcloseで近似</span>
+        <span class="s2">&quot;atr_14&quot;</span><span class="p">:</span> <span class="n">TaLibWrapper</span><span class="o">.</span><span class="n">atr</span><span class="p">(</span><span class="n">prices</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="n">prices</span><span class="p">,</span> <span class="mi">14</span><span class="p">),</span>
+        <span class="c1"># ストキャスティクス</span>
+        <span class="s2">&quot;stoch_k&quot;</span><span class="p">:</span> <span class="mi">50</span> <span class="o">+</span> <span class="mi">40</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)),</span>
+        <span class="s2">&quot;stoch_d&quot;</span><span class="p">:</span> <span class="mi">50</span> <span class="o">+</span> <span class="mi">35</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)),</span>
+        <span class="c1"># Williams %R</span>
+        <span class="s2">&quot;williams_r&quot;</span><span class="p">:</span> <span class="o">-</span><span class="mi">50</span> <span class="o">+</span> <span class="mi">40</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">8</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">n_points</span><span class="p">)),</span>
+        <span class="c1"># CCI (Commodity Channel Index)</span>
+        <span class="s2">&quot;cci_20&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">n_points</span><span class="p">),</span>
+        <span class="c1"># ADX (Average Directional Index)</span>
+        <span class="s2">&quot;adx_14&quot;</span><span class="p">:</span> <span class="mi">20</span> <span class="o">+</span> <span class="mi">30</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="n">n_points</span><span class="p">),</span>
+        <span class="c1"># 価格変動率</span>
+        <span class="s2">&quot;price_change_1&quot;</span><span class="p">:</span> <span class="n">price_change_1</span><span class="p">,</span>
+        <span class="s2">&quot;price_change_5&quot;</span><span class="p">:</span> <span class="n">price_change_5</span><span class="p">,</span>
+        <span class="s2">&quot;price_change_10&quot;</span><span class="p">:</span> <span class="n">price_change_10</span><span class="p">,</span>
+        <span class="c1"># ボラティリティ</span>
+        <span class="s2">&quot;volatility_5&quot;</span><span class="p">:</span> <span class="n">volatility_5</span><span class="p">,</span>
+        <span class="s2">&quot;volatility_10&quot;</span><span class="p">:</span> <span class="n">volatility_10</span><span class="p">,</span>
+        <span class="s2">&quot;volatility_20&quot;</span><span class="p">:</span> <span class="n">volatility_20</span><span class="p">,</span>
+        <span class="c1"># 取引所情報</span>
+        <span class="s2">&quot;exchange&quot;</span><span class="p">:</span> <span class="s2">&quot;sample_exchange&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;pair&quot;</span><span class="p">:</span> <span class="s2">&quot;BTC/USD&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="c1"># エピソードIDの追加（1000ステップごとに変更）</span>
+    <span class="n">episode_length</span> <span class="o">=</span> <span class="mi">1000</span>
+    <span class="n">episode_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n_points</span> <span class="o">//</span> <span class="n">episode_length</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">episode_length</span><span class="p">)[</span>
+        <span class="p">:</span><span class="n">n_points</span>
+    <span class="p">]</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;episode_id&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">episode_ids</span>
+
+    <span class="c1"># NaNをゼロで埋める</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="c1"># Parquetファイルとして保存</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated sample data: </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> rows)&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../../api/generated/ztb.training.entrypoints.html#ztb.training.entrypoints.generate_sample_data.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;メイン関数&quot;&quot;&quot;</span>
+    <span class="c1"># 各月のデータ生成</span>
+    <span class="n">months_data</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s2">&quot;2025-04-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-04-30&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/04/sample_04.parquet&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;2025-05-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-05-31&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/05/sample_05.parquet&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;2025-06-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-06-30&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/06/sample_06.parquet&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;2025-07-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-07-31&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/07/sample_07.parquet&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;2025-08-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-08-31&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/08/sample_08.parquet&quot;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s2">&quot;2025-09-01&quot;</span><span class="p">,</span> <span class="s2">&quot;2025-09-20&quot;</span><span class="p">,</span> <span class="s2">&quot;data/features/2025/09/sample_09.parquet&quot;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">months_data</span><span class="p">:</span>
+        <span class="n">generate_sample_data</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">end_date</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;All sample data generated successfully!&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

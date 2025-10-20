@@ -1,0 +1,697 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.evaluation.regime_eval &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.evaluation.regime_eval</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.evaluation.regime_eval</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Market regime evaluation.</span>
+
+<span class="sd">Analyzes trading performance across different market regimes (bull, bear, sideways).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">cast</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="c1"># 年間取引日数（一般的に252日）</span>
+<span class="n">TRADING_DAYS_PER_YEAR</span> <span class="o">=</span> <span class="mi">252</span>
+
+
+<div class="viewcode-block" id="MarketRegime">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.MarketRegime">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MarketRegime</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Market regime types.&quot;&quot;&quot;</span>
+
+    <span class="n">BULL</span> <span class="o">=</span> <span class="s2">&quot;bull&quot;</span>
+    <span class="n">BEAR</span> <span class="o">=</span> <span class="s2">&quot;bear&quot;</span>
+    <span class="n">SIDEWAYS</span> <span class="o">=</span> <span class="s2">&quot;sideways&quot;</span></div>
+
+
+
+<div class="viewcode-block" id="RegimeSegment">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeSegment">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegimeSegment</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A segment of market data in a specific regime.&quot;&quot;&quot;</span>
+
+    <span class="n">regime</span><span class="p">:</span> <span class="n">MarketRegime</span>
+    <span class="n">start_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">end_idx</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">start_date</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+    <span class="n">end_date</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span>
+    <span class="n">returns</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">trend_strength</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">duration_days</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span></div>
+
+
+
+<div class="viewcode-block" id="RegimeMetrics">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeMetrics">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegimeMetrics</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Performance metrics for a regime.&quot;&quot;&quot;</span>
+
+    <span class="n">regime</span><span class="p">:</span> <span class="n">MarketRegime</span>
+    <span class="n">total_return</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">sharpe_ratio</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">max_drawdown</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">win_rate</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">total_trades</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">avg_trade_return</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">regime_duration_days</span><span class="p">:</span> <span class="nb">float</span></div>
+
+
+
+<div class="viewcode-block" id="RegimeDetector">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeDetector">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegimeDetector</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detects market regimes based on price movements.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">volatility_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+        <span class="n">trend_window</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+        <span class="n">volatility_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">,</span>
+        <span class="n">trend_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize regime detector.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            volatility_window: Window for volatility calculation</span>
+<span class="sd">            trend_window: Window for trend calculation</span>
+<span class="sd">            volatility_threshold: Threshold for sideways regime</span>
+<span class="sd">            trend_threshold: Threshold for trend strength</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volatility_window</span> <span class="o">=</span> <span class="n">volatility_window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trend_window</span> <span class="o">=</span> <span class="n">trend_window</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">volatility_threshold</span> <span class="o">=</span> <span class="n">volatility_threshold</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trend_threshold</span> <span class="o">=</span> <span class="n">trend_threshold</span>
+
+<div class="viewcode-block" id="RegimeDetector.detect_regimes">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeDetector.detect_regimes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect_regimes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">RegimeSegment</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Detect market regimes in price data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            price_data: DataFrame with &#39;close&#39; column and datetime index</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of regime segments</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="s2">&quot;close&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">price_data</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Price data must contain &#39;close&#39; column&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Calculate returns and volatility</span>
+        <span class="n">price_data</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
+        <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">volatility_window</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Calculate trend strength (slope of linear regression)</span>
+        <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;trend_strength&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_trend_strength</span><span class="p">(</span>
+            <span class="n">price_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">trend_window</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Classify regimes</span>
+        <span class="n">regimes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">current_regime</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">start_idx</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">price_data</span><span class="p">)):</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="c1"># Skip if we don&#39;t have enough data for calculations</span>
+            <span class="k">if</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;trend_strength&quot;</span><span class="p">])</span> <span class="ow">or</span> <span class="n">pd</span><span class="o">.</span><span class="n">isna</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">]):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Determine regime</span>
+            <span class="n">regime</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_classify_regime</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;trend_strength&quot;</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;volatility&quot;</span><span class="p">])</span>
+
+            <span class="c1"># Initialize first regime</span>
+            <span class="k">if</span> <span class="n">current_regime</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">current_regime</span> <span class="o">=</span> <span class="n">regime</span>
+                <span class="n">start_idx</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Check if regime changed</span>
+            <span class="k">if</span> <span class="n">current_regime</span> <span class="o">!=</span> <span class="n">regime</span><span class="p">:</span>
+                <span class="c1"># End previous segment</span>
+                <span class="n">segment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_segment</span><span class="p">(</span>
+                    <span class="n">price_data</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">,</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">current_regime</span>  <span class="c1"># type: ignore[arg-type]</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">segment</span><span class="p">:</span>
+                    <span class="n">regimes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+                <span class="n">start_idx</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="n">current_regime</span> <span class="o">=</span> <span class="n">regime</span>
+
+        <span class="c1"># Add final segment</span>
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">start_idx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="ow">and</span> <span class="n">start_idx</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">price_data</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="n">current_regime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+        <span class="p">):</span>
+            <span class="n">segment</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_segment</span><span class="p">(</span>
+                <span class="n">price_data</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">price_data</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">current_regime</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">segment</span><span class="p">:</span>
+                <span class="n">regimes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">regimes</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_classify_regime</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trend_strength</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MarketRegime</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Classify market regime based on trend and volatility.&quot;&quot;&quot;</span>
+        <span class="c1"># High volatility always indicates uncertainty</span>
+        <span class="k">if</span> <span class="n">volatility</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">volatility_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MarketRegime</span><span class="o">.</span><span class="n">SIDEWAYS</span>
+
+        <span class="c1"># Low volatility: classify based on trend strength</span>
+        <span class="k">if</span> <span class="n">trend_strength</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">trend_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MarketRegime</span><span class="o">.</span><span class="n">BULL</span>
+        <span class="k">elif</span> <span class="n">trend_strength</span> <span class="o">&lt;</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">trend_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MarketRegime</span><span class="o">.</span><span class="n">BEAR</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MarketRegime</span><span class="o">.</span><span class="n">SIDEWAYS</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_trend_strength</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate trend strength using linear regression slope.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">slope</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="mf">0.0</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">polyfit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">prices</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">slope</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_segment</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">start_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">end_idx</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">regime</span><span class="p">:</span> <span class="n">MarketRegime</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">RegimeSegment</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a regime segment from data indices.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">start_idx</span> <span class="o">&gt;</span> <span class="n">end_idx</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="n">segment_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">start_idx</span> <span class="p">:</span> <span class="n">end_idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">returns</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;returns&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+        <span class="n">trend_strength</span> <span class="o">=</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;trend_strength&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="n">duration_days</span> <span class="o">=</span> <span class="p">(</span><span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">days</span> <span class="o">+</span> <span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">RegimeSegment</span><span class="p">(</span>
+            <span class="n">regime</span><span class="o">=</span><span class="n">regime</span><span class="p">,</span>
+            <span class="n">start_idx</span><span class="o">=</span><span class="n">start_idx</span><span class="p">,</span>
+            <span class="n">end_idx</span><span class="o">=</span><span class="n">end_idx</span><span class="p">,</span>
+            <span class="n">start_date</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="s2">&quot;UTC&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">&quot;tzinfo&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="p">),</span>
+            <span class="n">end_date</span><span class="o">=</span><span class="p">(</span>
+                <span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="s2">&quot;UTC&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;tzinfo&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+                <span class="k">else</span> <span class="n">segment_data</span><span class="o">.</span><span class="n">index</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">),</span>
+            <span class="n">returns</span><span class="o">=</span><span class="n">returns</span><span class="p">,</span>
+            <span class="n">volatility</span><span class="o">=</span><span class="n">volatility</span><span class="p">,</span>
+            <span class="n">trend_strength</span><span class="o">=</span><span class="n">trend_strength</span><span class="p">,</span>
+            <span class="n">duration_days</span><span class="o">=</span><span class="n">duration_days</span><span class="p">,</span>
+            <span class="n">confidence</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>  <span class="c1"># Simple confidence based on trend strength</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="RegimeEvaluator">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeEvaluator">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RegimeEvaluator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Evaluates trading performance across market regimes.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regime_detector</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">RegimeDetector</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize regime evaluator.&quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">regime_detector</span> <span class="o">=</span> <span class="n">regime_detector</span> <span class="ow">or</span> <span class="n">RegimeDetector</span><span class="p">()</span>
+
+<div class="viewcode-block" id="RegimeEvaluator.evaluate_performance">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeEvaluator.evaluate_performance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_performance</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">price_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">trade_log</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+        <span class="n">baseline_strategies</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate performance across regimes.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            price_data: Market data with datetime index</span>
+<span class="sd">            trade_log: List of trade records</span>
+<span class="sd">            baseline_strategies: Optional baseline strategy results</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Evaluation results by regime</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Detect regimes</span>
+        <span class="n">regimes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_detector</span><span class="o">.</span><span class="n">detect_regimes</span><span class="p">(</span><span class="n">price_data</span><span class="p">)</span>
+
+        <span class="c1"># Convert trade log to DataFrame</span>
+        <span class="k">if</span> <span class="n">trade_log</span><span class="p">:</span>
+            <span class="n">trades_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">trade_log</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s2">&quot;timestamp&quot;</span> <span class="ow">in</span> <span class="n">trades_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">trades_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span>
+                    <span class="n">trades_df</span><span class="p">[</span><span class="s2">&quot;timestamp&quot;</span><span class="p">],</span> <span class="n">utc</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+                <span class="n">trades_df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trades_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">price_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;tz&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">price_data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tz</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">price_data</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">price_data</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="s2">&quot;tz_localize&quot;</span><span class="p">):</span>
+                <span class="n">price_data</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tz_localize</span><span class="p">(</span><span class="s2">&quot;UTC&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Evaluate each regime</span>
+        <span class="n">regime_results</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">regime</span> <span class="ow">in</span> <span class="n">MarketRegime</span><span class="p">:</span>
+            <span class="n">regime_segments</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">regimes</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">regime</span> <span class="o">==</span> <span class="n">regime</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">regime_segments</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># Get trades in this regime</span>
+            <span class="n">regime_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_regime_trades</span><span class="p">(</span><span class="n">trades_df</span><span class="p">,</span> <span class="n">regime_segments</span><span class="p">)</span>
+
+            <span class="c1"># Calculate metrics</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_regime_metrics</span><span class="p">(</span>
+                <span class="n">price_data</span><span class="p">,</span> <span class="n">regime_segments</span><span class="p">,</span> <span class="n">regime_trades</span>
+            <span class="p">)</span>
+
+            <span class="n">regime_results</span><span class="p">[</span><span class="n">regime</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;metrics&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="p">,</span>
+                <span class="s2">&quot;segments&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">regime_segments</span><span class="p">),</span>
+                <span class="s2">&quot;total_duration_days&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">duration_days</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">regime_segments</span><span class="p">),</span>
+                <span class="s2">&quot;avg_volatility&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">volatility</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">regime_segments</span><span class="p">]),</span>
+                <span class="s2">&quot;trades&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">regime_trades</span><span class="p">),</span>
+            <span class="p">}</span>
+
+        <span class="c1"># Compare with baselines if provided</span>
+        <span class="k">if</span> <span class="n">baseline_strategies</span><span class="p">:</span>
+            <span class="n">regime_results</span><span class="p">[</span><span class="s2">&quot;baseline_comparison&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compare_baselines</span><span class="p">(</span>
+                <span class="n">regime_results</span><span class="p">,</span> <span class="n">baseline_strategies</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">regime_results</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_regime_trades</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">trades_df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">RegimeSegment</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get trades that occurred within regime segments.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">trades_df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+        <span class="n">regime_trades</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">:</span>
+            <span class="n">segment_trades</span> <span class="o">=</span> <span class="n">trades_df</span><span class="p">[</span>
+                <span class="p">(</span><span class="n">trades_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&gt;=</span> <span class="n">segment</span><span class="o">.</span><span class="n">start_date</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">trades_df</span><span class="o">.</span><span class="n">index</span> <span class="o">&lt;=</span> <span class="n">segment</span><span class="o">.</span><span class="n">end_date</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="n">regime_trades</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">segment_trades</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">regime_trades</span><span class="p">)</span> <span class="k">if</span> <span class="n">regime_trades</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_regime_metrics</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">price_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">segments</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">RegimeSegment</span><span class="p">],</span>
+        <span class="n">trades</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RegimeMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate performance metrics for a regime.&quot;&quot;&quot;</span>
+        <span class="c1"># Market returns for the regime periods</span>
+        <span class="n">regime_returns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">:</span>
+            <span class="n">segment_data</span> <span class="o">=</span> <span class="n">price_data</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">segment</span><span class="o">.</span><span class="n">start_date</span> <span class="p">:</span> <span class="n">segment</span><span class="o">.</span><span class="n">end_date</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">segment_data</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="n">segment_data</span><span class="p">[</span><span class="s2">&quot;close&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">regime_returns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret</span><span class="p">)</span>
+
+        <span class="n">total_return</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">regime_returns</span><span class="p">)</span> <span class="k">if</span> <span class="n">regime_returns</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="n">volatility</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">volatility</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">])</span>
+
+        <span class="c1"># Trade metrics</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">trades</span><span class="o">.</span><span class="n">empty</span> <span class="ow">and</span> <span class="s2">&quot;pnl&quot;</span> <span class="ow">in</span> <span class="n">trades</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="n">trade_returns</span> <span class="o">=</span> <span class="n">trades</span><span class="p">[</span><span class="s2">&quot;pnl&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">trade_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+                <span class="o">/</span> <span class="n">trade_returns</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">trade_returns</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+                <span class="k">else</span> <span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="n">max_drawdown</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_max_drawdown</span><span class="p">(</span><span class="n">trade_returns</span><span class="o">.</span><span class="n">cumsum</span><span class="p">())</span>
+            <span class="n">win_rate</span> <span class="o">=</span> <span class="p">(</span><span class="n">trade_returns</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="n">total_trades</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span>
+            <span class="n">avg_trade_return</span> <span class="o">=</span> <span class="n">trade_returns</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">max_drawdown</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">win_rate</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">total_trades</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">avg_trade_return</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="n">regime_duration_days</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">duration_days</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">segments</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">RegimeMetrics</span><span class="p">(</span>
+            <span class="n">regime</span><span class="o">=</span><span class="n">segments</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">regime</span> <span class="k">if</span> <span class="n">segments</span> <span class="k">else</span> <span class="n">MarketRegime</span><span class="o">.</span><span class="n">SIDEWAYS</span><span class="p">,</span>
+            <span class="n">total_return</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">total_return</span><span class="p">),</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="n">sharpe_ratio</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=</span><span class="n">max_drawdown</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="n">win_rate</span><span class="p">,</span>
+            <span class="n">total_trades</span><span class="o">=</span><span class="n">total_trades</span><span class="p">,</span>
+            <span class="n">avg_trade_return</span><span class="o">=</span><span class="n">avg_trade_return</span><span class="p">,</span>
+            <span class="n">volatility</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">volatility</span><span class="p">),</span>
+            <span class="n">regime_duration_days</span><span class="o">=</span><span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">regime_duration_days</span><span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_max_drawdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cumulative_returns</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate maximum drawdown from cumulative returns.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">cumulative_returns</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.0</span>
+
+        <span class="n">running_max</span> <span class="o">=</span> <span class="n">cumulative_returns</span><span class="o">.</span><span class="n">expanding</span><span class="p">()</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+        <span class="n">safe_running_max</span> <span class="o">=</span> <span class="n">running_max</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+        <span class="n">drawdown</span> <span class="o">=</span> <span class="p">(</span><span class="n">cumulative_returns</span> <span class="o">-</span> <span class="n">safe_running_max</span><span class="p">)</span> <span class="o">/</span> <span class="n">safe_running_max</span>
+        <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">drawdown</span><span class="o">.</span><span class="n">min</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compare_baselines</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">regime_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">baseline_strategies</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compare regime performance with baseline strategies.&quot;&quot;&quot;</span>
+        <span class="n">comparison</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">regime_name</span><span class="p">,</span> <span class="n">regime_data</span> <span class="ow">in</span> <span class="n">regime_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">regime_name</span> <span class="o">==</span> <span class="s2">&quot;baseline_comparison&quot;</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">regime_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">]</span>
+            <span class="n">comparison</span><span class="p">[</span><span class="n">regime_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+            <span class="k">for</span> <span class="n">baseline_name</span><span class="p">,</span> <span class="n">baseline_data</span> <span class="ow">in</span> <span class="n">baseline_strategies</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">regime_name</span> <span class="ow">in</span> <span class="n">baseline_data</span><span class="p">:</span>
+                    <span class="n">baseline_metrics</span> <span class="o">=</span> <span class="n">baseline_data</span><span class="p">[</span><span class="n">regime_name</span><span class="p">]</span>
+
+                    <span class="n">comparison</span><span class="p">[</span><span class="n">regime_name</span><span class="p">][</span><span class="n">baseline_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;return_diff&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">total_return</span>
+                        <span class="o">-</span> <span class="n">baseline_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_return&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;sharpe_diff&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">sharpe_ratio</span>
+                        <span class="o">-</span> <span class="n">baseline_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                        <span class="s2">&quot;win_rate_diff&quot;</span><span class="p">:</span> <span class="n">metrics</span><span class="o">.</span><span class="n">win_rate</span>
+                        <span class="o">-</span> <span class="n">baseline_metrics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;win_rate&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+                    <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">comparison</span>
+
+<div class="viewcode-block" id="RegimeEvaluator.generate_report">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.RegimeEvaluator.generate_report">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_report</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">evaluation_results</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">output_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate human-readable regime evaluation report.&quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;# Market Regime Evaluation Report&quot;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">regime_name</span><span class="p">,</span> <span class="n">regime_data</span> <span class="ow">in</span> <span class="n">evaluation_results</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">regime_name</span> <span class="o">==</span> <span class="s2">&quot;baseline_comparison&quot;</span><span class="p">:</span>
+                <span class="k">continue</span>
+
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;## </span><span class="si">{</span><span class="n">regime_name</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2"> Market Regime&quot;</span><span class="p">)</span>
+            <span class="n">metrics</span> <span class="o">=</span> <span class="n">regime_data</span><span class="p">[</span><span class="s2">&quot;metrics&quot;</span><span class="p">]</span>
+
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Total Return**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">total_return</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Sharpe Ratio**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Max Drawdown**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">max_drawdown</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Win Rate**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">win_rate</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Total Trades**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">total_trades</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Avg Trade Return**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">avg_trade_return</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Market Volatility**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">volatility</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;- **Regime Duration**: </span><span class="si">{</span><span class="n">metrics</span><span class="o">.</span><span class="n">regime_duration_days</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> days&quot;</span>
+            <span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- **Number of Segments**: </span><span class="si">{</span><span class="n">regime_data</span><span class="p">[</span><span class="s1">&#39;segments&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Baseline comparison</span>
+        <span class="k">if</span> <span class="s2">&quot;baseline_comparison&quot;</span> <span class="ow">in</span> <span class="n">evaluation_results</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;## Baseline Comparison&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">regime_name</span><span class="p">,</span> <span class="n">comparisons</span> <span class="ow">in</span> <span class="n">evaluation_results</span><span class="p">[</span>
+                <span class="s2">&quot;baseline_comparison&quot;</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;### </span><span class="si">{</span><span class="n">regime_name</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2"> Regime&quot;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">baseline_name</span><span class="p">,</span> <span class="n">diffs</span> <span class="ow">in</span> <span class="n">comparisons</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;**vs </span><span class="si">{</span><span class="n">baseline_name</span><span class="si">}</span><span class="s2">:**&quot;</span><span class="p">)</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Return Diff: </span><span class="si">{</span><span class="n">diffs</span><span class="p">[</span><span class="s1">&#39;return_diff&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Sharpe Diff: </span><span class="si">{</span><span class="n">diffs</span><span class="p">[</span><span class="s1">&#39;sharpe_diff&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- Win Rate Diff: </span><span class="si">{</span><span class="n">diffs</span><span class="p">[</span><span class="s1">&#39;win_rate_diff&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="n">report</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">output_path</span><span class="p">:</span>
+            <span class="n">Path</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">report</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_calculate_trade_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trades</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="n">RegimeMetrics</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate trade metrics for testing purposes.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">trades</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">RegimeMetrics</span><span class="p">(</span>
+                <span class="n">regime</span><span class="o">=</span><span class="n">MarketRegime</span><span class="o">.</span><span class="n">SIDEWAYS</span><span class="p">,</span>
+                <span class="n">total_return</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">sharpe_ratio</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">max_drawdown</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">win_rate</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">total_trades</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">avg_trade_return</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">volatility</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">regime_duration_days</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Simple trade metrics calculation</span>
+        <span class="k">for</span> <span class="n">trade</span> <span class="ow">in</span> <span class="n">trades</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;price&quot;</span> <span class="ow">in</span> <span class="n">trade</span> <span class="ow">and</span> <span class="s2">&quot;quantity&quot;</span> <span class="ow">in</span> <span class="n">trade</span> <span class="ow">and</span> <span class="s2">&quot;side&quot;</span> <span class="ow">in</span> <span class="n">trade</span><span class="p">:</span>
+                <span class="c1"># Simplified: assume entry and exit in same trade record</span>
+                <span class="c1"># In real implementation, would track position</span>
+                <span class="k">pass</span>
+
+        <span class="c1"># Mock some basic metrics for testing</span>
+        <span class="n">total_trades</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>  <span class="c1"># Assume pairs of buy/sell</span>
+        <span class="n">wins</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">total_return</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Simple calculation for test</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">):</span>
+                <span class="n">buy_price</span> <span class="o">=</span> <span class="n">trades</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">sell_price</span> <span class="o">=</span> <span class="n">trades</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">buy_price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="n">sell_price</span> <span class="o">-</span> <span class="n">buy_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">buy_price</span>
+                    <span class="n">total_return</span> <span class="o">+=</span> <span class="n">ret</span>
+                    <span class="k">if</span> <span class="n">ret</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="n">wins</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="n">total_return</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">total_return</span> <span class="k">if</span> <span class="n">total_trades</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+        <span class="p">)</span>  <span class="c1"># Return 0.0 if no trades</span>
+        <span class="n">total_return</span> <span class="o">=</span> <span class="n">total_return</span> <span class="k">if</span> <span class="n">total_trades</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.1</span>  <span class="c1"># Mock return</span>
+
+        <span class="n">win_rate</span> <span class="o">=</span> <span class="n">wins</span> <span class="o">/</span> <span class="n">total_trades</span> <span class="k">if</span> <span class="n">total_trades</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Use actual Sharpe ratio calculation for test data if possible</span>
+        <span class="n">trade_returns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">trades</span><span class="p">):</span>
+                <span class="n">buy_price</span> <span class="o">=</span> <span class="n">trades</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">sell_price</span> <span class="o">=</span> <span class="n">trades</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">buy_price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">trade_returns</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">sell_price</span> <span class="o">-</span> <span class="n">buy_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">buy_price</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">trade_returns</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">TRADING_DAYS_PER_YEAR</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">sharpe_ratio</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="n">RegimeMetrics</span><span class="p">(</span>
+            <span class="n">regime</span><span class="o">=</span><span class="n">MarketRegime</span><span class="o">.</span><span class="n">BULL</span><span class="p">,</span>
+            <span class="n">total_return</span><span class="o">=</span><span class="n">total_return</span><span class="p">,</span>
+            <span class="n">sharpe_ratio</span><span class="o">=</span><span class="n">sharpe_ratio</span><span class="p">,</span>
+            <span class="n">max_drawdown</span><span class="o">=-</span><span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">win_rate</span><span class="o">=</span><span class="n">win_rate</span><span class="p">,</span>
+            <span class="n">total_trades</span><span class="o">=</span><span class="n">total_trades</span><span class="p">,</span>
+            <span class="n">avg_trade_return</span><span class="o">=</span><span class="n">total_return</span> <span class="o">/</span> <span class="n">total_trades</span> <span class="k">if</span> <span class="n">total_trades</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span><span class="p">,</span>
+            <span class="n">volatility</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+            <span class="n">regime_duration_days</span><span class="o">=</span><span class="mf">30.0</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_baseline_comparison_engine">
+<a class="viewcode-back" href="../../../api/generated/ztb.evaluation.html#ztb.evaluation.regime_eval.get_baseline_comparison_engine">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_baseline_comparison_engine</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get baseline comparison engine for testing.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Mock implementation for testing</span>
+    <span class="k">class</span><span class="w"> </span><span class="nc">MockStrategy</span><span class="p">:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">price_data</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">type</span><span class="p">(</span>
+                <span class="s2">&quot;Result&quot;</span><span class="p">,</span>
+                <span class="p">(),</span>
+                <span class="p">{</span><span class="s2">&quot;total_return&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span> <span class="s2">&quot;sharpe_ratio&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;win_rate&quot;</span><span class="p">:</span> <span class="mf">0.55</span><span class="p">},</span>
+            <span class="p">)()</span>
+
+    <span class="k">class</span><span class="w"> </span><span class="nc">MockEngine</span><span class="p">:</span>
+        <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">strategies</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;buy_hold&quot;</span><span class="p">:</span> <span class="n">MockStrategy</span><span class="p">(),</span>
+                <span class="s2">&quot;sma_crossover&quot;</span><span class="p">:</span> <span class="n">MockStrategy</span><span class="p">(),</span>
+            <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">MockEngine</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,374 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.online_learning.trainer &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.online_learning.trainer</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.online_learning.trainer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Online Learning SAC Trainer</span>
+<span class="sd">リアルタイム適応機能を統合したSACトレーナー</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Iterator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.trainers.sac_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">SACAlgorithmTrainer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.online_learning.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningPipeline</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.online_learning.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">OnlineLearningConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.adaptation.online_learning.types</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataBatch</span><span class="p">,</span> <span class="n">LearningState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.logging_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OnlineLearningSACTrainer</span><span class="p">(</span><span class="n">SACAlgorithmTrainer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    オンライン学習機能を統合したSACトレーナー</span>
+<span class="sd">    リアルタイムでデータを処理し、モデルを適応的に更新</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">online_config</span><span class="p">:</span> <span class="n">OnlineLearningConfig</span><span class="p">,</span>
+                 <span class="n">sac_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+                 <span class="n">env_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]):</span>
+        <span class="c1"># SACAlgorithmTrainerの初期化をスキップ</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_config</span> <span class="o">=</span> <span class="n">online_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sac_config</span> <span class="o">=</span> <span class="n">sac_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">env_config</span> <span class="o">=</span> <span class="n">env_config</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+        <span class="c1"># オンライン学習パイプライン</span>
+        <span class="c1"># 仮のモデルを作成（TODO: 実際のSACモデルと統合）</span>
+        <span class="n">dummy_model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># 仮モデル</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span> <span class="o">=</span> <span class="n">OnlineLearningPipeline</span><span class="p">(</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">online_config</span><span class="p">,</span>
+            <span class="n">model</span><span class="o">=</span><span class="n">dummy_model</span>
+        <span class="p">)</span>
+
+        <span class="c1"># ストリーミング制御</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_thread</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_stream</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterator</span><span class="p">[</span><span class="n">DataBatch</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Online Learning SAC Trainer initialized&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.start_online_learning">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.start_online_learning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start_online_learning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data_stream</span><span class="p">:</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">DataBatch</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        オンライン学習を開始</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data_stream: データストリームイテレータ</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Online learning already active&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">data_stream</span> <span class="o">=</span> <span class="n">data_stream</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># オンライン学習スレッドを開始</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_online_learning_worker</span><span class="p">,</span>
+            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Online learning started&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.stop_online_learning">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.stop_online_learning">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">stop_online_learning</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;オンライン学習を停止&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_thread</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">online_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">is_streaming</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">stop_streaming</span><span class="p">()</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Online learning stopped&quot;</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_online_learning_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;オンライン学習ワーカー&quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_stream</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">start_streaming</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data_stream</span><span class="p">)</span>
+
+            <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>  <span class="c1"># 定期チェック</span>
+
+                <span class="c1"># 学習状態の監視</span>
+                <span class="n">learning_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span>
+
+                <span class="c1"># パフォーマンスチェック</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_trigger_adaptation</span><span class="p">(</span><span class="n">learning_state</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_perform_adaptation</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Online learning worker error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_should_trigger_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">learning_state</span><span class="p">:</span> <span class="n">LearningState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応トリガーの判定&quot;&quot;&quot;</span>
+        <span class="c1"># 損失の急激な変化を検知</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">learning_state</span><span class="o">.</span><span class="n">loss_history</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">:</span>
+            <span class="n">recent_losses</span> <span class="o">=</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">loss_history</span><span class="p">[</span><span class="o">-</span><span class="mi">10</span><span class="p">:]</span>
+            <span class="n">avg_recent</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">recent_losses</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_losses</span><span class="p">)</span>
+            <span class="n">avg_overall</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">learning_state</span><span class="o">.</span><span class="n">loss_history</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">learning_state</span><span class="o">.</span><span class="n">loss_history</span><span class="p">)</span>
+
+            <span class="c1"># 最近の損失が全体平均の150%以上になった場合</span>
+            <span class="k">if</span> <span class="n">avg_recent</span> <span class="o">&gt;</span> <span class="n">avg_overall</span> <span class="o">*</span> <span class="mf">1.5</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># メモリ使用量のチェック</span>
+        <span class="k">if</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">memory_usage_mb</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_config</span><span class="o">.</span><span class="n">max_memory_usage_mb</span> <span class="o">*</span> <span class="mf">0.9</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_perform_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応処理の実行&quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Performing adaptation...&quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 学習率の調整</span>
+            <span class="n">current_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span><span class="o">.</span><span class="n">current_learning_rate</span>
+            <span class="n">new_lr</span> <span class="o">=</span> <span class="n">current_lr</span> <span class="o">*</span> <span class="mf">0.8</span>  <span class="c1"># 学習率を20%減少</span>
+
+            <span class="c1"># オプティマイザの学習率更新</span>
+            <span class="k">for</span> <span class="n">param_group</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">:</span>
+                <span class="n">param_group</span><span class="p">[</span><span class="s1">&#39;lr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_lr</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span><span class="o">.</span><span class="n">current_learning_rate</span> <span class="o">=</span> <span class="n">new_lr</span>
+
+            <span class="c1"># メモリクリーンアップ</span>
+            <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation completed: learning rate adjusted to </span><span class="si">{</span><span class="n">new_lr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adaptation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.train_with_online_adaptation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.train_with_online_adaptation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">train_with_online_adaptation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                   <span class="n">total_timesteps</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                                   <span class="n">data_stream</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Iterator</span><span class="p">[</span><span class="n">DataBatch</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        オンライン適応を伴う学習を実行</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            total_timesteps: 総学習ステップ数</span>
+<span class="sd">            data_stream: オプションのデータストリーム</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            学習結果</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting training with online adaptation...&quot;</span><span class="p">)</span>
+
+        <span class="c1"># データストリームが提供された場合、オンライン学習を開始</span>
+        <span class="k">if</span> <span class="n">data_stream</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_online_learning</span><span class="p">(</span><span class="n">data_stream</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># 標準的なSAC学習を実行</span>
+            <span class="n">training_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">total_timesteps</span><span class="p">,</span> <span class="n">use_online_adaptation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+            <span class="c1"># オンライン学習のメトリクスを追加</span>
+            <span class="n">online_metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_online_metrics</span><span class="p">()</span>
+
+            <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="o">**</span><span class="n">training_result</span><span class="p">,</span>
+                <span class="s2">&quot;online_metrics&quot;</span><span class="p">:</span> <span class="n">online_metrics</span><span class="p">,</span>
+                <span class="s2">&quot;training_type&quot;</span><span class="p">:</span> <span class="s2">&quot;online_adaptive_sac&quot;</span>
+            <span class="p">}</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Training with online adaptation completed&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># クリーンアップ</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_online_learning</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_online_metrics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;オンライン学習のメトリクスを取得&quot;&quot;&quot;</span>
+        <span class="n">learning_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;total_samples_processed&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">total_samples_processed</span><span class="p">,</span>
+            <span class="s2">&quot;current_learning_rate&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">current_learning_rate</span><span class="p">,</span>
+            <span class="s2">&quot;gradient_norm&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">gradient_norm</span><span class="p">,</span>
+            <span class="s2">&quot;loss_history_length&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">learning_state</span><span class="o">.</span><span class="n">loss_history</span><span class="p">),</span>
+            <span class="s2">&quot;memory_usage_mb&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">memory_usage_mb</span><span class="p">,</span>
+            <span class="s2">&quot;gpu_memory_usage_mb&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">gpu_memory_usage_mb</span><span class="p">,</span>
+            <span class="s2">&quot;last_update_time&quot;</span><span class="p">:</span> <span class="n">learning_state</span><span class="o">.</span><span class="n">last_update_time</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">&quot;online_learning_active&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span>
+        <span class="p">}</span>
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.get_adaptation_status">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.get_adaptation_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_adaptation_status</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;適応状態を取得&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;online_learning_active&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_online_learning_active</span><span class="p">,</span>
+            <span class="s2">&quot;learning_state&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">,</span>
+            <span class="s2">&quot;pipeline_status&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;is_streaming&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">is_streaming</span><span class="p">,</span>
+                <span class="s2">&quot;streaming_buffer_size&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">streaming_buffer</span><span class="p">),</span>
+                <span class="s2">&quot;memory_buffer_size&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">memory_buffer</span><span class="p">)</span>
+            <span class="p">}</span>
+        <span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.save_online_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.save_online_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_online_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;オンライン学習モデルを保存&quot;&quot;&quot;</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">save</span><span class="p">({</span>
+            <span class="s1">&#39;model_state_dict&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">state_dict</span><span class="p">(),</span>
+            <span class="s1">&#39;online_config&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_config</span><span class="p">,</span>
+            <span class="s1">&#39;learning_state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span><span class="p">,</span>
+            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+        <span class="p">},</span> <span class="n">path</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Online learning model saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OnlineLearningSACTrainer.load_online_model">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.online_learning.html#ztb.adaptation.online_learning.trainer.OnlineLearningSACTrainer.load_online_model">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_online_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;オンライン学習モデルを読み込み&quot;&quot;&quot;</span>
+        <span class="n">checkpoint</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="c1"># self.algorithm.model.load_state_dict(checkpoint[&#39;model_state_dict&#39;])  # TODO: algorithm統合</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">online_pipeline</span><span class="o">.</span><span class="n">learning_state</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="p">[</span><span class="s1">&#39;learning_state&#39;</span><span class="p">]</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Online learning model loaded from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

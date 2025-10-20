@@ -1,0 +1,451 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.risk.rules &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.risk.rules</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.risk.rules</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Risk management rules and validation.</span>
+
+<span class="sd">Implements hard stops, trailing stops, and cooldown rules.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.profiles</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskLimits</span>
+
+
+<div class="viewcode-block" id="RiskRuleEngine">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RiskRuleEngine</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Engine for evaluating and enforcing risk rules.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limits</span><span class="p">:</span> <span class="n">RiskLimits</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize with risk limits.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">limits</span> <span class="o">=</span> <span class="n">limits</span>
+
+        <span class="c1"># State tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">second</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">microsecond</span><span class="o">=</span><span class="mi">0</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">daily_loss</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_volatility</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_trade_time</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_this_hour</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hour_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_distance</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="c1"># Trade history for analysis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="RiskRuleEngine.reset_daily_tracking">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.reset_daily_tracking">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_daily_tracking</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset daily loss tracking at start of new day.&quot;&quot;&quot;</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">today_start</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">hour</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">minute</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">second</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">microsecond</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">today_start</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_time</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_time</span> <span class="o">=</span> <span class="n">today_start</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daily_loss</span> <span class="o">=</span> <span class="mf">0.0</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.update_portfolio_state">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.update_portfolio_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_portfolio_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">volatility</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update current portfolio state.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">=</span> <span class="n">current_value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_volatility</span> <span class="o">=</span> <span class="n">volatility</span>
+
+        <span class="c1"># Update daily loss</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">daily_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span> <span class="o">-</span> <span class="n">current_value</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_daily_loss_limit">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_daily_loss_limit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_daily_loss_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if daily loss limit is exceeded.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">loss_pct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_loss</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">daily_start_capital</span>
+        <span class="k">if</span> <span class="n">loss_pct</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">daily_loss_limit_pct</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Daily loss limit exceeded: </span><span class="si">{</span><span class="n">loss_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">daily_loss_limit_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_max_drawdown">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_max_drawdown">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_max_drawdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">peak_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if maximum drawdown limit is exceeded.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">peak_value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">drawdown</span> <span class="o">=</span> <span class="p">(</span><span class="n">peak_value</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">peak_value</span>
+        <span class="k">if</span> <span class="n">drawdown</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Max drawdown exceeded: </span><span class="si">{</span><span class="n">drawdown</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_drawdown_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_position_size">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_position_size">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_position_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position_notional</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if position size exceeds limits.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position_notional</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_position_notional</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Position size exceeds limit: </span><span class="si">{</span><span class="n">position_notional</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_position_notional</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_single_trade_size">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_single_trade_size">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_single_trade_size</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trade_notional</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if single trade size exceeds limits.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">trade_pct</span> <span class="o">=</span> <span class="n">trade_notional</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
+        <span class="k">if</span> <span class="n">trade_pct</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_single_trade_pct</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Trade size exceeds limit: </span><span class="si">{</span><span class="n">trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_single_trade_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_trade_frequency">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_trade_frequency">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_trade_frequency</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check trade frequency limits.&quot;&quot;&quot;</span>
+        <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Reset hourly counter if needed</span>
+        <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">hour_start_time</span> <span class="o">&gt;=</span> <span class="mi">3600</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trades_this_hour</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hour_start_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_this_hour</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_trades_per_hour</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Trade frequency limit exceeded: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_this_hour</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_trades_per_hour</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Check minimum interval</span>
+        <span class="k">if</span> <span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_trade_time</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">min_trade_interval_sec</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Minimum trade interval not met: </span><span class="si">{</span><span class="n">current_time</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">last_trade_time</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s &lt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">min_trade_interval_sec</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_volatility_limit">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_volatility_limit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_volatility_limit</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check portfolio volatility against limits.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_volatility</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_volatility_pct</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Portfolio volatility exceeds limit: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">portfolio_volatility</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">max_volatility_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_performance_thresholds">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_performance_thresholds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_performance_thresholds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sharpe_ratio</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if performance meets minimum thresholds.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">sharpe_ratio</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">required_sharpe_ratio</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Sharpe ratio below threshold: </span><span class="si">{</span><span class="n">sharpe_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> &lt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">required_sharpe_ratio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.update_trailing_stop">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.update_trailing_stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_trailing_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">position_side</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update trailing stop level.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;long&quot;</span><span class="p">,</span> <span class="s2">&quot;short&quot;</span><span class="p">]:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Initialize trailing stop</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span>
+                    <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># short</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span>
+                    <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span>
+                <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Update trailing stop</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+            <span class="c1"># For long positions, trail below the highest price</span>
+            <span class="n">new_stop</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">new_stop</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="o">=</span> <span class="n">new_stop</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># short</span>
+            <span class="c1"># For short positions, trail above the lowest price</span>
+            <span class="n">new_stop</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">stop_loss_pct</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">new_stop</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="o">=</span> <span class="n">new_stop</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_trailing_stop">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_trailing_stop">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_trailing_stop</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">position_side</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if trailing stop is hit.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+
+        <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span> <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+            <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span> <span class="ow">and</span> <span class="n">current_price</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="p">:</span>
+            <span class="n">stop_hit</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">stop_hit</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Trailing stop hit at </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trailing_stop_level</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.check_take_profit">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.check_take_profit">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">check_take_profit</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">entry_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">current_price</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">position_side</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if take profit target is reached.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">position_side</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+            <span class="n">profit_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="n">entry_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry_price</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># short</span>
+            <span class="n">profit_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">/</span> <span class="n">entry_price</span>
+
+        <span class="k">if</span> <span class="n">profit_pct</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">take_profit_pct</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="kc">False</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">&quot;Take profit target reached: </span><span class="si">{</span><span class="n">profit_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2"> &gt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">limits</span><span class="o">.</span><span class="n">take_profit_pct</span><span class="si">:</span><span class="s2">.1%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.record_trade">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.record_trade">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">record_trade</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">trade_data</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Record a completed trade.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="o">**</span><span class="n">trade_data</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_trade_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trades_this_hour</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.get_cooldown_period">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.get_cooldown_period">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_cooldown_period</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get cooldown period after losses (in seconds).&quot;&quot;&quot;</span>
+        <span class="c1"># Simple cooldown based on recent losses</span>
+        <span class="n">recent_trades</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">trade_history</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pnl&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">recent_trades</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">300</span>  <span class="c1"># 5 minutes cooldown after 3 consecutive losses</span>
+
+        <span class="k">return</span> <span class="mi">0</span></div>
+
+
+<div class="viewcode-block" id="RiskRuleEngine.validate_trade">
+<a class="viewcode-back" href="../../../api/generated/ztb.risk.html#ztb.risk.rules.RiskRuleEngine.validate_trade">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_trade</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">trade_notional</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">position_notional</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">peak_value</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+        <span class="n">sharpe_ratio</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Comprehensive trade validation against all risk rules.</span>
+
+<span class="sd">        Returns: (is_allowed, reason_if_rejected)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Update daily tracking</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reset_daily_tracking</span><span class="p">()</span>
+
+        <span class="c1"># Check all rules</span>
+        <span class="n">checks</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_daily_loss_limit</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_max_drawdown</span><span class="p">(</span><span class="n">peak_value</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_position_size</span><span class="p">(</span><span class="n">position_notional</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_single_trade_size</span><span class="p">(</span><span class="n">trade_notional</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_trade_frequency</span><span class="p">(),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">check_volatility_limit</span><span class="p">(),</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">sharpe_ratio</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">check_performance_thresholds</span><span class="p">(</span><span class="n">sharpe_ratio</span><span class="p">))</span>
+
+        <span class="c1"># Check cooldown</span>
+        <span class="n">cooldown</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_cooldown_period</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">cooldown</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">time_since_last_trade</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_trade_time</span>
+            <span class="k">if</span> <span class="n">time_since_last_trade</span> <span class="o">&lt;</span> <span class="n">cooldown</span><span class="p">:</span>
+                <span class="n">checks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="kc">False</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;In cooldown period: </span><span class="si">{</span><span class="n">cooldown</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">time_since_last_trade</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s remaining&quot;</span><span class="p">,</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Return first failure</span>
+        <span class="k">for</span> <span class="n">allowed</span><span class="p">,</span> <span class="n">reason</span> <span class="ow">in</span> <span class="n">checks</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">allowed</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="n">reason</span>
+
+        <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="s2">&quot;&quot;</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,446 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Feature Schema Management Reform - 実装完了サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=8d563738"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Feature Schema Management Reform - 実装完了サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/FEATURE_SCHEMA_IMPLEMENTATION_SUMMARY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="feature-schema-management-reform">
+<h1>Feature Schema Management Reform - 実装完了サマリー<a class="headerlink" href="#feature-schema-management-reform" title="Link to this heading"></a></h1>
+<section id="id1">
+<h2>実装日時<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<p>2025年10月10日</p>
+</section>
+<section id="id2">
+<h2>実装概要<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>特徴量の増減時の不便さを解消するため、<code class="docutils literal notranslate"><span class="pre">unified_trainer.py</span></code>を中心に<strong>モデルごとの特徴量スキーマ管理システム</strong>を実装しました。</p>
+</section>
+<section id="id3">
+<h2>主な変更<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="featureschemamanager-new">
+<h3>1. FeatureSchemaManager (NEW)<a class="headerlink" href="#featureschemamanager-new" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/feature_schema_manager.py</span></code></p>
+<p><strong>機能</strong>:</p>
+<ul class="simple">
+<li><p>✅ モデルごとのスキーマ保存・読み込み</p></li>
+<li><p>✅ 互換性チェック</p></li>
+<li><p>✅ スケーラー情報管理</p></li>
+<li><p>✅ メタデータ管理</p></li>
+<li><p>✅ レガシースキーマ移行サポート</p></li>
+</ul>
+<p><strong>新しいディレクトリ構造</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/
+├── ppo_reward_v384_curated_60.zip
+└── schemas/
+    └── ppo_reward_v384_curated_60/
+        ├── metadata.json           # モデルメタデータ
+        ├── features_schema.json    # 特徴量リスト
+        └── scaler.npz              # 正規化パラメータ
+</pre></div>
+</div>
+</section>
+<section id="unifiedtrainer">
+<h3>2. UnifiedTrainer統合<a class="headerlink" href="#unifiedtrainer" title="Link to this heading"></a></h3>
+<p><strong>ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/unified_trainer.py</span></code></p>
+<p><strong>変更内容</strong>:</p>
+<ol class="arabic simple">
+<li><p>✅ FeatureSchemaManagerのインポート</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">_save_model_schema()</span></code>メソッド追加</p></li>
+<li><p>✅ 訓練完了時の自動スキーマ保存</p></li>
+</ol>
+<p><strong>追加メソッド</strong>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_save_model_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;モデルの特徴量スキーマを保存&quot;&quot;&quot;</span>
+    <span class="c1"># 1. DataFrameから特徴量を自動検出</span>
+    <span class="c1"># 2. スケーラーデータを計算</span>
+    <span class="c1"># 3. FeatureSchemaManagerで保存</span>
+</pre></div>
+</div>
+<p><strong>修正箇所</strong>:</p>
+<ul class="simple">
+<li><p>Line 85: FeatureSchemaManagerインポート追加</p></li>
+<li><p>Line 502-561: <code class="docutils literal notranslate"><span class="pre">_save_model_schema()</span></code>メソッド実装</p></li>
+<li><p>Line 659: モデル保存後にスキーマ自動保存</p></li>
+</ul>
+</section>
+</section>
+<section id="id4">
+<h2>使用方法<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h3>訓練（自動スキーマ保存）<a class="headerlink" href="#id5" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 従来通り訓練するだけ</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_reward_v385_curated.json
+
+<span class="c1"># スキーマが自動保存される:</span>
+<span class="c1"># models/ppo_reward_v385_curated.zip</span>
+<span class="c1"># models/schemas/ppo_reward_v385_curated/</span>
+<span class="c1">#   ├── metadata.json</span>
+<span class="c1">#   ├── features_schema.json</span>
+<span class="c1">#   └── scaler.npz</span>
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h3>スキーマ確認<a class="headerlink" href="#id6" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
+
+<span class="c1"># 全スキーマのサマリー表示</span>
+<span class="n">FeatureSchemaManager</span><span class="o">.</span><span class="n">print_schema_summary</span><span class="p">()</span>
+
+<span class="c1"># 特定モデルのスキーマ読み込み</span>
+<span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">)</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Features: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hash: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Created: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">created_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="c1"># 互換性チェック</span>
+<span class="n">compatible</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">verify_compatibility</span><span class="p">(</span><span class="s2">&quot;ppo_reward_v381_revised_profit_focused&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h3>レガシースキーマの移行<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrate_legacy_schema</span>
+
+<span class="c1"># v384の既存スキーマを移行</span>
+<span class="n">migrate_legacy_schema</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
+    <span class="n">legacy_schema_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/features_schema.json&quot;</span><span class="p">),</span>
+    <span class="n">legacy_scaler_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/scaler.npz&quot;</span><span class="p">),</span>
+    <span class="n">config</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;curated_features_list&quot;</span><span class="p">:</span> <span class="s2">&quot;curated_features.py::CURATED_FEATURES&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;enable_feature_filtering&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">50000</span>
+    <span class="p">}</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id8">
+<h2>解決された問題<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<section id="before">
+<h3>Before (問題あり)<a class="headerlink" href="#before" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/
+├── ppo_reward_v381.zip
+├── ppo_reward_v384.zip
+├── features_schema.json      ← v384で上書き（v381の情報消失）
+└── scaler.npz                 ← v384で上書き
+
+# バックテスト実行
+python backtest.py --model models/ppo_reward_v381.zip
+# ❌ エラー: 次元不一致 (期待: 110, 実際: 68)
+</pre></div>
+</div>
+</section>
+<section id="after">
+<h3>After (解決済み)<a class="headerlink" href="#after" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>models/
+├── ppo_reward_v381.zip
+├── ppo_reward_v384.zip
+└── schemas/
+    ├── ppo_reward_v381/
+    │   ├── metadata.json       ← v381固有（110特徴量）
+    │   ├── features_schema.json
+    │   └── scaler.npz
+    └── ppo_reward_v384/
+        ├── metadata.json       ← v384固有（68特徴量）
+        ├── features_schema.json
+        └── scaler.npz
+
+# バックテスト実行（将来実装）
+python backtest.py --model models/ppo_reward_v381.zip
+# ✅ 成功: スキーマから110特徴量を自動検出
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id9">
+<h2>メリット<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>1. 自動化<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ 訓練時にスキーマ自動保存</p></li>
+<li><p>⏳ 推論時にスキーマ自動読み込み（次フェーズ）</p></li>
+<li><p>✅ 手動設定不要</p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>2. 安全性<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ モデルごとの特徴量情報を永続化</p></li>
+<li><p>⏳ 次元不一致エラーの自動防止（環境統合後）</p></li>
+<li><p>✅ バージョン管理とハッシュ検証</p></li>
+</ul>
+</section>
+<section id="id12">
+<h3>3. 再現性<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ 過去のモデルの正確な情報保持</p></li>
+<li><p>✅ 特徴量構成の完全な記録</p></li>
+<li><p>✅ デバッグの容易化</p></li>
+</ul>
+</section>
+<section id="id13">
+<h3>4. 柔軟性<a class="headerlink" href="#id13" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>✅ 複数の特徴量セットを並行管理</p></li>
+<li><p>✅ 実験の迅速化</p></li>
+<li><p>✅ A/Bテストの簡易化</p></li>
+</ul>
+</section>
+</section>
+<section id="id14">
+<h2>未実装（次のステップ）<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="phase-3-environment">
+<h3>Phase 3: Environment統合 ⏳<a class="headerlink" href="#phase-3-environment" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 目標: スキーマから環境を自動構築</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
+
+<span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">)</span>
+<span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
+
+<span class="c1"># 環境を適切な特徴量数で作成</span>
+<span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span>
+    <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span>
+<span class="p">)</span>
+<span class="c1"># → 68特徴量で環境構築</span>
+</pre></div>
+</div>
+</section>
+<section id="phase-4-backtest-inference">
+<h3>Phase 4: Backtest/Inference統合 ⏳<a class="headerlink" href="#phase-4-backtest-inference" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 目標: スキーマベースのバックテスト</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_backtest_with_schema</span><span class="p">(</span><span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">data_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;スキーマを考慮したバックテスト&quot;&quot;&quot;</span>
+    <span class="n">model_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+    
+    <span class="c1"># スキーマ読み込み</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
+    
+    <span class="c1"># 環境作成（スキーマに基づく）</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
+    
+    <span class="c1"># バックテスト実行</span>
+    <span class="c1"># （次元不一致エラーなし！）</span>
+</pre></div>
+</div>
+</section>
+<section id="phase-5-migration-tool">
+<h3>Phase 5: Migration Tool ⏳<a class="headerlink" href="#phase-5-migration-tool" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 目標: 既存モデルの一括移行</span>
+python<span class="w"> </span>scripts/migrate_all_schemas.py
+
+<span class="c1"># 実行内容:</span>
+<span class="c1"># 1. models/ディレクトリのすべてのモデルをスキャン</span>
+<span class="c1"># 2. 各モデルの訓練configを検索</span>
+<span class="c1"># 3. スキーマを再構築して保存</span>
+<span class="c1"># 4. レガシーファイルをbackup/に移動</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id15">
+<h2>テスト<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="id16">
+<h3>単体テスト<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># FeatureSchemaManagerのテスト</span>
+pytest<span class="w"> </span>tests/test_feature_schema_manager.py
+
+<span class="c1"># テスト項目:</span>
+<span class="c1"># - スキーマ保存・読み込み</span>
+<span class="c1"># - 互換性チェック</span>
+<span class="c1"># - ハッシュ計算</span>
+<span class="c1"># - エラーハンドリング</span>
+</pre></div>
+</div>
+</section>
+<section id="id17">
+<h3>統合テスト<a class="headerlink" href="#id17" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 訓練→スキーマ保存の統合テスト</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_test_schema.json
+
+<span class="c1"># 確認:</span>
+<span class="c1"># 1. models/schemas/ppo_test_schema/が作成される</span>
+<span class="c1"># 2. metadata.jsonに正しい情報が含まれる</span>
+<span class="c1"># 3. features_schema.jsonが正しい</span>
+<span class="c1"># 4. scaler.npzが正しい</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id18">
+<h2>ドキュメント<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">docs/FEATURE_SCHEMA_MANAGEMENT_REFORM.md</span></code>: 改修計画書</p></li>
+<li><p>✅ <code class="docutils literal notranslate"><span class="pre">docs/V381_V384_VERIFICATION_STATUS.md</span></code>: 検証状況</p></li>
+<li><p>✅ このドキュメント: 実装完了サマリー</p></li>
+</ul>
+</section>
+<section id="id19">
+<h2>既知の制限<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Environmentは未統合</strong>: バックテストでの次元不一致はまだ発生</p></li>
+<li><p><strong>レガシーファイル残存</strong>: <code class="docutils literal notranslate"><span class="pre">models/features_schema.json</span></code>は手動削除が必要</p></li>
+<li><p><strong>Paper trading未対応</strong>: live_trade.pyの改修が必要</p></li>
+</ol>
+</section>
+<section id="id20">
+<h2>次回訓練での動作確認<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h3>テスト手順<a class="headerlink" href="#id21" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># 1. 新しいモデルを訓練</span>
+python<span class="w"> </span>run_training.py<span class="w"> </span>--config<span class="w"> </span>configs/training/ppo_reward_v385_test.json
+
+<span class="c1"># 2. スキーマディレクトリを確認</span>
+ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_reward_v385_test/
+
+<span class="c1"># 3. スキーマ内容を確認</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">from ztb.training.core.feature_schema_manager import FeatureSchemaManager</span>
+<span class="s2">manager = FeatureSchemaManager(&#39;ppo_reward_v385_test&#39;)</span>
+<span class="s2">metadata = manager.load_schema()</span>
+<span class="s2">print(f&#39;Features: {metadata.num_features}&#39;)</span>
+<span class="s2">print(f&#39;Config: {metadata.training_config}&#39;)</span>
+<span class="s2">&quot;</span>
+
+<span class="c1"># 4. すべてのスキーマをリスト</span>
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">from ztb.training.core.feature_schema_manager import FeatureSchemaManager</span>
+<span class="s2">FeatureSchemaManager.print_schema_summary()</span>
+<span class="s2">&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="id22">
+<h2>まとめ<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<p>✅ <strong>実装完了</strong>: FeatureSchemaManager + UnifiedTrainer統合<br />
+⏳ <strong>次フェーズ</strong>: Environment統合（バックテスト修正）<br />
+📊 <strong>効果</strong>: モデルごとの特徴量情報を永続化、管理の自動化</p>
+<p>これにより、<strong>特徴量を増やしたり減らしたりする際の手間が大幅に削減</strong>され、モデルの管理と再現性が向上しました。</p>
+<hr class="docutils" />
+<p><strong>実装日</strong>: 2025-10-10<br />
+<strong>ステータス</strong>: Phase 2完了、Phase 3へ移行準備中<br />
+<strong>影響</strong>: 今後の訓練で自動的にスキーマ保存される</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

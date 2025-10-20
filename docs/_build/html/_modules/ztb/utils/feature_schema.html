@@ -1,0 +1,570 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.utils.feature_schema &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.utils.feature_schema</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.utils.feature_schema</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Feature Schema Validation and Persistence.</span>
+
+<span class="sd">Ensures that training and evaluation use identical feature schemas to prevent</span>
+<span class="sd">silent data corruption and model input mismatches.</span>
+
+<span class="sd">Critical Requirements:</span>
+<span class="sd">1. Save schema during training: column names, dtypes, order, basic statistics</span>
+<span class="sd">2. Load and validate during evaluation: FAIL immediately on any mismatch</span>
+<span class="sd">3. SHA256 hash for quick comparison</span>
+<span class="sd">4. Detailed diff reporting when mismatches occur</span>
+
+<span class="sd">Usage:</span>
+<span class="sd">    # During training</span>
+<span class="sd">    schema = FeaturesSchema.from_dataframe(training_df, feature_columns)</span>
+<span class="sd">    schema.save(model_dir / &quot;features_schema.json&quot;)</span>
+<span class="sd">    </span>
+<span class="sd">    # During evaluation</span>
+<span class="sd">    schema = FeaturesSchema.load(model_dir / &quot;features_schema.json&quot;)</span>
+<span class="sd">    schema.validate_dataframe(eval_df, feature_columns, strict=True)</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+
+<div class="viewcode-block" id="FeaturesSchema">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FeaturesSchema</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Feature schema with validation capabilities.&quot;&quot;&quot;</span>
+
+    <span class="n">columns</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">dtypes</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+    <span class="n">order_hash</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># SHA256 of column order</span>
+    <span class="n">statistics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">created_at</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">version</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;1.0&quot;</span>
+
+<div class="viewcode-block" id="FeaturesSchema.from_dataframe">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.from_dataframe">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dataframe</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">feature_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">compute_stats</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeaturesSchema</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create schema from DataFrame.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: Input DataFrame</span>
+<span class="sd">            feature_columns: List of feature column names (if None, use all numeric columns)</span>
+<span class="sd">            compute_stats: Whether to compute basic statistics (mean, std, min, max)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            FeaturesSchema instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">feature_columns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Auto-detect numeric feature columns</span>
+            <span class="n">exclude</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;ts&quot;</span><span class="p">,</span> <span class="s2">&quot;timestamp&quot;</span><span class="p">,</span> <span class="s2">&quot;exchange&quot;</span><span class="p">,</span> <span class="s2">&quot;pair&quot;</span><span class="p">,</span> <span class="s2">&quot;episode_id&quot;</span><span class="p">,</span> <span class="s2">&quot;side&quot;</span><span class="p">,</span> <span class="s2">&quot;source&quot;</span><span class="p">}</span>
+            <span class="n">feature_columns</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">col</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span>
+                <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">exclude</span> <span class="ow">and</span> <span class="n">pd</span><span class="o">.</span><span class="n">api</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">is_numeric_dtype</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">])</span>
+            <span class="p">]</span>
+
+        <span class="c1"># Ensure columns exist</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Columns missing from DataFrame: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Extract dtypes</span>
+        <span class="n">dtypes</span> <span class="o">=</span> <span class="p">{</span><span class="n">col</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span><span class="p">}</span>
+
+        <span class="c1"># Compute order hash</span>
+        <span class="n">order_str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">feature_columns</span><span class="p">)</span>
+        <span class="n">order_hash</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">order_str</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+
+        <span class="c1"># Compute statistics</span>
+        <span class="n">statistics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">compute_stats</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span><span class="p">:</span>
+                <span class="n">series</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">statistics</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">statistics</span><span class="p">[</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">mean</span><span class="p">()),</span>
+                        <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">std</span><span class="p">()),</span>
+                        <span class="s2">&quot;min&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">min</span><span class="p">()),</span>
+                        <span class="s2">&quot;max&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">max</span><span class="p">()),</span>
+                    <span class="p">}</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">columns</span><span class="o">=</span><span class="n">feature_columns</span><span class="p">,</span>
+            <span class="n">dtypes</span><span class="o">=</span><span class="n">dtypes</span><span class="p">,</span>
+            <span class="n">order_hash</span><span class="o">=</span><span class="n">order_hash</span><span class="p">,</span>
+            <span class="n">statistics</span><span class="o">=</span><span class="n">statistics</span><span class="p">,</span>
+            <span class="n">created_at</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeaturesSchema.compute_hash">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.compute_hash">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">compute_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute overall schema hash (SHA256).</span>
+
+<span class="sd">        Includes: columns, dtypes, order</span>
+<span class="sd">        Excludes: statistics (to allow minor numerical differences)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            SHA256 hex digest</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">normalized</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;columns&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span>
+            <span class="s2">&quot;dtypes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="p">,</span>
+            <span class="s2">&quot;order_hash&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_hash</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">schema_str</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">normalized</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">schema_str</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="FeaturesSchema.validate_dataframe">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.validate_dataframe">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_dataframe</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">feature_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">tolerance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Validate DataFrame against schema.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            df: DataFrame to validate</span>
+<span class="sd">            feature_columns: Expected feature columns (if None, use schema columns)</span>
+<span class="sd">            strict: If True, raise ValueError on mismatch; if False, return (False, errors)</span>
+<span class="sd">            tolerance: Tolerance for statistical comparisons (fraction, e.g., 0.1 = 10%)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            (is_valid, error_messages)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If strict=True and validation fails</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">feature_columns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">feature_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span>
+
+        <span class="n">errors</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Check column presence</span>
+        <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing columns: </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">extra</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span> <span class="ow">and</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">extra</span><span class="p">:</span>
+            <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extra columns (not in schema): </span><span class="si">{</span><span class="n">extra</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Check column order (only if all columns are present)</span>
+        <span class="n">present_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">col</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">feature_columns</span> <span class="k">if</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">present_cols</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">set</span><span class="p">(</span><span class="n">present_cols</span><span class="p">)</span> <span class="o">==</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
+            <span class="c1"># All columns present, check order</span>
+            <span class="k">if</span> <span class="n">present_cols</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Column order mismatch. Expected: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">..., &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;Got: </span><span class="si">{</span><span class="n">present_cols</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span>
+                <span class="p">)</span>
+
+        <span class="c1"># Check dtypes</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">present_cols</span><span class="p">:</span>
+            <span class="n">expected_dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="n">actual_dtype</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">expected_dtype</span> <span class="ow">and</span> <span class="n">actual_dtype</span> <span class="o">!=</span> <span class="n">expected_dtype</span><span class="p">:</span>
+                <span class="c1"># Allow compatible dtypes (e.g., float32 vs float64)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dtypes_compatible</span><span class="p">(</span><span class="n">expected_dtype</span><span class="p">,</span> <span class="n">actual_dtype</span><span class="p">):</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Dtype mismatch for &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39;: expected </span><span class="si">{</span><span class="n">expected_dtype</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_dtype</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+
+        <span class="c1"># Check statistics (warning only, not strict error)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistics</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">present_cols</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistics</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                
+                <span class="n">series</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">series</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+                <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistics</span><span class="p">[</span><span class="n">col</span><span class="p">]</span>
+                <span class="n">actual_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">mean</span><span class="p">())</span>
+                <span class="n">actual_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">series</span><span class="o">.</span><span class="n">std</span><span class="p">())</span>
+
+                <span class="c1"># Check if statistics are wildly different (&gt;tolerance)</span>
+                <span class="k">if</span> <span class="n">expected</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">mean_diff</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">actual_mean</span> <span class="o">-</span> <span class="n">expected</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">])</span> <span class="o">/</span> <span class="n">expected</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">mean_diff</span> <span class="o">&gt;</span> <span class="n">tolerance</span><span class="p">:</span>
+                        <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;Statistics mismatch for &#39;</span><span class="si">{</span><span class="n">col</span><span class="si">}</span><span class="s2">&#39;: mean differs by </span><span class="si">{</span><span class="n">mean_diff</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> std &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(expected </span><span class="si">{</span><span class="n">expected</span><span class="p">[</span><span class="s1">&#39;mean&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">actual_mean</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">)&quot;</span>
+                        <span class="p">)</span>
+
+        <span class="n">is_valid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">strict</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_valid</span><span class="p">:</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="s2">&quot;Feature schema validation failed:</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">errors</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">is_valid</span><span class="p">,</span> <span class="n">errors</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_dtypes_compatible</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype1</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dtype2</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if two dtypes are compatible (e.g., float32 vs float64).&quot;&quot;&quot;</span>
+        <span class="c1"># Normalize dtype names</span>
+        <span class="n">d1</span> <span class="o">=</span> <span class="n">dtype1</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;numpy.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;np.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">d2</span> <span class="o">=</span> <span class="n">dtype2</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;numpy.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;np.&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Float types are compatible</span>
+        <span class="k">if</span> <span class="s2">&quot;float&quot;</span> <span class="ow">in</span> <span class="n">d1</span> <span class="ow">and</span> <span class="s2">&quot;float&quot;</span> <span class="ow">in</span> <span class="n">d2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Int types are compatible</span>
+        <span class="k">if</span> <span class="s2">&quot;int&quot;</span> <span class="ow">in</span> <span class="n">d1</span> <span class="ow">and</span> <span class="s2">&quot;int&quot;</span> <span class="ow">in</span> <span class="n">d2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Exact match</span>
+        <span class="k">return</span> <span class="n">d1</span> <span class="o">==</span> <span class="n">d2</span>
+
+<div class="viewcode-block" id="FeaturesSchema.diff">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.diff">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">diff</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="n">FeaturesSchema</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate detailed diff between this schema and another.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            other: Another FeaturesSchema to compare against</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary with diff details</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diff</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;columns_added&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">)),</span>
+            <span class="s2">&quot;columns_removed&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">columns</span><span class="p">)),</span>
+            <span class="s2">&quot;dtype_changes&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;order_changed&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_hash</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">order_hash</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Find dtype changes</span>
+        <span class="n">common_cols</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">common_cols</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">):</span>
+                <span class="n">diff</span><span class="p">[</span><span class="s2">&quot;dtype_changes&quot;</span><span class="p">][</span><span class="n">col</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;old&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">),</span>
+                    <span class="s2">&quot;new&quot;</span><span class="p">:</span> <span class="n">other</span><span class="o">.</span><span class="n">dtypes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">col</span><span class="p">),</span>
+                <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">diff</span></div>
+
+
+<div class="viewcode-block" id="FeaturesSchema.save">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Save schema to JSON file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Output file path (e.g., model_dir/features_schema.json)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">schema_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;columns&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span>
+            <span class="s2">&quot;dtypes&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtypes</span><span class="p">,</span>
+            <span class="s2">&quot;order_hash&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">order_hash</span><span class="p">,</span>
+            <span class="s2">&quot;statistics&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">statistics</span><span class="p">,</span>
+            <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">created_at</span><span class="p">,</span>
+            <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">version</span><span class="p">,</span>
+            <span class="s2">&quot;schema_hash&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">compute_hash</span><span class="p">(),</span>
+        <span class="p">}</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">schema_dict</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature schema saved to </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> (hash: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">compute_hash</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span><span class="si">}</span><span class="s2">...)&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FeaturesSchema.load">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.load">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeaturesSchema</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load schema from JSON file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Input file path</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            FeaturesSchema instance</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If schema file does not exist</span>
+<span class="sd">            ValueError: If schema format is invalid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature schema not found: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">schema_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+        <span class="c1"># Validate version</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">schema_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">,</span> <span class="s2">&quot;1.0&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">version</span> <span class="o">!=</span> <span class="s2">&quot;1.0&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported schema version: </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Verify hash integrity</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">columns</span><span class="o">=</span><span class="n">schema_dict</span><span class="p">[</span><span class="s2">&quot;columns&quot;</span><span class="p">],</span>
+            <span class="n">dtypes</span><span class="o">=</span><span class="n">schema_dict</span><span class="p">[</span><span class="s2">&quot;dtypes&quot;</span><span class="p">],</span>
+            <span class="n">order_hash</span><span class="o">=</span><span class="n">schema_dict</span><span class="p">[</span><span class="s2">&quot;order_hash&quot;</span><span class="p">],</span>
+            <span class="n">statistics</span><span class="o">=</span><span class="n">schema_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;statistics&quot;</span><span class="p">,</span> <span class="p">{}),</span>
+            <span class="n">created_at</span><span class="o">=</span><span class="n">schema_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">),</span>
+            <span class="n">version</span><span class="o">=</span><span class="n">version</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">saved_hash</span> <span class="o">=</span> <span class="n">schema_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_hash&quot;</span><span class="p">)</span>
+        <span class="n">computed_hash</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">compute_hash</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">saved_hash</span> <span class="ow">and</span> <span class="n">saved_hash</span> <span class="o">!=</span> <span class="n">computed_hash</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Schema hash mismatch: saved </span><span class="si">{</span><span class="n">saved_hash</span><span class="p">[:</span><span class="mi">16</span><span class="p">]</span><span class="si">}</span><span class="s2">..., &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;computed </span><span class="si">{</span><span class="n">computed_hash</span><span class="p">[:</span><span class="mi">16</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span>
+            <span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature schema loaded from </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> (hash: </span><span class="si">{</span><span class="n">computed_hash</span><span class="p">[:</span><span class="mi">16</span><span class="p">]</span><span class="si">}</span><span class="s2">...)&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">schema</span></div>
+
+
+<div class="viewcode-block" id="FeaturesSchema.load_and_validate">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.FeaturesSchema.load_and_validate">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_and_validate</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span>
+        <span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+        <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+        <span class="n">feature_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeaturesSchema</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Load schema and validate DataFrame in one step.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Schema file path</span>
+<span class="sd">            df: DataFrame to validate</span>
+<span class="sd">            feature_columns: Expected feature columns</span>
+<span class="sd">            strict: If True, raise on validation failure</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Loaded FeaturesSchema instance</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            FileNotFoundError: If schema file missing</span>
+<span class="sd">            ValueError: If validation fails and strict=True</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">schema</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">is_valid</span><span class="p">,</span> <span class="n">errors</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">validate_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">feature_columns</span><span class="p">,</span> <span class="n">strict</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_valid</span><span class="p">:</span>
+            <span class="n">error_msg</span> <span class="o">=</span> <span class="s2">&quot;Feature schema validation failed:</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;  - </span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">err</span> <span class="ow">in</span> <span class="n">errors</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">strict</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">error_msg</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;WARNING: </span><span class="si">{</span><span class="n">error_msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">schema</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="create_and_save_schema">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.create_and_save_schema">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_and_save_schema</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">model_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">feature_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeaturesSchema</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function: Create schema from DataFrame and save to model directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        df: Training DataFrame</span>
+<span class="sd">        model_dir: Model directory path</span>
+<span class="sd">        feature_columns: Feature column names (auto-detect if None)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Created FeaturesSchema instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">FeaturesSchema</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">feature_columns</span><span class="p">,</span> <span class="n">compute_stats</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">schema_path</span> <span class="o">=</span> <span class="n">model_dir</span> <span class="o">/</span> <span class="s2">&quot;features_schema.json&quot;</span>
+    <span class="n">schema</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">schema_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">schema</span></div>
+
+
+
+<div class="viewcode-block" id="load_and_validate_schema">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.feature_schema.load_and_validate_schema">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_and_validate_schema</span><span class="p">(</span>
+    <span class="n">model_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+    <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span>
+    <span class="n">feature_columns</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">strict</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeaturesSchema</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function: Load schema and validate DataFrame.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_dir: Model directory path</span>
+<span class="sd">        df: DataFrame to validate</span>
+<span class="sd">        feature_columns: Feature column names</span>
+<span class="sd">        strict: If True, raise on validation failure</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Loaded FeaturesSchema instance</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        FileNotFoundError: If schema file missing</span>
+<span class="sd">        ValueError: If validation fails and strict=True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">schema_path</span> <span class="o">=</span> <span class="n">model_dir</span> <span class="o">/</span> <span class="s2">&quot;features_schema.json&quot;</span>
+    <span class="k">return</span> <span class="n">FeaturesSchema</span><span class="o">.</span><span class="n">load_and_validate</span><span class="p">(</span><span class="n">schema_path</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">feature_columns</span><span class="p">,</span> <span class="n">strict</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,334 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.trading.live.core.precision_policy &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.trading.live.core.precision_policy</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.trading.live.core.precision_policy</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Precision policies for price and quantity rounding across exchanges.</span>
+
+<span class="sd">Ensures orders comply with exchange-specific tick sizes and step sizes.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">ROUND_DOWN</span><span class="p">,</span> <span class="n">ROUND_HALF_UP</span><span class="p">,</span> <span class="n">ROUND_UP</span><span class="p">,</span> <span class="n">Decimal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span>
+
+
+<div class="viewcode-block" id="RoundingMode">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.RoundingMode">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">RoundingMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rounding modes for price/quantity.&quot;&quot;&quot;</span>
+
+    <span class="n">DOWN</span> <span class="o">=</span> <span class="n">ROUND_DOWN</span>
+    <span class="n">UP</span> <span class="o">=</span> <span class="n">ROUND_UP</span>
+    <span class="n">HALF_UP</span> <span class="o">=</span> <span class="n">ROUND_HALF_UP</span></div>
+
+
+
+<div class="viewcode-block" id="PrecisionPolicy">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicy">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PrecisionPolicy</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Precision policy for a trading pair.&quot;&quot;&quot;</span>
+
+    <span class="n">price_tick</span><span class="p">:</span> <span class="n">Decimal</span>  <span class="c1"># Minimum price increment (e.g., 0.01 for JPY pairs)</span>
+    <span class="n">quantity_step</span><span class="p">:</span> <span class="n">Decimal</span>  <span class="c1"># Minimum quantity increment (e.g., 0.0001 for BTC)</span>
+    <span class="n">price_rounding</span><span class="p">:</span> <span class="n">RoundingMode</span> <span class="o">=</span> <span class="n">RoundingMode</span><span class="o">.</span><span class="n">HALF_UP</span>
+    <span class="n">quantity_rounding</span><span class="p">:</span> <span class="n">RoundingMode</span> <span class="o">=</span> <span class="n">RoundingMode</span><span class="o">.</span><span class="n">DOWN</span>
+    <span class="n">min_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Decimal</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_quantity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Decimal</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">min_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Decimal</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">max_price</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Decimal</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="PrecisionPolicyManager">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PrecisionPolicyManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manages precision policies for different venues and symbols.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Default policies - can be loaded from config</span>
+    <span class="n">_DEFAULT_POLICIES</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PrecisionPolicy</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;coincheck&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BTC_JPY&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.01&quot;</span><span class="p">),</span>
+                <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">),</span>
+                <span class="n">min_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">),</span>
+                <span class="n">max_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;100.0&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;ETH_JPY&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.1&quot;</span><span class="p">),</span>
+                <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.001&quot;</span><span class="p">),</span>
+                <span class="n">min_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.001&quot;</span><span class="p">),</span>
+                <span class="n">max_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1000.0&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.01&quot;</span><span class="p">),</span> <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">)</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;zaif&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BTC_JPY&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">),</span>
+                <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">),</span>
+                <span class="n">min_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">),</span>
+                <span class="n">max_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;10.0&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;MONA_JPY&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.01&quot;</span><span class="p">),</span>
+                <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.1&quot;</span><span class="p">),</span>
+                <span class="n">min_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.1&quot;</span><span class="p">),</span>
+                <span class="n">max_quantity</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;10000.0&quot;</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="s2">&quot;default&quot;</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">(</span>
+                <span class="n">price_tick</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.01&quot;</span><span class="p">),</span> <span class="n">quantity_step</span><span class="o">=</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">)</span>
+            <span class="p">),</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_policies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_DEFAULT_POLICIES</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<div class="viewcode-block" id="PrecisionPolicyManager.get_policy">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager.get_policy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PrecisionPolicy</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get precision policy for a venue and symbol.&quot;&quot;&quot;</span>
+        <span class="c1"># Normalize symbol first</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.live.data.symbols</span><span class="w"> </span><span class="kn">import</span> <span class="n">SymbolNormalizer</span><span class="p">,</span> <span class="n">Venue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">venue_enum</span> <span class="o">=</span> <span class="n">Venue</span><span class="p">(</span><span class="n">venue</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="c1"># Fallback to default if venue not recognized</span>
+            <span class="n">venue_enum</span> <span class="o">=</span> <span class="n">Venue</span><span class="o">.</span><span class="n">COINCHECK</span>  <span class="c1"># Default fallback</span>
+        <span class="n">normalizer</span> <span class="o">=</span> <span class="n">SymbolNormalizer</span><span class="p">()</span>
+        <span class="n">base</span><span class="p">,</span> <span class="n">quote</span> <span class="o">=</span> <span class="n">normalizer</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">venue_enum</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
+        <span class="n">normalized_symbol</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">quote</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="n">venue_policies</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_policies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">venue</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="p">{})</span>
+        <span class="k">return</span> <span class="n">venue_policies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">normalized_symbol</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
+            <span class="n">venue_policies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+                <span class="s2">&quot;default&quot;</span><span class="p">,</span> <span class="n">PrecisionPolicy</span><span class="p">(</span><span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.01&quot;</span><span class="p">),</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;0.0001&quot;</span><span class="p">))</span>
+            <span class="p">),</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PrecisionPolicyManager.set_policy">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager.set_policy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_policy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="n">PrecisionPolicy</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set precision policy for a venue and symbol.&quot;&quot;&quot;</span>
+        <span class="n">venue</span> <span class="o">=</span> <span class="n">venue</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">symbol</span> <span class="o">=</span> <span class="n">symbol</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">venue</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_policies</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_policies</span><span class="p">[</span><span class="n">venue</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_policies</span><span class="p">[</span><span class="n">venue</span><span class="p">][</span><span class="n">symbol</span><span class="p">]</span> <span class="o">=</span> <span class="n">policy</span></div>
+
+
+<div class="viewcode-block" id="PrecisionPolicyManager.quantize_price">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager.quantize_price">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">quantize_price</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Decimal</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize price according to venue/symbol policy.&quot;&quot;&quot;</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
+
+        <span class="c1"># Apply minimum/maximum bounds</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_price</span> <span class="ow">and</span> <span class="n">price</span> <span class="o">&lt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_price</span><span class="p">:</span>
+            <span class="n">price</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_price</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_price</span> <span class="ow">and</span> <span class="n">price</span> <span class="o">&gt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_price</span><span class="p">:</span>
+            <span class="n">price</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_price</span>
+
+        <span class="c1"># Quantize to tick size</span>
+        <span class="n">quantized</span> <span class="o">=</span> <span class="p">(</span><span class="n">price</span> <span class="o">/</span> <span class="n">policy</span><span class="o">.</span><span class="n">price_tick</span><span class="p">)</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span>
+            <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">),</span> <span class="n">rounding</span><span class="o">=</span><span class="n">policy</span><span class="o">.</span><span class="n">price_rounding</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">policy</span><span class="o">.</span><span class="n">price_tick</span>
+        <span class="k">return</span> <span class="n">quantized</span></div>
+
+
+<div class="viewcode-block" id="PrecisionPolicyManager.quantize_quantity">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager.quantize_quantity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">quantize_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">quantity</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Decimal</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Quantize quantity according to venue/symbol policy.&quot;&quot;&quot;</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
+
+        <span class="c1"># Apply minimum/maximum bounds</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_quantity</span> <span class="ow">and</span> <span class="n">quantity</span> <span class="o">&lt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_quantity</span><span class="p">:</span>
+            <span class="n">quantity</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_quantity</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_quantity</span> <span class="ow">and</span> <span class="n">quantity</span> <span class="o">&gt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_quantity</span><span class="p">:</span>
+            <span class="n">quantity</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_quantity</span>
+
+        <span class="c1"># Quantize to step size</span>
+        <span class="n">quantized</span> <span class="o">=</span> <span class="p">(</span><span class="n">quantity</span> <span class="o">/</span> <span class="n">policy</span><span class="o">.</span><span class="n">quantity_step</span><span class="p">)</span><span class="o">.</span><span class="n">quantize</span><span class="p">(</span>
+            <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">),</span> <span class="n">rounding</span><span class="o">=</span><span class="n">policy</span><span class="o">.</span><span class="n">quantity_rounding</span><span class="o">.</span><span class="n">value</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">policy</span><span class="o">.</span><span class="n">quantity_step</span>
+        <span class="k">return</span> <span class="n">quantized</span></div>
+
+
+<div class="viewcode-block" id="PrecisionPolicyManager.validate_order">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.PrecisionPolicyManager.validate_order">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate_order</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">,</span> <span class="n">quantity</span><span class="p">:</span> <span class="n">Decimal</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate that price and quantity comply with policy.&quot;&quot;&quot;</span>
+        <span class="n">policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_policy</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">)</span>
+
+        <span class="c1"># Check bounds</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_price</span> <span class="ow">and</span> <span class="n">price</span> <span class="o">&lt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_price</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_price</span> <span class="ow">and</span> <span class="n">price</span> <span class="o">&gt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_price</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_quantity</span> <span class="ow">and</span> <span class="n">quantity</span> <span class="o">&lt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">min_quantity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_quantity</span> <span class="ow">and</span> <span class="n">quantity</span> <span class="o">&gt;</span> <span class="n">policy</span><span class="o">.</span><span class="n">max_quantity</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Check quantization</span>
+        <span class="n">quantized_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantize_price</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span>
+        <span class="n">quantized_quantity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantize_quantity</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">quantity</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">price</span> <span class="o">==</span> <span class="n">quantized_price</span> <span class="ow">and</span> <span class="n">quantity</span> <span class="o">==</span> <span class="n">quantized_quantity</span></div>
+</div>
+
+
+
+<span class="c1"># Global instance</span>
+<span class="n">_precision_manager</span> <span class="o">=</span> <span class="n">PrecisionPolicyManager</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="get_precision_manager">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.get_precision_manager">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_precision_manager</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">PrecisionPolicyManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get global precision policy manager.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_precision_manager</span></div>
+
+
+
+<div class="viewcode-block" id="quantize_price">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.quantize_price">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">quantize_price</span><span class="p">(</span><span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">price</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Decimal</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience function to quantize price.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_precision_manager</span><span class="o">.</span><span class="n">quantize_price</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">price</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="quantize_quantity">
+<a class="viewcode-back" href="../../../../../api/generated/ztb.trading.live.core.html#ztb.trading.live.core.precision_policy.quantize_quantity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">quantize_quantity</span><span class="p">(</span><span class="n">venue</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">symbol</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">quantity</span><span class="p">:</span> <span class="n">Decimal</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Decimal</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convenience function to quantize quantity.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_precision_manager</span><span class="o">.</span><span class="n">quantize_quantity</span><span class="p">(</span><span class="n">venue</span><span class="p">,</span> <span class="n">symbol</span><span class="p">,</span> <span class="n">quantity</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

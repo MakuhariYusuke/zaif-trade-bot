@@ -1,0 +1,526 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ztb package" href="ztb.html" />
+    <link rel="prev" title="ZTB Utils API Documentation" href="../API_UTILS.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_reference.html">API Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../API_UTILS.html">ZTB Utils API Documentation</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">ztb</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html">ztb package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">API Reference</a></li>
+      <li class="breadcrumb-item active">ztb</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/api/generated/modules.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="ztb">
+<h1>ztb<a class="headerlink" href="#ztb" title="Link to this heading"></a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="ztb.html">ztb package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ztb.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ztb.adaptation.html">ztb.adaptation package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.adaptive_feature_selector">ztb.adaptation.adaptive_feature_selector module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.config">ztb.adaptation.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.continual_learning">ztb.adaptation.continual_learning module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.dynamic_hyperparameter_adapter">ztb.adaptation.dynamic_hyperparameter_adapter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.hyperparameter_adaptation_system">ztb.adaptation.hyperparameter_adaptation_system module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.market_aware_hyperparameter_manager">ztb.adaptation.market_aware_hyperparameter_manager module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation.meta_learning">ztb.adaptation.meta_learning module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.adaptation.html#module-ztb.adaptation">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.analysis.html">ztb.analysis package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.analysis.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.analysis.html#module-ztb.analysis.position_duration_analyzer">ztb.analysis.position_duration_analyzer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.analysis.html#module-ztb.analysis.sac_types">ztb.analysis.sac_types module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.analysis.html#module-ztb.analysis.unified_analyze">ztb.analysis.unified_analyze module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.analysis.html#module-ztb.analysis">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.benchmarks.html">ztb.benchmarks package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.ablate_features">ztb.benchmarks.ablate_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.ablation_runner">ztb.benchmarks.ablation_runner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.bench_features">ztb.benchmarks.bench_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.bench_io">ztb.benchmarks.bench_io module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.checkpoint_benchmark">ztb.benchmarks.checkpoint_benchmark module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks.streaming_benchmark">ztb.benchmarks.streaming_benchmark module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.benchmarks.html#module-ztb.benchmarks">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.config.html">ztb.config package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#module-ztb.config.legacy_schema">ztb.config.legacy_schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#module-ztb.config.loader">ztb.config.loader module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#module-ztb.config.manager">ztb.config.manager module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#module-ztb.config.schema">ztb.config.schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.config.html#module-ztb.config">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.data.html">ztb.data package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.anomaly_detection">ztb.data.anomaly_detection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.binance_data">ztb.data.binance_data module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.btc_data_augmentation">ztb.data.btc_data_augmentation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.coin_gecko_stream">ztb.data.coin_gecko_stream module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.create_test_dataset">ztb.data.create_test_dataset module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.data_augmentation">ztb.data.data_augmentation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.data_loader">ztb.data.data_loader module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.data_processing_pipeline">ztb.data.data_processing_pipeline module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.data_validation">ztb.data.data_validation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.integrity_checker">ztb.data.integrity_checker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#ztb-data-marketdata-registry-module">ztb.data.marketdata_registry module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.outlier_detection">ztb.data.outlier_detection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.scheduler">ztb.data.scheduler module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.stream_buffer">ztb.data.stream_buffer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.stream_convert">ztb.data.stream_convert module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data.streaming_pipeline">ztb.data.streaming_pipeline module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.data.html#module-ztb.data">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.evaluation.html">ztb.evaluation package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.auto_feature_generator">ztb.evaluation.auto_feature_generator module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.backtest_model">ztb.evaluation.backtest_model module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.backtest_v381_v384">ztb.evaluation.backtest_v381_v384 module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.backtest_v384_simple">ztb.evaluation.backtest_v384_simple module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.backtest_with_schema">ztb.evaluation.backtest_with_schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.baseline_comparison">ztb.evaluation.baseline_comparison module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.cv">ztb.evaluation.cv module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.dependency">ztb.evaluation.dependency module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.evaluate">ztb.evaluation.evaluate module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.evaluate_old">ztb.evaluation.evaluate_old module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#ztb-evaluation-experimental-weekly-report-module">ztb.evaluation.experimental_weekly_report module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.logging">ztb.evaluation.logging module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#ztb-evaluation-optimization-module">ztb.evaluation.optimization module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.position_duration_validator">ztb.evaluation.position_duration_validator module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.preprocess">ztb.evaluation.preprocess module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.promotion">ztb.evaluation.promotion module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#ztb-evaluation-re-evaluate-features-module">ztb.evaluation.re_evaluate_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.redundancy">ztb.evaluation.redundancy module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.regime_eval">ztb.evaluation.regime_eval module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#ztb-evaluation-regime-evaluation-module">ztb.evaluation.regime_evaluation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.run_regime_eval">ztb.evaluation.run_regime_eval module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.runner">ztb.evaluation.runner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#ztb-evaluation-simple-backtest-module">ztb.evaluation.simple_backtest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.status">ztb.evaluation.status module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.stochastic_backtest">ztb.evaluation.stochastic_backtest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation.tests">ztb.evaluation.tests module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.evaluation.html#module-ztb.evaluation">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.experiments.html">ztb.experiments package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#module-ztb.experiments.base">ztb.experiments.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#module-ztb.experiments.job_manager">ztb.experiments.job_manager module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#module-ztb.experiments.parallel_rl_runner">ztb.experiments.parallel_rl_runner module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#ztb-experiments-smoke-test-module">ztb.experiments.smoke_test module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.experiments.html#module-ztb.experiments">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.features.html">ztb.features package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.adaptive_selection">ztb.features.adaptive_selection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.attention_trainer">ztb.features.attention_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.base">ztb.features.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.causal_inference">ztb.features.causal_inference module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.curated_features">ztb.features.curated_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.feature_cache">ztb.features.feature_cache module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.feature_engine">ztb.features.feature_engine module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.perm_importance">ztb.features.perm_importance module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.registry">ztb.features.registry module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.sac_v427_feature_engineering">ztb.features.sac_v427_feature_engineering module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.scalping">ztb.features.scalping module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features.timeframe">ztb.features.timeframe module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.features.html#module-ztb.features">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.inference.html">ztb.inference package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.inference.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.inference.html#module-ztb.inference.decode">ztb.inference.decode module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.inference.html#module-ztb.inference">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.multimodal.html">ztb.multimodal package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.multimodal.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.multimodal.html#module-ztb.multimodal">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.optimization.html">ztb.optimization package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.base">ztb.optimization.base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.compare_methods">ztb.optimization.compare_methods module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.diverse_learning_methods">ztb.optimization.diverse_learning_methods module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.examples">ztb.optimization.examples module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.hyperparameter_optimizer">ztb.optimization.hyperparameter_optimizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.model_compression">ztb.optimization.model_compression module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.reward_function_evaluator">ztb.optimization.reward_function_evaluator module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.reward_function_optimizer">ztb.optimization.reward_function_optimizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#ztb-optimization-run-optimization-module">ztb.optimization.run_optimization module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.sac_utils">ztb.optimization.sac_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.system_optimizer">ztb.optimization.system_optimizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.test_model_compression">ztb.optimization.test_model_compression module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization.test_system_optimizer">ztb.optimization.test_system_optimizer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.optimization.html#module-ztb.optimization">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.risk.html">ztb.risk package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.advanced_auto_stop">ztb.risk.advanced_auto_stop module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.checks">ztb.risk.checks module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.circuit_breakers">ztb.risk.circuit_breakers module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.circuit_breakers_compat">ztb.risk.circuit_breakers_compat module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.position_sizing">ztb.risk.position_sizing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.profiles">ztb.risk.profiles module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk.rules">ztb.risk.rules module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.risk.html#module-ztb.risk">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.sac_v426_improvement.html">ztb.sac_v426_improvement package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.sac_v426_improvement.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.sac_v426_improvement.html#module-ztb.sac_v426_improvement.config">ztb.sac_v426_improvement.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.sac_v426_improvement.html#module-ztb.sac_v426_improvement.evaluation">ztb.sac_v426_improvement.evaluation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.sac_v426_improvement.html#module-ztb.sac_v426_improvement.improvements">ztb.sac_v426_improvement.improvements module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.sac_v426_improvement.html#module-ztb.sac_v426_improvement">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.tests.html">ztb.tests package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.conftest">ztb.tests.conftest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_ab_test_framework">ztb.tests.test_ab_test_framework module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_action_diagnostics">ztb.tests.test_action_diagnostics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_adaptation_demo">ztb.tests.test_adaptation_demo module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_additional_refactoring">ztb.tests.test_additional_refactoring module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_advanced_features">ztb.tests.test_advanced_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_algorithm_factory">ztb.tests.test_algorithm_factory module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_balance_fetch">ztb.tests.test_balance_fetch module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-basic-ppo-module">ztb.tests.test_basic_ppo module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-bugfixes-module">ztb.tests.test_bugfixes module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_causal_inference">ztb.tests.test_causal_inference module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-config-propagation-module">ztb.tests.test_config_propagation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_dynamic_hyperparameter_adaptation">ztb.tests.test_dynamic_hyperparameter_adaptation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_enhanced_explainability">ztb.tests.test_enhanced_explainability module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-env-creation-logs-module">ztb.tests.test_env_creation_logs module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_env_random">ztb.tests.test_env_random module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_env_reward_settings">ztb.tests.test_env_reward_settings module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-equivalence-module">ztb.tests.test_equivalence module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_explainability">ztb.tests.test_explainability module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_federated_mixed_precision">ztb.tests.test_federated_mixed_precision module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_final_constants">ztb.tests.test_final_constants module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_high_entropy">ztb.tests.test_high_entropy module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_hyperparameter_fix">ztb.tests.test_hyperparameter_fix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_imports">ztb.tests.test_imports module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_integrated_operations">ztb.tests.test_integrated_operations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-integration-module">ztb.tests.test_integration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_memory_leak_prevention">ztb.tests.test_memory_leak_prevention module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_memory_optimized">ztb.tests.test_memory_optimized module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_multimodal_system_integration">ztb.tests.test_multimodal_system_integration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_optimization_features">ztb.tests.test_optimization_features module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-paper-trading-module">ztb.tests.test_paper_trading module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_paper_trading_ensemble">ztb.tests.test_paper_trading_ensemble module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-ppo-progress-module">ztb.tests.test_ppo_progress module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_random_actions">ztb.tests.test_random_actions module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_refactored_imports">ztb.tests.test_refactored_imports module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-regime-module">ztb.tests.test_regime module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-regime-evaluation-module">ztb.tests.test_regime_evaluation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-run-module">ztb.tests.test_run module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_sac_explainability_integration">ztb.tests.test_sac_explainability_integration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-scalability-module">ztb.tests.test_scalability module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-sell-mitigation-integration-module">ztb.tests.test_sell_mitigation_integration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_simple_train">ztb.tests.test_simple_train module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_stochastic_inference">ztb.tests.test_stochastic_inference module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_timesteps_fix">ztb.tests.test_timesteps_fix module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_unified_trainer">ztb.tests.test_unified_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_unified_trainer_refactoring">ztb.tests.test_unified_trainer_refactoring module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-untrained-module">ztb.tests.test_untrained module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_utils">ztb.tests.test_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests.test_v376_config">ztb.tests.test_v376_config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#ztb-tests-test-v393-inference-module">ztb.tests.test_v393_inference module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.tests.html#module-ztb.tests">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.trading.html">ztb.trading package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.constants">ztb.trading.constants module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.ensemble">ztb.trading.ensemble module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.env_config">ztb.trading.env_config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.live_trade">ztb.trading.live_trade module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.ppo_trainer">ztb.trading.ppo_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading.trading_service">ztb.trading.trading_service module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.trading.html#module-ztb.trading">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.training.html">ztb.training package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.entropy_temperature">ztb.training.entropy_temperature module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.federated_learning">ztb.training.federated_learning module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.gradient_accumulation">ztb.training.gradient_accumulation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.sac_trainer">ztb.training.sac_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.sac_utils">ztb.training.sac_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.sac_v427_advanced_trainer">ztb.training.sac_v427_advanced_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.test_gradient_accumulation">ztb.training.test_gradient_accumulation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.unified_trainer">ztb.training.unified_trainer module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training.unified_trainer_old">ztb.training.unified_trainer_old module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.training.html#module-ztb.training">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.utils.html">ztb.utils package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#subpackages">Subpackages</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.cache_utils">ztb.utils.cache_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.calibration">ztb.utils.calibration module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.checkpoint">ztb.utils.checkpoint module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.ci_utils">ztb.utils.ci_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.circuit_breaker">ztb.utils.circuit_breaker module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.cli_common">ztb.utils.cli_common module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.compat_wrapper">ztb.utils.compat_wrapper module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.config">ztb.utils.config module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.config_fingerprint">ztb.utils.config_fingerprint module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.config_loader">ztb.utils.config_loader module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.data_utils">ztb.utils.data_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.data_validation">ztb.utils.data_validation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.drift_detection">ztb.utils.drift_detection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.errors">ztb.utils.errors module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.fault_injection">ztb.utils.fault_injection module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.feature_schema">ztb.utils.feature_schema module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.feature_testing">ztb.utils.feature_testing module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.fee_model">ztb.utils.fee_model module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.file_operations">ztb.utils.file_operations module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.file_utils">ztb.utils.file_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.health_monitor">ztb.utils.health_monitor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.logging_utils">ztb.utils.logging_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.long_running_confirm">ztb.utils.long_running_confirm module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.memory_monitor">ztb.utils.memory_monitor module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.memory_utils">ztb.utils.memory_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.normalization">ztb.utils.normalization module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.observability">ztb.utils.observability module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.parallel_experiments">ztb.utils.parallel_experiments module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.path_utils">ztb.utils.path_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.performance_profiler">ztb.utils.performance_profiler module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.performance_utils">ztb.utils.performance_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.project_setup">ztb.utils.project_setup module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.quality">ztb.utils.quality module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.rate_limiter">ztb.utils.rate_limiter module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.run_manifest">ztb.utils.run_manifest module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.run_metadata">ztb.utils.run_metadata module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.seed_manager">ztb.utils.seed_manager module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.statistics">ztb.utils.statistics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.talib_wrapper">ztb.utils.talib_wrapper module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.thresholds">ztb.utils.thresholds module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.trading_metrics">ztb.utils.trading_metrics module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.type_validation">ztb.utils.type_validation module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.types">ztb.utils.types module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils.warmup_calculator">ztb.utils.warmup_calculator module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.utils.html#module-ztb.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ztb.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ztb.html#module-ztb.sac_v427_market_adaptive_system">ztb.sac_v427_market_adaptive_system module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime"><code class="docutils literal notranslate"><span class="pre">MarketRegime</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime.name"><code class="docutils literal notranslate"><span class="pre">MarketRegime.name</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime.volatility"><code class="docutils literal notranslate"><span class="pre">MarketRegime.volatility</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime.trend_strength"><code class="docutils literal notranslate"><span class="pre">MarketRegime.trend_strength</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime.correlation_target"><code class="docutils literal notranslate"><span class="pre">MarketRegime.correlation_target</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.MarketRegime.risk_multiplier"><code class="docutils literal notranslate"><span class="pre">MarketRegime.risk_multiplier</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.EnsembleMember"><code class="docutils literal notranslate"><span class="pre">EnsembleMember</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.EnsembleMember.model_path"><code class="docutils literal notranslate"><span class="pre">EnsembleMember.model_path</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.EnsembleMember.specialization"><code class="docutils literal notranslate"><span class="pre">EnsembleMember.specialization</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.EnsembleMember.confidence"><code class="docutils literal notranslate"><span class="pre">EnsembleMember.confidence</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.EnsembleMember.performance_metrics"><code class="docutils literal notranslate"><span class="pre">EnsembleMember.performance_metrics</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.detect_market_regime"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.detect_market_regime()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.calculate_adaptive_reward"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.calculate_adaptive_reward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.build_ensemble_system"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.build_ensemble_system()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.ensemble_prediction"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.ensemble_prediction()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.apply_meta_learning"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.apply_meta_learning()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427MarketAdaptiveSystem.get_system_status"><code class="docutils literal notranslate"><span class="pre">SACv427MarketAdaptiveSystem.get_system_status()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427RewardCalculator"><code class="docutils literal notranslate"><span class="pre">SACv427RewardCalculator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.sac_v427_market_adaptive_system.SACv427RewardCalculator.calculate_reward_v427"><code class="docutils literal notranslate"><span class="pre">SACv427RewardCalculator.calculate_reward_v427()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="ztb.html#module-ztb">Module contents</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.ConfigManager"><code class="docutils literal notranslate"><span class="pre">ConfigManager</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.ConfigManager.get"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.ConfigManager.get_config"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.ConfigManager.get_instance"><code class="docutils literal notranslate"><span class="pre">ConfigManager.get_instance()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.ConfigManager.load_config"><code class="docutils literal notranslate"><span class="pre">ConfigManager.load_config()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.ConfigManager.set"><code class="docutils literal notranslate"><span class="pre">ConfigManager.set()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_correlation_and_dependencies"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_correlation_and_dependencies()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_market_conditions"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_market_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_microstructure_effects"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_microstructure_effects()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_robustness"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_robustness()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_temporal_patterns"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_temporal_patterns()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_trading_frequency"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_trading_frequency()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_transaction_cost_impact"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_transaction_cost_impact()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.analyze_walk_forward_efficiency"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.analyze_walk_forward_efficiency()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.calculate_risk_metrics"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.calculate_risk_metrics()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.create_comprehensive_validation_suite"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.create_comprehensive_validation_suite()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.create_market_condition_balanced_dataset"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.create_market_condition_balanced_dataset()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.enhance_feature_engineering"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.enhance_feature_engineering()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.generate_comprehensive_report"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.generate_comprehensive_report()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.generate_v425_improvement_plan"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.generate_v425_improvement_plan()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.implement_adaptive_reward_system"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.implement_adaptive_reward_system()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.implement_curriculum_learning_v2"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.implement_curriculum_learning_v2()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BacktestAnalyzer.perform_stress_tests"><code class="docutils literal notranslate"><span class="pre">BacktestAnalyzer.perform_stress_tests()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.BTCDataAugmentor"><code class="docutils literal notranslate"><span class="pre">BTCDataAugmentor</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BTCDataAugmentor.add_diverse_market_conditions"><code class="docutils literal notranslate"><span class="pre">BTCDataAugmentor.add_diverse_market_conditions()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BTCDataAugmentor.analyze_data_bias"><code class="docutils literal notranslate"><span class="pre">BTCDataAugmentor.analyze_data_bias()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BTCDataAugmentor.extend_historical_data"><code class="docutils literal notranslate"><span class="pre">BTCDataAugmentor.extend_historical_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BTCDataAugmentor.save_augmented_data"><code class="docutils literal notranslate"><span class="pre">BTCDataAugmentor.save_augmented_data()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="ztb.html#ztb.BTCBiasDetector"><code class="docutils literal notranslate"><span class="pre">BTCBiasDetector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="ztb.html#ztb.BTCBiasDetector.detect_data_bias"><code class="docutils literal notranslate"><span class="pre">BTCBiasDetector.detect_data_bias()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../API_UTILS.html" class="btn btn-neutral float-left" title="ZTB Utils API Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="ztb.html" class="btn btn-neutral float-right" title="ztb package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

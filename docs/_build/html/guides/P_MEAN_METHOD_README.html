@@ -1,0 +1,243 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAC Session Comparison Tool &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Training Documentation" href="../training/index.html" />
+    <link rel="prev" title="Lagrange制約パラメータ最適化結果" href="LAGRANGE_OPTIMIZATION_RESULTS.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="index.html">Guides</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="HYBRID_REWARD_OPTIMIZATION_GUIDE.html">v379+v380+Optimized 統合実行ガイド</a></li>
+<li class="toctree-l3"><a class="reference internal" href="LAGRANGE_OPTIMIZATION_RESULTS.html">Lagrange制約パラメータ最適化結果</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">SAC Session Comparison Tool</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id1">特徴</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#p-p-mean-method">p平均法 (p-mean method)</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id5">出力結果</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id6">使用方法</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id7">参考文献</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../training/index.html">Training Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../tutorials/index.html">Tutorials</a></li>
+          <li class="breadcrumb-item"><a href="index.html">Guides</a></li>
+      <li class="breadcrumb-item active">SAC Session Comparison Tool</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/guides/P_MEAN_METHOD_README.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="sac-session-comparison-tool">
+<h1>SAC Session Comparison Tool<a class="headerlink" href="#sac-session-comparison-tool" title="Link to this heading"></a></h1>
+<p>SAC訓練ログの比較と統計的検定を行うツールです。</p>
+<section id="id1">
+<h2>特徴<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p>TensorBoardログからメトリクスを抽出</p></li>
+<li><p>セッション間の統計的比較</p></li>
+<li><p>t検定による個別メトリクスの有意差検定</p></li>
+<li><p><strong>p平均法による総合的有意性評価</strong></p></li>
+<li><p>効果量の計算</p></li>
+</ul>
+</section>
+<section id="p-p-mean-method">
+<h2>p平均法 (p-mean method)<a class="headerlink" href="#p-p-mean-method" title="Link to this heading"></a></h2>
+<p>p平均法は、複数の統計検定のp値を統合して総合的な有意性を評価する手法です。</p>
+<section id="arithmetic-mean">
+<h3>算術平均 (Arithmetic Mean)<a class="headerlink" href="#arithmetic-mean" title="Link to this heading"></a></h3>
+<p>複数のp値を単純に平均します。</p>
+<ul class="simple">
+<li><p>直感的で理解しやすい</p></li>
+<li><p>全てのp値に等しい重み付け</p></li>
+<li><p>極端なp値の影響を受けやすい</p></li>
+</ul>
+</section>
+<section id="geometric-mean">
+<h3>幾何平均 (Geometric Mean)<a class="headerlink" href="#geometric-mean" title="Link to this heading"></a></h3>
+<p>p値の対数を平均し、指数関数で戻します。</p>
+<ul class="simple">
+<li><p>極端なp値の影響を緩和</p></li>
+<li><p>0に近いp値を適切に扱える</p></li>
+<li><p>統計学的によりロバスト</p></li>
+</ul>
+</section>
+<section id="id2">
+<h3>使用例<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">compare_sac_sessions</span><span class="w"> </span><span class="kn">import</span> <span class="n">p_mean_method</span>
+
+<span class="c1"># 3つのメトリクスのp値統合</span>
+<span class="n">p_values</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.07</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">]</span>  <span class="c1"># 個別のt検定結果</span>
+
+<span class="c1"># 算術平均</span>
+<span class="n">combined_p_arithmetic</span> <span class="o">=</span> <span class="n">p_mean_method</span><span class="p">(</span><span class="n">p_values</span><span class="p">,</span> <span class="s1">&#39;arithmetic&#39;</span><span class="p">)</span>
+
+<span class="c1"># 幾何平均</span>
+<span class="n">combined_p_geometric</span> <span class="o">=</span> <span class="n">p_mean_method</span><span class="p">(</span><span class="n">p_values</span><span class="p">,</span> <span class="s1">&#39;geometric&#39;</span><span class="p">)</span>
+
+<span class="c1"># 有意性判断</span>
+<span class="n">significant</span> <span class="o">=</span> <span class="n">combined_p_arithmetic</span> <span class="o">&lt;</span> <span class="mf">0.05</span>
+</pre></div>
+</div>
+</section>
+<section id="id3">
+<h3>解釈<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">p_mean</span> <span class="pre">&lt;</span> <span class="pre">0.05</span></code>: 全体として統計的有意な差がある</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">p_mean</span> <span class="pre">&gt;=</span> <span class="pre">0.05</span></code>: 全体として統計的有意な差がない</p></li>
+<li><p>個別の検定結果も確認し、総合的な判断を行う</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>注意事項<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p>p値が完全に独立であることを仮定</p></li>
+<li><p>相関のある検定では結果が保守的になる可能性</p></li>
+<li><p>解釈時は個別の検定結果も確認すること</p></li>
+</ul>
+</section>
+</section>
+<section id="id5">
+<h2>出力結果<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>🔬 train/ent_coef:
+  t-statistic: -2.3456
+  p-value: 0.0234
+  Significant (p&lt;0.05): ✅ Yes
+  Effect size: 0.4567
+
+🔬 P-MEAN METHOD:
+  Arithmetic mean p-value: 0.0345
+  Geometric mean p-value: 0.0312
+  Overall significant (p&lt;0.05): ✅ Yes
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h2>使用方法<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>compare_sac_sessions.py
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h2>参考文献<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference external" href="https://note.com/a_small_hamster/n/n718dbe6bfe9e">統計的仮説検定の多重性問題とp値の統合</a></p></li>
+<li><p><a class="reference external" href="https://note.com/btcml/n/n0d9575882640">BTC ML: p値の統合手法</a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="LAGRANGE_OPTIMIZATION_RESULTS.html" class="btn btn-neutral float-left" title="Lagrange制約パラメータ最適化結果" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../training/index.html" class="btn btn-neutral float-right" title="Training Documentation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

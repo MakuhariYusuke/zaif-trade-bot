@@ -1,0 +1,457 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.adaptation.concept_drift.manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.adaptation.concept_drift.manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.adaptation.concept_drift.manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Concept Drift Detection Manager</span>
+<span class="sd">複数のドリフト検知アルゴリズムを統合管理</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">as_completed</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.detector</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DriftDetector</span><span class="p">,</span>
+    <span class="n">KolmogorovSmirnovDetector</span><span class="p">,</span>
+    <span class="n">ADWINDetector</span><span class="p">,</span>
+    <span class="n">DDMDetector</span><span class="p">,</span>
+    <span class="n">EDDMDetector</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.drift_types</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DriftType</span><span class="p">,</span>
+    <span class="n">DriftSeverity</span><span class="p">,</span>
+    <span class="n">DriftDetectionResult</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptDriftConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConceptDriftConfig</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="ConceptDriftManager">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ConceptDriftManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;コンセプトドリフト検知マネージャー&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ConceptDriftConfig</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">ConceptDriftConfig</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DriftDetector</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DriftDetectionResult</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_detection_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># 検知器の初期化</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_detectors</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;検知器を初期化&quot;&quot;&quot;</span>
+        <span class="n">detector_classes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ks_test&#39;</span><span class="p">:</span> <span class="n">KolmogorovSmirnovDetector</span><span class="p">,</span>
+            <span class="s1">&#39;adwin&#39;</span><span class="p">:</span> <span class="n">ADWINDetector</span><span class="p">,</span>
+            <span class="s1">&#39;ddm&#39;</span><span class="p">:</span> <span class="n">DDMDetector</span><span class="p">,</span>
+            <span class="s1">&#39;eddm&#39;</span><span class="p">:</span> <span class="n">EDDMDetector</span>
+        <span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">detector_class</span> <span class="ow">in</span> <span class="n">detector_classes</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;enable_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">detector_class</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized drift detector: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ConceptDriftManager.detect_drift">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager.detect_drift">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">detect_drift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">],</span>
+                    <span class="n">error_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="n">parallel</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DriftDetectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ドリフトを検知</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data: 検知対象のデータ</span>
+<span class="sd">            error_data: エラー指標（DDM, EDDM用）</span>
+<span class="sd">            parallel: 並列実行フラグ</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            DriftDetectionResult: 検知結果</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="c1"># DataFrameの場合、数値列のみを使用</span>
+            <span class="n">numeric_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No numeric columns found in DataFrame&quot;</span><span class="p">)</span>
+            <span class="n">data_array</span> <span class="o">=</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+        <span class="c1"># データの検証</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_array</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Empty data provided&quot;</span><span class="p">)</span>
+
+        <span class="n">current_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+        <span class="c1"># 検知間隔チェック</span>
+        <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_detection_time</span> <span class="ow">and</span>
+            <span class="p">(</span><span class="n">current_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_detection_time</span><span class="p">)</span><span class="o">.</span><span class="n">seconds</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">detection_interval_seconds</span><span class="p">):</span>
+            <span class="c1"># 前回の結果を返す</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span> <span class="k">else</span> <span class="n">DriftDetectionResult</span><span class="p">(</span>
+                <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">confidence</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">current_time</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_detection_time</span> <span class="o">=</span> <span class="n">current_time</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">parallel</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># 並列実行</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_parallel</span><span class="p">(</span><span class="n">data_array</span><span class="p">,</span> <span class="n">error_data</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># 順次実行</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_detect_sequential</span><span class="p">(</span><span class="n">data_array</span><span class="p">,</span> <span class="n">error_data</span><span class="p">)</span>
+
+            <span class="c1"># 結果の統合</span>
+            <span class="n">final_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_aggregate_results</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+            <span class="n">final_result</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">=</span> <span class="n">current_time</span>
+
+            <span class="c1"># 履歴に追加</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">final_result</span><span class="p">)</span>
+
+            <span class="c1"># 履歴サイズを制限</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="p">)</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_history_size</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Drift detection completed: </span><span class="si">{</span><span class="n">final_result</span><span class="o">.</span><span class="n">drift_detected</span><span class="si">}</span><span class="s2">, &quot;</span>
+                       <span class="sa">f</span><span class="s2">&quot;severity: </span><span class="si">{</span><span class="n">final_result</span><span class="o">.</span><span class="n">severity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">final_result</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Drift detection failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">error_result</span> <span class="o">=</span> <span class="n">DriftDetectionResult</span><span class="p">(</span>
+                <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">confidence</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">current_time</span><span class="p">,</span>
+                <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">error_result</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_parallel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">error_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">DriftDetectionResult</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;並列でドリフト検知を実行&quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="p">),</span> <span class="mi">4</span><span class="p">))</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+            <span class="n">future_to_detector</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_call_detector</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">error_data</span><span class="p">):</span> <span class="n">name</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+
+            <span class="k">for</span> <span class="n">future</span> <span class="ow">in</span> <span class="n">as_completed</span><span class="p">(</span><span class="n">future_to_detector</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">):</span>  <span class="c1"># 30秒タイムアウト</span>
+                <span class="n">detector_name</span> <span class="o">=</span> <span class="n">future_to_detector</span><span class="p">[</span><span class="n">future</span><span class="p">]</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">future</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>  <span class="c1"># 個別の結果取得にもタイムアウト</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detector </span><span class="si">{</span><span class="n">detector_name</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="c1"># エラーの場合は中立的結果を追加</span>
+                    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DriftDetectionResult</span><span class="p">(</span>
+                        <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                        <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                        <span class="n">confidence</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                        <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                        <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                    <span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_call_detector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">error_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;検知器を適切なパラメータで呼び出す&quot;&quot;&quot;</span>
+        <span class="c1"># DDMとEDDMはerror_dataを必要とする</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;ddm&#39;</span><span class="p">,</span> <span class="s1">&#39;eddm&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">error_data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># KS-testとADWINはerror_dataを必要としない</span>
+            <span class="k">return</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_sequential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">error_data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">DriftDetectionResult</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;順次でドリフト検知を実行&quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># 検知器タイプに応じて適切なパラメータを渡す</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;ddm&#39;</span><span class="p">,</span> <span class="s1">&#39;eddm&#39;</span><span class="p">]:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">error_data</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect_drift</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detector </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">DriftDetectionResult</span><span class="p">(</span>
+                    <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                    <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+                    <span class="n">error</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_aggregate_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">results</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">DriftDetectionResult</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">DriftDetectionResult</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;複数の検知結果を集約&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">results</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DriftDetectionResult</span><span class="p">(</span>
+                <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">confidence</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ドリフト検知の投票</span>
+        <span class="n">drift_votes</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">)</span>
+        <span class="n">total_detectors</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="c1"># 過半数の検知器がドリフトを検知した場合</span>
+        <span class="n">drift_detected</span> <span class="o">=</span> <span class="n">drift_votes</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">total_detectors</span> <span class="o">//</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">drift_detected</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DriftDetectionResult</span><span class="p">(</span>
+                <span class="n">drift_detected</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">severity</span><span class="o">=</span><span class="n">DriftSeverity</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
+                <span class="n">confidence</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">-</span> <span class="p">(</span><span class="n">drift_votes</span> <span class="o">/</span> <span class="n">total_detectors</span><span class="p">),</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+            <span class="p">)</span>
+
+        <span class="c1"># ドリフト検知時の集約</span>
+        <span class="c1"># 最も厳しい重大度を使用</span>
+        <span class="n">severities</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">severity</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">]</span>
+        <span class="n">max_severity</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">severities</span><span class="p">)</span> <span class="k">if</span> <span class="n">severities</span> <span class="k">else</span> <span class="n">DriftSeverity</span><span class="o">.</span><span class="n">LOW</span>
+
+        <span class="c1"># 平均信頼度</span>
+        <span class="n">confidences</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">confidence</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">]</span>
+        <span class="n">avg_confidence</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">confidences</span><span class="p">)</span> <span class="k">if</span> <span class="n">confidences</span> <span class="k">else</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 平均p値</span>
+        <span class="n">p_values</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">p_value</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span> <span class="ow">and</span> <span class="n">r</span><span class="o">.</span><span class="n">p_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">avg_p_value</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">p_values</span><span class="p">)</span> <span class="k">if</span> <span class="n">p_values</span> <span class="k">else</span> <span class="mf">0.5</span>
+
+        <span class="c1"># 平均統計量</span>
+        <span class="n">statistics</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">statistic</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span> <span class="ow">and</span> <span class="n">r</span><span class="o">.</span><span class="n">statistic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+        <span class="n">avg_statistic</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">statistics</span><span class="p">)</span> <span class="k">if</span> <span class="n">statistics</span> <span class="k">else</span> <span class="mf">0.0</span>
+
+        <span class="k">return</span> <span class="n">DriftDetectionResult</span><span class="p">(</span>
+            <span class="n">drift_detected</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">drift_type</span><span class="o">=</span><span class="n">DriftType</span><span class="o">.</span><span class="n">CONCEPT_DRIFT</span><span class="p">,</span>
+            <span class="n">severity</span><span class="o">=</span><span class="n">max_severity</span><span class="p">,</span>
+            <span class="n">confidence</span><span class="o">=</span><span class="n">avg_confidence</span><span class="p">,</span>
+            <span class="n">p_value</span><span class="o">=</span><span class="n">avg_p_value</span><span class="p">,</span>
+            <span class="n">statistic</span><span class="o">=</span><span class="n">avg_statistic</span><span class="p">,</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;detector_votes&#39;</span><span class="p">:</span> <span class="n">drift_votes</span><span class="p">,</span>
+                <span class="s1">&#39;total_detectors&#39;</span><span class="p">:</span> <span class="n">total_detectors</span><span class="p">,</span>
+                <span class="s1">&#39;individual_results&#39;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span>
+                        <span class="s1">&#39;detector&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="n">i</span><span class="p">],</span>
+                        <span class="s1">&#39;drift_detected&#39;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">drift_detected</span><span class="p">,</span>
+                        <span class="s1">&#39;severity&#39;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">severity</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+                        <span class="s1">&#39;confidence&#39;</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">confidence</span>
+                    <span class="p">}</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">r</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="ConceptDriftManager.update_reference_data">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager.update_reference_data">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_reference_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;参照データを更新&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
+            <span class="n">numeric_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">select_dtypes</span><span class="p">(</span><span class="n">include</span><span class="o">=</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">number</span><span class="p">])</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No numeric columns found in DataFrame&quot;</span><span class="p">)</span>
+            <span class="n">data_array</span> <span class="o">=</span> <span class="n">numeric_data</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">detector</span><span class="o">.</span><span class="n">update_reference</span><span class="p">(</span><span class="n">data_array</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Reference data updated for all detectors&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ConceptDriftManager.get_drift_history">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager.get_drift_history">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_drift_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                         <span class="n">start_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                         <span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">DriftDetectionResult</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;ドリフト履歴を取得&quot;&quot;&quot;</span>
+        <span class="n">history</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span>
+
+        <span class="k">if</span> <span class="n">start_time</span><span class="p">:</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">history</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&gt;=</span> <span class="n">start_time</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">end_time</span><span class="p">:</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">history</span> <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">&lt;=</span> <span class="n">end_time</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">history</span></div>
+
+
+<div class="viewcode-block" id="ConceptDriftManager.get_detector_stats">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager.get_detector_stats">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_detector_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;検知器の統計情報を取得&quot;&quot;&quot;</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">history</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">get_drift_history</span><span class="p">()</span>
+            <span class="n">stats</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;total_detections&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="p">),</span>
+                <span class="s1">&#39;last_detection&#39;</span><span class="p">:</span> <span class="n">history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">history</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;avg_score&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">score</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="n">history</span><span class="p">])</span> <span class="k">if</span> <span class="n">history</span> <span class="k">else</span> <span class="mf">0.0</span>
+            <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">stats</span></div>
+
+
+<div class="viewcode-block" id="ConceptDriftManager.reset_detectors">
+<a class="viewcode-back" href="../../../../api/generated/ztb.adaptation.concept_drift.html#ztb.adaptation.ConceptDriftManager.reset_detectors">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reset_detectors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;すべての検知器をリセット&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">detector</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">detectors</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">detector</span><span class="o">.</span><span class="n">reference_data</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">detector</span><span class="o">.</span><span class="n">drift_scores</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+            <span class="n">detector</span><span class="o">.</span><span class="n">timestamps</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">drift_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_detection_time</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;All detectors reset&quot;</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

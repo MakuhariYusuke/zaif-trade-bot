@@ -1,0 +1,333 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.utils.seed_manager &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.utils.seed_manager</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.utils.seed_manager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Centraliz    try:</span>
+<span class="sd">        import numpy as np</span>
+<span class="sd">    except Exception:  # pragma: no cover - type checking only</span>
+<span class="sd">        np = None  # type: ignore[assignment]</span>
+
+<span class="sd">    try:</span>
+<span class="sd">        import torch</span>
+<span class="sd">    except Exception:  # pragma: no cover - type checking only</span>
+<span class="sd">        torch = None  # type: ignore[assignment]anagement for deterministic training.</span>
+
+<span class="sd">This module provides unified seed setting across all random number generators</span>
+<span class="sd">used in the training pipeline to ensure reproducibility.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">TYPE_CHECKING</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="c1"># Optional imports - gracefully handle missing dependencies</span>
+<span class="k">if</span> <span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="c1"># For type checking, import numpy and torch types if available</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - type checking only</span>
+        <span class="n">np</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: ignore[assignment]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pragma: no cover - type checking only</span>
+        <span class="n">torch</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: ignore[assignment]</span>
+    <span class="n">HAS_NUMPY</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">HAS_TORCH</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+        <span class="n">HAS_NUMPY</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">HAS_NUMPY</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">np</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+        <span class="n">HAS_TORCH</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="n">HAS_TORCH</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">torch</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+    <span class="n">HAS_TORCH</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">HAS_TORCH</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">torch</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># type: ignore[assignment]</span>
+
+
+<div class="viewcode-block" id="SeedManager">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SeedManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Centralized seed management for reproducibility.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">determinism_enabled</span> <span class="o">=</span> <span class="kc">True</span>
+
+<div class="viewcode-block" id="SeedManager.set_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager.set_seed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set seed across all random number generators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            seed: Random seed. If None, uses system entropy.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Use system entropy for true randomness</span>
+            <span class="n">seed</span> <span class="o">=</span> <span class="nb">int</span><span class="o">.</span><span class="n">from_bytes</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">urandom</span><span class="p">(</span><span class="mi">4</span><span class="p">),</span> <span class="n">byteorder</span><span class="o">=</span><span class="s2">&quot;big&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span> <span class="o">=</span> <span class="n">seed</span>
+
+        <span class="c1"># Set Python random seed</span>
+        <span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="c1"># Set NumPy seed</span>
+        <span class="k">if</span> <span class="n">HAS_NUMPY</span><span class="p">:</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+        <span class="c1"># Set PyTorch seeds and enable deterministic behavior</span>
+        <span class="k">if</span> <span class="n">HAS_TORCH</span><span class="p">:</span>
+            <span class="c1"># torch may be dynamically absent at runtime; guarded by HAS_TORCH</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed_all</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+            <span class="c1"># Enable deterministic algorithms</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">determinism_enabled</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_enable_torch_determinism</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_enable_torch_determinism</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Enable deterministic behavior in PyTorch.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">HAS_TORCH</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="c1"># Set deterministic algorithms</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># For reproducibility, disable TF32 on Ampere GPUs</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cuda</span><span class="p">,</span> <span class="s2">&quot;matmul&quot;</span><span class="p">):</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">matmul</span><span class="o">.</span><span class="n">allow_tf32</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="p">,</span> <span class="s2">&quot;allow_tf32&quot;</span><span class="p">):</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">allow_tf32</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Set environment variables for additional determinism</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;CUBLAS_WORKSPACE_CONFIG&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;:4096:8&quot;</span>
+
+<div class="viewcode-block" id="SeedManager.disable_determinism">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager.disable_determinism">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">disable_determinism</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Disable deterministic behavior for performance.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">determinism_enabled</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">HAS_TORCH</span><span class="p">:</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">benchmark</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="c1"># Re-enable TF32</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cuda</span><span class="p">,</span> <span class="s2">&quot;matmul&quot;</span><span class="p">):</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">matmul</span><span class="o">.</span><span class="n">allow_tf32</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="p">,</span> <span class="s2">&quot;allow_tf32&quot;</span><span class="p">):</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">allow_tf32</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="SeedManager.get_current_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager.get_current_seed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_current_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the currently set seed.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span></div>
+
+
+<div class="viewcode-block" id="SeedManager.generate_deterministic_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager.generate_deterministic_seed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate_deterministic_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">base_seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate a deterministic seed from base seed and context.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            base_seed: Base random seed</span>
+<span class="sd">            context: Context string to derive seed from</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Deterministic seed derived from base and context</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">hashlib</span>
+
+        <span class="n">combined</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_seed</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">context</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">hash_obj</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="n">combined</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">hash_obj</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">8</span><span class="p">],</span> <span class="mi">16</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="SeedManager.fork_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.SeedManager.fork_seed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">fork_seed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Fork current seed with context for independent randomization.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            context: Context string for seed derivation</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            New seed derived from current seed and context</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No base seed set. Call set_seed() first.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">generate_deterministic_seed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_seed</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span></div>
+</div>
+
+
+
+<span class="c1"># Global seed manager instance</span>
+<span class="n">_seed_manager</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">SeedManager</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="get_seed_manager">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.get_seed_manager">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_seed_manager</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">SeedManager</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get global seed manager instance.&quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">_seed_manager</span>
+    <span class="k">if</span> <span class="n">_seed_manager</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">_seed_manager</span> <span class="o">=</span> <span class="n">SeedManager</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">_seed_manager</span></div>
+
+
+
+<div class="viewcode-block" id="set_global_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.set_global_seed">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_global_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Set seed globally across all random number generators.&quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_seed_manager</span><span class="p">()</span>
+    <span class="n">manager</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="get_current_global_seed">
+<a class="viewcode-back" href="../../../api/generated/ztb.utils.html#ztb.utils.seed_manager.get_current_global_seed">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_current_global_seed</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the currently set global seed.&quot;&quot;&quot;</span>
+    <span class="n">manager</span> <span class="o">=</span> <span class="n">get_seed_manager</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">manager</span><span class="o">.</span><span class="n">get_current_seed</span><span class="p">()</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

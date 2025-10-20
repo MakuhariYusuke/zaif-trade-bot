@@ -1,0 +1,443 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>総合検証結果サマリー &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">総合検証結果サマリー</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/binary_search_optimization/COMPREHENSIVE_VALIDATION_SUMMARY.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>総合検証結果サマリー<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<p><strong>更新日</strong>: 2025年10月10日<br />
+<strong>ステータス</strong>: 検証完了 (一部追加検証推奨)</p>
+<hr class="docutils" />
+<section id="id2">
+<h2>📊 検証済みパラメータ一覧<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<section id="id3">
+<h3>✅ 高信頼度 - 本番適用推奨<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>推奨値</p></th>
+<th class="head"><p>検証ステップ数</p></th>
+<th class="head"><p>Improvement</p></th>
+<th class="head"><p>統計的有意性</p></th>
+<th class="head"><p>ベースラインスコア</p></th>
+<th class="head"><p>最適値スコア</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>batch_size</strong></p></td>
+<td><p><strong>256</strong></p></td>
+<td><p>50,000</p></td>
+<td><p><strong>+27.71</strong></p></td>
+<td><p>✅ 高 (95%CI=±7.1)</p></td>
+<td><p>-303.02</p></td>
+<td><p>-275.31</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>learning_rate</strong></p></td>
+<td><p><strong>0.007503</strong></p></td>
+<td><p>50,000</p></td>
+<td><p><strong>+37.36</strong></p></td>
+<td><p>✅ 高 (95%CI=±7.1)</p></td>
+<td><p>-309.44</p></td>
+<td><p>-272.09</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>判定根拠</strong>:</p>
+<ul class="simple">
+<li><p>improvement &gt; 27 (統計的有意差の3倍以上)</p></li>
+<li><p>50kステップで長期安定性確認済み</p></li>
+<li><p>95%信頼区間 ±7.1 に対して十分な改善幅</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="id4">
+<h3>⚠️ 暫定値 - 追加検証推奨<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>暫定推奨値</p></th>
+<th class="head"><p>検証ステップ数</p></th>
+<th class="head"><p>状況</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>max_grad_norm</strong></p></td>
+<td><p><strong>7.525</strong></p></td>
+<td><p>30k×2, 100k×1</p></td>
+<td><p>再現性確認中</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>検証履歴</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Run</p></th>
+<th class="head"><p>Seed</p></th>
+<th class="head"><p>Timesteps</p></th>
+<th class="head"><p>最適値</p></th>
+<th class="head"><p>Score</p></th>
+<th class="head"><p>Improvement</p></th>
+<th class="head"><p>備考</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>42 (推定)</p></td>
+<td><p>30,000</p></td>
+<td><p>7.525</p></td>
+<td><p>-287.44</p></td>
+<td><p>-</p></td>
+<td><p>初回検証</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>123 (推定)</p></td>
+<td><p>30,000</p></td>
+<td><p>5.05</p></td>
+<td><p>-286.41</p></td>
+<td><p>+1.03</p></td>
+<td><p>値が異なる ⚠️</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>42</p></td>
+<td><p>100,000</p></td>
+<td><p><strong>7.525</strong></p></td>
+<td><p><strong>-265.55</strong></p></td>
+<td><p><strong>+21.89</strong></p></td>
+<td><p>✅ 大幅改善</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>123</p></td>
+<td><p>100,000</p></td>
+<td><p>?</p></td>
+<td><p>?</p></td>
+<td><p>?</p></td>
+<td><p>🔄 実行中 or 未実施</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>現在の判定</strong>:</p>
+<ul class="simple">
+<li><p>✅ 100k検証で7.525が-265.55を達成 (30k比で+21.89改善)</p></li>
+<li><p>⚠️ seed=123での100k検証結果待ち</p></li>
+<li><p>📊 両方の100k結果が±0.5以内なら高信頼度で確定</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id5">
+<h2>📈 総合的な改善効果<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<section id="vs">
+<h3>ベースライン vs 最適化後の比較<a class="headerlink" href="#vs" title="Link to this heading"></a></h3>
+<p><strong>想定ベースライン</strong> (2025年10月10日時点の推定):</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">64</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.009375625</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.5</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>最適化後の推奨値</strong>:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">256</span><span class="p">,</span><span class="w">           </span><span class="c1">// +300% 増加</span>
+<span class="w">  </span><span class="nt">&quot;learning_rate&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.007503</span><span class="p">,</span><span class="w">   </span><span class="c1">// -20% 減少</span>
+<span class="w">  </span><span class="nt">&quot;max_grad_norm&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">7.525</span><span class="w">       </span><span class="c1">// +1405% 増加 (暫定)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>累積改善効果の推定</strong>:</p>
+<ul class="simple">
+<li><p>batch_size単体: +27.71</p></li>
+<li><p>learning_rate単体: +37.36</p></li>
+<li><p>max_grad_norm単体: +21.89 (100k検証)</p></li>
+<li><p><strong>理論上の累積効果</strong>: +86.96 (独立性を仮定)</p></li>
+<li><p><strong>実際の累積効果</strong>: 未検証 (相互作用の可能性あり)</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id6">
+<h2>🎯 次のステップ判断フロー<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<section id="seed-123100k">
+<h3>シナリオ1: seed=123の100k検証が完了済み<a class="headerlink" href="#seed-123100k" title="Link to this heading"></a></h3>
+<p><strong>条件</strong>: 両方の100k結果が手元にある</p>
+<p><strong>アクション</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 1. 再現性を評価
+REM    - 両方とも7.525が最適 → 高信頼度で確定
+REM    - 値が異なる (±0.5以内) → 中信頼度で確定
+REM    - 値が大きく異なる (±0.5超) → 追加検証必要
+
+REM 2. 本番設定ファイルを更新
+notepad configs\training\ppo_100k_optimized.json
+
+REM 3. 更新内容:
+REM    batch_size: 256
+REM    learning_rate: 0.007503
+REM    max_grad_norm: 7.525 (再現性次第)
+</pre></div>
+</div>
+<p><strong>判定基準</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>再現性レベル</p></th>
+<th class="head"><p>条件</p></th>
+<th class="head"><p>アクション</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>🟢 高</p></td>
+<td><p>両方とも7.525、スコア差±0.5以内</p></td>
+<td><p>すぐに本番適用</p></td>
+</tr>
+<tr class="row-odd"><td><p>🟡 中</p></td>
+<td><p>値が7.0-7.525の範囲、スコア差±1.0以内</p></td>
+<td><p>平均値で本番適用</p></td>
+</tr>
+<tr class="row-even"><td><p>🔴 低</p></td>
+<td><p>値が5.0-7.525で大きく異なる</p></td>
+<td><p>追加検証 (200k×2)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h3>シナリオ2: seed=123の100k検証が未実施<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<p><strong>条件</strong>: seed=42の100k結果のみ</p>
+<p><strong>アクション</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 1. seed=123の100k検証を実行 (5-8時間)
+.\.venv\Scripts\activate &amp;&amp; python ztb\training\binary_search\max_grad_norm_optimized.py --search_range 5.0,5.05,6.3,7.5,7.525 --timesteps 100000 --max_iterations 2 --seed 123
+
+REM 2. 結果を待って再現性評価
+REM 3. その後、本番設定ファイルを更新
+</pre></div>
+</div>
+<p><strong>推奨</strong>: この検証を完了してから本番適用が最も安全</p>
+</section>
+<hr class="docutils" />
+<section id="id8">
+<h3>シナリオ3: すぐに本番適用したい場合<a class="headerlink" href="#id8" title="Link to this heading"></a></h3>
+<p><strong>条件</strong>: max_grad_normの追加検証を待たずに進めたい</p>
+<p><strong>アクション</strong>:</p>
+<div class="highlight-cmd notranslate"><div class="highlight"><pre><span></span>REM 1. batch_size と learning_rate のみ本番適用
+REM    (これらは高信頼度)
+
+REM 2. max_grad_norm は暫定値で適用 or 保留
+REM    - 暫定適用: max_grad_norm=7.525
+REM    - 保留: max_grad_norm=0.5 (現行値)
+
+REM 3. 本番設定ファイルを更新
+notepad configs\training\ppo_100k_optimized.json
+</pre></div>
+</div>
+<p><strong>リスク評価</strong>:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>パラメータ</p></th>
+<th class="head"><p>即時適用リスク</p></th>
+<th class="head"><p>推奨</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>batch_size=256</p></td>
+<td><p>🟢 極低 (50k高信頼度)</p></td>
+<td><p>すぐに適用</p></td>
+</tr>
+<tr class="row-odd"><td><p>learning_rate=0.007503</p></td>
+<td><p>🟢 極低 (50k高信頼度)</p></td>
+<td><p>すぐに適用</p></td>
+</tr>
+<tr class="row-even"><td><p>max_grad_norm=7.525</p></td>
+<td><p>🟡 中 (100k×1のみ)</p></td>
+<td><p>seed=123完了後が理想</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id9">
+<h2>📋 完了チェックリスト<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<section id="id10">
+<h3>検証フェーズ<a class="headerlink" href="#id10" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> batch_size Phase 1 (20k)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> batch_size Phase 2 (50k)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> learning_rate Phase 1 (10k)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> learning_rate Phase 2 (50k)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> max_grad_norm 30k Run 1</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> max_grad_norm 30k Run 2</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> max_grad_norm 100k Run 1 (seed=42)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> max_grad_norm 100k Run 2 (seed=123) ← <strong>現在ここ</strong></p></li>
+</ul>
+</section>
+<section id="id11">
+<h3>本番適用フェーズ<a class="headerlink" href="#id11" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 再現性評価完了</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 本番設定ファイル更新</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> バックアップ作成</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 設定ファイル検証</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 短時間トレーニングテスト</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 本番トレーニング開始</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id12">
+<h2>🔍 現在の状況確認<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<p><strong>ユーザーへの質問</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>seed=123の100k検証は完了していますか?</strong></p>
+<ul class="simple">
+<li><p>✅ 完了している → 結果を共有してください</p></li>
+<li><p>❌ 未実施 → 実行を推奨します (5-8時間)</p></li>
+<li><p>🔄 実行中 → 完了を待ちましょう</p></li>
+</ul>
+</li>
+<li><p><strong>本番適用のタイミングは?</strong></p>
+<ul class="simple">
+<li><p>🚀 すぐに適用したい → batch_size + learning_rate のみ先行適用</p></li>
+<li><p>🔬 完全検証後に適用 → seed=123完了を待つ</p></li>
+<li><p>📊 追加分析が必要 → 相互作用の検証など</p></li>
+</ul>
+</li>
+<li><p><strong>次のステップの希望は?</strong></p>
+<ul class="simple">
+<li><p>📝 本番設定ファイルの更新手順</p></li>
+<li><p>📈 追加検証の実行</p></li>
+<li><p>📊 結果の詳細分析</p></li>
+</ul>
+</li>
+</ol>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>📚 関連ドキュメント<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>次のステップ</strong>: <a class="reference internal" href="NEXT_STEPS_COMMANDS.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">NEXT_STEPS_COMMANDS.md</span></code></span></a></p></li>
+<li><p><strong>設定更新</strong>: <a class="reference internal" href="CONFIG_UPDATE_COMMANDS.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">CONFIG_UPDATE_COMMANDS.md</span></code></span></a></p></li>
+<li><p><strong>詳細結果</strong>: <a class="reference internal" href="VALIDATION_RESULTS_2025-10-10.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">VALIDATION_RESULTS_2025-10-10.md</span></code></span></a></p></li>
+<li><p><strong>進捗管理</strong>: <a class="reference internal" href="PARAMETER_VALIDATION_TRACKING.html"><span class="std std-doc"><code class="docutils literal notranslate"><span class="pre">PARAMETER_VALIDATION_TRACKING.md</span></code></span></a></p></li>
+</ul>
+<hr class="docutils" />
+<p><strong>どのシナリオで進めますか?</strong> 🤔</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

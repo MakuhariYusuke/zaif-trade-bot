@@ -1,0 +1,538 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ztb.tests.unit.test_reconciliation &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../examples/index.html">Examples</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">ztb.tests.unit.test_reconciliation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for ztb.tests.unit.test_reconciliation</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Unit tests for reconciliation framework</span>
+<span class="sd">調整フレームワークの単体テスト</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.core.reconciliation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">OrderReconciliationStrategy</span><span class="p">,</span>
+    <span class="n">PositionReconciliationStrategy</span><span class="p">,</span>
+    <span class="n">ReconciliationEngine</span><span class="p">,</span>
+    <span class="n">ReconciliationItem</span><span class="p">,</span>
+    <span class="n">ReconciliationResult</span><span class="p">,</span>
+    <span class="n">ReconciliationStrategy</span><span class="p">,</span>
+    <span class="n">get_reconciliation_engine</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestReconciliationItem">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationItem">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestReconciliationItem</span><span class="p">:</span>
+<div class="viewcode-block" id="TestReconciliationItem.test_reconciliation_item_creation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationItem.test_reconciliation_item_creation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconciliation_item_creation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ReconciliationItem dataclass creation&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;item_123&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span> <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span> <span class="s2">&quot;quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="mf">1234567890.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">item</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;item_123&quot;</span>
+        <span class="k">assert</span> <span class="n">item</span><span class="o">.</span><span class="n">internal_state</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;filled&quot;</span>
+        <span class="k">assert</span> <span class="n">item</span><span class="o">.</span><span class="n">external_state</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;filled&quot;</span>
+        <span class="k">assert</span> <span class="n">item</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">==</span> <span class="mf">1234567890.0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestReconciliationResult">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestReconciliationResult</span><span class="p">:</span>
+<div class="viewcode-block" id="TestReconciliationResult.test_reconciliation_result_creation">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationResult.test_reconciliation_result_creation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconciliation_result_creation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ReconciliationResult dataclass creation&quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">ReconciliationResult</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;item_123&quot;</span><span class="p">,</span>
+            <span class="n">is_consistent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">discrepancies</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">actions_taken</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">],</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="mf">1234567890.0</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;item_123&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">actions_taken</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">timestamp</span> <span class="o">==</span> <span class="mf">1234567890.0</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestReconciliationStrategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestReconciliationStrategy</span><span class="p">:</span>
+<div class="viewcode-block" id="TestReconciliationStrategy.test_reconciliation_strategy_is_abstract">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationStrategy.test_reconciliation_strategy_is_abstract">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconciliation_strategy_is_abstract</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test that ReconciliationStrategy cannot be instantiated directly&quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+            <span class="n">ReconciliationStrategy</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestOrderReconciliationStrategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestOrderReconciliationStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestOrderReconciliationStrategy</span><span class="p">:</span>
+<div class="viewcode-block" id="TestOrderReconciliationStrategy.test_get_strategy_name">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestOrderReconciliationStrategy.test_get_strategy_name">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_strategy_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test OrderReconciliationStrategy strategy name&quot;&quot;&quot;</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">OrderReconciliationStrategy</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">strategy</span><span class="o">.</span><span class="n">get_strategy_name</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;order_reconciliation&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestOrderReconciliationStrategy.test_reconcile_consistent_order">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestOrderReconciliationStrategy.test_reconcile_consistent_order">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_consistent_order</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling a consistent order&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">OrderReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;order_123&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">actions_taken</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestOrderReconciliationStrategy.test_reconcile_inconsistent_order_status">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestOrderReconciliationStrategy.test_reconcile_inconsistent_order_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_inconsistent_order_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling an order with status mismatch&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">OrderReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;order_123&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="s2">&quot;Status mismatch&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">actions_taken</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;logged_discrepancies&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestOrderReconciliationStrategy.test_reconcile_inconsistent_order_quantity">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestOrderReconciliationStrategy.test_reconcile_inconsistent_order_quantity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_inconsistent_order_quantity</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling an order with quantity mismatch&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_123&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span>
+                <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+                <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">OrderReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;order_123&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>  <span class="c1"># filled and remaining quantity mismatch</span>
+        <span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;Filled quantity mismatch&quot;</span> <span class="ow">in</span> <span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">any</span><span class="p">(</span><span class="s2">&quot;Remaining quantity mismatch&quot;</span> <span class="ow">in</span> <span class="n">d</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestPositionReconciliationStrategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestPositionReconciliationStrategy">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestPositionReconciliationStrategy</span><span class="p">:</span>
+<div class="viewcode-block" id="TestPositionReconciliationStrategy.test_get_strategy_name">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestPositionReconciliationStrategy.test_get_strategy_name">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_strategy_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test PositionReconciliationStrategy strategy name&quot;&quot;&quot;</span>
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">PositionReconciliationStrategy</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="n">strategy</span><span class="o">.</span><span class="n">get_strategy_name</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;position_reconciliation&quot;</span></div>
+
+
+<div class="viewcode-block" id="TestPositionReconciliationStrategy.test_reconcile_consistent_position">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestPositionReconciliationStrategy.test_reconcile_consistent_position">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_consistent_position</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling a consistent position&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;position_BTC&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">50000.0</span><span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">50000.0</span><span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">PositionReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;position_BTC&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">actions_taken</span> <span class="o">==</span> <span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestPositionReconciliationStrategy.test_reconcile_inconsistent_position_size">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestPositionReconciliationStrategy.test_reconcile_inconsistent_position_size">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_inconsistent_position_size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling a position with size mismatch&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;position_BTC&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">50000.0</span><span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">50000.0</span><span class="p">},</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">PositionReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;position_BTC&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="s2">&quot;Position size mismatch&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="TestPositionReconciliationStrategy.test_reconcile_inconsistent_position_price">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestPositionReconciliationStrategy.test_reconcile_inconsistent_position_price">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_inconsistent_position_price</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling a position with price mismatch&quot;&quot;&quot;</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">ReconciliationItem</span><span class="p">(</span>
+            <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;position_BTC&quot;</span><span class="p">,</span>
+            <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">50000.0</span><span class="p">},</span>
+            <span class="n">external_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;size&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">&quot;average_price&quot;</span><span class="p">:</span> <span class="mf">51000.0</span><span class="p">},</span>  <span class="c1"># 2% difference</span>
+            <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">PositionReconciliationStrategy</span><span class="p">()</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">reconcile_item</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">item_id</span> <span class="o">==</span> <span class="s2">&quot;position_BTC&quot;</span>
+        <span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">False</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="s2">&quot;Average price mismatch&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">discrepancies</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestReconciliationEngine">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestReconciliationEngine</span><span class="p">:</span>
+<div class="viewcode-block" id="TestReconciliationEngine.test_initialization_registers_default_strategies">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine.test_initialization_registers_default_strategies">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_initialization_registers_default_strategies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test ReconciliationEngine initialization registers default strategies&quot;&quot;&quot;</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ReconciliationEngine</span><span class="p">()</span>
+
+        <span class="k">assert</span> <span class="s2">&quot;order_reconciliation&quot;</span> <span class="ow">in</span> <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span>
+        <span class="k">assert</span> <span class="s2">&quot;position_reconciliation&quot;</span> <span class="ow">in</span> <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span><span class="p">[</span><span class="s2">&quot;order_reconciliation&quot;</span><span class="p">],</span> <span class="n">OrderReconciliationStrategy</span>
+        <span class="p">)</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span><span class="p">[</span><span class="s2">&quot;position_reconciliation&quot;</span><span class="p">],</span> <span class="n">PositionReconciliationStrategy</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestReconciliationEngine.test_register_strategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine.test_register_strategy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_register_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test registering a custom strategy&quot;&quot;&quot;</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ReconciliationEngine</span><span class="p">()</span>
+
+        <span class="c1"># Create a custom strategy</span>
+        <span class="k">class</span><span class="w"> </span><span class="nc">CustomStrategy</span><span class="p">(</span><span class="n">ReconciliationStrategy</span><span class="p">):</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">get_strategy_name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="k">return</span> <span class="s2">&quot;custom_strategy&quot;</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">reconcile_item</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">ReconciliationResult</span><span class="p">(</span>
+                    <span class="n">item_id</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">item_id</span><span class="p">,</span>
+                    <span class="n">is_consistent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">discrepancies</span><span class="o">=</span><span class="p">[],</span>
+                    <span class="n">actions_taken</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;custom_action&quot;</span><span class="p">],</span>
+                    <span class="n">timestamp</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="n">custom_strategy</span> <span class="o">=</span> <span class="n">CustomStrategy</span><span class="p">()</span>
+        <span class="n">engine</span><span class="o">.</span><span class="n">register_strategy</span><span class="p">(</span><span class="n">custom_strategy</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="s2">&quot;custom_strategy&quot;</span> <span class="ow">in</span> <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span>
+        <span class="k">assert</span> <span class="n">engine</span><span class="o">.</span><span class="n">strategies</span><span class="p">[</span><span class="s2">&quot;custom_strategy&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">custom_strategy</span></div>
+
+
+<div class="viewcode-block" id="TestReconciliationEngine.test_reconcile_items_with_valid_strategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine.test_reconcile_items_with_valid_strategy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_items_with_valid_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling items with valid strategy&quot;&quot;&quot;</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ReconciliationEngine</span><span class="p">()</span>
+
+        <span class="n">items</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ReconciliationItem</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_1&quot;</span><span class="p">,</span>
+                <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">external_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">ReconciliationItem</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_2&quot;</span><span class="p">,</span>
+                <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;pending&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                    <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">external_state</span><span class="o">=</span><span class="p">{</span>
+                    <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;filled_quantity&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+                    <span class="s2">&quot;remaining_quantity&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">reconcile_items</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="s2">&quot;order_reconciliation&quot;</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">True</span>
+        <span class="k">assert</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">is_consistent</span> <span class="ow">is</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="TestReconciliationEngine.test_reconcile_items_with_invalid_strategy">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine.test_reconcile_items_with_invalid_strategy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reconcile_items_with_invalid_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test reconciling items with invalid strategy name&quot;&quot;&quot;</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ReconciliationEngine</span><span class="p">()</span>
+
+        <span class="n">items</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ReconciliationItem</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;order_1&quot;</span><span class="p">,</span>
+                <span class="n">internal_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">},</span>
+                <span class="n">external_state</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;filled&quot;</span><span class="p">},</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">)</span>
+        <span class="p">]</span>
+
+        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;Unknown reconciliation strategy&quot;</span><span class="p">):</span>
+            <span class="n">engine</span><span class="o">.</span><span class="n">reconcile_items</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="s2">&quot;invalid_strategy&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TestReconciliationEngine.test_get_reconciliation_summary">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestReconciliationEngine.test_get_reconciliation_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_reconciliation_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test generating reconciliation summary&quot;&quot;&quot;</span>
+        <span class="n">engine</span> <span class="o">=</span> <span class="n">ReconciliationEngine</span><span class="p">()</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">ReconciliationResult</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;item_1&quot;</span><span class="p">,</span>
+                <span class="n">is_consistent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">discrepancies</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">actions_taken</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">],</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">ReconciliationResult</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;item_2&quot;</span><span class="p">,</span>
+                <span class="n">is_consistent</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">discrepancies</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mismatch&quot;</span><span class="p">],</span>
+                <span class="n">actions_taken</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;logged_discrepancies&quot;</span><span class="p">],</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">),</span>
+            <span class="n">ReconciliationResult</span><span class="p">(</span>
+                <span class="n">item_id</span><span class="o">=</span><span class="s2">&quot;item_3&quot;</span><span class="p">,</span>
+                <span class="n">is_consistent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                <span class="n">discrepancies</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">actions_taken</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;no_action_needed&quot;</span><span class="p">],</span>
+                <span class="n">timestamp</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+            <span class="p">),</span>
+        <span class="p">]</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">get_reconciliation_summary</span><span class="p">(</span><span class="n">results</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;total_items&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span>
+        <span class="k">assert</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;consistent_items&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span>
+        <span class="k">assert</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;inconsistent_items&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;consistency_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span> <span class="o">/</span> <span class="mi">3</span>
+        <span class="k">assert</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;total_discrepancies&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">summary</span><span class="p">[</span><span class="s2">&quot;results&quot;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">3</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TestGlobalReconciliationEngine">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestGlobalReconciliationEngine">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestGlobalReconciliationEngine</span><span class="p">:</span>
+<div class="viewcode-block" id="TestGlobalReconciliationEngine.test_get_reconciliation_engine">
+<a class="viewcode-back" href="../../../../api/generated/ztb.tests.unit.html#ztb.tests.unit.test_reconciliation.TestGlobalReconciliationEngine.test_get_reconciliation_engine">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_reconciliation_engine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Test global reconciliation engine getter&quot;&quot;&quot;</span>
+        <span class="n">engine1</span> <span class="o">=</span> <span class="n">get_reconciliation_engine</span><span class="p">()</span>
+        <span class="n">engine2</span> <span class="o">=</span> <span class="n">get_reconciliation_engine</span><span class="p">()</span>
+
+        <span class="c1"># Should return the same instance</span>
+        <span class="k">assert</span> <span class="n">engine1</span> <span class="ow">is</span> <span class="n">engine2</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">engine1</span><span class="p">,</span> <span class="n">ReconciliationEngine</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

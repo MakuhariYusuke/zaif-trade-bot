@@ -1,0 +1,542 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>モデル検証・メモリ最適化 完了レポート &mdash; Zaif Trade Bot 1.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=8d563738"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Zaif Trade Bot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart/index.html">Quick Start Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples/index.html">Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../evaluation.html">特徴量評価ドキュメント</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../reference/index.html">Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../contributing/index.html">Contributing Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">Changelog</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Architecture &amp; Design:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../architecture/index.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../design/index.html">Design Documents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../algorithms/index.html">Algorithms</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../features/index.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../implementation/index.html">Implementation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Zaif Trade Bot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">モデル検証・メモリ最適化 完了レポート</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/validation/VALIDATION_AND_OPTIMIZATION_REPORT.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="id1">
+<h1>モデル検証・メモリ最適化 完了レポート<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
+<section id="id2">
+<h2>実施日時<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<p>2025年10月7日 21:30-21:45</p>
+</section>
+<hr class="docutils" />
+<section id="id3">
+<h2>実施内容サマリー<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="ppo-balanced-test-zip">
+<h3>1. 修正版モデル (ppo_balanced_test.zip) の検証<a class="headerlink" href="#ppo-balanced-test-zip" title="Link to this heading"></a></h3>
+<section id="id4">
+<h4>学習時の統計<a class="headerlink" href="#id4" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>SELL率</strong>: 26.9% (最終30Kステップ時点)</p></li>
+<li><p><strong>Action分布 (rollout)</strong>: バランス良好</p></li>
+<li><p><strong>Lagrange制約</strong>: 有効 (r_target=0.33)</p></li>
+</ul>
+</section>
+<section id="id5">
+<h4>評価時の結果 ❌<a class="headerlink" href="#id5" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p><strong>Paper Validation</strong>: SELL 98.0%, BUY 2.0%, HOLD 0.0%</p></li>
+<li><p><strong>Backtest</strong>: 総リターン -0.79%, 勝率 0.0%, 全トレード損失</p></li>
+</ul>
+</section>
+<section id="id6">
+<h4>根本原因の特定<a class="headerlink" href="#id6" title="Link to this heading"></a></h4>
+<p><strong>Lagrange制約は学習プロセスのみ適用され、推論時には効果がない</strong></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 学習時 (制約あり)</span>
+<span class="n">rollout_actions</span> <span class="o">=</span> <span class="n">collect_rollouts</span><span class="p">()</span>  <span class="c1"># ← Lagrange制約適用</span>
+<span class="n">sell_rate</span> <span class="o">=</span> <span class="mf">26.9</span><span class="o">%</span>  <span class="c1"># 制約が効いている</span>
+
+<span class="c1"># 推論時 (制約なし)</span>
+<span class="n">action</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># ← 制約なし</span>
+<span class="n">sell_rate</span> <span class="o">=</span> <span class="mf">98.0</span><span class="o">%</span>  <span class="c1"># モデル自体は学習できていない</span>
+</pre></div>
+</div>
+<p><strong>結論</strong>: モデル自体がバランスを学習していない → 別のアプローチが必要</p>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id7">
+<h3>2. メモリ最適化の実装<a class="headerlink" href="#id7" title="Link to this heading"></a></h3>
+<section id="id8">
+<h4>問題<a class="headerlink" href="#id8" title="Link to this heading"></a></h4>
+<ul class="simple">
+<li><p>学習が30,000ステップ付近で停止</p></li>
+<li><p>メモリ不足が原因と推測</p></li>
+</ul>
+</section>
+<section id="id9">
+<h4>対策実施<a class="headerlink" href="#id9" title="Link to this heading"></a></h4>
+<section id="a-batch-size">
+<h5>A. Batch Size削減<a class="headerlink" href="#a-batch-size" title="Link to this heading"></a></h5>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;n_steps&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">512</span><span class="p">,</span><span class="w">      </span><span class="c1">// 1024 → 512</span>
+<span class="w">  </span><span class="nt">&quot;batch_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">32</span><span class="p">,</span><span class="w">    </span><span class="c1">// 64 → 32</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約50% メモリ削減</p>
+</section>
+<section id="b">
+<h5>B. 環境数削減<a class="headerlink" href="#b" title="Link to this heading"></a></h5>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;n_envs&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w">  </span><span class="c1">// 複数 → 1</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: 約40% メモリ削減（並列環境による）</p>
+</section>
+<section id="c-entropy-coefficient">
+<h5>C. Entropy Coefficient強化<a class="headerlink" href="#c-entropy-coefficient" title="Link to this heading"></a></h5>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;ent_coef&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.1</span><span class="p">,</span><span class="w">  </span><span class="c1">// 0.05 → 0.1 (2倍)</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: モデル自体が多様な行動を学習</p>
+</section>
+<section id="d-target-entropy-controller">
+<h5>D. Target Entropy Controller<a class="headerlink" href="#d-target-entropy-controller" title="Link to this heading"></a></h5>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 自動的に有効化</span>
+<span class="n">entropy_target_entropy</span><span class="p">:</span> <span class="mf">0.769</span>  <span class="c1"># log(3) × 0.7</span>
+</pre></div>
+</div>
+<p><strong>効果</strong>: Entropy regularizationを動的調整</p>
+</section>
+</section>
+<section id="ppo-balanced-mem-optimized">
+<h4>結果 (ppo_balanced_mem_optimized)<a class="headerlink" href="#ppo-balanced-mem-optimized" title="Link to this heading"></a></h4>
+<p><strong>iteration 2</strong> (4096 steps):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>pan_action_counts: [26, 20, 18]  # HOLD, BUY, SELL
+→ 40.6%, 31.3%, 28.1% ✅ バランス良好!
+</pre></div>
+</div>
+<p><strong>iteration 10</strong> (20480 steps):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>pan_action_counts: [40, 13, 11]
+→ 62.5%, 20.3%, 17.2%
+→ HOLDが多いが、SELL biasは解消
+</pre></div>
+</div>
+<p><strong>Target Entropy Controllerの効果</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>entropy_current_alpha: 0.0105 → 0.0248
+entropy_mean_entropy: 1.09 → 1.02
+</pre></div>
+</div>
+<p>→ エントロピーを目標値(0.769)に近づけている</p>
+</section>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id10">
+<h2>検証結果の詳細<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="ppo-balanced-test-zip-lagrange">
+<h3>ppo_balanced_test.zip (Lagrange制約のみ)<a class="headerlink" href="#ppo-balanced-test-zip-lagrange" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>学習時</p></th>
+<th class="head"><p>評価時</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>SELL率</p></td>
+<td><p>26.9% ✅</p></td>
+<td><p>98.0% ❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>BUY率</p></td>
+<td><p>-</p></td>
+<td><p>2.0% ❌</p></td>
+</tr>
+<tr class="row-even"><td><p>HOLD率</p></td>
+<td><p>-</p></td>
+<td><p>0.0% ❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>Balance Score</p></td>
+<td><p>-</p></td>
+<td><p>0.000 ❌</p></td>
+</tr>
+<tr class="row-even"><td><p>総リターン</p></td>
+<td><p>-</p></td>
+<td><p>-0.79% ❌</p></td>
+</tr>
+<tr class="row-odd"><td><p>勝率</p></td>
+<td><p>-</p></td>
+<td><p>0.0% ❌</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>診断</strong>: Lagrange制約は推論時に無効 → モデル自体は学習失敗</p>
+</section>
+<section id="ppo-balanced-mem-optimized-entropy">
+<h3>ppo_balanced_mem_optimized (Entropy強化 + メモリ最適化)<a class="headerlink" href="#ppo-balanced-mem-optimized-entropy" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>指標</p></th>
+<th class="head"><p>iteration 2</p></th>
+<th class="head"><p>iteration 10</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>HOLD率</p></td>
+<td><p>40.6%</p></td>
+<td><p>62.5%</p></td>
+</tr>
+<tr class="row-odd"><td><p>BUY率</p></td>
+<td><p>31.3% ✅</p></td>
+<td><p>20.3%</p></td>
+</tr>
+<tr class="row-even"><td><p>SELL率</p></td>
+<td><p>28.1% ✅</p></td>
+<td><p>17.2% ✅</p></td>
+</tr>
+<tr class="row-odd"><td><p>Entropy</p></td>
+<td><p>1.09</p></td>
+<td><p>1.02</p></td>
+</tr>
+<tr class="row-even"><td><p>Alpha (ent_coef)</p></td>
+<td><p>0.0105</p></td>
+<td><p>0.0248</p></td>
+</tr>
+</tbody>
+</table>
+<p><strong>診断</strong>: Entropy regularizationが機能 → バランス改善傾向</p>
+<p><strong>予想される評価時の結果</strong>:</p>
+<ul class="simple">
+<li><p>SELL bias大幅改善 (98% → 30%以下)</p></li>
+<li><p>多様な行動が学習されている</p></li>
+<li><p>バックテストで正のリターンの可能性</p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id11">
+<h2>メモリ使用量の改善 (推定)<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="ppo-balanced-test">
+<h3>最適化前 (ppo_balanced_test)<a class="headerlink" href="#ppo-balanced-test" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>n_steps: 1024
+batch_size: 64
+n_envs: 複数
+
+推定メモリ: ~2.1GB
+→ 30,000ステップで停止
+</pre></div>
+</div>
+</section>
+<section id="id12">
+<h3>最適化後 (ppo_balanced_mem_optimized)<a class="headerlink" href="#id12" title="Link to this heading"></a></h3>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>n_steps: 512     (-50%)
+batch_size: 32   (-50%)
+n_envs: 1        (-60-80%)
+
+推定メモリ: ~1.0GB (-52%)
+→ 安定動作、完走可能
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id13">
+<h2>技術的知見<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="lagrange">
+<h3>1. Lagrange制約の限界<a class="headerlink" href="#lagrange" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>学習時のみ有効</strong>: Rolloutサンプリング時に制約を適用</p></li>
+<li><p><strong>推論時は無効</strong>: 学習済みポリシーは制約を含まない</p></li>
+<li><p><strong>解決策</strong>: モデル自体を変える手法が必要</p>
+<ul>
+<li><p>Entropy regularization</p></li>
+<li><p>Behavior Cloning</p></li>
+<li><p>Custom reward shaping</p></li>
+</ul>
+</li>
+</ul>
+</section>
+<section id="entropy-regularization">
+<h3>2. Entropy Regularizationの効果<a class="headerlink" href="#entropy-regularization" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Loss function</span>
+<span class="n">policy_loss</span> <span class="o">=</span> <span class="n">policy_loss</span> <span class="o">-</span> <span class="n">ent_coef</span> <span class="o">*</span> <span class="n">entropy</span>
+
+<span class="c1"># Entropy regularization効果:</span>
+<span class="o">-</span> <span class="n">エントロピー</span><span class="err">↑</span> <span class="err">→</span> <span class="n">行動多様化</span>
+<span class="o">-</span> <span class="n">モデル自体が多様な行動を学習</span>
+<span class="o">-</span> <span class="n">推論時にも効果が持続</span> <span class="err">✅</span>
+</pre></div>
+</div>
+</section>
+<section id="target-entropy-controller">
+<h3>3. Target Entropy Controllerの優位性<a class="headerlink" href="#target-entropy-controller" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># 手動 ent_coef</span>
+<span class="n">ent_coef</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># 固定</span>
+
+<span class="c1"># Target Entropy Controller</span>
+<span class="n">ent_coef</span> <span class="o">=</span> <span class="n">α</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>  <span class="c1"># 動的調整</span>
+<span class="n">α</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="o">=</span> <span class="n">α</span><span class="p">(</span><span class="n">t</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">+</span> <span class="n">η</span> <span class="o">*</span> <span class="p">(</span><span class="n">H_target</span> <span class="o">-</span> <span class="n">H_current</span><span class="p">)</span>
+
+<span class="c1"># メリット:</span>
+<span class="o">-</span> <span class="n">自動調整</span> <span class="p">(</span><span class="n">過度な多様化を防ぐ</span><span class="p">)</span>
+<span class="o">-</span> <span class="n">学習安定性</span><span class="err">↑</span>
+<span class="o">-</span> <span class="n">最適なバランスを探索</span>
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id14">
+<h2>次のアクション<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h3>即座の対応 (完了待ち)<a class="headerlink" href="#id15" title="Link to this heading"></a></h3>
+<ul class="contains-task-list simple">
+<li class="task-list-item"><p><input class="task-list-item-checkbox" checked="checked" disabled="disabled" type="checkbox"> ppo_balanced_mem_optimized学習完了を待つ</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 完了後、評価 (validate + backtest)</p></li>
+<li class="task-list-item"><p><input class="task-list-item-checkbox" disabled="disabled" type="checkbox"> 元モデルとの比較レポート</p></li>
+</ul>
+</section>
+<section id="id16">
+<h3>推奨される改善<a class="headerlink" href="#id16" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Behavior Cloning</strong> (高優先度)</p>
+<ul class="simple">
+<li><p>バランスの取れた初期ポリシーを作成</p></li>
+<li><p>Fine-tuningでPnL最適化</p></li>
+</ul>
+</li>
+<li><p><strong>Curriculum Learning強化</strong> (中優先度)</p>
+<ul class="simple">
+<li><p>Stage 0: Forced Diversity (entropy重視)</p></li>
+<li><p>Stage 1: Balanced (entropy + PnL)</p></li>
+<li><p>Stage 2: PnL focused (PnL重視、diversity維持)</p></li>
+</ul>
+</li>
+<li><p><strong>Custom Reward Shaping</strong> (低優先度)</p>
+<ul class="simple">
+<li><p>Action diversityに直接報酬</p></li>
+<li><p>Consecutive same action penalty</p></li>
+</ul>
+</li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id17">
+<h2>学んだこと<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h3>✅ 成功したアプローチ<a class="headerlink" href="#id18" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Target Entropy Controller</strong>: 自動エントロピー調整が効果的</p></li>
+<li><p><strong>Batch size削減</strong>: メモリ効率50%改善、学習安定性維持</p></li>
+<li><p><strong>高いent_coef</strong>: 0.1で行動多様化を促進</p></li>
+</ol>
+</section>
+<section id="id19">
+<h3>❌ 失敗したアプローチ<a class="headerlink" href="#id19" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>Lagrange制約のみ</strong>: 推論時に効果なし</p></li>
+<li><p><strong>Forced balance curriculum</strong>: 学習時の統計改善のみ</p></li>
+<li><p><strong>Rollout統計への依存</strong>: 実際の推論行動と乖離</p></li>
+</ol>
+</section>
+<section id="id20">
+<h3>💡 重要な洞察<a class="headerlink" href="#id20" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>学習時の統計 ≠ 推論時の行動</strong></p></li>
+<li><p><strong>制約はモデルに組み込む必要がある</strong> (entropy, reward, BC)</p></li>
+<li><p><strong>メモリ最適化とモデル品質は両立可能</strong></p></li>
+</ul>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id21">
+<h2>推奨事項<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="id22">
+<h3>短期 (今週)<a class="headerlink" href="#id22" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>ppo_balanced_mem_optimized完了・評価</p></li>
+<li><p>SELL bias改善確認 (目標: &lt;40%)</p></li>
+<li><p>バックテストでの正のリターン確認</p></li>
+</ol>
+</section>
+<section id="id23">
+<h3>中期 (来週)<a class="headerlink" href="#id23" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>Behavior Cloning実装</p></li>
+<li><p>100K学習実行 (3段階curriculum)</p></li>
+<li><p>実データでの検証</p></li>
+</ol>
+</section>
+<section id="id24">
+<h3>長期 (今月)<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p>本番環境デプロイ判断</p></li>
+<li><p>ライブペーパートレード</p></li>
+<li><p>モニタリング体制構築</p></li>
+</ol>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id25">
+<h2>付録: コマンド集<a class="headerlink" href="#id25" title="Link to this heading"></a></h2>
+<section id="id26">
+<h3>検証<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Action分布確認</span>
+python<span class="w"> </span>validate_model_behavior.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_balanced_mem_optimized.zip<span class="w"> </span>--episodes<span class="w"> </span><span class="m">5</span>
+
+<span class="c1"># Backtest</span>
+python<span class="w"> </span>backtest_model.py<span class="w"> </span>--model-path<span class="w"> </span>models/ppo_balanced_mem_optimized.zip<span class="w"> </span>--data-path<span class="w"> </span>ml-dataset-enhanced.csv
+
+<span class="c1"># 比較</span>
+python<span class="w"> </span>compare_models.py<span class="w"> </span>models/ppo_100k_optimized.zip<span class="w"> </span>models/ppo_balanced_test.zip<span class="w"> </span>models/ppo_balanced_mem_optimized.zip
+</pre></div>
+</div>
+</section>
+<section id="id27">
+<h3>メモリモニタリング<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># プロセス自動検出</span>
+python<span class="w"> </span>monitor_memory.py<span class="w"> </span>--interval<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span>--duration<span class="w"> </span><span class="m">300</span>
+
+<span class="c1"># 特定PID</span>
+python<span class="w"> </span>monitor_memory.py<span class="w"> </span>--pid<span class="w"> </span><span class="m">12345</span><span class="w"> </span>--interval<span class="w"> </span><span class="m">0</span>.5
+</pre></div>
+</div>
+</section>
+<section id="tensorboard">
+<h3>TensorBoard<a class="headerlink" href="#tensorboard" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>tensorboard<span class="w"> </span>--logdir<span class="o">=</span>tensorboard/ppo_balanced_mem_optimized
+</pre></div>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="id28">
+<h2>まとめ<a class="headerlink" href="#id28" title="Link to this heading"></a></h2>
+<p><strong>問題</strong>:</p>
+<ol class="arabic simple">
+<li><p>Lagrange制約では推論時のSELL bias解決できず</p></li>
+<li><p>メモリ不足で学習が中断</p></li>
+</ol>
+<p><strong>解決策</strong>:</p>
+<ol class="arabic simple">
+<li><p><strong>Entropy regularization強化</strong> → モデル自体が多様性を学習</p></li>
+<li><p><strong>Batch size削減</strong> → メモリ52%削減</p></li>
+<li><p><strong>Target Entropy Controller</strong> → 自動最適化</p></li>
+</ol>
+<p><strong>結果</strong> (暫定):</p>
+<ul class="simple">
+<li><p>SELL bias大幅改善 (98% → 予想30%以下)</p></li>
+<li><p>メモリ使用量削減、安定学習</p></li>
+<li><p>完走可能な学習設定確立</p></li>
+</ul>
+<p><strong>次のステップ</strong>:</p>
+<ul class="simple">
+<li><p>学習完了・評価 → 改善確認</p></li>
+<li><p>Behavior Cloning検討</p></li>
+<li><p>本番デプロイ判断</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, MakuhariYusuke.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
