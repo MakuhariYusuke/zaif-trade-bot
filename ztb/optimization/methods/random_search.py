@@ -20,28 +20,29 @@ Bergstra & Bengio (2012)の研究で、Grid Searchより効率的であること
 - 計算リソースが限られている
 """
 
-from typing import Any, Callable, List, Dict
-import time
 import random
+import time
+from typing import Any, Callable, List
+
 import numpy as np
 
 from ztb.optimization.base import (
+    OptimizationResult,
     OptimizerBase,
     ParameterSpace,
-    OptimizationResult,
-    TrialResult
+    TrialResult,
 )
 
 
 class RandomSearchOptimizer(OptimizerBase):
     """
     Random Search最適化
-    
+
     Example:
         >>> param_spaces = [
-        ...     ParameterSpace('learning_rate', ParameterType.LOG_UNIFORM, 
+        ...     ParameterSpace('learning_rate', ParameterType.LOG_UNIFORM,
         ...                    low=1e-4, high=1e-3),
-        ...     ParameterSpace('batch_size', ParameterType.CATEGORICAL, 
+        ...     ParameterSpace('batch_size', ParameterType.CATEGORICAL,
         ...                    choices=[64, 128, 256]),
         ...     ParameterSpace('gamma', ParameterType.CONTINUOUS,
         ...                    low=0.95, high=0.999)
@@ -53,13 +54,13 @@ class RandomSearchOptimizer(OptimizerBase):
         ... )
         >>> result = optimizer.optimize()
     """
-    
+
     def __init__(
         self,
         parameter_spaces: List[ParameterSpace],
         objective_function: Callable[[dict[str, Any]], TrialResult],
         n_trials: int = 20,
-        random_state: int = 42
+        random_state: int = 42,
     ):
         """
         Args:
@@ -72,23 +73,23 @@ class RandomSearchOptimizer(OptimizerBase):
             parameter_spaces=parameter_spaces,
             objective_function=objective_function,
             n_trials=n_trials,
-            random_state=random_state
+            random_state=random_state,
         )
-        
+
         # Ensure n_trials is not None for type safety
         self.n_trials: int = n_trials
-        
+
         # 乱数シードの設定
         random.seed(random_state)
         np.random.seed(random_state)
-    
+
     def _sample_parameters(self) -> dict[str, Any]:
         """パラメータをランダムにサンプリング"""
         parameters = {}
         for param_name, param_space in self.parameter_spaces.items():
             parameters[param_name] = param_space.sample()
         return parameters
-    
+
     def optimize(self) -> OptimizationResult:
         """Random Searchで最適化を実行"""
         print("=" * 80)
@@ -98,15 +99,15 @@ class RandomSearchOptimizer(OptimizerBase):
         print(f"試行回数: {self.n_trials}")
         print(f"探索パラメータ: {list(self.parameter_spaces.keys())}")
         print()
-        
+
         self.start_time = time.time()
-        
+
         # ランダムサンプリング
         for trial_id in range(1, self.n_trials + 1):
             parameters = self._sample_parameters()
             self._run_trial(trial_id, parameters)
-        
+
         result = self._create_result()
         result.print_summary()
-        
+
         return result

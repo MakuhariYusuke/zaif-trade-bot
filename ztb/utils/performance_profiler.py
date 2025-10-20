@@ -190,7 +190,7 @@ class PerformanceProfiler:
             times = [m["avg_time_ms"] for m in benchmark_results.values()]
             memories = [m["avg_memory_mb"] for m in benchmark_results.values()]
 
-            print(f"\nSUMMARY STATISTICS:")
+            print("\nSUMMARY STATISTICS:")
             print("-" * 60)
             print(f"Total features tested: {len(benchmark_results)}")
             print(f"Average time per feature: {sum(times)/len(times):.2f}ms")

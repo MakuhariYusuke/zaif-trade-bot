@@ -101,26 +101,26 @@ export function loadDaily(date: string, pair?: string): DailyAggregate {
                 if (last) return JSON.parse(last);
             } catch {}
         }
-        if (!fs.existsSync(f)) return { 
-            date, 
-            trades: 0, 
-            wins: 0, 
-            realizedPnl: 0, 
-            sumSlippage: 0, 
-            maxSlippage: 0, 
-            sumRetries: 0, 
-            maxRetries: 0 
+        if (!fs.existsSync(f)) return {
+            date,
+            trades: 0,
+            wins: 0,
+            realizedPnl: 0,
+            sumSlippage: 0,
+            maxSlippage: 0,
+            sumRetries: 0,
+            maxRetries: 0
         };
         return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch { return { 
-        date, 
-        trades: 0, 
-        wins: 0, 
-        realizedPnl: 0, 
-        sumSlippage: 0, 
-        maxSlippage: 0, 
-        sumRetries: 0, 
-        maxRetries: 0 
+    } catch { return {
+        date,
+        trades: 0,
+        wins: 0,
+        realizedPnl: 0,
+        sumSlippage: 0,
+        maxSlippage: 0,
+        sumRetries: 0,
+        maxRetries: 0
     }; }
 }
 
@@ -381,10 +381,10 @@ export function summarizeDaily(date: string, pair?: string) {
             `trailStops: ${agg.trailStops || 0}`
         ].join('\n'));
     } catch {}
-    return { 
-        ...agg, 
-        avgSlippage: avgSlip, 
-        avgRetries: avgTotalRetries, 
+    return {
+        ...agg,
+        avgSlippage: avgSlip,
+        avgRetries: avgTotalRetries,
         winRate: agg.trades ? agg.wins / agg.trades : 0,
         maxDrawdown: agg.maxDrawdown || 0,
         maxConsecLosses: agg.maxConsecLosses || 0,

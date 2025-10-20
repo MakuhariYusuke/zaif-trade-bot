@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.tests.test_unified_trainer_refactoring</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">unified_trainer.py リファクタリングのテスト。</span>
@@ -115,7 +115,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🧪 ConfigBuilder Test&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="c1"># テスト設定</span>
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
@@ -132,35 +132,35 @@
             <span class="s2">&quot;transaction_cost&quot;</span><span class="p">:</span> <span class="mf">0.0005</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="c1"># ConfigBuilder作成</span>
     <span class="n">builder</span> <span class="o">=</span> <span class="n">ConfigBuilder</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Created: </span><span class="si">{</span><span class="n">builder</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 設定値取得テスト</span>
     <span class="n">lr</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_config_value</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;ppo_hyperparameters&quot;</span><span class="p">],</span> <span class="mf">0.0001</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Learning rate: </span><span class="si">{</span><span class="n">lr</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">lr</span> <span class="o">==</span> <span class="mf">0.0003</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.0003, got </span><span class="si">{</span><span class="n">lr</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="c1"># メモリ最適化設定</span>
     <span class="n">memory_config</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_memory_optimization_config</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Memory optimization: </span><span class="si">{</span><span class="n">memory_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 環境設定</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_environment_config</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Environment config: initial_balance=</span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200000</span>
-    
+
     <span class="c1"># PPO設定</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ PPO config: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">ppo_config</span><span class="p">)</span><span class="si">}</span><span class="s2"> parameters&quot;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.0003</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;ent_coef&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.01</span>
-    
+
     <span class="c1"># 特徴量設定</span>
     <span class="n">feature_config</span> <span class="o">=</span> <span class="n">builder</span><span class="o">.</span><span class="n">get_feature_config</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Feature config: </span><span class="si">{</span><span class="n">feature_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🎉 ConfigBuilder test passed!&quot;</span><span class="p">)</span></div>
 
 
@@ -172,7 +172,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🧪 AlgorithmFactory Integration Test&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="c1"># テスト設定</span>
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
@@ -185,23 +185,23 @@
             <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="mf">0.01</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="c1"># ConfigManager作成</span>
     <span class="n">config_manager</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created ConfigManager&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># AlgorithmTrainer作成</span>
     <span class="n">algorithm_trainer</span> <span class="o">=</span> <span class="n">AlgorithmTrainer</span><span class="p">(</span><span class="n">config_manager</span><span class="p">,</span> <span class="n">progress_bar_enabled</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created AlgorithmTrainer&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># AlgorithmFactoryから直接PPO取得</span>
     <span class="n">ppo_algo</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;ppo&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created PPO via AlgorithmFactory: </span><span class="si">{</span><span class="n">ppo_algo</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># デフォルト設定確認</span>
     <span class="n">default_config</span> <span class="o">=</span> <span class="n">ppo_algo</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ PPO default config has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">default_config</span><span class="p">)</span><span class="si">}</span><span class="s2"> sections&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🎉 AlgorithmFactory integration test passed!&quot;</span><span class="p">)</span></div>
 
 
@@ -213,34 +213,34 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🧪 UnifiedTrainer Import Test&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.unified_trainer</span><span class="w"> </span><span class="kn">import</span> <span class="n">UnifiedTrainer</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Successfully imported UnifiedTrainer&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 簡単な設定で初期化テスト</span>
         <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;ppo&quot;</span><span class="p">,</span>
             <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;import_test&quot;</span><span class="p">,</span>
             <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">1000</span>
         <span class="p">}</span>
-        
+
         <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">dry_run</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Created UnifiedTrainer with algorithm: </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">algorithm</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ ConfigBuilder available: </span><span class="si">{</span><span class="n">trainer</span><span class="o">.</span><span class="n">config_builder</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># ConfigBuilder経由で設定取得</span>
         <span class="n">memory_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_memory_optimization_config</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Memory config via ConfigBuilder: </span><span class="si">{</span><span class="n">memory_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🎉 UnifiedTrainer import test passed!&quot;</span><span class="p">)</span>
-        
+
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Failed to import or initialize UnifiedTrainer: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
         <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
         <span class="k">return</span> <span class="kc">False</span>
-    
+
     <span class="k">return</span> <span class="kc">True</span></div>
 
 
@@ -252,13 +252,13 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;📊 Refactoring Summary&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Completed:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  1. ConfigBuilder created and working&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  2. AlgorithmFactory integrated into AlgorithmTrainer&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  3. UnifiedTrainer using ConfigBuilder for all config methods&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  4. PPO now uses AlgorithmFactory (hybrid mode)&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Architecture:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  unified_trainer.py (simplified)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    ↓ uses&quot;</span><span class="p">)</span>
@@ -269,13 +269,13 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  AlgorithmFactory.create(&#39;ppo&#39;)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;    ↓ creates&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  PPOAlgorithm (new architecture)&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🎯 Benefits:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  - unified_trainer.py methods delegated to ConfigBuilder&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  - Easy to add new algorithms (SAC, TD3, etc.)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  - Config building logic centralized&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  - AlgorithmFactory provides pluggable architecture&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">⏭️  Next Steps:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  1. Test with existing training scripts (train_v394d.py)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  2. Verify PPO training works correctly&quot;</span><span class="p">)</span>
@@ -291,7 +291,7 @@
         <span class="n">test_algorithm_factory_integration</span><span class="p">()</span>
         <span class="n">success</span> <span class="o">=</span> <span class="n">test_unified_trainer_import</span><span class="p">()</span>
         <span class="n">test_summary</span><span class="p">()</span>
-        
+
         <span class="k">if</span> <span class="n">success</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🎉 ALL TESTS PASSED!&quot;</span><span class="p">)</span>
@@ -301,7 +301,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ Some tests failed. Please check errors above.&quot;</span><span class="p">)</span>
             <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-        
+
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">❌ Test suite failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
@@ -322,7 +322,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -333,7 +333,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

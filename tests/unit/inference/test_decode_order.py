@@ -15,6 +15,7 @@ import pytest
 
 try:
     import torch
+
     from ztb.inference.decode import (
         InferenceConfig,
         compute_legal_sell_rate,
@@ -22,6 +23,8 @@ try:
     )
 except ImportError:
     pytest.skip("torch or ztb.inference modules not available", allow_module_level=True)
+
+
 class TestDecodeOrder:
     """Test strict decode order: mask → softmax(T) → argmax."""
 
@@ -391,7 +394,7 @@ class TestEdgeCases:
     def test_all_actions_illegal_raises_error(self):
         """Test fallback behavior when all actions are illegal."""
         import warnings
-        
+
         logits = np.array([1.0, 2.0, 3.0])
         mask = np.array([0, 0, 0])  # All illegal
 
@@ -399,11 +402,11 @@ class TestEdgeCases:
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             action, info = decode_action(logits, mask)
-            
+
             # Check that warning was issued
             assert len(w) == 1
             assert "no legal actions" in str(w[0].message).lower()
-            
+
             # Check fallback to HOLD
             assert action == 0
 

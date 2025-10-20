@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="critical-fix-hold">
 <h1>🔧 CRITICAL FIX: HOLD偏重問題の根本修正<a class="headerlink" href="#critical-fix-hold" title="Link to this heading"></a></h1>
 <p><strong>作成日</strong>: 2025-10-10<br />
@@ -206,11 +206,11 @@
     <span class="c1"># 辞書をコピーして変更（元のmetadataを保護）</span>
     <span class="n">training_env_config</span> <span class="o">=</span> <span class="n">training_env_config_raw</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applying training environment config: </span><span class="si">{</span><span class="n">training_env_config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># initial_balance → initial_portfolio_value に変換</span>
     <span class="k">if</span> <span class="s2">&quot;initial_balance&quot;</span> <span class="ow">in</span> <span class="n">training_env_config</span><span class="p">:</span>
         <span class="n">training_env_config</span><span class="p">[</span><span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_env_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 訓練時設定を適用</span>
     <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">training_env_config</span><span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -282,11 +282,11 @@
 <span class="k">if</span> <span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
     <span class="c1"># 理想的な購入コスト（フルサイズ）</span>
     <span class="n">ideal_buy_cost</span> <span class="o">=</span> <span class="n">position_size</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">)</span>
-    
+
     <span class="c1"># 🔧 少額取引対応: 利用可能資金の90%以上あれば取引可能とする</span>
     <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.9</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
     <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.0001</span>  <span class="c1"># 最小取引単位 (0.01 mBTC, 約1,800円相当)</span>
-    
+
     <span class="c1"># 条件: 理想サイズが買えるか、または最小単位以上が買える</span>
     <span class="k">if</span> <span class="n">portfolio_value</span> <span class="o">&gt;=</span> <span class="n">ideal_buy_cost</span> <span class="ow">or</span> <span class="n">affordable_size</span> <span class="o">&gt;=</span> <span class="n">min_trade_size</span><span class="p">:</span>
         <span class="n">legal</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
@@ -307,24 +307,24 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">open_position</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
     <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
     <span class="n">max_position_size</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    
+
     <span class="c1"># 🔧 少額取引対応: 利用可能資金に基づいてポジションサイズを調整</span>
     <span class="n">initial_portfolio</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span> <span class="mf">200000.0</span><span class="p">)</span>
     <span class="n">available_funds</span> <span class="o">=</span> <span class="n">initial_portfolio</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
     <span class="n">transaction_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="p">)</span>
-    
+
     <span class="c1"># 実際に購入可能なサイズ（利用可能資金の90%まで）</span>
     <span class="n">affordable_funds</span> <span class="o">=</span> <span class="n">available_funds</span> <span class="o">*</span> <span class="mf">0.9</span>
     <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">affordable_funds</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
-    
+
     <span class="c1"># 実際のポジションサイズ: 小さい方を採用</span>
     <span class="n">actual_position_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_position_size</span><span class="p">,</span> <span class="n">affordable_size</span><span class="p">)</span>
-    
+
     <span class="c1"># 最小取引単位チェック (0.0001 BTC)</span>
     <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.0001</span>
     <span class="k">if</span> <span class="n">actual_position_size</span> <span class="o">&lt;</span> <span class="n">min_trade_size</span><span class="p">:</span>
         <span class="n">actual_position_size</span> <span class="o">=</span> <span class="n">min_trade_size</span>  <span class="c1"># 最小単位で取引試行</span>
-    
+
     <span class="c1"># ...実際のポジション作成処理</span>
 </pre></div>
 </div>
@@ -546,7 +546,7 @@ Trades/Episode:    4.0
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -557,7 +557,7 @@ Trades/Episode:    4.0
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""
+Canonical 1M Training Runner for Zaif Trade Bot.
+
+Runs a 1 million timestep PPO training session with resume capability,
+periodic evaluation, and proper artifact management.
+"""
+
+import argparse
+import logging
+import sys
+from pathlib import Path
+from typing import Any, Dict
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from ztb.training.ppo_config import get_ppo_config
+from ztb.training.ppo_trainer import PPOTrainer
+from ztb.utils import DiscordNotifier
+
+
+def setup_logging(verbose: bool) -> logging.Logger:
+    """Setup logging configuration."""
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    return logging.getLogger(__name__)
+
+
+def validate_training_setup(
+    data_path: str, checkpoint_dir: str, correlation_id: str
+) -> bool:
+    """Validate training setup before starting."""
+    logger = logging.getLogger(__name__)
+
+    # Validate data path
+    data_path_obj = Path(data_path)
+    if not data_path_obj.exists():
+        logger.error(f"Data file not found: {data_path_obj}")
+        return False
+
+    # Check for duplication (resume invariants)
+    session_dir = Path(checkpoint_dir) / correlation_id
+    if session_dir.exists():
+        logger.warning(f"Session {correlation_id} already exists at {session_dir}")
+        logger.warning("Use resume functionality or choose a different correlation-id")
+        return False
+
+    return True
+
+
+def build_training_config(args: argparse.Namespace) -> Dict[str, Any]:
+    """Build training configuration from command line arguments."""
+    return {
+        "total_timesteps": args.total_timesteps,
+        "log_dir": args.log_dir,
+        "model_dir": args.model_dir,
+        "tensorboard_log": args.log_dir,
+        "verbose": 1 if args.verbose else 0,
+        "seed": 42,
+        # Trading environment settings
+        "transaction_cost": getattr(args, "transaction_cost", 0.001),
+        "max_position_size": getattr(args, "max_position_size", 1.0),
+        "reward_trade_frequency_penalty": args.reward_trade_frequency_penalty,
+        "reward_trade_frequency_halflife": args.reward_trade_frequency_halflife,
+        "reward_trade_cooldown_steps": args.reward_trade_cooldown_steps,
+        "reward_trade_cooldown_penalty": args.reward_trade_cooldown_penalty,
+        "reward_max_consecutive_trades": args.reward_max_consecutive_trades,
+        "reward_consecutive_trade_penalty": args.reward_consecutive_trade_penalty,
+        "features": args.feature_set,  # PPOTrainer expects 'features' key
+        # PPO hyperparameters from common config
+        **get_ppo_config(),
+        # Evaluation settings
+        "eval_freq": 10000,
+        "n_eval_episodes": 5,
+        # Checkpoint settings
+        "checkpoint": {
+            "keep_last": 5,
+            "compress": "zstd",
+            "async_save": True,
+            "include_optimizer": True,
+            "include_replay_buffer": False,
+            "include_rng_state": True,
+        },
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Run canonical 1M timestep training")
+    parser.add_argument(
+        "--correlation-id",
+        required=True,
+        help="Correlation ID for this training session",
+    )
+    parser.add_argument(
+        "--data-path",
+        default="ml-dataset.csv",
+        help="Path to training data (default: ml-dataset.csv)",
+    )
+    parser.add_argument(
+        "--total-timesteps",
+        type=int,
+        default=1_000_000,
+        help="Total training timesteps (default: 1,000,000)",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Dry run mode - validate setup without training",
+    )
+    parser.add_argument(
+        "--checkpoint-dir",
+        default="checkpoints",
+        help="Checkpoint directory (default: checkpoints)",
+    )
+    parser.add_argument(
+        "--checkpoint-interval",
+        type=int,
+        default=10000,
+        help="Steps between checkpoints (default: 10000)",
+    )
+    parser.add_argument(
+        "--log-dir", default="logs", help="Log directory (default: logs)"
+    )
+    parser.add_argument(
+        "--model-dir", default="models", help="Model directory (default: models)"
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--offline-mode",
+        action="store_true",
+        help="Offline mode - disable Discord notifications and internet-dependent features",
+    )
+    parser.add_argument(
+        "--enable-streaming",
+        action="store_true",
+        help="Enable streaming pipeline (default: disabled)",
+    )
+    parser.add_argument(
+        "--stream-batch-size",
+        type=int,
+        default=256,
+        help="Streaming batch size (default: 256)",
+    )
+    parser.add_argument(
+        "--feature-set",
+        default="full",
+        choices=["basic", "scalping", "trend", "momentum", "full"],
+        help="Feature set to use (default: full)",
+    )
+    parser.add_argument(
+        "--reward-trade-frequency-penalty",
+        type=float,
+        default=0.3,
+        help="Penalty for frequent trading (default: 0.3)",
+    )
+    parser.add_argument(
+        "--reward-trade-frequency-halflife",
+        type=float,
+        default=12.0,
+        help="Halflife for trade frequency penalty decay (default: 12.0)",
+    )
+    parser.add_argument(
+        "--reward-trade-cooldown-steps",
+        type=int,
+        default=3,
+        help="Cooldown steps between trades (default: 3)",
+    )
+    parser.add_argument(
+        "--reward-trade-cooldown-penalty",
+        type=float,
+        default=0.5,
+        help="Penalty for trading during cooldown (default: 0.5)",
+    )
+    parser.add_argument(
+        "--reward-max-consecutive-trades",
+        type=int,
+        default=3,
+        help="Maximum consecutive trades allowed (default: 3)",
+    )
+    parser.add_argument(
+        "--reward-consecutive-trade-penalty",
+        type=float,
+        default=0.4,
+        help="Penalty for exceeding consecutive trade limit (default: 0.4)",
+    )
+    parser.add_argument(
+        "--transaction-cost",
+        type=float,
+        default=0.001,
+        help="Transaction cost per trade (default: 0.001)",
+    )
+    parser.add_argument(
+        "--max-position-size",
+        type=float,
+        default=1.0,
+        help="Maximum position size (default: 1.0)",
+    )
+
+    args = parser.parse_args()
+
+    # Setup logging
+    setup_logging(args.verbose)
+
+    logger = logging.getLogger(__name__)
+
+    # Initialize Discord notifier (disabled in offline mode)
+    if args.offline_mode:
+        logger.info("Offline mode enabled - Discord notifications disabled")
+    else:
+        notifier = DiscordNotifier()
+
+    # Validate training setup
+    if not validate_training_setup(
+        args.data_path, args.checkpoint_dir, args.correlation_id
+    ):
+        return 1
+
+    if args.dry_run:
+        logger.info(f"Dry run: would train with correlation_id {args.correlation_id}")
+        logger.info(f"Data path: {args.data_path}")
+        logger.info(f"Total timesteps: {args.total_timesteps}")
+        logger.info("Setup validation complete")
+        return 0
+
+    try:
+        # Build training configuration
+        config = build_training_config(args)
+
+        logger.info(f"Starting 1M training session: {args.correlation_id}")
+        logger.info(f"Data: {args.data_path}")
+        logger.info(f"Timesteps: {args.total_timesteps}")
+
+        # Create streaming pipeline if enabled
+        streaming_pipeline = None
+        if args.enable_streaming:
+            logger.info("Enabling streaming pipeline")
+            from ztb.data.streaming_pipeline import StreamingPipeline
+
+            streaming_pipeline = StreamingPipeline(
+                batch_size=args.stream_batch_size,
+            )
+
+        # Create trainer
+        trainer = PPOTrainer(
+            data_path=str(args.data_path) if not args.enable_streaming else None,
+            config=config,
+            checkpoint_interval=args.checkpoint_interval,
+            checkpoint_dir=args.checkpoint_dir,
+        )
+
+        # Run training
+        model = trainer.train(session_id=args.correlation_id)
+
+        logger.info(f"Training completed successfully: {args.correlation_id}")
+        return 0
+
+    except Exception as e:
+        logger.error(f"Training failed: {e}", exc_info=True)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

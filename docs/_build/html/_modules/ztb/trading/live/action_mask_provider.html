@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.trading.live.action_mask_provider</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Action Mask Provider for Live Trading</span>
@@ -115,13 +115,13 @@
 <span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ActionMaskConfig</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration for action masking in live trading.&quot;&quot;&quot;</span>
-    
+
     <span class="n">min_holding_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Minimum time steps to hold a position before allowing closure.&quot;&quot;&quot;</span>
-    
+
     <span class="n">enable_forced_close</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Enable forced position close on take-profit/stop-loss.&quot;&quot;&quot;</span>
-    
+
     <span class="n">max_position_age</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Maximum age of position before forcing closure.&quot;&quot;&quot;</span></div>
 
@@ -139,7 +139,7 @@
 <span class="sd">    Bug #27 Fix: Enables proper MaskablePPO usage in live trading with</span>
 <span class="sd">    action masking safety features (min_holding_period, forced closes, etc.)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">ActionMaskConfig</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Initialize the action mask provider.</span>
@@ -148,15 +148,15 @@
 <span class="sd">            config: Configuration for action masking behavior</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
-        
+
         <span class="c1"># State tracking (synchronized with PositionManager)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">position_entry_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
         <span class="c1"># Forced close state</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">forced_close_reason</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
 <div class="viewcode-block" id="ActionMaskProvider.update_state">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.live.html#ztb.trading.live.action_mask_provider.ActionMaskProvider.update_state">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update_state</span><span class="p">(</span>
@@ -180,7 +180,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">=</span> <span class="n">current_step</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">forced_close_reason</span> <span class="o">=</span> <span class="n">forced_close_reason</span></div>
 
-        
+
 <div class="viewcode-block" id="ActionMaskProvider.get_action_mask">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.live.html#ztb.trading.live.action_mask_provider.ActionMaskProvider.get_action_mask">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_action_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
@@ -199,45 +199,45 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Default: all actions allowed [HOLD, BUY, SELL]</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-        
+
         <span class="c1"># Check forced close condition</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_should_force_close</span><span class="p">():</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_forced_close_mask</span><span class="p">()</span>
-        
+
         <span class="c1"># Check min holding period</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min_holding_period_satisfied</span><span class="p">():</span>
             <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_block_closing_actions</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
-            
+
         <span class="c1"># Block invalid position transitions</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_position_constraints</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">mask</span></div>
 
-    
+
 <div class="viewcode-block" id="ActionMaskProvider.get_action_masks">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.live.html#ztb.trading.live.action_mask_provider.ActionMaskProvider.get_action_masks">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Alias for get_action_mask() for compatibility with predict_with_masks.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span></div>
 
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_should_force_close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if position should be forcibly closed.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_forced_close</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">False</span>
-            
+
         <span class="c1"># Forced close due to take-profit/stop-loss</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">forced_close_reason</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">True</span>
-            
+
         <span class="c1"># Forced close due to max position age</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">position_age</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_entry_step</span>
             <span class="k">if</span> <span class="n">position_age</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">max_position_age</span><span class="p">:</span>
                 <span class="k">return</span> <span class="kc">True</span>
-                
+
         <span class="k">return</span> <span class="kc">False</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_forced_close_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get mask that only allows position closing.</span>
 <span class="sd">        </span>
@@ -255,15 +255,15 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Flat: shouldn&#39;t reach here, but allow all actions</span>
             <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_min_holding_period_satisfied</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if minimum holding period is satisfied.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">True</span>  <span class="c1"># No position, no restriction</span>
-            
+
         <span class="n">position_age</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_entry_step</span>
         <span class="k">return</span> <span class="n">position_age</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">min_holding_period</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_block_closing_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Block actions that would close the current position.</span>
 <span class="sd">        </span>
@@ -279,9 +279,9 @@
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># Short position: block BUY (index 1)</span>
             <span class="n">mask</span><span class="p">[</span><span class="n">ACTION_BUY</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
-            
+
         <span class="k">return</span> <span class="n">mask</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_position_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">bool_</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Apply constraints to prevent invalid position transitions.</span>
@@ -303,11 +303,11 @@
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="c1"># Short position: block SELL (index 2), allow BUY (close) and HOLD</span>
             <span class="n">mask</span><span class="p">[</span><span class="n">ACTION_SELL</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
-            
+
         <span class="c1"># HOLD (index 0) is always allowed (unless forced close)</span>
-        
+
         <span class="k">return</span> <span class="n">mask</span>
-    
+
 <div class="viewcode-block" id="ActionMaskProvider.get_mask_info">
 <a class="viewcode-back" href="../../../../api/generated/ztb.trading.live.html#ztb.trading.live.action_mask_provider.ActionMaskProvider.get_mask_info">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_mask_info</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -318,11 +318,11 @@
 <span class="sd">            Dict with mask state, position info, and reasoning</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
-        
+
         <span class="n">position_age</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">position_age</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_entry_step</span>
-            
+
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;mask&quot;</span><span class="p">:</span> <span class="n">mask</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
             <span class="s2">&quot;mask_human&quot;</span><span class="p">:</span> <span class="p">{</span>
@@ -358,7 +358,7 @@
         <span class="n">enable_forced_close</span><span class="o">=</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_forced_close&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
         <span class="n">max_position_age</span><span class="o">=</span><span class="n">env_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;max_position_age&quot;</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
     <span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">ActionMaskProvider</span><span class="p">(</span><span class="n">mask_config</span><span class="p">)</span></div>
 
 </pre></div>
@@ -376,7 +376,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -387,7 +387,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

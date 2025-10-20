@@ -53,10 +53,10 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
       try {
           const hist: any[] = await api.trade_history({ currency_pair: pair, count: 100 });
           const fills = hist.filter(h => String(h.order_id) === id);
-          for (const f of fills) { 
-            const a = Number(f.amount || 0); 
-            const p = Number(f.price || 0); 
-            filledQty += a; value += a * p; 
+          for (const f of fills) {
+            const a = Number(f.amount || 0);
+            const p = Number(f.price || 0);
+            filledQty += a; value += a * p;
           }
       } catch {}
       const avgPrice = filledQty > 0 ? value / filledQty : 0;
@@ -64,19 +64,19 @@ async function placeAndCancel(api: PrivateApi, pair: string, action: 'bid' | 'as
       return { id, filledQty, avgPrice, status: 'filled' as const };
   }
   try { await api.cancel_order({ order_id: id }); }
-  catch (e: any) { 
-    logError('[LIVE][CANCEL_FAIL]', e?.message || e); 
-    return { id, filledQty: 0, avgPrice: 0, status: 'failed' as const }; 
+  catch (e: any) {
+    logError('[LIVE][CANCEL_FAIL]', e?.message || e);
+    return { id, filledQty: 0, avgPrice: 0, status: 'failed' as const };
   }
-  let filledQty = 0; 
+  let filledQty = 0;
   let value = 0;
   try {
       const hist: any[] = await api.trade_history({ currency_pair: pair, count: 100 });
       const fills = hist.filter(h => String(h.order_id) === id);
-      for (const f of fills) { 
-        const a = Number(f.amount || 0); 
-        const p = Number(f.price || 0); 
-        filledQty += a; value += a * p; 
+      for (const f of fills) {
+        const a = Number(f.amount || 0);
+        const p = Number(f.price || 0);
+        filledQty += a; value += a * p;
       }
   } catch {}
   const avgPrice = filledQty > 0 ? value / filledQty : 0;
@@ -215,17 +215,17 @@ switch (flow) {
       if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
       const diffPath = path.join(outDir, 'stats-diff-live.json');
       const after = await fetchBalances(api).catch(()=>({} as any));
-      const balancesAfter = { 
-        jpy: Number((after as any).jpy||0), 
-        btc: Number((after as any).btc||0), 
-        eth: Number((after as any).eth||0), 
-        xrp: Number((after as any).xrp||0) 
+      const balancesAfter = {
+        jpy: Number((after as any).jpy||0),
+        btc: Number((after as any).btc||0),
+        eth: Number((after as any).eth||0),
+        xrp: Number((after as any).xrp||0)
       };
-      const deltas = { 
-        jpy: (balancesAfter.jpy - balancesBefore.jpy), 
-        btc: (balancesAfter.btc - balancesBefore.btc), 
-        eth: (balancesAfter.eth - balancesBefore.eth), 
-        xrp: (balancesAfter.xrp - balancesBefore.xrp) 
+      const deltas = {
+        jpy: (balancesAfter.jpy - balancesBefore.jpy),
+        btc: (balancesAfter.btc - balancesBefore.btc),
+        eth: (balancesAfter.eth - balancesBefore.eth),
+        xrp: (balancesAfter.xrp - balancesBefore.xrp)
       };
       const warnings: string[] = [];
       const pct = getExposureWarnPct();
@@ -233,32 +233,32 @@ switch (flow) {
           const r = computeExposureRatio(exed.side, exed.qty, exed.price, balancesBefore as any, pair);
           if (r > pct) warnings.push(exed.side==='bid' ? 'over5pct_jpy' : 'over5pct_base');
       }
-      let summary: any = { 
-        env: { 
-            EXCHANGE: process.env.EXCHANGE, 
-            TRADE_FLOW: process.env.TRADE_FLOW, 
-            TEST_FLOW_QTY: process.env.TEST_FLOW_QTY, 
-            TEST_FLOW_RATE: process.env.TEST_FLOW_RATE, 
-            DRY_RUN: process.env.DRY_RUN 
-        }, 
-        balancesBefore, 
-        balancesAfter, 
-        deltas, 
-        executed, 
-        warnings 
+      let summary: any = {
+        env: {
+            EXCHANGE: process.env.EXCHANGE,
+            TRADE_FLOW: process.env.TRADE_FLOW,
+            TEST_FLOW_QTY: process.env.TEST_FLOW_QTY,
+            TEST_FLOW_RATE: process.env.TEST_FLOW_RATE,
+            DRY_RUN: process.env.DRY_RUN
+        },
+        balancesBefore,
+        balancesAfter,
+        deltas,
+        executed,
+        warnings
       };
       if (fs.existsSync(diffPath)){
           try {
               const d = JSON.parse(fs.readFileSync(diffPath,'utf8'));
               const vals = d?.values || {};
               const diff = d?.diff || {};
-              summary.stats = { 
-                incBuy: (diff.buyEntries||0), 
-                incSell: (diff.sellEntries||0), 
-                incPnl: (diff.realizedPnl||0), 
-                winRate: (vals.trades? (vals.wins||0)/(vals.trades||1): 0), 
-                streakWin: vals.streakWin||0, 
-                streakLoss: vals.streakLoss||0 
+              summary.stats = {
+                incBuy: (diff.buyEntries||0),
+                incSell: (diff.sellEntries||0),
+                incPnl: (diff.realizedPnl||0),
+                winRate: (vals.trades? (vals.wins||0)/(vals.trades||1): 0),
+                streakWin: vals.streakWin||0,
+                streakLoss: vals.streakLoss||0
               };
           } catch {}
       }

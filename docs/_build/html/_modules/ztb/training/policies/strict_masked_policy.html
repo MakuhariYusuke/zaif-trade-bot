@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.policies.strict_masked_policy</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">StrictMaskedPolicy: カスタムPPOポリシー（学習時の厳密なマスク適用）</span>
@@ -185,7 +185,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Extract features from observation</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_extractor</span><span class="p">)</span>
-        
+
         <span class="c1"># Get latent representations for policy and value</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_features_extractor</span><span class="p">:</span>
             <span class="n">latent_pi</span><span class="p">,</span> <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
@@ -193,10 +193,10 @@
             <span class="n">pi_features</span><span class="p">,</span> <span class="n">vf_features</span> <span class="o">=</span> <span class="n">features</span>
             <span class="n">latent_pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="o">.</span><span class="n">forward_actor</span><span class="p">(</span><span class="n">pi_features</span><span class="p">)</span>
             <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="o">.</span><span class="n">forward_critic</span><span class="p">(</span><span class="n">vf_features</span><span class="p">)</span>
-        
+
         <span class="c1"># Get raw action logits</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">latent_pi</span><span class="p">)</span>
-        
+
         <span class="c1"># CRITICAL: Apply mask BEFORE distribution creation</span>
         <span class="c1"># 違法アクションのlogitsを -1e9 に設定(事実上の確率ゼロ)</span>
         <span class="k">if</span> <span class="n">action_masks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -205,16 +205,16 @@
                 <span class="n">mask_tensor</span> <span class="o">=</span> <span class="n">action_masks</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">mask_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">action_masks</span><span class="p">)</span><span class="o">.</span><span class="n">bool</span><span class="p">()</span>
-            
+
             <span class="n">logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
                 <span class="n">mask_tensor</span><span class="p">,</span>
                 <span class="n">logits</span><span class="p">,</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1e9</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
             <span class="p">)</span>
-        
+
         <span class="c1"># Create categorical distribution from masked logits</span>
         <span class="n">distribution</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="c1"># Sample or select deterministically</span>
         <span class="k">if</span> <span class="n">deterministic</span><span class="p">:</span>
             <span class="c1"># Deterministic: argmax over masked logits</span>
@@ -222,11 +222,11 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Stochastic: sample from masked distribution</span>
             <span class="n">actions</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>  <span class="c1"># type: ignore[no-untyped-call]</span>
-        
+
         <span class="c1"># Compute log probabilities and values</span>
         <span class="n">log_probs</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>  <span class="c1"># type: ignore[no-untyped-call]</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">latent_vf</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">actions</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">log_probs</span></div>
 
 
@@ -254,7 +254,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Extract features</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_extractor</span><span class="p">)</span>
-        
+
         <span class="c1"># Get latent representations</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_features_extractor</span><span class="p">:</span>
             <span class="n">latent_pi</span><span class="p">,</span> <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
@@ -262,10 +262,10 @@
             <span class="n">pi_features</span><span class="p">,</span> <span class="n">vf_features</span> <span class="o">=</span> <span class="n">features</span>
             <span class="n">latent_pi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="o">.</span><span class="n">forward_actor</span><span class="p">(</span><span class="n">pi_features</span><span class="p">)</span>
             <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="o">.</span><span class="n">forward_critic</span><span class="p">(</span><span class="n">vf_features</span><span class="p">)</span>
-        
+
         <span class="c1"># Get raw action logits</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">latent_pi</span><span class="p">)</span>
-        
+
         <span class="c1"># CRITICAL: Apply mask BEFORE loss calculation</span>
         <span class="c1"># これにより違法アクションが損失に寄与しない</span>
         <span class="k">if</span> <span class="n">action_masks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -274,17 +274,17 @@
                 <span class="n">logits</span><span class="p">,</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="o">-</span><span class="mf">1e9</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
             <span class="p">)</span>
-        
+
         <span class="c1"># Create distribution from masked logits</span>
         <span class="n">distribution</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="c1"># Compute log probabilities and entropy</span>
         <span class="n">log_probs</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>  <span class="c1"># type: ignore[no-untyped-call]</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">entropy</span><span class="p">()</span>  <span class="c1"># type: ignore[no-untyped-call]</span>
-        
+
         <span class="c1"># Compute values</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">latent_vf</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">values</span><span class="p">,</span> <span class="n">log_probs</span><span class="p">,</span> <span class="n">entropy</span></div>
 
 
@@ -305,17 +305,17 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Extract features</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">features_extractor</span><span class="p">)</span>
-        
+
         <span class="c1"># Get latent representation for value</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">share_features_extractor</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">vf_features</span> <span class="o">=</span> <span class="n">features</span>
             <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="o">.</span><span class="n">forward_critic</span><span class="p">(</span><span class="n">vf_features</span><span class="p">)</span>
-        
+
         <span class="c1"># Compute values</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">latent_vf</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>  <span class="c1"># Ensure Tensor return type</span></div>
 </div>
 
@@ -334,7 +334,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -345,7 +345,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

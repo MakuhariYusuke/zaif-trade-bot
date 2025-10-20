@@ -2,17 +2,17 @@
   "session_id": "ppo_curriculum_v375",
   "algorithm": "ppo",
   "description": "Curriculum Learning v1: 2000-row dataset with progressive training",
-  
+
   "comment_experiment": "Curriculum + Expanded Data + Forced Diversity",
   "comment_strategy": "2000 rows, high LR + high entropy, forced diversity tracking",
   "comment_target": "HOLD <40%, Reward >100, Progressive learning",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 2000,
   "data_path": "ml-dataset-enhanced-balanced-2000.csv",
-  
+
   "ppo": {
     "learning_rate": 0.0005,
     "n_steps": 512,
@@ -33,7 +33,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -50,7 +50,7 @@
       "min_diversity_threshold": 0.3
     }
   },
-  
+
   "training": {
     "total_timesteps": 15000,
     "checkpoint_interval": 5000,
@@ -59,7 +59,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -72,7 +72,7 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "comment_changes": "Improvements from experiments:",
   "changes": [
     "data_rows_limit: 500 → 2000 (4x expansion, 7.3x volatility)",
@@ -84,7 +84,7 @@
     "profit_reward_multiplier: 1.5 → 2.0 (stronger profit incentive)",
     "loss_penalty_multiplier: NEW 1.5 (penalize bad trades)"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "<40%",
     "buy_sell_rate_target": ">60%",
@@ -93,6 +93,6 @@
     "trade_pattern": "Diverse, active, profitable",
     "data_advantage": "7.3x more volatility = more trading opportunities"
   },
-  
+
   "hypothesis": "Expanded data (2000 rows, 7.3x volatility) + best learning params (lr=0.0005, ent=0.1) + forced diversity will break the HOLD barrier and achieve <40% HOLD with positive reward"
 }

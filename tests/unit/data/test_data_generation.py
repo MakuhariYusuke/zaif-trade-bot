@@ -4,12 +4,13 @@ Unit tests for data_generation.py DataGenerator class.
 Tests cover synthetic data generation, caching mechanisms, and error handling.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, mock_open, MagicMock
+
 import numpy as np
 import pandas as pd
+import pytest
+
 
 # Create a simplified version of DataGenerator for testing
 class DataGenerator:
@@ -54,13 +55,15 @@ class DataGenerator:
         high_mult = 1 + np.abs(np.random.normal(0, 0.01, n_samples))
         low_mult = 1 - np.abs(np.random.normal(0, 0.01, n_samples))
 
-        data = pd.DataFrame({
-            'open': price * (1 + np.random.normal(0, 0.005, n_samples)),
-            'high': price * high_mult,
-            'low': price * low_mult,
-            'close': price,
-            'volume': np.random.uniform(100, 10000, n_samples)
-        })
+        data = pd.DataFrame(
+            {
+                "open": price * (1 + np.random.normal(0, 0.005, n_samples)),
+                "high": price * high_mult,
+                "low": price * low_mult,
+                "close": price,
+                "volume": np.random.uniform(100, 10000, n_samples),
+            }
+        )
 
         return data
 
@@ -90,9 +93,7 @@ class TestDataGenerator:
         """Test DataGenerator initialization with custom parameters."""
         with tempfile.TemporaryDirectory() as temp_dir:
             generator = DataGenerator(
-                cache_dir=temp_dir,
-                enable_memory_cache=False,
-                default_seed=123
+                cache_dir=temp_dir, enable_memory_cache=False, default_seed=123
             )
 
             assert generator.cache_dir == Path(temp_dir)
@@ -104,22 +105,20 @@ class TestDataGenerator:
         generator = DataGenerator()
 
         data = generator.generate_synthetic_data(
-            n_samples=100,
-            start_price=50000.0,
-            volatility=0.02
+            n_samples=100, start_price=50000.0, volatility=0.02
         )
 
         assert isinstance(data, pd.DataFrame)
         assert len(data) == 100
 
         # Check required columns
-        required_cols = ['open', 'high', 'low', 'close', 'volume']
+        required_cols = ["open", "high", "low", "close", "volume"]
         for col in required_cols:
             assert col in data.columns
 
         # Check data types
-        assert data['open'].dtype == 'float64'
-        assert data['volume'].dtype == 'float64'
+        assert data["open"].dtype == "float64"
+        assert data["volume"].dtype == "float64"
 
     def test_generate_synthetic_data_with_seed(self):
         """Test synthetic data generation with seed for reproducibility."""
@@ -127,17 +126,11 @@ class TestDataGenerator:
 
         # Generate same data twice with same seed
         data1 = generator.generate_synthetic_data(
-            n_samples=50,
-            start_price=40000.0,
-            volatility=0.01,
-            seed=42
+            n_samples=50, start_price=40000.0, volatility=0.01, seed=42
         )
 
         data2 = generator.generate_synthetic_data(
-            n_samples=50,
-            start_price=40000.0,
-            volatility=0.01,
-            seed=42
+            n_samples=50, start_price=40000.0, volatility=0.01, seed=42
         )
 
         # Should be identical
@@ -164,8 +157,8 @@ class TestDataGenerator:
         generator = DataGenerator(enable_memory_cache=True)
 
         # Add some data to cache manually for testing
-        generator._memory_cache['key1'] = pd.DataFrame({'test': [1]})
-        generator._memory_cache['key2'] = pd.DataFrame({'test': [2]})
+        generator._memory_cache["key1"] = pd.DataFrame({"test": [1]})
+        generator._memory_cache["key2"] = pd.DataFrame({"test": [2]})
 
         assert len(generator._memory_cache) == 2
 

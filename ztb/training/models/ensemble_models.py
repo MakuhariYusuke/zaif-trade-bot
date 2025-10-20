@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Train multiple PPO ensemble models with predefined hyperparameters."""
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Any, Dict, List
 from ztb.training.core.ppo_trainer import (  # noqa: E402  pylint: disable=wrong-import-position  # type: ignore[attr-defined]
     PPOTrainer,
 )
-from ztb.utils.path_utils import ensure_dir
 from ztb.training.utils.training_utils import setup_project_path
+from ztb.utils.path_utils import ensure_dir
 
 # Setup project path
 setup_project_path()

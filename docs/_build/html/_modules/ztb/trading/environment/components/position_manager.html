@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.trading.environment.components.position_manager</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Position Manager - Handles position management for the trading environment.</span>
@@ -131,20 +131,20 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span> <span class="o">=</span> <span class="n">get_price_callback</span>
-        
+
         <span class="c1"># Position state</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
-        
+
         <span class="c1"># PnL tracking</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># For backward compatibility</span>
-        
+
         <span class="c1"># Trade tracking</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
 <div class="viewcode-block" id="PositionManager.execute_action">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.trading.environment.components.html#ztb.trading.environment.PositionManager.execute_action">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">execute_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">current_step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
@@ -171,7 +171,7 @@
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_HOLD</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">return</span> <span class="mf">0.0</span>
-        
+
         <span class="c1"># Check if we&#39;re within min_holding_period</span>
         <span class="n">min_holding_period</span> <span class="o">=</span> <span class="n">min_holding_period</span> <span class="ow">or</span> <span class="mi">0</span>  <span class="c1"># Handle None case</span>
         <span class="n">within_min_holding</span> <span class="o">=</span> <span class="p">(</span>
@@ -179,47 +179,47 @@
             <span class="ow">and</span> <span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">&lt;</span> <span class="n">min_holding_period</span>
         <span class="p">)</span>
         <span class="n">enforce_reverse_cooldown</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;enforce_reverse_cooldown&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
-        
+
         <span class="n">trade_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># Track PnL from this action (closes + entries)</span>
-            
+
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_BUY</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Short position held</span>
                 <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># Update last trade step for close</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
-                
+
                 <span class="c1"># Only open Long immediately if allow_reverse=True AND not within min_holding_period</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">allow_reverse</span> <span class="ow">and</span> <span class="p">(</span>
                     <span class="ow">not</span> <span class="n">enforce_reverse_cooldown</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">within_min_holding</span>
                 <span class="p">):</span>
                     <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
                     <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
-                    
+
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat</span>
                 <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
                 <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># position &gt; 0 (already Long): do nothing</span>
-            
+
         <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_SELL</span><span class="p">:</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Long position held</span>
                 <span class="n">trade_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">close_position</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># Update last trade step for close</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
-                
+
                 <span class="c1"># Only open Short immediately if allow_reverse=True AND not within min_holding_period</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">allow_reverse</span> <span class="ow">and</span> <span class="p">(</span>
                     <span class="ow">not</span> <span class="n">enforce_reverse_cooldown</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">within_min_holding</span>
                 <span class="p">):</span>
                     <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
                     <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
-                    
+
             <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat</span>
                 <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
                 <span class="n">trade_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>  <span class="c1"># Entry fee is negative PnL</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="c1"># position &lt; 0 (already Short): do nothing</span>
-        
+
         <span class="k">return</span> <span class="n">trade_pnl</span></div>
 
 
@@ -243,22 +243,22 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
         <span class="n">max_position_size</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-        
+
         <span class="c1"># 🔧 少額取引対応: 利用可能資金に基づいてポジションサイズを調整</span>
         <span class="n">initial_portfolio</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span> <span class="mf">200000.0</span><span class="p">)</span>
         <span class="n">available_funds</span> <span class="o">=</span> <span class="n">initial_portfolio</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
         <span class="n">transaction_cost</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="p">)</span>
-        
+
         <span class="c1"># 理想的なコスト（max_position_size フル購入）</span>
         <span class="n">ideal_cost</span> <span class="o">=</span> <span class="n">max_position_size</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">)</span>
-        
+
         <span class="c1"># 実際に購入可能なサイズ（利用可能資金の90%まで）</span>
         <span class="n">affordable_funds</span> <span class="o">=</span> <span class="n">available_funds</span> <span class="o">*</span> <span class="mf">0.9</span>
         <span class="n">affordable_size</span> <span class="o">=</span> <span class="n">affordable_funds</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">transaction_cost</span><span class="p">))</span>
-        
+
         <span class="c1"># 実際のポジションサイズ: 小さい方を採用（資金制約と設定値の両方を満たす）</span>
         <span class="n">actual_position_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">max_position_size</span><span class="p">,</span> <span class="n">affordable_size</span><span class="p">)</span>
-        
+
         <span class="c1"># 最小取引単位チェック (0.001 BTC = 1 mBTC ≈ 5,000円)</span>
         <span class="n">min_trade_size</span> <span class="o">=</span> <span class="mf">0.001</span>
         <span class="k">if</span> <span class="n">actual_position_size</span> <span class="o">&lt;</span> <span class="n">min_trade_size</span><span class="p">:</span>
@@ -269,10 +269,10 @@
                 <span class="n">min_trade_size</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">actual_position_size</span> <span class="o">=</span> <span class="n">min_trade_size</span>  <span class="c1"># 最小単位で取引試行</span>
-        
+
         <span class="c1"># Calculate entry cost based on actual size</span>
         <span class="n">entry_cost</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">actual_position_size</span><span class="p">))</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="n">transaction_cost</span>
-        
+
         <span class="c1"># Check if we have enough funds</span>
         <span class="k">if</span> <span class="n">available_funds</span> <span class="o">&lt;</span> <span class="n">entry_cost</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
@@ -281,17 +281,17 @@
                 <span class="n">entry_cost</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="mf">0.0</span>
-        
+
         <span class="c1"># Deduct entry cost from realized PnL</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">-=</span> <span class="n">entry_cost</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
-        
+
         <span class="c1"># Open position with actual size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="n">direction</span> <span class="o">*</span> <span class="n">actual_position_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Opened </span><span class="si">%s</span><span class="s2"> position: size=</span><span class="si">%.4f</span><span class="s2"> (max=</span><span class="si">%.4f</span><span class="s2">, affordable=</span><span class="si">%.4f</span><span class="s2">), price=</span><span class="si">%.2f</span><span class="s2">, cost=</span><span class="si">%.2f</span><span class="s2">, funds=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="s2">&quot;Long&quot;</span> <span class="k">if</span> <span class="n">direction</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Short&quot;</span><span class="p">,</span>
@@ -302,7 +302,7 @@
             <span class="n">entry_cost</span><span class="p">,</span>
             <span class="n">available_funds</span><span class="p">,</span>
         <span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">entry_cost</span></div>
 
 
@@ -320,25 +320,25 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="mf">0.0</span>
-            
+
         <span class="c1"># Calculate realized PnL before closing</span>
         <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_price</span><span class="p">()</span>
         <span class="n">price_change</span> <span class="o">=</span> <span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
         <span class="n">realized_trade_pnl</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">*</span> <span class="n">price_change</span>
-        
+
         <span class="c1"># Deduct transaction cost (exit cost)</span>
         <span class="n">exit_cost</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position</span><span class="p">)</span> <span class="o">*</span> <span class="n">current_price</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">transaction_cost</span><span class="p">)</span>
         <span class="n">realized_trade_pnl</span> <span class="o">-=</span> <span class="n">exit_cost</span>
-        
+
         <span class="c1"># Accumulate realized PnL</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span> <span class="o">+=</span> <span class="n">realized_trade_pnl</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">realized_pnl</span>
-        
+
         <span class="c1"># Update trade tracking if step provided</span>
         <span class="k">if</span> <span class="n">current_step</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="s2">&quot;Closed </span><span class="si">%s</span><span class="s2"> position: price=</span><span class="si">%.2f</span><span class="s2">, entry=</span><span class="si">%.2f</span><span class="s2">, pnl=</span><span class="si">%.2f</span><span class="s2">, cost=</span><span class="si">%.2f</span><span class="s2">&quot;</span><span class="p">,</span>
             <span class="s2">&quot;Long&quot;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;Short&quot;</span><span class="p">,</span>
@@ -347,11 +347,11 @@
             <span class="n">realized_trade_pnl</span> <span class="o">+</span> <span class="n">exit_cost</span><span class="p">,</span>  <span class="c1"># PnL before cost</span>
             <span class="n">exit_cost</span><span class="p">,</span>
         <span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
-        
+
         <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">realized_trade_pnl</span><span class="p">)</span></div>
 
 
@@ -430,7 +430,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -441,7 +441,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

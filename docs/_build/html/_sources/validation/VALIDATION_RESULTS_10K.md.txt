@@ -1,7 +1,7 @@
 # SELL回避修正 検証結果 (10,000ステップ)
 
-**実施日時**: 2025-10-08 12:03:02  
-**設定ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (v3.6.2 緊急修正版)  
+**実施日時**: 2025-10-08 12:03:02
+**設定ファイル**: `configs/training/ppo_balanced_mem_optimized.json` (v3.6.2 緊急修正版)
 **ステップ数**: 10,240 steps (目標: 10,000)
 
 ---
@@ -134,6 +134,6 @@ WARNING - Action 2 has only 0 samples (min: 1). Skipping normalization.
 
 ---
 
-**生成日時**: 2025-10-08 12:03:02  
-**分析ツール**: run_training.py (v3.6.0)  
+**生成日時**: 2025-10-08 12:03:02
+**分析ツール**: run_training.py (v3.6.0)
 **次回検証**: Lambda=30.0, SELL報酬=3.0での10Kステップ実行

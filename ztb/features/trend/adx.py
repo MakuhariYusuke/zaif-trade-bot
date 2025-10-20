@@ -3,9 +3,9 @@ ADX (Average Directional Index) implementation with multi-timeframe support.
 トレンド強度を測定する方向性移動指標 - 複数時間軸対応
 """
 
-import numpy as np
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
 from ztb.features.timeframe import Timeframe
@@ -13,13 +13,20 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("ADX")
-def compute_adx(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_adx(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> pd.Series:
     """Compute ADX (Average Directional Index) using Ta-Lib wrapper"""
     # Determine period based on timeframe
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
-        period = period or tf_params["medium_period"]  # ADX typically uses longer periods
+        period = (
+            period or tf_params["medium_period"]
+        )  # ADX typically uses longer periods
     else:
         period = period or 14
 
@@ -33,11 +40,16 @@ def compute_adx(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optio
 
 
 @FeatureRegistry.register("PlusDI")
-def compute_plus_di(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_plus_di(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> pd.Series:
     """Compute +DI (Positive Directional Indicator) using Ta-Lib wrapper"""
     # Determine period based on timeframe
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
         period = period or tf_params["medium_period"]
     else:
@@ -53,11 +65,16 @@ def compute_plus_di(df: pd.DataFrame, period: Optional[int] = None, timeframe: O
 
 
 @FeatureRegistry.register("MinusDI")
-def compute_minus_di(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_minus_di(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> pd.Series:
     """Compute -DI (Negative Directional Indicator) using Ta-Lib wrapper"""
     # Determine period based on timeframe
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
         period = period or tf_params["medium_period"]
     else:
@@ -73,6 +90,7 @@ def compute_minus_di(df: pd.DataFrame, period: Optional[int] = None, timeframe: 
 
 
 # === Multi-Timeframe ADX Features ===
+
 
 @FeatureRegistry.register("ADX_M1")
 def compute_adx_m1(df: pd.DataFrame) -> pd.Series:

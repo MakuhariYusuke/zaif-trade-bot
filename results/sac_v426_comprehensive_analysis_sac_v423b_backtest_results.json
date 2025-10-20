@@ -1,0 +1,60 @@
+{
+  "model_path": "checkpoints/sac_v413_ultra_profit.zip",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "evaluation_timestamp": "2025-10-18T20:13:48.215142",
+  "v426_improvements": {
+    "bias_analysis": {
+      "sell_bias_ratio": 0.0,
+      "action_balance_score": 0.5785823831432954,
+      "correction_needed": false,
+      "recommendations": [
+        "Balance action bonuses across BUY/SELL/HOLD"
+      ]
+    },
+    "market_adaptation": {},
+    "regime_performance": {},
+    "stochastic_validation": {},
+    "stress_tests": {},
+    "overall_score": 0.5785823831432954,
+    "recommendations": [
+      "Increase market correlation (current: 0.000, target: 0.1)"
+    ]
+  },
+  "regime_analysis": {},
+  "stochastic_testing": {
+    "error": "Dataset is missing required features: {'ADX', 'Ichimoku_Price_Cloud_Distance', 'PriceVolumeCorr', 'sma_short', 'TEMA', 'HeikinAshi_Low', 'Ichimoku_Senkou_A', 'Donchian_Slope_20', 'Ichimoku_Composite_Signal', 'Ichimoku_Trend', 'HourOfDay', 'pnl', 'HV', 'Ichimoku_Chikou', 'ReturnMA_Short', 'Kalman_Residual', 'Stochastic', 'MFI', 'ZScore', 'Kalman_Residual_Norm', 'ROC', 'Ichimoku_Tenkan', 'HeikinAshi_Open', 'Ichimoku_Senkou_B', 'RSI', 'Ichimoku_Kijun', 'price', 'HeikinAshi_Close', 'Donchian_Width_Rel_20', 'ema_5', 'HeikinAshi_High', 'BB_Lower', 'Ichimoku_Cloud_Thickness', 'Ichimoku_Diff_Norm', 'ReturnMA_Medium', 'rolling_mean_20', 'EMACross_Signal', 'PlusDI', 'Supertrend', 'BB_Width', 'EMACross_Diff', 'rsi', 'ReturnStdDev', 'win', 'Kalman_Estimate', 'qty', 'ATR', 'BB_Upper', 'VWAP', 'sma_long', 'OBV', 'MinusDI', 'CCI', 'BB_Position', 'DOW', 'atr_10', 'KAMA', 'Donchian_Pos_20', 'Ichimoku_Cross', 'ATR_simplified', 'BB_Middle', 'Supertrend_Direction', 'MACD'}"
+  },
+  "stress_testing": {
+    "price_crash_20pct": {
+      "stressed_return": -0.261491477597536,
+      "survival_probability": 1.0
+    },
+    "high_volatility": {
+      "stressed_return": -1.7948123115843615,
+      "volatility_multiplier": 1.5
+    },
+    "high_transaction_costs": {
+      "stressed_return": -0.03843217349846003,
+      "cost_multiplier": 2.0
+    }
+  },
+  "overall_assessment": {
+    "overall_score": 0.372624524904981,
+    "strengths": [
+      "Passed 1 stress tests"
+    ],
+    "weaknesses": [
+      "Action balance needs improvement",
+      "Market correlation needs enhancement"
+    ],
+    "recommendations": [
+      "Significant improvements needed",
+      "Increase market correlation (current: 0.000, target: 0.1)"
+    ],
+    "v426_compliance": {
+      "bias_correction_score": 0.5785823831432954,
+      "market_adaptation_score": 0,
+      "overall_compliance": 0.5785823831432954
+    }
+  }
+}

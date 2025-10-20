@@ -8,19 +8,17 @@ caching, and parallel processing for improved performance.
 import asyncio
 import logging
 import mmap
-import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-import time
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
-from ztb.utils.errors import safe_operation, ZTBError
 from ztb.utils.cache_utils import cached_with_ttl
-from ztb.utils.path_utils import ensure_dir
+from ztb.utils.errors import ZTBError
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +65,7 @@ class ImprovedDataLoader:
         self._mmap_files = {}
 
     def load_csv_memory_mapped(
-        self,
-        file_path: Union[str, Path],
-        chunk_size: Optional[int] = None,
-        **kwargs
+        self, file_path: Union[str, Path], chunk_size: Optional[int] = None, **kwargs
     ) -> pd.DataFrame:
         """
         Load CSV using memory mapping for large files.
@@ -92,9 +87,12 @@ class ImprovedDataLoader:
             return self._cache[cache_key].copy()
 
         try:
-            if self.enable_memory_mapping and file_path.stat().st_size > 10 * 1024 * 1024:  # >10MB
+            if (
+                self.enable_memory_mapping
+                and file_path.stat().st_size > 10 * 1024 * 1024
+            ):  # >10MB
                 # Memory-mapped loading
-                with open(file_path, 'r+b') as f:
+                with open(file_path, "r+b") as f:
                     mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
                     self._mmap_files[str(file_path)] = mm
 
@@ -103,15 +101,20 @@ class ImprovedDataLoader:
                         chunks = []
                         offset = 0
                         while offset < len(mm):
-                            chunk_data = mm[offset:offset + chunk_size * 1000]  # Rough estimate
+                            chunk_data = mm[
+                                offset : offset + chunk_size * 1000
+                            ]  # Rough estimate
                             if not chunk_data:
                                 break
-                            chunk_df = pd.read_csv(pd.io.common.StringIO(chunk_data.decode('utf-8')), **kwargs)
+                            chunk_df = pd.read_csv(
+                                pd.io.common.StringIO(chunk_data.decode("utf-8")),
+                                **kwargs,
+                            )
                             chunks.append(chunk_df)
                             offset += len(chunk_data)
                         df = pd.concat(chunks, ignore_index=True)
                     else:
-                        content = mm.read().decode('utf-8')
+                        content = mm.read().decode("utf-8")
                         df = pd.read_csv(pd.io.common.StringIO(content), **kwargs)
             else:
                 # Standard loading with chunking
@@ -133,9 +136,7 @@ class ImprovedDataLoader:
             raise ZTBError(f"Data loading failed: {e}")
 
     async def load_csv_async(
-        self,
-        file_path: Union[str, Path],
-        **kwargs
+        self, file_path: Union[str, Path], **kwargs
     ) -> pd.DataFrame:
         """
         Load CSV asynchronously.
@@ -158,7 +159,7 @@ class ImprovedDataLoader:
         self,
         data: pd.DataFrame,
         feature_functions: Dict[str, callable],
-        max_workers: Optional[int] = None
+        max_workers: Optional[int] = None,
     ) -> pd.DataFrame:
         """
         Compute features in parallel.
@@ -198,7 +199,7 @@ class ImprovedDataLoader:
         data: pd.DataFrame,
         feature_functions: Dict[str, callable],
         cache_key: str,
-        force_recompute: bool = False
+        force_recompute: bool = False,
     ) -> pd.DataFrame:
         """
         Compute features incrementally with caching.
@@ -218,7 +219,9 @@ class ImprovedDataLoader:
             try:
                 cached_data = pd.read_pickle(cache_file)
                 # Check if data has changed
-                if len(cached_data) == len(data) and cached_data.index.equals(data.index):
+                if len(cached_data) == len(data) and cached_data.index.equals(
+                    data.index
+                ):
                     logger.info(f"Loaded cached features for {cache_key}")
                     return cached_data
             except Exception as e:
@@ -242,11 +245,7 @@ class ImprovedDataLoader:
 
         return result_df
 
-    async def prefetch_data(
-        self,
-        file_paths: List[Union[str, Path]],
-        **kwargs
-    ) -> None:
+    async def prefetch_data(self, file_paths: List[Union[str, Path]], **kwargs) -> None:
         """
         Prefetch multiple files asynchronously.
 
@@ -257,10 +256,7 @@ class ImprovedDataLoader:
         if not self.enable_async_loading:
             return
 
-        tasks = [
-            self.load_csv_async(path, **kwargs)
-            for path in file_paths
-        ]
+        tasks = [self.load_csv_async(path, **kwargs) for path in file_paths]
 
         await asyncio.gather(*tasks, return_exceptions=True)
         logger.info(f"Prefetched {len(file_paths)} files")
@@ -278,20 +274,15 @@ class ImprovedDataLoader:
 # Convenience functions
 @lru_cache(maxsize=32)
 def get_cached_data_loader(
-    cache_dir: str = "./cache/data",
-    max_workers: int = 4
+    cache_dir: str = "./cache/data", max_workers: int = 4
 ) -> ImprovedDataLoader:
     """Get cached data loader instance."""
-    return ImprovedDataLoader(
-        cache_dir=cache_dir,
-        max_workers=max_workers
-    )
+    return ImprovedDataLoader(cache_dir=cache_dir, max_workers=max_workers)
 
 
 @cached_with_ttl(ttl_seconds=300)  # 5 minute cache
 def load_market_data_cached(
-    file_path: str,
-    loader: Optional[ImprovedDataLoader] = None
+    file_path: str, loader: Optional[ImprovedDataLoader] = None
 ) -> pd.DataFrame:
     """
     Load market data with caching.

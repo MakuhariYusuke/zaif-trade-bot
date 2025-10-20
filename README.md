@@ -144,6 +144,21 @@ pipeline = create_data_pipeline()
 ```
 ztb/                          # Main Python package
 ├── analysis/                 # Analysis and diagnostic tools
+│   ├── unified_analyze.py    # Unified analysis interface
+│   ├── core/                 # Core analysis functionality
+│   │   ├── model/           # Model analysis (SAC, PPO, etc.)
+│   │   ├── data/            # Data quality and feature analysis
+│   │   ├── training/        # Training process analysis
+│   │   └── performance/     # System and memory performance
+│   ├── comparative/         # Version comparison and statistical tests
+│   ├── diagnostic/          # System diagnosis and debugging tools
+│   ├── specialized/         # Specialized analysis (features, rewards, risk)
+│   │   ├── features/        # Feature quality analysis
+│   │   ├── rewards/         # Reward function analysis
+│   │   ├── risk/            # Risk metrics analysis
+│   │   └── market/          # Market regime analysis
+│   ├── sessions/            # Session-specific analysis
+│   └── utilities/           # Utility analysis tools
 ├── config/                   # Configuration management
 ├── data/                     # Data processing utilities
 ├── evaluation/               # Backtesting and evaluation
@@ -244,6 +259,72 @@ isort ztb/
 
 ## 🚀 Usage
 
+### SAC Suite - Unified CLI
+The project provides a unified command-line interface for all SAC-related operations:
+
+```bash
+# Analyze SAC model performance
+python sac.py analyze --model models/sac_model.zip --config configs/analysis.yaml
+
+# Run backtesting simulations
+python sac.py backtest --model models/sac_model.zip --data data/test.csv --episodes 100
+
+# Train SAC models (integrated with unified trainer)
+python sac.py train --config configs/sac_training.yaml --timesteps 100000
+
+# Parallel training with multiple algorithms
+python sac.py train --config configs/sac_training.yaml --parallel --include-ppo
+
+# Utility functions
+python sac.py utils config  # Check configuration
+python sac.py utils data    # Validate data files
+python sac.py utils clean   # Clean project files
+```
+
+### Unified Analysis Suite
+Comprehensive analysis toolkit for all trading system components:
+
+```bash
+# Model analysis
+python ztb/analysis/unified_analyze.py model sac --model models/sac_model.zip
+python ztb/analysis/unified_analyze.py model validate --model model.zip --data test.csv
+
+# Data analysis
+python ztb/analysis/unified_analyze.py data quality --dataset data/train.csv
+python ztb/analysis/unified_analyze.py data correlation --dataset data.csv --threshold 0.8
+
+# Training analysis
+python ztb/analysis/unified_analyze.py training tensorboard --logdir logs/
+python ztb/analysis/unified_analyze.py training metrics --logdirs logs/v1 logs/v2
+
+# Performance analysis
+python ztb/analysis/unified_analyze.py performance memory --pid 1234 --duration 60
+python ztb/analysis/unified_analyze.py performance profile --code script.py
+
+# Comparative analysis
+python ztb/analysis/unified_analyze.py comparative versions --versions v378 v381 v384
+python ztb/analysis/unified_analyze.py comparative statistical --data-a results1.csv --data-b results2.csv
+
+# Diagnostic tools
+python ztb/analysis/unified_analyze.py diagnostic environment --config config.yaml
+python ztb/analysis/unified_analyze.py diagnostic simple --model model.zip
+
+# Specialized analysis
+python ztb/analysis/unified_analyze.py specialized features quality --data data.csv
+python ztb/analysis/unified_analyze.py specialized reward function --config reward.yaml
+
+# Show available tools in any category
+python ztb/analysis/unified_analyze.py model  # Shows: extract, features, sac, validate
+python ztb/analysis/unified_analyze.py data   # Shows: correlation, quality, schema, timeseries
+```
+
+### Unified Trainer Integration
+SAC training is now fully integrated with the unified trainer system, providing:
+- **Unified Configuration**: Consistent configuration across all algorithms
+- **Parallel Training**: Train multiple algorithms simultaneously
+- **Advanced Features**: Mixed precision, federated learning, ensemble systems
+- **Horizontal Scaling**: Support for multiple model variations and hyperparameter sweeps
+
 ### Training a Model
 ```python
 from ztb.training.algorithms import AlgorithmFactory
@@ -266,6 +347,37 @@ config = get_ppo_config({
     "total_timesteps": 1000000,
     "batch_size": 64
 })
+```
+
+### Evaluating a Model
+```python
+from ztb.evaluation.evaluate import main
+
+# Run evaluation with default config
+main()
+
+# Or specify custom config
+main(config_path="config/custom_evaluation.yaml")
+```
+
+### Backtesting a Model
+```python
+from ztb.evaluation.backtest_model import run_backtest
+
+# Run backtest with default config
+run_backtest()
+
+# Or specify custom config
+run_backtest(config_path="config/custom_backtest.yaml")
+```
+
+### Command Line Usage
+```bash
+# Evaluate a trained model
+python -m ztb.evaluation.evaluate --config config/evaluation.yaml
+
+# Run backtest simulation
+python -m ztb.evaluation.backtest_model --config config/backtest.yaml
 ```
 
 ## 🔒 Security

@@ -3,19 +3,18 @@ Federated Learning for SAC v421
 FedAvgアルゴリズムと差分プライバシーによる分散トレーニング
 """
 
-import logging
+import copy
+import random
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from typing import Dict, List, Optional, Tuple, Any, Callable, Union
-from dataclasses import dataclass
-from collections import defaultdict
-import copy
-import random
-from torch.utils.data import DataLoader, TensorDataset
-import opacus
 from opacus import PrivacyEngine
+from torch.utils.data import DataLoader
 
 from ztb.utils.logging_utils import get_logger
 
@@ -25,6 +24,7 @@ logger = get_logger(__name__)
 @dataclass
 class FederatedConfig:
     """フェデレーテッドラーニング設定"""
+
     num_clients: int = 5
     num_rounds: int = 10
     client_fraction: float = 1.0  # 各ラウンドで参加するクライアントの割合
@@ -48,6 +48,7 @@ class FederatedConfig:
 @dataclass
 class ClientUpdate:
     """クライアント更新情報"""
+
     client_id: int
     model_state: Dict[str, torch.Tensor]
     num_samples: int
@@ -58,6 +59,7 @@ class ClientUpdate:
 @dataclass
 class FederatedRoundResult:
     """フェデレーテッドラウンド結果"""
+
     round_number: int
     participating_clients: List[int]
     global_loss: float
@@ -69,8 +71,13 @@ class FederatedRoundResult:
 class FederatedClient:
     """フェデレーテッドクライアント"""
 
-    def __init__(self, client_id: int, model: nn.Module, config: FederatedConfig,
-                 local_data: Optional[DataLoader] = None):
+    def __init__(
+        self,
+        client_id: int,
+        model: nn.Module,
+        config: FederatedConfig,
+        local_data: Optional[DataLoader] = None,
+    ):
         self.client_id = client_id
         self.model = copy.deepcopy(model)
         self.config = config
@@ -85,7 +92,9 @@ class FederatedClient:
         """プライバシーエンジン設定"""
         try:
             self.privacy_engine = PrivacyEngine()
-            optimizer = optim.SGD(self.model.parameters(), lr=self.config.local_learning_rate)
+            optimizer = optim.SGD(
+                self.model.parameters(), lr=self.config.local_learning_rate
+            )
 
             # プライバシー設定
             self.model, optimizer, self.local_data = self.privacy_engine.make_private(
@@ -99,15 +108,21 @@ class FederatedClient:
             self.optimizer = optimizer
 
         except Exception as e:
-            logger.warning(f"Privacy engine setup failed for client {self.client_id}: {e}")
+            logger.warning(
+                f"Privacy engine setup failed for client {self.client_id}: {e}"
+            )
             # フォールバック: 通常のオプティマイザー
-            self.optimizer = optim.SGD(self.model.parameters(), lr=self.config.local_learning_rate)
+            self.optimizer = optim.SGD(
+                self.model.parameters(), lr=self.config.local_learning_rate
+            )
 
     def load_global_model(self, global_state: Dict[str, torch.Tensor]):
         """グローバルモデル読み込み"""
         self.model.load_state_dict(global_state)
 
-    def train_local_model(self, loss_fn: Callable, num_epochs: Optional[int] = None) -> ClientUpdate:
+    def train_local_model(
+        self, loss_fn: Callable, num_epochs: Optional[int] = None
+    ) -> ClientUpdate:
         """ローカルモデル学習"""
         if num_epochs is None:
             num_epochs = self.config.local_epochs
@@ -118,7 +133,7 @@ class FederatedClient:
                 client_id=self.client_id,
                 model_state=self.model.state_dict(),
                 num_samples=0,
-                loss_history=[]
+                loss_history=[],
             )
 
         loss_history = []
@@ -157,7 +172,9 @@ class FederatedClient:
                 loss_history.append(avg_loss)
 
                 if (epoch + 1) % 2 == 0:
-                    logger.debug(f"Client {self.client_id}, epoch {epoch+1}/{num_epochs}, loss: {avg_loss:.6f}")
+                    logger.debug(
+                        f"Client {self.client_id}, epoch {epoch+1}/{num_epochs}, loss: {avg_loss:.6f}"
+                    )
 
         # プライバシー消費量取得
         privacy_spent = None
@@ -171,7 +188,7 @@ class FederatedClient:
             model_state=self.model.state_dict(),
             num_samples=num_samples,
             loss_history=loss_history,
-            privacy_spent=privacy_spent
+            privacy_spent=privacy_spent,
         )
 
     def get_model_state(self) -> Dict[str, torch.Tensor]:
@@ -187,7 +204,9 @@ class FedAvgServer:
         self.config = config
         self.clients = []
         self.round_results = []
-        self.global_optimizer = optim.SGD(global_model.parameters(), lr=config.global_learning_rate)
+        self.global_optimizer = optim.SGD(
+            global_model.parameters(), lr=config.global_learning_rate
+        )
 
     def add_client(self, client: FederatedClient):
         """クライアント追加"""
@@ -207,7 +226,9 @@ class FedAvgServer:
         selected_clients = random.sample(self.clients, num_participants)
         return selected_clients
 
-    def aggregate_updates(self, client_updates: List[ClientUpdate]) -> Dict[str, torch.Tensor]:
+    def aggregate_updates(
+        self, client_updates: List[ClientUpdate]
+    ) -> Dict[str, torch.Tensor]:
         """クライアント更新の集約（FedAvg）"""
         if not client_updates:
             return self.global_model.state_dict()
@@ -271,8 +292,11 @@ class FedAvgServer:
         convergence_metrics = self._compute_convergence_metrics(client_updates)
 
         # プライバシー消費量計算
-        privacy_budget_spent = sum(update.privacy_spent for update in client_updates
-                                  if update.privacy_spent is not None)
+        privacy_budget_spent = sum(
+            update.privacy_spent
+            for update in client_updates
+            if update.privacy_spent is not None
+        )
 
         result = FederatedRoundResult(
             round_number=round_num,
@@ -280,17 +304,21 @@ class FedAvgServer:
             global_loss=global_loss,
             client_updates=client_updates,
             privacy_budget_spent=privacy_budget_spent,
-            convergence_metrics=convergence_metrics
+            convergence_metrics=convergence_metrics,
         )
 
         self.round_results.append(result)
 
-        logger.info(f"Round {round_num} completed. Global loss: {global_loss:.6f}, "
-                   f"Privacy spent: {privacy_budget_spent:.6f}")
+        logger.info(
+            f"Round {round_num} completed. Global loss: {global_loss:.6f}, "
+            f"Privacy spent: {privacy_budget_spent:.6f}"
+        )
 
         return result
 
-    def _compute_global_loss(self, loss_fn: Callable, clients: List[FederatedClient]) -> float:
+    def _compute_global_loss(
+        self, loss_fn: Callable, clients: List[FederatedClient]
+    ) -> float:
         """グローバル損失計算"""
         self.global_model.eval()
         total_loss = 0
@@ -323,7 +351,9 @@ class FedAvgServer:
 
         return total_loss / total_samples if total_samples > 0 else 0.0
 
-    def _compute_convergence_metrics(self, client_updates: List[ClientUpdate]) -> Dict[str, float]:
+    def _compute_convergence_metrics(
+        self, client_updates: List[ClientUpdate]
+    ) -> Dict[str, float]:
         """収束メトリクス計算"""
         if not client_updates:
             return {}
@@ -343,13 +373,15 @@ class FedAvgServer:
         avg_param_variance = np.mean(list(param_variances.values()))
 
         # 損失の統計
-        final_losses = [update.loss_history[-1] for update in client_updates if update.loss_history]
+        final_losses = [
+            update.loss_history[-1] for update in client_updates if update.loss_history
+        ]
         loss_std = np.std(final_losses) if final_losses else 0.0
 
         return {
-            'avg_param_variance': avg_param_variance,
-            'loss_std': loss_std,
-            'num_participating_clients': len(client_updates)
+            "avg_param_variance": avg_param_variance,
+            "loss_std": loss_std,
+            "num_participating_clients": len(client_updates),
         }
 
     def get_training_history(self) -> List[FederatedRoundResult]:
@@ -364,7 +396,9 @@ class FedAvgServer:
 class MarketFederatedLearner:
     """市場特化フェデレーテッドラーニング"""
 
-    def __init__(self, base_model: nn.Module, market_configs: Dict[str, FederatedConfig]):
+    def __init__(
+        self, base_model: nn.Module, market_configs: Dict[str, FederatedConfig]
+    ):
         self.base_model = base_model
         self.market_configs = market_configs
         self.market_servers = {}
@@ -375,8 +409,9 @@ class MarketFederatedLearner:
             server = FedAvgServer(copy.deepcopy(base_model), config)
             self.market_servers[market_name] = server
 
-    def add_market_client(self, market_name: str, client_data: DataLoader,
-                         client_id: Optional[int] = None):
+    def add_market_client(
+        self, market_name: str, client_data: DataLoader, client_id: Optional[int] = None
+    ):
         """市場クライアント追加"""
         if market_name not in self.market_servers:
             raise ValueError(f"Market {market_name} not configured")
@@ -385,15 +420,18 @@ class MarketFederatedLearner:
             client_id = len(self.market_clients[market_name])
 
         config = self.market_configs[market_name]
-        client = FederatedClient(client_id, copy.deepcopy(self.base_model), config, client_data)
+        client = FederatedClient(
+            client_id, copy.deepcopy(self.base_model), config, client_data
+        )
 
         self.market_clients[market_name].append(client)
         self.market_servers[market_name].add_client(client)
 
         logger.info(f"Added client {client_id} to market {market_name}")
 
-    def train_market_federated(self, market_name: str, loss_fn: Callable,
-                              num_rounds: Optional[int] = None) -> List[FederatedRoundResult]:
+    def train_market_federated(
+        self, market_name: str, loss_fn: Callable, num_rounds: Optional[int] = None
+    ) -> List[FederatedRoundResult]:
         """市場別フェデレーテッド学習"""
         if market_name not in self.market_servers:
             raise ValueError(f"Market {market_name} not configured")
@@ -414,7 +452,9 @@ class MarketFederatedLearner:
 
         return results
 
-    def train_all_markets(self, loss_fn: Callable) -> Dict[str, List[FederatedRoundResult]]:
+    def train_all_markets(
+        self, loss_fn: Callable
+    ) -> Dict[str, List[FederatedRoundResult]]:
         """全市場フェデレーテッド学習"""
         results = {}
 
@@ -431,8 +471,8 @@ class MarketFederatedLearner:
         param_variance_threshold = 1e-6
         loss_std_threshold = 0.01
 
-        variance = result.convergence_metrics.get('avg_param_variance', float('inf'))
-        loss_std = result.convergence_metrics.get('loss_std', float('inf'))
+        variance = result.convergence_metrics.get("avg_param_variance", float("inf"))
+        loss_std = result.convergence_metrics.get("loss_std", float("inf"))
 
         return variance < param_variance_threshold and loss_std < loss_std_threshold
 
@@ -448,7 +488,9 @@ class MarketFederatedLearner:
 
         # 全市場モデルのアンサンブル平均
         aggregated_state = {}
-        market_models = [server.get_global_model() for server in self.market_servers.values()]
+        market_models = [
+            server.get_global_model() for server in self.market_servers.values()
+        ]
 
         for param_name in market_models[0].state_dict().keys():
             params = [model.state_dict()[param_name] for model in market_models]
@@ -470,11 +512,11 @@ class MarketFederatedLearner:
             if history:
                 latest_result = history[-1]
                 stats[market_name] = {
-                    'rounds_completed': len(history),
-                    'final_global_loss': latest_result.global_loss,
-                    'total_privacy_spent': sum(r.privacy_budget_spent for r in history),
-                    'num_clients': len(server.clients),
-                    'convergence_metrics': latest_result.convergence_metrics
+                    "rounds_completed": len(history),
+                    "final_global_loss": latest_result.global_loss,
+                    "total_privacy_spent": sum(r.privacy_budget_spent for r in history),
+                    "num_clients": len(server.clients),
+                    "convergence_metrics": latest_result.convergence_metrics,
                 }
 
         return stats

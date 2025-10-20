@@ -6,22 +6,22 @@ Integrated Operations Management System
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
-import json
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from ..monitoring.monitor import PerformanceMonitor
 from ..monitoring.safety import SafetyManager
-from ..monitoring.scalability import LoadBalancer, AutoScaler
-from ..online_learning.pipeline import OnlineLearningPipeline
+from ..monitoring.scalability import AutoScaler, LoadBalancer
+
 # from ..config import SACConfig  # 循環インポートを避けるためコメントアウト
-from ..monitoring.types import OperationsStatus
-from .types import (
-    SystemHealth, IntegrationStatus,
-    OperationalMetrics, AlertSummary, RecoveryAction
-)
 from .config import IntegratedOperationsConfig
+from .types import (
+    AlertSummary,
+    IntegrationStatus,
+    OperationalMetrics,
+    RecoveryAction,
+    SystemHealth,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,11 @@ logger = logging.getLogger(__name__)
 class IntegratedOperationsManager:
     """統合運用マネージャー"""
 
-    def __init__(self, config: Any, operations_config: Optional[IntegratedOperationsConfig] = None):
+    def __init__(
+        self,
+        config: Any,
+        operations_config: Optional[IntegratedOperationsConfig] = None,
+    ):
         self.config = config
         self.operations_config = operations_config or IntegratedOperationsConfig()
         self.is_running = False
@@ -51,7 +55,7 @@ class IntegratedOperationsManager:
             safety_active=False,
             scalability_active=False,
             online_learning_active=False,
-            last_integration_check=datetime.now()
+            last_integration_check=datetime.now(),
         )
 
         # 運用メトリクス
@@ -61,7 +65,7 @@ class IntegratedOperationsManager:
             error_rate=0.0,
             average_response_time=0.0,
             resource_utilization={},
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
         )
 
         logger.info("Integrated Operations Manager initialized")
@@ -78,7 +82,7 @@ class IntegratedOperationsManager:
 
             if self.operations_config.safety_enabled:
                 # SafetyManagerの起動メソッドを確認して呼び出し
-                if hasattr(self.safety_manager, 'start_safety_monitoring'):
+                if hasattr(self.safety_manager, "start_safety_monitoring"):
                     self.safety_manager.start_safety_monitoring()
                 self.integration_status.safety_active = True
 
@@ -89,16 +93,14 @@ class IntegratedOperationsManager:
             # 統合監視スレッド起動
             if self.operations_config.integrated_operations_enabled:
                 integration_thread = threading.Thread(
-                    target=self._integration_monitor_worker,
-                    daemon=True
+                    target=self._integration_monitor_worker, daemon=True
                 )
                 integration_thread.start()
                 self.threads.append(integration_thread)
 
                 # ヘルスチェックスレッド起動
                 health_thread = threading.Thread(
-                    target=self._health_check_worker,
-                    daemon=True
+                    target=self._health_check_worker, daemon=True
                 )
                 health_thread.start()
                 self.threads.append(health_thread)
@@ -128,7 +130,7 @@ class IntegratedOperationsManager:
 
         if self.operations_config.safety_enabled:
             try:
-                if hasattr(self.safety_manager, 'stop_safety_monitoring'):
+                if hasattr(self.safety_manager, "stop_safety_monitoring"):
                     self.safety_manager.stop_safety_monitoring()
                 self.integration_status.safety_active = False
             except Exception as e:
@@ -176,22 +178,30 @@ class IntegratedOperationsManager:
                 "safety": self.integration_status.safety_active,
                 "scalability": self.integration_status.scalability_active,
                 "online_learning": self.integration_status.online_learning_active,
-                "last_check": self.integration_status.last_integration_check.isoformat()
+                "last_check": self.integration_status.last_integration_check.isoformat(),
             },
             "operational_metrics": {
                 "uptime_seconds": self.operational_metrics.uptime_seconds,
                 "total_requests": self.operational_metrics.total_requests,
                 "error_rate": self.operational_metrics.error_rate,
                 "avg_response_time": self.operational_metrics.average_response_time,
-                "last_updated": self.operational_metrics.last_updated.isoformat()
+                "last_updated": self.operational_metrics.last_updated.isoformat(),
             },
             "component_status": {
-                "monitor": self.monitor.get_status() if hasattr(self.monitor, 'get_status') else {"status": "active"},
-                "safety": self.safety_manager.get_safety_status() if hasattr(self.safety_manager, 'get_safety_status') else {"status": "active"},
-                "scaler": self.auto_scaler.get_scaling_history() if hasattr(self.auto_scaler, 'get_scaling_history') else {"status": "active"},
-                "online_learning": self.online_learning.get_status() if self.online_learning and hasattr(self.online_learning, 'get_status') else None
+                "monitor": self.monitor.get_status()
+                if hasattr(self.monitor, "get_status")
+                else {"status": "active"},
+                "safety": self.safety_manager.get_safety_status()
+                if hasattr(self.safety_manager, "get_safety_status")
+                else {"status": "active"},
+                "scaler": self.auto_scaler.get_scaling_history()
+                if hasattr(self.auto_scaler, "get_scaling_history")
+                else {"status": "active"},
+                "online_learning": self.online_learning.get_status()
+                if self.online_learning and hasattr(self.online_learning, "get_status")
+                else None,
             },
-            "last_health_check": self.last_health_check.isoformat()
+            "last_health_check": self.last_health_check.isoformat(),
         }
 
     def get_alerts_summary(self) -> AlertSummary:
@@ -207,7 +217,7 @@ class IntegratedOperationsManager:
             warning_alerts=warning_count,
             info_alerts=info_count,
             top_alerts=alerts[:5],  # 最新5件
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
         )
 
     def trigger_emergency_shutdown(self, reason: str) -> bool:
@@ -231,8 +241,8 @@ class IntegratedOperationsManager:
                     "Investigate the cause of emergency shutdown",
                     "Check system logs for error details",
                     "Verify data integrity",
-                    "Perform manual system restart after investigation"
-                ]
+                    "Perform manual system restart after investigation",
+                ],
             )
 
             logger.critical(f"Emergency shutdown completed: {recovery_action}")
@@ -319,7 +329,7 @@ class IntegratedOperationsManager:
         """運用メトリクス更新"""
         try:
             # 稼働時間更新
-            if hasattr(self, 'start_time'):
+            if hasattr(self, "start_time"):
                 self.operational_metrics.uptime_seconds = (
                     datetime.now() - self.start_time
                 ).total_seconds()
@@ -328,15 +338,19 @@ class IntegratedOperationsManager:
 
             # リクエスト数とエラー率（モニターから取得）
             monitor_metrics = self.monitor.get_recent_metrics()
-            self.operational_metrics.total_requests = monitor_metrics.get("total_requests", 0)
+            self.operational_metrics.total_requests = monitor_metrics.get(
+                "total_requests", 0
+            )
             self.operational_metrics.error_rate = monitor_metrics.get("error_rate", 0.0)
-            self.operational_metrics.average_response_time = monitor_metrics.get("avg_response_time", 0.0)
+            self.operational_metrics.average_response_time = monitor_metrics.get(
+                "avg_response_time", 0.0
+            )
 
             # リソース使用率
             self.operational_metrics.resource_utilization = {
                 "cpu_percent": monitor_metrics.get("cpu_percent", 0.0),
                 "memory_percent": monitor_metrics.get("memory_percent", 0.0),
-                "disk_usage": monitor_metrics.get("disk_usage", 0.0)
+                "disk_usage": monitor_metrics.get("disk_usage", 0.0),
             }
 
             self.operational_metrics.last_updated = datetime.now()
@@ -366,8 +380,12 @@ class IntegratedOperationsManager:
                 issues.append(f"{len(critical_alerts)} critical alerts")
 
             # リソース使用率チェック
-            cpu_usage = self.operational_metrics.resource_utilization.get("cpu_percent", 0.0)
-            memory_usage = self.operational_metrics.resource_utilization.get("memory_percent", 0.0)
+            cpu_usage = self.operational_metrics.resource_utilization.get(
+                "cpu_percent", 0.0
+            )
+            memory_usage = self.operational_metrics.resource_utilization.get(
+                "memory_percent", 0.0
+            )
 
             if cpu_usage > 95.0:
                 issues.append("CPU usage critically high")
@@ -380,7 +398,10 @@ class IntegratedOperationsManager:
                 issues.append("Memory usage high")
 
             # ヘルスステータス決定
-            if any("critically" in issue.lower() for issue in issues) or len(critical_alerts) > 0:
+            if (
+                any("critically" in issue.lower() for issue in issues)
+                or len(critical_alerts) > 0
+            ):
                 return SystemHealth.CRITICAL
             elif issues:
                 return SystemHealth.WARNING

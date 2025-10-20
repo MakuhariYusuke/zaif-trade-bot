@@ -141,14 +141,14 @@ class MyAdvancedTrainer(ProgressTrackingMixin, EntropyScheduleMixin, BaseTrainer
     def train(self, session_id: str):
         # 進捗バーを開始
         self.start_progress_bar(total_steps=100000, description="Training")
-        
+
         # エントロピースケジュールを設定
         self.configure_entropy_schedule(
             schedule_type="cosine_decay",
             initial_ent_coef=0.01,
             final_ent_coef=0.001,
         )
-        
+
         # トレーニングループ...
 ```
 

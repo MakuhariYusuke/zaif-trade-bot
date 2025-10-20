@@ -1,7 +1,7 @@
 # Phase 3 実装レビュー & 改善提案
 
-**レビュー日**: 2025年10月10日  
-**レビュアー**: GitHub Copilot  
+**レビュー日**: 2025年10月10日
+**レビュアー**: GitHub Copilot
 **実装者**: Phase 3 担当Copilot
 
 ---
@@ -13,10 +13,10 @@
 1. **Schema-based Environment Factory** (`schema_env_factory.py`)
    - `create_env_from_schema()` - ✅ 実装完了
    - `create_env_from_model_path()` - ✅ 実装完了
-   
+
 2. **Backtest Script** (`backtest_with_schema.py`)
    - スキーマ対応バックテスト - ✅ 実装完了
-   
+
 3. **Legacy Migration Tools** (`scripts/migrate_legacy_schemas.py`)
    - レガシースキーマ移行 - ✅ 実装完了
 
@@ -75,15 +75,15 @@ def create_env_from_schema(
 ) -> HeavyTradingEnv:
     if models_dir is None:
         models_dir = Path("models")
-    
+
     manager = FeatureSchemaManager(model_name, models_dir)
     metadata = manager.load_schema()
     scaler = manager.load_scaler()
-    
+
     logger.info(f"Creating environment from schema: {model_name}")
     logger.info(f"  Expected features: {metadata.num_features}")
     logger.info(f"  Feature names: {metadata.feature_names[:5]}... (showing first 5)")
-    
+
     # データに必要な特徴量があるか確認
     missing_features = set(metadata.feature_names) - set(df.columns)
     if missing_features:
@@ -92,10 +92,10 @@ def create_env_from_schema(
             f"Dataset has: {len(df.columns)} columns\n"
             f"Model expects: {metadata.num_features} features"
         )
-    
+
     # 設定を構築（デフォルト値設定）
     env_config = config.copy() if config else {}
-    
+
     # スキーマ情報を設定に追加（既存値を上書きしない）
     schema_config = {
         "feature_names": metadata.feature_names,
@@ -103,42 +103,42 @@ def create_env_from_schema(
         "schema_hash": metadata.schema_hash,
         "model_name": model_name,
     }
-    
+
     # スキーマベース環境では相関削減を無効化（デフォルト）
     # ただし、ユーザーが明示的に設定した場合は尊重
     if "enable_correlation_reduction" not in env_config:
         schema_config["enable_correlation_reduction"] = False
-    
+
     # スキーマ設定を追加（既存設定を優先）
     for key, value in schema_config.items():
         if key not in env_config:
             env_config[key] = value
-    
+
     # スケーラー情報を追加
     if scaler:
         env_config.update({
             "scaler_mean": scaler["mean"],
             "scaler_std": scaler["std"],
         })
-    
+
     # 訓練設定から環境パラメータを抽出（可能な範囲で）
     training_config = metadata.training_config
     env_params = [
-        "reward_scaling", "transaction_cost", "max_position_size", 
+        "reward_scaling", "transaction_cost", "max_position_size",
         "risk_free_rate", "initial_balance"
     ]
     for key in env_params:
         if key in training_config and key not in env_config:
             env_config[key] = training_config[key]
-    
+
     logger.info(f"Creating environment with {metadata.num_features} features")
     logger.info(f"  Correlation reduction: {env_config.get('enable_correlation_reduction', False)}")
-    
+
     # 環境作成
     env = HeavyTradingEnv(df=df, config=env_config)
-    
+
     logger.info(f"✅ Environment created with {metadata.num_features} features")
-    
+
     return env
 ```
 
@@ -275,7 +275,7 @@ class HeavyTradingEnv:
         if "feature_names" in config:
             # スキーマから要求された特徴量を生成
             self._ensure_features(df, config["feature_names"])
-    
+
     def _ensure_features(self, df, required_features):
         """必要な特徴量が存在しない場合、生成する"""
         missing = set(required_features) - set(df.columns)
@@ -477,13 +477,13 @@ Phase 3の実装は**60%完了**と評価します。
 
 上記の修正を行えば、Phase 3は**完全完了**となります。
 
-**推奨アクション**: 
+**推奨アクション**:
 1. まず`schema_env_factory.py`の修正（30分）
 2. v381の特徴量問題の調査（1時間）
 3. 解決策の実装（内容による）
 
 ---
 
-**作成日**: 2025年10月10日  
-**レビュアー**: GitHub Copilot  
+**作成日**: 2025年10月10日
+**レビュアー**: GitHub Copilot
 **ステータス**: 要改善

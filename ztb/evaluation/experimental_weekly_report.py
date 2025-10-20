@@ -87,7 +87,7 @@ class ExperimentalWeeklyReporter:
             )
             conn.execute(
                 """
-                CREATE INDEX IF NOT EXISTS idx_report_date_feature 
+                CREATE INDEX IF NOT EXISTS idx_report_date_feature
                 ON experimental_history(report_date, feature_name)
             """
             )
@@ -235,8 +235,8 @@ class ExperimentalWeeklyReporter:
             for metric in metrics:
                 conn.execute(
                     """
-                    INSERT INTO experimental_history 
-                    (report_date, feature_name, module_name, nan_rate, delta_sharpe, 
+                    INSERT INTO experimental_history
+                    (report_date, feature_name, module_name, nan_rate, delta_sharpe,
                      computation_time_ms, stability_score, recommendation, reason_code)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -262,9 +262,9 @@ class ExperimentalWeeklyReporter:
             cursor = conn.execute(
                 """
                 SELECT report_date, delta_sharpe, nan_rate, computation_time_ms, stability_score
-                FROM experimental_history 
-                WHERE feature_name = ? 
-                ORDER BY report_date DESC 
+                FROM experimental_history
+                WHERE feature_name = ?
+                ORDER BY report_date DESC
                 LIMIT ?
             """,
                 (feature_name, weeks),
@@ -544,7 +544,7 @@ class ExperimentalWeeklyReporter:
     ) -> None:
         """Export report as Markdown"""
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write(f"# Experimental Features Weekly Report\n")
+            f.write("# Experimental Features Weekly Report\n")
             f.write(f"**Report Date:** {report['report_date']}\n")
             f.write(
                 f"**Total Features Evaluated:** {report['total_features_evaluated']}\n\n"
@@ -568,7 +568,7 @@ class ExperimentalWeeklyReporter:
 
             # Performance metrics
             avg = summary["average_metrics"]
-            f.write(f"**Average Performance:**\n")
+            f.write("**Average Performance:**\n")
             f.write(f"- Delta Sharpe: {avg['delta_sharpe']}\n")
             f.write(f"- NaN Rate: {avg['nan_rate'] * 100:.1f}%\n")
             f.write(f"- Computation Time: {avg['computation_time_ms']:.1f}ms\n\n")

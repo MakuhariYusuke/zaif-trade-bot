@@ -10,6 +10,7 @@ try:
     from ztb.training.ppo_trainer import PPOTrainer
 except ImportError:
     import pytest
+
     pytest.skip("Required training modules not available", allow_module_level=True)
 
 

@@ -27,9 +27,9 @@ if TYPE_CHECKING:
     from .config.schema import GlobalConfig
 
 # Import main components for easy access
-from .config import ConfigManager
 from .analysis import BacktestAnalyzer
-from .data import BTCDataAugmentor, BTCBiasDetector
+from .config import ConfigManager
+from .data import BTCBiasDetector, BTCDataAugmentor
 
 # Define public API
 __all__ = [
@@ -38,17 +38,18 @@ __all__ = [
     "BacktestAnalyzer",
     "BTCDataAugmentor",
     "BTCBiasDetector",
-
     # Metadata
     "__version__",
     "__author__",
     "__description__",
 ]
 
+
 def get_version() -> str:
     """Get the current version of the package."""
     return __version__
 
-def get_config() -> 'GlobalConfig':
+
+def get_config() -> "GlobalConfig":
     """Get the current configuration."""
     return ConfigManager.get_instance().get_config()

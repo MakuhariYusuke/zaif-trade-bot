@@ -7,7 +7,7 @@ import { runMlSimulate } from '../../utils/toolkit';
 
 function* range(start: number, end: number, step: number){ for (let v=start; v<=end; v+=step) yield v; }
 
-interface Trial { 
+interface Trial {
     SELL_RSI_OVERBOUGHT: number;
     BUY_RSI_OVERSOLD: number;
     SMA_SHORT: number;
@@ -29,11 +29,11 @@ function runGridForPair(pair: string){
       for (const ss of sShort){
         for (const sl of sLong){
           if (ss >= sl) continue;
-          const p = { 
-            SELL_RSI_OVERBOUGHT: ro, 
-            BUY_RSI_OVERSOLD: ru, 
-            SMA_SHORT: ss, 
-            SMA_LONG: sl 
+          const p = {
+            SELL_RSI_OVERBOUGHT: ro,
+            BUY_RSI_OVERSOLD: ru,
+            SMA_SHORT: ss,
+            SMA_LONG: sl
           };
           const res = runSim(p);
           if (res) results.push({ pair, ...p, ...res });

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="sac-v395i">
 <h1>SAC v395i 成功の根本原因 - 完全追跡レポート<a class="headerlink" href="#sac-v395i" title="Link to this heading"></a></h1>
 <p><strong>調査日</strong>: 2025年10月11日<br />
@@ -369,16 +369,16 @@
           - __init__にscaler_mean, scaler_std追加
           - get_observation()で正規化: (obs - mean) / std
           - update_scaler()メソッド追加
-          
+
 17:11:54  initialization.py 更新
           - _compute_scaler_from_data()実装:
             scaler_mean = np.mean(feature_matrix, axis=0)
             scaler_std = np.std(feature_matrix, axis=0)
-          
+
 17:12:52  core.py 更新
           - _compute_scaler_from_data()をインポート
           - 初期化フローに統合
-          
+
           ↓ わずか3ファイルの変更
 
 17:18:12  v395i訓練完了（SAC_13）
@@ -421,7 +421,7 @@ Q値の推定が爆発: Q(s,a) ≈ 数百億
 Q値が数百億規模
     ↓
 Bellman誤差 = |Q(s,a) - (r + γ*Q(s&#39;,a&#39;))|²
-            ≈ (数百億)² 
+            ≈ (数百億)²
             = 数百京
     ↓
 Critic Loss ≈ 200億～500億
@@ -788,7 +788,7 @@ ent_coef: 0.92 → 0.28（適切に減衰）
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -799,7 +799,7 @@ ent_coef: 0.92 → 0.28（適切に減衰）
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

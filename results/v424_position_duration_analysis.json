@@ -1,0 +1,132 @@
+{
+  "position_durations": {
+    "sell_to_buy": {
+      "count": 0,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "std": 0
+    },
+    "buy_to_sell": {
+      "count": 0,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "std": 0
+    },
+    "hold": {
+      "count": 0,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0,
+      "std": 0
+    },
+    "summary": {
+      "total_transitions": 4998,
+      "total_sell_to_buy": 0,
+      "total_buy_to_sell": 0,
+      "total_hold_periods": 0,
+      "avg_position_changes_per_1000_steps": 999.7999599919984
+    }
+  },
+  "action_sequences": {
+    "pattern_length": 3,
+    "total_patterns": 4997,
+    "top_patterns": [
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      },
+      {
+        "pattern": [
+          0,
+          0,
+          0
+        ],
+        "count": 1,
+        "frequency": 0.00020012007204322593
+      }
+    ]
+  },
+  "report": "================================================================================\nTRADING POSITION DURATION ANALYSIS\n================================================================================\n\nPOSITION DURATION ANALYSIS:\n----------------------------------------\n\nSUMMARY STATISTICS:\n  Total Position Transitions: 4998\n  SELL→BUY Transitions: 0\n  BUY→SELL Transitions: 0\n  HOLD Periods: 0\n  Position Changes per 1000 steps: 999.80\n\nACTION SEQUENCE PATTERNS:\n----------------------------------------\n  HOLD → HOLD → HOLD: 1 times (0.0%)\n  HOLD → HOLD → HOLD: 1 times (0.0%)\n  HOLD → HOLD → HOLD: 1 times (0.0%)\n  HOLD → HOLD → HOLD: 1 times (0.0%)\n  HOLD → HOLD → HOLD: 1 times (0.0%)\n\n================================================================================"
+}

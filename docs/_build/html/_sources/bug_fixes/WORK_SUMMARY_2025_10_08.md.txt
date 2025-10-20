@@ -1,7 +1,7 @@
 # 作業完了報告: 第7回レビュー準備 + Bug #27完全修正
 
-**日付:** 2025年10月8日  
-**作業者:** GitHub Copilot  
+**日付:** 2025年10月8日
+**作業者:** GitHub Copilot
 
 ---
 
@@ -51,7 +51,7 @@ class ActionMaskProvider:
     """
     Lightweight action mask provider for MaskablePPO in live trading.
     """
-    
+
     機能:
     - Min holding period enforcement (最小保有期間の強制)
     - Forced close support (強制決済サポート)
@@ -90,8 +90,8 @@ class ActionMaskProvider:
    if self._is_maskable_ppo:
        action_mask = self.mask_provider.get_action_mask()
        action, _ = self.model.predict(
-           obs, 
-           deterministic=True, 
+           obs,
+           deterministic=True,
            action_masks=action_mask.reshape(1, -1)
        )
    ```
@@ -301,6 +301,6 @@ Bitcoin自動取引システム「Zaif Trade Bot」の第7回コードレビュ�
 
 ---
 
-**作業完了日時:** 2025年10月8日  
-**作業時間:** 約2時間  
+**作業完了日時:** 2025年10月8日
+**作業時間:** 約2時間
 **次のマイルストーン:** 第7回外部レビュー実施

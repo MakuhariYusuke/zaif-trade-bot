@@ -2,7 +2,7 @@
 
 ## 🎉 実装完了
 
-**日時**: 2025年10月10日  
+**日時**: 2025年10月10日
 **バージョン**: v385 (Phase 2検証版)
 
 ---
@@ -107,7 +107,7 @@ models/schemas/ppo_reward_v385_curated/
     "rsi", "sma_short", "sma_long", "price", "qty", "pnl", "win",
     "ADX", "ATR", "BB_Lower", "BB_Middle", "BB_Upper", "CCI",
     "Ichimoku_Chikou", "Ichimoku_Tenkan", "MACD", "MFI", "RSI",
-    "Stochastic", "Supertrend", "VWAP", "close", "open", "high", 
+    "Stochastic", "Supertrend", "VWAP", "close", "open", "high",
     "low", "volume", "ema_5", "atr_10", "rolling_mean_20",
     ... (68個)
   ],
@@ -231,7 +231,7 @@ Phase 3の実装を別のCopilotに引き継ぎ、バックテスト・環境統
 
 ---
 
-**作成日**: 2025年10月10日  
-**作成者**: GitHub Copilot  
-**検証モデル**: ppo_reward_v385_curated  
+**作成日**: 2025年10月10日
+**作成者**: GitHub Copilot
+**検証モデル**: ppo_reward_v385_curated
 **ステータス**: Phase 2完了 ✅

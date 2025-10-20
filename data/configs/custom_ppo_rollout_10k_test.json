@@ -4,7 +4,7 @@
   "data_path": "ml-dataset-enhanced.csv",
   "session_id": "custom_ppo_rollout_10k_test",
   "total_timesteps": 10000,
-  
+
   "training": {
     "learning_rate": 3e-4,
     "n_steps": 2048,
@@ -18,14 +18,14 @@
     "gae_lambda": 0.95,
     "seed": 42
   },
-  
+
   "environment": {
     "transaction_cost": 0.001,
     "max_position_size": 1.0,
     "curriculum_stage": "full",
     "allow_reverse": false
   },
-  
+
   "custom_ppo": {
     "enable_pan": true,
     "enable_target_entropy": true,
@@ -35,18 +35,18 @@
     "lr_temperature": 3e-4,
     "initial_temperature": 0.01
   },
-  
+
   "validation": {
     "target_sell_rate_min": 0.10,
     "target_sell_rate_optimal": 0.15
   },
-  
+
   "output": {
     "checkpoint_dir": "./checkpoints/custom_ppo_rollout_10k",
     "tensorboard_log": "./logs/custom_ppo_rollout_10k",
     "model_dir": "./models/custom_ppo_rollout_10k"
   },
-  
+
   "offline_mode": true,
   "verbose": 1
 }

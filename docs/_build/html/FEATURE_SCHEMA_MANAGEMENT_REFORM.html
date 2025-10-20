@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="feature-schema-management-reform">
 <h1>Feature Schema Management Reform - 改修計画書<a class="headerlink" href="#feature-schema-management-reform" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -208,16 +208,16 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">_save_model_schema</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;モデルと一緒にスキーマを保存&quot;&quot;&quot;</span>
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="n">session_id</span><span class="p">)</span>
-    
+
     <span class="c1"># 環境から特徴量リスト取得</span>
     <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">get_feature_names</span><span class="p">()</span>
-    
+
     <span class="c1"># スケーラー情報取得</span>
     <span class="n">scaler_data</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">scaler</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
         <span class="s2">&quot;std&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">scaler</span><span class="o">.</span><span class="n">std</span>
     <span class="p">}</span>
-    
+
     <span class="c1"># 保存</span>
     <span class="n">manager</span><span class="o">.</span><span class="n">save_schema</span><span class="p">(</span>
         <span class="n">features</span><span class="o">=</span><span class="n">features</span><span class="p">,</span>
@@ -240,7 +240,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;モデルとスキーマを一緒に保存&quot;&quot;&quot;</span>
     <span class="c1"># モデル保存</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
-    
+
     <span class="c1"># スキーマ保存</span>
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="n">session_id</span><span class="p">)</span>
     <span class="n">manager</span><span class="o">.</span><span class="n">save_schema</span><span class="p">(</span>
@@ -269,14 +269,14 @@
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
     <span class="n">scaler</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_scaler</span><span class="p">()</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;feature_names&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
         <span class="s2">&quot;scaler_mean&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
         <span class="s2">&quot;scaler_std&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">],</span>
         <span class="c1"># ... その他の設定</span>
     <span class="p">}</span>
-    
+
     <span class="k">return</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -288,18 +288,18 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;スキーマを考慮したバックテスト&quot;&quot;&quot;</span>
     <span class="c1"># モデル名を抽出</span>
     <span class="n">model_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
-    
+
     <span class="c1"># スキーマ読み込み</span>
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">)</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
-    
+
     <span class="c1"># 環境作成（スキーマに基づく）</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data_optimized</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
-    
+
     <span class="c1"># モデル読み込み</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
-    
+
     <span class="c1"># バックテスト実行</span>
     <span class="c1"># （次元不一致エラーなし！）</span>
 </pre></div>
@@ -504,7 +504,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;f
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -515,7 +515,7 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;f
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

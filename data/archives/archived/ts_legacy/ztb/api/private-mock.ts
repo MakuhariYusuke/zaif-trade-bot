@@ -257,11 +257,11 @@ export function createPrivateMock(): PrivateApi {
           order.fills.push({ tid, price, amount: fillQty, ts: Math.floor(Date.now() / 1000) });
           order.firstFillDone = true;
           if (order.filled >= order.amount - EPS) { order.status = 'filled'; settleBalance(order, price); }
-          logMock('[MOCK] immediate_fill', { 
-            id: order.id, 
-            fillQty, 
-            filled: order.filled, 
-            remaining: order.amount - order.filled 
+          logMock('[MOCK] immediate_fill', {
+            id: order.id,
+            fillQty,
+            filled: order.filled,
+            remaining: order.amount - order.filled
           });
         }
       }
@@ -328,13 +328,13 @@ export function createPrivateMock(): PrivateApi {
         trade_type: o.side,
         order_id: o.id
       })));
-      return fills.map(f => ({ 
-        tid: f.tid, 
-        order_id: String(f.order_id), 
-        side: f.trade_type as 'bid' | 'ask', 
-        price: f.price, 
-        amount: f.amount, 
-        timestamp: f.date 
+      return fills.map(f => ({
+        tid: f.tid,
+        order_id: String(f.order_id),
+        side: f.trade_type as 'bid' | 'ask',
+        price: f.price,
+        amount: f.amount,
+        timestamp: f.date
       }));
     },
     async healthCheck() { return { ok: true }; },

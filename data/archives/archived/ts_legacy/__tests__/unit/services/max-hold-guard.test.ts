@@ -5,12 +5,12 @@ import type { Position } from '../../../ztb/core/risk';
 describe('max hold guard (service)', () => {
     it('emits TIME_LIMIT when hold exceeds MAX_HOLD_SEC', () => {
         const now = Date.now();
-        const pos: Position = { 
-            id: 'p1', 
-            pair: 'btc_jpy', 
-            side: 'long', 
-            entryPrice: 100, 
-            amount: 0.01, 
+        const pos: Position = {
+            id: 'p1',
+            pair: 'btc_jpy',
+            side: 'long',
+            entryPrice: 100,
+            amount: 0.01,
             timestamp: now - 120_000,
             highestPrice: undefined,
             dcaCount: undefined,

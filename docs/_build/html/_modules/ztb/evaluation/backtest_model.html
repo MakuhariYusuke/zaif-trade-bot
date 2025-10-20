@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.evaluation.backtest_model</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -109,10 +109,10 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">stable_baselines3</span><span class="w"> </span><span class="kn">import</span> <span class="n">PPO</span><span class="p">,</span> <span class="n">SAC</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.constants</span><span class="w"> </span><span class="kn">import</span><span class="p">(</span>
-    <span class="n">SAC_CONTINUOUS_THRESHOLD</span><span class="p">,</span> 
-    <span class="n">SAC_CONTINUOUS_THRESHOLD_NEG</span><span class="p">,</span> 
-    <span class="n">ACTION_HOLD</span><span class="p">,</span> 
-    <span class="n">ACTION_BUY</span><span class="p">,</span> 
+    <span class="n">SAC_CONTINUOUS_THRESHOLD</span><span class="p">,</span>
+    <span class="n">SAC_CONTINUOUS_THRESHOLD_NEG</span><span class="p">,</span>
+    <span class="n">ACTION_HOLD</span><span class="p">,</span>
+    <span class="n">ACTION_BUY</span><span class="p">,</span>
     <span class="n">ACTION_SELL</span><span class="p">,</span>
 <span class="p">)</span>
 
@@ -302,7 +302,7 @@
             <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">action_masks</span><span class="o">=</span><span class="n">action_masks</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        
+
         <span class="c1"># Convert continuous action to discrete for SAC models</span>
         <span class="k">if</span> <span class="n">model_type</span> <span class="o">==</span> <span class="s2">&quot;SAC&quot;</span><span class="p">:</span>
             <span class="c1"># SAC uses continuous actions, convert to discrete</span>
@@ -316,7 +316,7 @@
             <span class="n">action</span> <span class="o">=</span> <span class="n">discrete_action</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">action</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="s2">&quot;item&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">action</span><span class="p">)</span>
-        
+
         <span class="n">actions_taken</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
 
         <span class="n">obs</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">terminated</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
@@ -334,7 +334,7 @@
             <span class="n">entry_price</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)][</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
             <span class="n">entry_time</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">current_step</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Opened position at step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">current_position</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 2. Closing position to flat</span>
         <span class="k">elif</span> <span class="nb">abs</span><span class="p">(</span><span class="n">last_position</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">current_position</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">exit_price</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="nb">min</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">current_step</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)][</span><span class="s2">&quot;close&quot;</span><span class="p">]</span>
@@ -351,7 +351,7 @@
             <span class="p">}</span>
             <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Closed position at step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: pnl=</span><span class="si">{</span><span class="n">pnl</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 3. Position reversal (Long→Short or Short→Long)</span>
         <span class="k">elif</span> <span class="p">(</span><span class="n">last_position</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">last_position</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
             <span class="c1"># Close previous position</span>
@@ -369,7 +369,7 @@
             <span class="p">}</span>
             <span class="n">trades</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">trade</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reversed position at step </span><span class="si">{</span><span class="n">step</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">last_position</span><span class="si">}</span><span class="s2">→</span><span class="si">{</span><span class="n">current_position</span><span class="si">}</span><span class="s2">, pnl=</span><span class="si">{</span><span class="n">pnl</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Open new reversed position</span>
             <span class="n">entry_price</span> <span class="o">=</span> <span class="n">exit_price</span>
             <span class="n">entry_time</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">current_step</span>
@@ -495,7 +495,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -506,7 +506,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

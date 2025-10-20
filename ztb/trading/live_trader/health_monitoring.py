@@ -1,10 +1,10 @@
 """Health monitoring implementation for live trading."""
 
+import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict
 
 import psutil
-import os
 
 from ztb.utils.logging_utils import get_logger
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class HealthMonitoring:
     """Handles health status monitoring for live trading."""
 
-    def __init__(self, live_trader: 'LiveTrader'):
+    def __init__(self, live_trader: "LiveTrader"):
         """Initialize health monitoring with reference to live trader."""
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
@@ -44,8 +44,10 @@ class HealthMonitoring:
 
             # Check price data freshness
             price_age_seconds = 0
-            if hasattr(self.live_trader, '_last_price_time'):
-                price_age_seconds = (datetime.now() - self.live_trader._last_price_time).total_seconds()
+            if hasattr(self.live_trader, "_last_price_time"):
+                price_age_seconds = (
+                    datetime.now() - self.live_trader._last_price_time
+                ).total_seconds()
                 if price_age_seconds > 300:  # 5 minutes
                     status = "warning"
                     issues.append(f"Price data stale: {price_age_seconds:.0f}s old")
@@ -106,7 +108,9 @@ class HealthMonitoring:
                 "model_loaded": self.live_trader.model is not None,
                 "adapter_available": self.live_trader.exchange_adapter is not None,
                 "api_status": api_status,
-                "memory_percent": memory_percent if 'memory_percent' in locals() else None,
+                "memory_percent": memory_percent
+                if "memory_percent" in locals()
+                else None,
                 "timestamp": datetime.now().isoformat(),
             }
 

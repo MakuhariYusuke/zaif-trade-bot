@@ -1,9 +1,9 @@
 # 🐛 Bug #24: Stop-Loss Forced Close Doesn't Update Trade Timestamp
 
-**Discovered By:** External Reviewer A (Fifth Review Cycle)  
-**Discovery Date:** 2024 (Fifth Review)  
-**Status:** 🔴 OPEN - Not Yet Fixed  
-**Severity:** CRITICAL  
+**Discovered By:** External Reviewer A (Fifth Review Cycle)
+**Discovery Date:** 2024 (Fifth Review)
+**Status:** 🔴 OPEN - Not Yet Fixed
+**Severity:** CRITICAL
 **Category:** State Synchronization, Risk Controls
 
 ---
@@ -16,8 +16,8 @@ Stop-loss forced closes properly call `PositionManager.close_position()` to liqu
 
 ## Location
 
-**File:** `ztb/trading/environment/environment.py`  
-**Lines:** 788-800 (stop-loss logic in `step()` method)  
+**File:** `ztb/trading/environment/environment.py`
+**Lines:** 788-800 (stop-loss logic in `step()` method)
 **Function:** `HeavyTradingEnv.step()`
 
 ---
@@ -215,27 +215,27 @@ def test_forced_close_updates_trade_timestamp():
     }
     env = HeavyTradingEnv(config)
     env.reset()
-    
+
     # Open long position
     env.step(1)  # BUY
     initial_step = env._current_step
-    
+
     # Trigger stop-loss by manipulating price
     # (exact mechanism depends on environment implementation)
     # ... code to trigger stop-loss ...
-    
+
     forced_close_step = env._current_step
-    
+
     # Verify position was closed
     assert env.position == 0.0
-    
+
     # ✅ CRITICAL: _last_trade_step should be updated
     assert env._last_trade_step == forced_close_step
-    
+
     # Verify min_holding_period is enforced on next step
     env.step(0)  # HOLD
     legal_actions = env.get_legal_actions()
-    
+
     # Only HOLD should be legal immediately after forced close
     assert legal_actions[0] == 1  # HOLD
     assert legal_actions[1] == 0  # BUY (blocked by min_holding_period)
@@ -247,7 +247,7 @@ def test_forced_close_updates_trade_timestamp():
 def test_min_holding_period_enforced_after_all_close_types():
     """Verify min_holding_period works for both agent and forced closes."""
     env = HeavyTradingEnv(config)
-    
+
     # Test 1: Agent-initiated close
     env.reset()
     env.step(1)  # BUY
@@ -257,7 +257,7 @@ def test_min_holding_period_enforced_after_all_close_types():
     env.step(0)  # HOLD
     legal_1 = env.get_legal_actions()
     assert legal_1[1] == 0  # BUY blocked by min_holding_period ✅
-    
+
     # Test 2: Forced close
     env.reset()
     env.step(1)  # BUY
@@ -266,7 +266,7 @@ def test_min_holding_period_enforced_after_all_close_types():
     env.step(0)  # HOLD
     legal_2 = env.get_legal_actions()
     assert legal_2[1] == 0  # BUY blocked by min_holding_period ✅
-    
+
     # Both should enforce min_holding_period identically
 ```
 

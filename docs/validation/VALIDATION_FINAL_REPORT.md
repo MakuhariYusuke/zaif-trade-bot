@@ -492,6 +492,6 @@ action, _ = model.predict(obs)  # ❌ action_masksがない!
 
 ## 署名
 
-検証者: GitHub Copilot  
-日時: 2025年10月7日 23:00  
+検証者: GitHub Copilot
+日時: 2025年10月7日 23:00
 ステータス: ✅ 検証完了、改善提案あり

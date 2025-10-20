@@ -2,9 +2,9 @@
 
 ## 📋 プロジェクト概要
 
-**プロジェクト名:** zaif-trade-bot  
-**言語:** Python 3.11+  
-**フレームワーク:** Stable-Baselines3 (MaskablePPO), Gymnasium  
+**プロジェクト名:** zaif-trade-bot
+**言語:** Python 3.11+
+**フレームワーク:** Stable-Baselines3 (MaskablePPO), Gymnasium
 **目的:** 仮想通貨(BTC/JPY)取引のための強化学習エージェント
 
 ---
@@ -47,7 +47,7 @@ else:
     action, _ = model.predict(obs, deterministic=False)
 ```
 
-**影響:** 
+**影響:**
 - モデルが96% HOLD、0% SELLと誤検出されていた
 - 実際は73% HOLD、13.5% BUY、13.4% SELL
 
@@ -250,7 +250,7 @@ except Exception as e:
 
 ## 🛠️ 環境情報
 
-**Python:** 3.11+  
+**Python:** 3.11+
 **主要ライブラリ:**
 - stable-baselines3 (MaskablePPO)
 - sb3-contrib
@@ -459,9 +459,9 @@ action, _ = model.predict(obs, action_masks=action_masks, deterministic=False)
 
 ---
 
-**レビュー担当者:** [エージェント名]  
-**依頼日:** 2025年10月7日  
-**期限:** なし(できる範囲で)  
+**レビュー担当者:** [エージェント名]
+**依頼日:** 2025年10月7日
+**期限:** なし(できる範囲で)
 **優先度:** 高
 
 よろしくお願いします! 🙏

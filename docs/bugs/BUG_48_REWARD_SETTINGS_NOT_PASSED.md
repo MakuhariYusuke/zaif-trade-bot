@@ -1,7 +1,7 @@
 # 🐛 重大バグ発見・修正レポート
 
-**日時**: 2025-10-08 12:15  
-**バグID**: Bug #48  
+**日時**: 2025-10-08 12:15
+**バグID**: Bug #48
 **重要度**: **CRITICAL** 🔴
 
 ---
@@ -137,6 +137,6 @@ python run_training.py --config configs/training/ppo_balanced_mem_optimized.json
 
 ---
 
-**修正ファイル**: `ztb/training/sell_mitigation_ppo_trainer.py` (1行追加)  
-**ステータス**: ✅ 修正完了 → 再検証待ち  
+**修正ファイル**: `ztb/training/sell_mitigation_ppo_trainer.py` (1行追加)
+**ステータス**: ✅ 修正完了 → 再検証待ち
 **次のアクション**: 10,000ステップ検証実行 → SELL率15%達成を確認

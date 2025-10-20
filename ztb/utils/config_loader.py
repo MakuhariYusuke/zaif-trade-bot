@@ -5,9 +5,9 @@ This module provides standardized functions for loading and validating
 configuration files in YAML, JSON, and TOML formats.
 """
 
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, TextIO, Union, cast
-import asyncio
 
 import yaml
 
@@ -15,6 +15,7 @@ from ztb.utils.file_utils import safe_json_load
 
 try:
     import tomli
+
     TOML_AVAILABLE = True
 except ImportError:
     tomli = None
@@ -22,6 +23,7 @@ except ImportError:
 
 try:
     import tomllib
+
     TOMLLIB_AVAILABLE = True
 except ImportError:
     tomllib = None
@@ -29,6 +31,7 @@ except ImportError:
 
 try:
     import tomli_w
+
     TOML_WRITE_AVAILABLE = True
 except ImportError:
     tomli_w = None
@@ -103,11 +106,14 @@ def load_toml_config(file_path: Union[str, Path]) -> Dict[str, Any]:
     with open(file_path, "rb") as f:
         if TOMLLIB_AVAILABLE:
             import tomllib
+
             return cast(Dict[str, Any], tomllib.load(f))
         elif TOML_AVAILABLE and tomli is not None:
             return cast(Dict[str, Any], tomli.load(f))
         else:
-            raise ImportError("TOML support requires 'tomli' library (pip install tomli)")
+            raise ImportError(
+                "TOML support requires 'tomli' library (pip install tomli)"
+            )
 
 
 def load_config(file_path: Union[str, Path]) -> Dict[str, Any]:
@@ -205,7 +211,7 @@ class ConfigLoader:
     def save(
         config: Dict[str, Any],
         file_path: Union[str, Path],
-        format: Optional[str] = None
+        format: Optional[str] = None,
     ) -> None:
         """
         Save configuration to file.
@@ -221,7 +227,7 @@ class ConfigLoader:
         file_path = Path(file_path)
 
         if format is None:
-            suffix = file_path.suffix.lower().lstrip('.')
+            suffix = file_path.suffix.lower().lstrip(".")
             if suffix not in ConfigLoader.SUPPORTED_FORMATS:
                 raise ValueError(f"Unsupported format: {suffix}")
             format = suffix
@@ -236,6 +242,7 @@ class ConfigLoader:
                 yaml.dump(config, f, default_flow_style=False, sort_keys=False)
             elif format == "json":
                 import json
+
                 json.dump(config, f, indent=2, ensure_ascii=False)
             elif format == "toml":
                 ConfigLoader._save_toml(config, f)
@@ -259,7 +266,9 @@ class ConfigLoader:
             ConfigLoader._write_basic_toml(config, file_obj)
 
     @staticmethod
-    def _write_basic_toml(config: Dict[str, Any], file_obj: TextIO, prefix: str = "") -> None:
+    def _write_basic_toml(
+        config: Dict[str, Any], file_obj: TextIO, prefix: str = ""
+    ) -> None:
         """
         Write basic TOML format (fallback when tomli_w is not available).
 
@@ -279,10 +288,10 @@ class ConfigLoader:
                 ConfigLoader._write_basic_toml(value, file_obj, full_key)
             elif isinstance(value, list):
                 # Simple array representation
-                file_obj.write(f'{key} = {value!r}\n')
+                file_obj.write(f"{key} = {value!r}\n")
             else:
                 # Simple value
                 if isinstance(value, str):
                     file_obj.write(f'{key} = "{value}"\n')
                 else:
-                    file_obj.write(f'{key} = {value!r}\n')
+                    file_obj.write(f"{key} = {value!r}\n")

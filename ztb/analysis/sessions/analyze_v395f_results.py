@@ -9,18 +9,14 @@ results_v395f = {
         "final": 6.36e7,
         "min": 3.11e6,
         "max": 3.58e8,
-        "trend": "不安定（爆発的な変動）"
+        "trend": "不安定（爆発的な変動）",
     },
     "actor_loss": {
         "initial": -7.7e4,
         "final": -4.05e4,
-        "trend": "負の値で安定（異常）"
+        "trend": "負の値で安定（異常）",
     },
-    "ent_coef": {
-        "initial": 1.09,
-        "final": 3.58,
-        "trend": "上昇傾向（まだ高い）"
-    }
+    "ent_coef": {"initial": 1.09, "final": 3.58, "trend": "上昇傾向（まだ高い）"},
 }
 
 ## 🔍 Actor Lossが負の理由
@@ -38,7 +34,7 @@ actor_loss = alpha * log_prob - Q_value
 
 # 現在の設定
 current_reward_scale = 1000.0  # 0.1%利益 → 報酬 1.0
-current_clip = (-10.0, 10.0)   # ±1%で飽和
+current_clip = (-10.0, 10.0)  # ±1%で飽和
 
 # 問題: 報酬が-10 ~ +10 は、まだ大きすぎる
 # SACは off-policy なので、Q値が積算される
@@ -46,9 +42,9 @@ current_clip = (-10.0, 10.0)   # ±1%で飽和
 
 # 推奨設定 v395g
 recommended_v395g = {
-    "reward_scale": 100.0,      # 1/10に縮小
-    "reward_clip_min": -1.0,    # 1/10に縮小
-    "reward_clip_max": 1.0,     # 1/10に縮小
+    "reward_scale": 100.0,  # 1/10に縮小
+    "reward_clip_min": -1.0,  # 1/10に縮小
+    "reward_clip_max": 1.0,  # 1/10に縮小
 }
 
 """
@@ -81,24 +77,26 @@ v395g_config = {
         "gradient_steps": 1,
         "ent_coef": "auto",
         "target_update_interval": 1,
-        "target_entropy": "auto"  # -1.0 for dim=1
+        "target_entropy": "auto",  # -1.0 for dim=1
     },
     "environment": {
         "reward_settings": {
             "use_simple_reward": True,
-            "reward_scale": 100.0,        # ← 1000.0から変更
-            "reward_clip_min": -1.0,      # ← -10.0から変更
-            "reward_clip_max": 1.0,       # ← 10.0から変更
-            "enable_inactivity_penalty": False
+            "reward_scale": 100.0,  # ← 1000.0から変更
+            "reward_clip_min": -1.0,  # ← -10.0から変更
+            "reward_clip_max": 1.0,  # ← 10.0から変更
+            "enable_inactivity_penalty": False,
         }
-    }
+    },
 }
 
 print("=" * 80)
 print("📊 SAC v395f Analysis")
 print("=" * 80)
 print("\n🔍 Key Findings:")
-print(f"  • Critic Loss: {results_v395f['critic_loss']['min']:.2e} ~ {results_v395f['critic_loss']['max']:.2e}")
+print(
+    f"  • Critic Loss: {results_v395f['critic_loss']['min']:.2e} ~ {results_v395f['critic_loss']['max']:.2e}"
+)
 print(f"  • Actor Loss: {results_v395f['actor_loss']['final']:.2e} (NEGATIVE! 異常)")
 print(f"  • ent_coef: {results_v395f['ent_coef']['final']:.2f} (まだ高い)")
 

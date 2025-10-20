@@ -54,11 +54,11 @@ Current implementation:
 def get_legal_actions(self) -> NDArray[np.int_]:
     """Return binary mask of legal actions [HOLD, BUY, SELL]."""
     mask = np.ones(3, dtype=np.int_)
-    
+
     # HOLD is always legal
     # BUY only legal if position <= 0 (no long position or flat)
     # SELL only legal if position >= 0 (have long position or flat)
-    
+
     if self.position > 0:
         mask[1] = 0  # Can't BUY when holding long
     if self.position < 0:
@@ -66,7 +66,7 @@ def get_legal_actions(self) -> NDArray[np.int_]:
     if self.position == 0:
         # When flat, both BUY and SELL are legal
         pass
-    
+
     return mask
 ```
 
@@ -86,7 +86,7 @@ from typing import Tuple, Optional
 
 class StrictMaskedPolicy(MaskableActorCriticPolicy):
     """Policy that strictly enforces action masks in forward and loss."""
-    
+
     def forward(
         self,
         obs: torch.Tensor,
@@ -95,17 +95,17 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Forward pass with strict mask enforcement.
-        
+
         Returns:
             actions, values, log_probs
         """
         # Get features
         features = self.extract_features(obs)
         latent_pi, latent_vf = self.mlp_extractor(features)
-        
+
         # Get action logits
         logits = self.action_net(latent_pi)
-        
+
         # CRITICAL: Apply mask BEFORE softmax
         if action_masks is not None:
             # Set illegal actions to -inf
@@ -114,22 +114,22 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
                 logits,
                 torch.tensor(float('-inf'), device=logits.device)
             )
-        
+
         # Create distribution and sample
         distribution = torch.distributions.Categorical(logits=logits)
-        
+
         if deterministic:
             actions = torch.argmax(logits, dim=-1)
         else:
             actions = distribution.sample()
-        
+
         log_probs = distribution.log_prob(actions)
-        
+
         # Get value
         values = self.value_net(latent_vf)
-        
+
         return actions, values, log_probs
-    
+
     def evaluate_actions(
         self,
         obs: torch.Tensor,
@@ -139,9 +139,9 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
         """Evaluate actions with mask consideration."""
         features = self.extract_features(obs)
         latent_pi, latent_vf = self.mlp_extractor(features)
-        
+
         logits = self.action_net(latent_pi)
-        
+
         # Apply mask
         if action_masks is not None:
             logits = torch.where(
@@ -149,13 +149,13 @@ class StrictMaskedPolicy(MaskableActorCriticPolicy):
                 logits,
                 torch.tensor(float('-inf'), device=logits.device)
             )
-        
+
         distribution = torch.distributions.Categorical(logits=logits)
-        
+
         log_probs = distribution.log_prob(actions)
         entropy = distribution.entropy()
         values = self.value_net(latent_vf)
-        
+
         return values, log_probs, entropy
 ```
 
@@ -202,7 +202,7 @@ def _get_action_with_temperature(
         features = self.model.policy.extract_features(obs_tensor)
         latent_pi, _ = self.model.policy.mlp_extractor(features)
         logits = self.model.policy.action_net(latent_pi)
-        
+
         # Apply mask
         mask_tensor = torch.from_numpy(action_masks).float()
         logits_masked = torch.where(
@@ -210,19 +210,19 @@ def _get_action_with_temperature(
             logits,
             torch.tensor(float('-inf'))
         )
-        
+
         # Apply temperature
         logits_temp = logits_masked / temperature
-        
+
         # Softmax
         probs = torch.softmax(logits_temp, dim=-1)
-        
+
         # Select action
         if deterministic:
             action = torch.argmax(probs, dim=-1).item()
         else:
             action = torch.multinomial(probs, 1).item()
-        
+
         # Return diagnostics
         diagnostics = {
             "probs": probs.numpy(),
@@ -230,7 +230,7 @@ def _get_action_with_temperature(
             "logits_masked": logits_masked.numpy(),
             "temperature": temperature,
         }
-        
+
         return action, diagnostics
 ```
 
@@ -261,30 +261,30 @@ from typing import Dict
 
 class ActionFrequencyWeighter:
     """Compute inverse-frequency weights for actions."""
-    
+
     def __init__(self, n_actions: int = 3, min_weight: float = 0.5):
         self.n_actions = n_actions
         self.min_weight = min_weight
         self.action_counts = Counter()
-    
+
     def update(self, actions: torch.Tensor) -> None:
         """Update action counts."""
         for action in actions.cpu().numpy():
             self.action_counts[int(action)] += 1
-    
+
     def get_weights(self, actions: torch.Tensor) -> torch.Tensor:
         """Get weights for actions in batch."""
         total = sum(self.action_counts.values())
         if total == 0:
             return torch.ones_like(actions, dtype=torch.float32)
-        
+
         weights = []
         for action in actions:
             action_int = int(action.item())
             freq = self.action_counts.get(action_int, 1) / total
             weight = max(self.min_weight, 1.0 / (freq + 1e-8))
             weights.append(weight)
-        
+
         return torch.tensor(weights, device=actions.device)
 ```
 
@@ -318,41 +318,41 @@ from typing import List, Dict
 
 class RegimeSampler:
     """Sample data balanced across market regimes."""
-    
+
     def __init__(self, df: pd.DataFrame):
         self.df = df
         self.regime_indices = self._identify_regimes()
-    
+
     def _identify_regimes(self) -> Dict[str, List[int]]:
         """Identify different market regimes."""
         regimes = {}
-        
+
         # Calculate returns
         returns = self.df['close'].pct_change()
-        
+
         # Calculate volatility (rolling std)
         volatility = returns.rolling(20).std()
-        
+
         # Trend: SMA crossover
         sma_short = self.df['close'].rolling(20).mean()
         sma_long = self.df['close'].rolling(50).mean()
         trend = sma_short > sma_long
-        
+
         # High/Low volatility threshold
         vol_median = volatility.median()
-        
+
         # Categorize
         regimes['uptrend_high_vol'] = self.df[(trend) & (volatility > vol_median)].index.tolist()
         regimes['uptrend_low_vol'] = self.df[(trend) & (volatility <= vol_median)].index.tolist()
         regimes['downtrend_high_vol'] = self.df[(~trend) & (volatility > vol_median)].index.tolist()
         regimes['downtrend_low_vol'] = self.df[(~trend) & (volatility <= vol_median)].index.tolist()
-        
+
         return regimes
-    
+
     def sample_balanced(self, n_samples: int) -> List[int]:
         """Sample indices balanced across regimes."""
         samples_per_regime = n_samples // len(self.regime_indices)
-        
+
         all_indices = []
         for regime_name, indices in self.regime_indices.items():
             if len(indices) > 0:
@@ -362,7 +362,7 @@ class RegimeSampler:
                     replace=False
                 )
                 all_indices.extend(sampled)
-        
+
         # Shuffle
         np.random.shuffle(all_indices)
         return all_indices[:n_samples]

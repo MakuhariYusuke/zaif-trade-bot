@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="bug-26-live-trading-cannot-achieve-flat-position">
 <h1>🐛 Bug #26: Live Trading Cannot Achieve Flat Position<a class="headerlink" href="#bug-26-live-trading-cannot-achieve-flat-position" title="Link to this heading"></a></h1>
 <p><strong>Discovered By:</strong> External Reviewer B (Fifth Review Cycle)<br />
@@ -344,13 +344,13 @@ Many risk management strategies require ability to go flat:</p>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update position based on action.&quot;&quot;&quot;</span>
     <span class="n">size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span> <span class="o">*</span> <span class="mf">0.01</span> <span class="o">/</span> <span class="n">current_price</span>
     <span class="n">realized_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
-    
+
     <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
             <span class="c1"># ✅ Just close to flat, don&#39;t open long</span>
             <span class="n">old_entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
             <span class="n">realized_pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">old_entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position_size</span><span class="p">)</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;flat&quot;</span>  <span class="c1"># ✅ Go flat</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="mf">0.0</span>         <span class="c1"># ✅ Zero size</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>           <span class="c1"># ✅ Clear entry price</span>
@@ -362,13 +362,13 @@ Many risk management strategies require ability to go flat:</p>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
             <span class="c1"># Already long, do nothing (or could add to position)</span>
             <span class="k">pass</span>
-    
+
     <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># SELL</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
             <span class="c1"># ✅ Just close to flat, don&#39;t open short</span>
             <span class="n">old_entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
             <span class="n">realized_pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="n">old_entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">position_size</span><span class="p">)</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;flat&quot;</span>  <span class="c1"># ✅ Go flat</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="mf">0.0</span>         <span class="c1"># ✅ Zero size</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>           <span class="c1"># ✅ Clear entry price</span>
@@ -380,7 +380,7 @@ Many risk management strategies require ability to go flat:</p>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
             <span class="c1"># Already short, do nothing (or could add to position)</span>
             <span class="k">pass</span>
-    
+
     <span class="k">return</span> <span class="n">realized_pnl</span>
 </pre></div>
 </div>
@@ -408,25 +408,25 @@ Many risk management strategies require ability to go flat:</p>
             <span class="n">get_current_price</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="n">current_price</span><span class="p">,</span>
             <span class="n">get_portfolio_value</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
         <span class="p">)</span>
-    
+
     <span class="c1"># Sync current state to PositionManager</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">!=</span> <span class="s2">&quot;flat&quot;</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
-    
+
     <span class="c1"># Execute action using proven logic</span>
     <span class="n">realized_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
         <span class="n">action</span><span class="o">=</span><span class="n">action</span><span class="p">,</span>
         <span class="n">current_price</span><span class="o">=</span><span class="n">current_price</span><span class="p">,</span>
         <span class="n">portfolio_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">portfolio_value</span>
     <span class="p">)</span>
-    
+
     <span class="c1"># Sync state back from PositionManager</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">position</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_position_manager</span><span class="o">.</span><span class="n">entry_price</span>
-    
+
     <span class="c1"># Derive current_position from position_size (single source of truth)</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
@@ -434,7 +434,7 @@ Many risk management strategies require ability to go flat:</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">=</span> <span class="s2">&quot;flat&quot;</span>
-    
+
     <span class="k">return</span> <span class="n">realized_pnl</span>
 </pre></div>
 </div>
@@ -465,22 +465,22 @@ Many risk management strategies require ability to go flat:</p>
 <span class="sd">    Verifies that closing positions goes to flat, not reverse.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">create_test_config</span><span class="p">()</span>
-    
+
     <span class="c1"># Test 1: Close short → should go flat</span>
     <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open short</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span>
-    
+
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">95.0</span><span class="p">)</span>   <span class="c1"># Close short</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> \
         <span class="sa">f</span><span class="s2">&quot;Closing short should go flat, got </span><span class="si">{</span><span class="n">trader</span><span class="o">.</span><span class="n">current_position</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">position_size</span> <span class="o">==</span> <span class="mf">0.0</span>
-    
+
     <span class="c1"># Test 2: Close long → should go flat</span>
     <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open long</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span>
-    
+
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">105.0</span><span class="p">)</span>  <span class="c1"># Close long</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> \
         <span class="sa">f</span><span class="s2">&quot;Closing long should go flat, got </span><span class="si">{</span><span class="n">trader</span><span class="o">.</span><span class="n">current_position</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -492,7 +492,7 @@ Many risk management strategies require ability to go flat:</p>
 <span class="sd">    Both should transition between positions identically.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">create_test_config</span><span class="p">()</span>
-    
+
     <span class="n">test_scenarios</span> <span class="o">=</span> <span class="p">[</span>
         <span class="c1"># (start_action, start_price, end_action, end_price, expected_final_position)</span>
         <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">95.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>   <span class="c1"># Short → close → flat</span>
@@ -500,7 +500,7 @@ Many risk management strategies require ability to go flat:</p>
         <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>  <span class="c1"># Flat → buy → long</span>
         <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">100.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="c1"># Flat → sell → short</span>
     <span class="p">]</span>
-    
+
     <span class="k">for</span> <span class="n">start_action</span><span class="p">,</span> <span class="n">start_price</span><span class="p">,</span> <span class="n">end_action</span><span class="p">,</span> <span class="n">end_price</span><span class="p">,</span> <span class="n">expected_pos_sign</span> <span class="ow">in</span> <span class="n">test_scenarios</span><span class="p">:</span>
         <span class="c1"># Test with LiveTrader</span>
         <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
@@ -508,7 +508,7 @@ Many risk management strategies require ability to go flat:</p>
             <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">start_action</span><span class="p">,</span> <span class="n">start_price</span><span class="p">)</span>
         <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">end_action</span><span class="p">,</span> <span class="n">end_price</span><span class="p">)</span>
         <span class="n">trader_final_pos</span> <span class="o">=</span> <span class="n">trader</span><span class="o">.</span><span class="n">position_size</span>
-        
+
         <span class="c1"># Test with PositionManager</span>
         <span class="n">pm</span> <span class="o">=</span> <span class="n">PositionManager</span><span class="p">(</span>
             <span class="n">position_config</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">position</span><span class="p">,</span>
@@ -519,7 +519,7 @@ Many risk management strategies require ability to go flat:</p>
             <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">start_action</span><span class="p">,</span> <span class="n">start_price</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">)</span>
         <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">end_action</span><span class="p">,</span> <span class="n">end_price</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">initial_capital</span><span class="p">)</span>
         <span class="n">pm_final_pos</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">position</span>
-        
+
         <span class="c1"># Sign of position should match</span>
         <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">trader_final_pos</span><span class="p">)</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">pm_final_pos</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected_pos_sign</span><span class="p">,</span> \
             <span class="sa">f</span><span class="s2">&quot;Position sign mismatch: trader=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">trader_final_pos</span><span class="p">)</span><span class="si">}</span><span class="s2">, pm=</span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">sign</span><span class="p">(</span><span class="n">pm_final_pos</span><span class="p">)</span><span class="si">}</span><span class="s2">, expected=</span><span class="si">{</span><span class="n">expected_pos_sign</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -535,31 +535,31 @@ Many risk management strategies require ability to go flat:</p>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">create_test_config</span><span class="p">()</span>
     <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    
+
     <span class="c1"># Scenario 1: Emergency stop from long position</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open long</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span>
-    
+
     <span class="c1"># Emergency: close position</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">90.0</span><span class="p">)</span>   <span class="c1"># SELL to close</span>
-    
+
     <span class="c1"># Should be flat (in cash, safe)</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> \
         <span class="s2">&quot;Emergency stop should exit to cash (flat)&quot;</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">position_size</span> <span class="o">==</span> <span class="mf">0.0</span>
-    
+
     <span class="c1"># Should be able to stay flat (not forced to trade)</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">85.0</span><span class="p">)</span>   <span class="c1"># HOLD</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span>
-    
+
     <span class="c1"># Scenario 2: Emergency stop from short position</span>
     <span class="n">trader</span> <span class="o">=</span> <span class="n">LiveTrader</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>  <span class="c1"># Open short</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span>
-    
+
     <span class="c1"># Emergency: close position</span>
     <span class="n">trader</span><span class="o">.</span><span class="n">_update_position</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_price</span><span class="o">=</span><span class="mf">110.0</span><span class="p">)</span>  <span class="c1"># BUY to close</span>
-    
+
     <span class="c1"># Should be flat (in cash, safe)</span>
     <span class="k">assert</span> <span class="n">trader</span><span class="o">.</span><span class="n">current_position</span> <span class="o">==</span> <span class="s2">&quot;flat&quot;</span><span class="p">,</span> \
         <span class="s2">&quot;Emergency stop should exit to cash (flat)&quot;</span>
@@ -787,7 +787,7 @@ Many risk management strategies require ability to go flat:</p>
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -798,7 +798,7 @@ Many risk management strategies require ability to go flat:</p>
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

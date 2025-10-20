@@ -226,9 +226,9 @@ class PositionSizer:
             # Assume min_order_size = 0.0001, min_price = 1, etc.
             min_order_size = 0.0001
             if quantity_rounded < min_order_size:
-                sizing_chain["skip_reason"] = (
-                    f"Quantity {quantity_rounded} below minimum {min_order_size}"
-                )
+                sizing_chain[
+                    "skip_reason"
+                ] = f"Quantity {quantity_rounded} below minimum {min_order_size}"
                 quantity_rounded = 0
 
             sizing_chain["validated"] = quantity_rounded

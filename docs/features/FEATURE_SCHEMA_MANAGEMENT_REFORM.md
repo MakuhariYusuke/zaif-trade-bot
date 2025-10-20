@@ -104,16 +104,16 @@ scaler = manager.load_scaler()
 def _save_model_schema(self, model, session_id: str):
     """モデルと一緒にスキーマを保存"""
     manager = FeatureSchemaManager(model_name=session_id)
-    
+
     # 環境から特徴量リスト取得
     features = self.env.get_feature_names()
-    
+
     # スケーラー情報取得
     scaler_data = {
         "mean": self.env.scaler.mean,
         "std": self.env.scaler.std
     }
-    
+
     # 保存
     manager.save_schema(
         features=features,
@@ -136,7 +136,7 @@ def save_with_schema(self, model_path: str, session_id: str):
     """モデルとスキーマを一緒に保存"""
     # モデル保存
     self.model.save(model_path)
-    
+
     # スキーマ保存
     manager = FeatureSchemaManager(model_name=session_id)
     manager.save_schema(
@@ -148,7 +148,7 @@ def save_with_schema(self, model_path: str, session_id: str):
 
 ### 4. Environment統合 (⏳ 未実装)
 
-**修正箇所**: 
+**修正箇所**:
 - `ztb/trading/environment/environment.py`
 - `ztb/trading/environment/heavy_env/mixins/initialization.py`
 
@@ -163,14 +163,14 @@ def create_env_from_schema(model_name: str, df: pd.DataFrame):
     manager = FeatureSchemaManager(model_name=model_name)
     metadata = manager.load_schema()
     scaler = manager.load_scaler()
-    
+
     config = {
         "feature_names": metadata.feature_names,
         "scaler_mean": scaler["mean"],
         "scaler_std": scaler["std"],
         # ... その他の設定
     }
-    
+
     return HeavyTradingEnv(df=df, config=config)
 ```
 
@@ -182,18 +182,18 @@ def run_backtest_with_schema(model_path: str, data_path: str):
     """スキーマを考慮したバックテスト"""
     # モデル名を抽出
     model_name = Path(model_path).stem
-    
+
     # スキーマ読み込み
     manager = FeatureSchemaManager(model_name=model_name)
     metadata = manager.load_schema()
-    
+
     # 環境作成（スキーマに基づく）
     df = load_csv_data_optimized(data_path)
     env = create_env_from_schema(model_name, df)
-    
+
     # モデル読み込み
     model = MaskablePPO.load(model_path)
-    
+
     # バックテスト実行
     # （次元不一致エラーなし！）
 ```
@@ -260,12 +260,12 @@ python -c "from ztb.training.core.feature_schema_manager import FeatureSchemaMan
 # ================================================================================
 # Available Feature Schemas
 # ================================================================================
-# 
+#
 # 📦 ppo_reward_v381_revised_profit_focused
 #    Features: 110
 #    Hash: a1b2c3d4e5f6g7h8
 #    Created: 2025-10-09T15:30:00
-# 
+#
 # 📦 ppo_reward_v384_curated_60
 #    Features: 68
 #    Hash: f7be18533fa61876
@@ -332,5 +332,5 @@ compatible = manager_v384.verify_compatibility("ppo_reward_v381_revised_profit_f
 
 ---
 
-**作成日**: 2025-10-10  
+**作成日**: 2025-10-10
 **ステータス**: Phase 2 (Trainer統合) 進行中

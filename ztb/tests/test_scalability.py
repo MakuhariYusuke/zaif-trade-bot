@@ -4,20 +4,27 @@ Scalability and Operations System Tests
 """
 
 import unittest
-import time
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
-import numpy as np
+from unittest.mock import patch
 
-from .scalability import (
-    LoadBalancer, AutoScaler, ResourceOptimizer, DeploymentManager,
-    OperationsManager, ScalabilityManager
-)
 from .config import ScalabilityConfig
+from .scalability import (
+    AutoScaler,
+    DeploymentManager,
+    LoadBalancer,
+    OperationsManager,
+    ResourceOptimizer,
+    ScalabilityManager,
+)
 from .types import (
-    ScalingStrategy, ResourceType, ScalingDecision, DeploymentStatus,
-    ResourceUsage, ScalingAction, LoadDistribution, DeploymentPlan,
-    CostOptimization, ScalabilityMetrics, OperationsStatus
+    DeploymentStatus,
+    OperationsStatus,
+    ResourceType,
+    ResourceUsage,
+    ScalabilityMetrics,
+    ScalingAction,
+    ScalingDecision,
+    ScalingStrategy,
 )
 
 
@@ -93,7 +100,7 @@ class TestLoadBalancer(unittest.TestCase):
             "current_load": 75.0,
             "active_connections": 10,
             "queue_length": 2,
-            "response_time_ms": 150.0
+            "response_time_ms": 150.0,
         }
 
         self.lb.update_instance_load("instance_1", load_data)
@@ -126,7 +133,7 @@ class TestAutoScaler(unittest.TestCase):
             max_instances=5,
             scale_up_threshold=0.8,
             scale_down_threshold=0.2,
-            cooldown_period_seconds=60
+            cooldown_period_seconds=60,
         )
         self.lb = LoadBalancer(self.config)
         self.scaler = AutoScaler(self.config, self.lb)
@@ -141,7 +148,7 @@ class TestAutoScaler(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.85,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             )
         ]
 
@@ -162,7 +169,7 @@ class TestAutoScaler(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.15,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             )
         ]
 
@@ -181,7 +188,7 @@ class TestAutoScaler(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.50,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             )
         ]
 
@@ -198,7 +205,7 @@ class TestAutoScaler(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.85,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             )
         ]
 
@@ -221,7 +228,7 @@ class TestAutoScaler(unittest.TestCase):
             reason="Test scaling",
             estimated_cost_impact=0.1,
             timestamp=datetime.now(),
-            executed_by="test"
+            executed_by="test",
         )
         self.scaler.scaling_history.append(action)
 
@@ -246,7 +253,7 @@ class TestResourceOptimizer(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.30,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             ),
             ResourceUsage(
                 resource_type=ResourceType.MEMORY,
@@ -254,15 +261,18 @@ class TestResourceOptimizer(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.20,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
-            )
+                instance_id="instance_1",
+            ),
         ]
 
         optimizations = self.optimizer.analyze_resource_usage(resource_usage)
         self.assertGreater(len(optimizations), 0)
 
         # CPU最適化を確認
-        cpu_opt = next((opt for opt in optimizations if opt.resource_type == ResourceType.CPU), None)
+        cpu_opt = next(
+            (opt for opt in optimizations if opt.resource_type == ResourceType.CPU),
+            None,
+        )
         self.assertIsNotNone(cpu_opt)
         self.assertEqual(cpu_opt.savings_percentage, 0.2)
         self.assertIn("CPU allocation", cpu_opt.recommendations[0])
@@ -276,7 +286,7 @@ class TestResourceOptimizer(unittest.TestCase):
                 max_capacity=100.0,
                 utilization_percentage=0.70,
                 timestamp=datetime.now(),
-                instance_id="instance_1"
+                instance_id="instance_1",
             )
         ]
 
@@ -299,7 +309,9 @@ class TestDeploymentManager(unittest.TestCase):
         self.assertIn("v1.2.0", plan_id)
 
         # 計画が履歴に追加されていることを確認
-        plan = next((p for p in self.manager.deployment_history if p.plan_id == plan_id), None)
+        plan = next(
+            (p for p in self.manager.deployment_history if p.plan_id == plan_id), None
+        )
         self.assertIsNotNone(plan)
         self.assertEqual(plan.version, "v1.2.0")
         self.assertEqual(plan.target_instances, 3)
@@ -314,7 +326,9 @@ class TestDeploymentManager(unittest.TestCase):
         self.assertTrue(success)
 
         # 計画のステータスを確認
-        plan = next((p for p in self.manager.deployment_history if p.plan_id == plan_id), None)
+        plan = next(
+            (p for p in self.manager.deployment_history if p.plan_id == plan_id), None
+        )
         self.assertEqual(plan.status, DeploymentStatus.SUCCESS)
 
     def test_execute_deployment_failure(self):
@@ -322,12 +336,17 @@ class TestDeploymentManager(unittest.TestCase):
         plan_id = self.manager.create_deployment_plan("v1.2.0", 2)
 
         # 失敗をシミュレート
-        with patch.object(self.manager, '_execute_rolling_deployment', return_value=False):
+        with patch.object(
+            self.manager, "_execute_rolling_deployment", return_value=False
+        ):
             success = self.manager.execute_deployment(plan_id)
             self.assertFalse(success)
 
             # 計画のステータスを確認
-            plan = next((p for p in self.manager.deployment_history if p.plan_id == plan_id), None)
+            plan = next(
+                (p for p in self.manager.deployment_history if p.plan_id == plan_id),
+                None,
+            )
             self.assertEqual(plan.status, DeploymentStatus.FAILED)
 
     def test_rollback_plan_generation(self):
@@ -335,7 +354,9 @@ class TestDeploymentManager(unittest.TestCase):
         plan = self.manager.create_deployment_plan("v1.2.0", 2, "blue_green")
 
         # 計画を取得
-        deployment_plan = next((p for p in self.manager.deployment_history if p.plan_id == plan), None)
+        deployment_plan = next(
+            (p for p in self.manager.deployment_history if p.plan_id == plan), None
+        )
         self.assertIsNotNone(deployment_plan)
 
         rollback_plan = deployment_plan.rollback_plan
@@ -347,9 +368,7 @@ class TestOperationsManager(unittest.TestCase):
 
     def setUp(self):
         self.config = ScalabilityConfig(
-            backup_enabled=True,
-            backup_interval_hours=24,
-            monitoring_retention_days=30
+            backup_enabled=True, backup_interval_hours=24, monitoring_retention_days=30
         )
         self.manager = OperationsManager(self.config)
 
@@ -404,7 +423,7 @@ class TestScalabilityManager(unittest.TestCase):
             min_instances=1,
             max_instances=3,
             auto_scaling_enabled=True,
-            resource_optimization_enabled=True
+            resource_optimization_enabled=True,
         )
         self.manager = ScalabilityManager(self.config)
 

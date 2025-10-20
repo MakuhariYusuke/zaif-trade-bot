@@ -49,10 +49,10 @@ async function run(){
   const sleepMs = Math.max(0, Number(process.env.SCENARIO_SLEEP_MS || 0));
   for (let i=0; i<LOOP; i++){
     try {
-      const entry = await maybeFail(()=>submitOrderWithRetry({ 
-        currency_pair: pair, 
-        side:'bid', 
-        limitPrice: 1000000, 
+      const entry = await maybeFail(()=>submitOrderWithRetry({
+        currency_pair: pair,
+        side:'bid',
+        limitPrice: 1000000,
         amount: entryAmt }));
       logInfo('[SCENARIO] Entry summary', entry);
   appendSummary(todayStr(), entry as any);
@@ -66,11 +66,11 @@ async function run(){
         } catch {}
       }
       try {
-        const exit = await maybeFail(()=>submitOrderWithRetry({ 
-          currency_pair: pair, 
-          side:'ask', 
-          limitPrice: 1000000, 
-          amount: exitAmt 
+        const exit = await maybeFail(()=>submitOrderWithRetry({
+          currency_pair: pair,
+          side:'ask',
+          limitPrice: 1000000,
+          amount: exitAmt
         }));
         logInfo('[SCENARIO] Exit summary', exit);
         appendSummary(todayStr(), exit as any);

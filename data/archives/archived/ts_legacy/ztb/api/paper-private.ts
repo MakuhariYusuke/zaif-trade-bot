@@ -5,7 +5,7 @@ import { PrivateApi, GetInfo2Response, ActiveOrder, TradeHistoryRecord, TradeRes
 import { sleep } from '../utils/toolkit';
 
 interface PaperTrade extends TradeHistoryRecord { currency_pair: string }
-interface PaperOrder { 
+interface PaperOrder {
     id: string;
     currency_pair: string;
     action: 'bid' | 'ask';

@@ -10,9 +10,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
+from ztb.utils.config import ZTBConfig
 from ztb.utils.file_utils import safe_json_load
 from ztb.utils.path_utils import ensure_dir, get_project_root
-from ztb.utils.config import ZTBConfig
 
 # Add project root to path for imports
 sys.path.append(str(get_project_root()))
@@ -64,9 +64,11 @@ def get_default_config() -> dict:
             "total_timesteps": 200000,
             "eval_freq": 5000,
             "n_eval_episodes": 5,
-            **get_ppo_config({
-                "ent_coef": 0.01,  # Override for testing
-            }),
+            **get_ppo_config(
+                {
+                    "ent_coef": 0.01,  # Override for testing
+                }
+            ),
         },
         "environment": {
             "reward_scaling": 1.0,
@@ -342,7 +344,9 @@ def main():
     config["paths"]["log_dir"] = "../logs/test/"
     config["paths"]["model_dir"] = str(ZTBConfig().get_model_path("test"))
     config["paths"]["results_dir"] = "../results/test/"
-    config["paths"]["checkpoint_dir"] = str(ZTBConfig().get_model_path("test/checkpoints"))
+    config["paths"]["checkpoint_dir"] = str(
+        ZTBConfig().get_model_path("test/checkpoints")
+    )
 
     # ディレクトリのセットアップ
     setup_directories(config)

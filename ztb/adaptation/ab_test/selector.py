@@ -4,13 +4,17 @@ Model Selection and Rollback Logic for A/B Testing
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
-from .types import (
-    ABTestResultSummary, ABTestResult, ABTestVariant,
-    ABTestConfiguration, ABTestState
-)
+from typing import Any, Callable, Dict, List, Optional
+
 from .config import ABTestConfig
+from .types import (
+    ABTestConfiguration,
+    ABTestResult,
+    ABTestResultSummary,
+    ABTestState,
+    ABTestVariant,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +31,7 @@ class ModelSelector:
         self,
         test_config: ABTestConfiguration,
         test_state: ABTestState,
-        result_summary: ABTestResultSummary
+        result_summary: ABTestResultSummary,
     ) -> Dict[str, Any]:
         """
         テスト結果に基づいてモデルを選択
@@ -39,7 +43,7 @@ class ModelSelector:
             "confidence_level": 0.0,
             "risk_assessment": {},
             "reasoning": [],
-            "recommended_traffic_percentage": 0.0
+            "recommended_traffic_percentage": 0.0,
         }
 
         # 勝者の決定
@@ -50,7 +54,9 @@ class ModelSelector:
             decision["selected_variant"] = test_config.variant_b
             decision["action"] = "deploy"
         else:
-            decision["reasoning"].append("No clear winner - continuing with current model")
+            decision["reasoning"].append(
+                "No clear winner - continuing with current model"
+            )
             return decision
 
         # リスク評価
@@ -78,19 +84,19 @@ class ModelSelector:
         # ロールバックトリガーの設定
         if action == "deploy":
             self._setup_rollback_triggers(
-                test_config.test_id,
-                decision["selected_variant"],
-                risk_assessment
+                test_config.test_id, decision["selected_variant"], risk_assessment
             )
 
-        logger.info(f"Model selection decision for {test_config.test_id}: {decision['action']}")
+        logger.info(
+            f"Model selection decision for {test_config.test_id}: {decision['action']}"
+        )
         return decision
 
     def _assess_deployment_risks(
         self,
         test_config: ABTestConfiguration,
         test_state: ABTestState,
-        result_summary: ABTestResultSummary
+        result_summary: ABTestResultSummary,
     ) -> Dict[str, Any]:
         """デプロイメントリスクを評価"""
         risks = {
@@ -98,13 +104,15 @@ class ModelSelector:
             "sample_size_risk": "low",
             "statistical_risk": "low",
             "performance_risk": "low",
-            "overall_risk": "low"
+            "overall_risk": "low",
         }
 
         # サンプルサイズリスク
         min_samples = test_config.minimum_sample_size
-        if (test_state.metrics_a.sample_count < min_samples or
-            test_state.metrics_b.sample_count < min_samples):
+        if (
+            test_state.metrics_a.sample_count < min_samples
+            or test_state.metrics_b.sample_count < min_samples
+        ):
             risks["sample_size_risk"] = "high"
             risks["overall_risk"] = "high"
 
@@ -162,13 +170,13 @@ class ModelSelector:
             sample_confidence = 0.5
 
         # 総合信頼性
-        return (p_confidence * 0.4 + effect_confidence * 0.4 + sample_confidence * 0.2)
+        return p_confidence * 0.4 + effect_confidence * 0.4 + sample_confidence * 0.2
 
     def _determine_action(
         self,
         result_summary: ABTestResultSummary,
         risk_assessment: Dict[str, Any],
-        confidence_level: float
+        confidence_level: float,
     ) -> tuple[str, List[str]]:
         """アクションを決定"""
         reasoning = []
@@ -180,13 +188,17 @@ class ModelSelector:
 
         # 信頼性が不十分な場合は保留
         if confidence_level < 0.7:
-            reasoning.append(f"Low confidence ({confidence_level:.2f}) - continuing testing")
+            reasoning.append(
+                f"Low confidence ({confidence_level:.2f}) - continuing testing"
+            )
             return "hold", reasoning
 
         # 勝者がいてリスクが許容範囲内ならデプロイ
         if result_summary.result in [ABTestResult.WINNER_A, ABTestResult.WINNER_B]:
             winner = "A" if result_summary.result == ABTestResult.WINNER_A else "B"
-            reasoning.append(f"Variant {winner} shows clear improvement with acceptable risk")
+            reasoning.append(
+                f"Variant {winner} shows clear improvement with acceptable risk"
+            )
             reasoning.append(f"Confidence level: {confidence_level:.2f}")
             return "deploy", reasoning
 
@@ -195,9 +207,7 @@ class ModelSelector:
         return "hold", reasoning
 
     def _calculate_traffic_percentage(
-        self,
-        confidence_level: float,
-        risk_assessment: Dict[str, Any]
+        self, confidence_level: float, risk_assessment: Dict[str, Any]
     ) -> float:
         """推奨トラフィック割合を計算"""
         base_percentage = confidence_level * 50  # 最大50%
@@ -215,31 +225,49 @@ class ModelSelector:
         self,
         test_id: str,
         selected_variant: ABTestVariant,
-        risk_assessment: Dict[str, Any]
+        risk_assessment: Dict[str, Any],
     ):
         """ロールバックトリガーを設定"""
         trigger_conditions = []
 
         # 高リスクの場合は厳格なトリガーを設定
         if risk_assessment["overall_risk"] == "high":
-            trigger_conditions.extend([
-                {"metric": "error_rate", "threshold": 0.1, "duration_minutes": 5},
-                {"metric": "performance_degradation", "threshold": 0.2, "duration_minutes": 10}
-            ])
+            trigger_conditions.extend(
+                [
+                    {"metric": "error_rate", "threshold": 0.1, "duration_minutes": 5},
+                    {
+                        "metric": "performance_degradation",
+                        "threshold": 0.2,
+                        "duration_minutes": 10,
+                    },
+                ]
+            )
 
         # 中リスクの場合は中程度のトリガー
         elif risk_assessment["overall_risk"] == "medium":
-            trigger_conditions.extend([
-                {"metric": "error_rate", "threshold": 0.15, "duration_minutes": 15},
-                {"metric": "performance_degradation", "threshold": 0.3, "duration_minutes": 30}
-            ])
+            trigger_conditions.extend(
+                [
+                    {"metric": "error_rate", "threshold": 0.15, "duration_minutes": 15},
+                    {
+                        "metric": "performance_degradation",
+                        "threshold": 0.3,
+                        "duration_minutes": 30,
+                    },
+                ]
+            )
 
         # 低リスクの場合は緩いトリガー
         else:
-            trigger_conditions.extend([
-                {"metric": "error_rate", "threshold": 0.2, "duration_minutes": 30},
-                {"metric": "performance_degradation", "threshold": 0.5, "duration_minutes": 60}
-            ])
+            trigger_conditions.extend(
+                [
+                    {"metric": "error_rate", "threshold": 0.2, "duration_minutes": 30},
+                    {
+                        "metric": "performance_degradation",
+                        "threshold": 0.5,
+                        "duration_minutes": 60,
+                    },
+                ]
+            )
 
         self.rollback_triggers[test_id] = self._create_rollback_trigger(
             test_id, selected_variant, trigger_conditions
@@ -251,26 +279,30 @@ class ModelSelector:
         self,
         test_id: str,
         selected_variant: ABTestVariant,
-        conditions: List[Dict[str, Any]]
+        conditions: List[Dict[str, Any]],
     ) -> Callable:
         """ロールバックトリガーを作成"""
+
         def rollback_trigger(metric_name: str, value: float, timestamp: datetime):
             """ロールバックを実行"""
             for condition in conditions:
-                if (metric_name == condition["metric"] and
-                    value > condition["threshold"]):
-                    logger.warning(f"Rollback triggered for {test_id}: {metric_name}={value}")
-                    self._execute_rollback(test_id, selected_variant, f"{metric_name} exceeded threshold")
+                if (
+                    metric_name == condition["metric"]
+                    and value > condition["threshold"]
+                ):
+                    logger.warning(
+                        f"Rollback triggered for {test_id}: {metric_name}={value}"
+                    )
+                    self._execute_rollback(
+                        test_id, selected_variant, f"{metric_name} exceeded threshold"
+                    )
                     return True
             return False
 
         return rollback_trigger
 
     def _execute_rollback(
-        self,
-        test_id: str,
-        deployed_variant: ABTestVariant,
-        reason: str
+        self, test_id: str, deployed_variant: ABTestVariant, reason: str
     ):
         """ロールバックを実行"""
         rollback_record = {
@@ -278,7 +310,7 @@ class ModelSelector:
             "deployed_variant": deployed_variant.variant_id,
             "rollback_time": datetime.now(),
             "reason": reason,
-            "action": "rolled_back_to_previous"
+            "action": "rolled_back_to_previous",
         }
 
         self.deployment_history.append(rollback_record)
@@ -290,10 +322,7 @@ class ModelSelector:
         logger.info(f"Executed rollback for test {test_id}: {reason}")
 
     def check_rollback_conditions(
-        self,
-        test_id: str,
-        metrics: Dict[str, float],
-        timestamp: datetime
+        self, test_id: str, metrics: Dict[str, float], timestamp: datetime
     ) -> bool:
         """ロールバック条件をチェック"""
         if test_id not in self.rollback_triggers:
@@ -308,10 +337,16 @@ class ModelSelector:
 
         return False
 
-    def get_deployment_history(self, test_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_deployment_history(
+        self, test_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """デプロイメント履歴を取得"""
         if test_id:
-            return [record for record in self.deployment_history if record["test_id"] == test_id]
+            return [
+                record
+                for record in self.deployment_history
+                if record["test_id"] == test_id
+            ]
         return self.deployment_history.copy()
 
     def get_active_rollback_triggers(self) -> List[str]:
@@ -326,7 +361,7 @@ class ModelSelector:
                 variant_id="unknown",
                 model_path="",
                 model_version="",
-                description="Force rolled back"
+                description="Force rolled back",
             )
             self._execute_rollback(test_id, deployed_variant, reason)
             return True
@@ -346,12 +381,12 @@ class TrafficManager:
         test_id: str,
         variant_a: ABTestVariant,
         variant_b: ABTestVariant,
-        percentage: float
+        percentage: float,
     ) -> Dict[str, float]:
         """トラフィックを割り当て"""
         allocation = {
             variant_a.variant_id: (100 - percentage) / 100,
-            variant_b.variant_id: percentage / 100
+            variant_b.variant_id: percentage / 100,
         }
 
         self.traffic_allocations[test_id] = allocation
@@ -364,14 +399,16 @@ class TrafficManager:
         test_id: str,
         target_percentage: float,
         steps: int = 5,
-        interval_minutes: int = 30
+        interval_minutes: int = 30,
     ) -> List[Dict[str, Any]]:
         """トラフィックを段階的に増加"""
         if test_id not in self.traffic_allocations:
             raise ValueError(f"Test {test_id} not found")
 
         current_allocation = self.traffic_allocations[test_id]
-        current_percentage = current_allocation[list(current_allocation.keys())[1]] * 100
+        current_percentage = (
+            current_allocation[list(current_allocation.keys())[1]] * 100
+        )
 
         ramp_schedule = []
         step_size = (target_percentage - current_percentage) / steps
@@ -383,7 +420,8 @@ class TrafficManager:
             schedule_item = {
                 "step": step,
                 "percentage": new_percentage,
-                "scheduled_time": datetime.now() + timedelta(minutes=interval_minutes * step)
+                "scheduled_time": datetime.now()
+                + timedelta(minutes=interval_minutes * step),
             }
             ramp_schedule.append(schedule_item)
 
@@ -393,11 +431,7 @@ class TrafficManager:
         """トラフィック割り当てを取得"""
         return self.traffic_allocations.get(test_id)
 
-    def update_traffic_allocation(
-        self,
-        test_id: str,
-        new_percentage: float
-    ) -> bool:
+    def update_traffic_allocation(self, test_id: str, new_percentage: float) -> bool:
         """トラフィック割り当てを更新"""
         if test_id not in self.traffic_allocations:
             return False

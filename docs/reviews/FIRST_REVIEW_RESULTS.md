@@ -1,6 +1,6 @@
 # 潜在的バグレビュー - 徹底調査
 
-**日付:** 2025年10月8日  
+**日付:** 2025年10月8日
 **目的:** 根本的なバグが複数見つかったため、さらなる潜在的バグを洗い出す
 
 ---
@@ -17,7 +17,7 @@
 action, _states = model.predict(obs, deterministic=True)
 ```
 
-**深刻度:** Critical  
+**深刻度:** Critical
 **影響:** MaskablePPOモデル使用時にaction_masksが渡されず、不正確な予測
 
 **問題2: debug_model_predictions.py (Line 68)**
@@ -26,7 +26,7 @@ action, _states = model.predict(obs, deterministic=True)
 action, _ = model.predict(obs, deterministic=False)
 ```
 
-**深刻度:** Critical  
+**深刻度:** Critical
 **影響:** デバッグ時の動作確認が不正確
 
 **問題3: regime_evaluation.py (Line 148)**
@@ -37,7 +37,7 @@ model = MaskablePPO.load(model_path)
 action, _ = model.predict(obs, deterministic=False)
 ```
 
-**深刻度:** Critical  
+**深刻度:** Critical
 **影響:** レジーム評価が完全に不正確
 
 **問題4: test_paper_trading.py (Line 167)**
@@ -48,7 +48,7 @@ model = MaskablePPO.load(args.model_path)
 action, _ = model.predict(obs_reshaped, deterministic=True)
 ```
 
-**深刻度:** Critical  
+**深刻度:** Critical
 **影響:** ペーパートレーディングテストが不正確
 
 ---
@@ -57,7 +57,7 @@ action, _ = model.predict(obs_reshaped, deterministic=True)
 
 #### 調査: _last_trade_stepの二重管理
 
-**ファイル:** 
+**ファイル:**
 - `ztb/trading/environment/environment.py`
 - `ztb/trading/environment/components/position_manager.py`
 
@@ -71,7 +71,7 @@ action, _ = model.predict(obs_reshaped, deterministic=True)
 # environment.py
 self._last_trade_step = ...
 
-# position_manager.py  
+# position_manager.py
 self._last_trade_step = ...
 ```
 
@@ -88,10 +88,10 @@ self._last_trade_step = ...
 ```python
 def get_legal_actions(self) -> NDArray[np.int32]:
     # Returns legal actions based on various constraints
-    
+
 def action_mask(self) -> NDArray[np.bool_]:
     # Returns action masks for MaskablePPO
-    
+
 def get_action_masks(self) -> NDArray[np.bool_]:
     # Alias for action_mask()
 ```
@@ -125,7 +125,7 @@ def calculate_reward(...):
 
 #### 調査: trades_historyの記録タイミング
 
-**ファイル:** 
+**ファイル:**
 - `ztb/trading/environment/components/position_manager.py`
 - `ztb/trading/environment/environment.py`
 
@@ -153,7 +153,7 @@ def calculate_reward(...):
 
 ### 優先度: Critical (即座に修正)
 1. ✅ simple_backtest.py → predict_with_masks適用
-2. ✅ debug_model_predictions.py → predict_with_masks適用  
+2. ✅ debug_model_predictions.py → predict_with_masks適用
 3. ✅ regime_evaluation.py → predict_with_masks適用
 4. ✅ test_paper_trading.py → predict_with_masks適用
 

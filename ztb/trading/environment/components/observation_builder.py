@@ -72,12 +72,12 @@ class ObservationBuilder:
         feature_list = list(self.features)
         obs = step_data[feature_list].to_numpy(dtype=np.float32, copy=False)
         obs = np.nan_to_num(obs, nan=0.0, posinf=0.0, neginf=0.0)
-        
+
         # Fallbackパスでも正規化を適用
         if self.scaler_mean is not None and self.scaler_std is not None:
             safe_std = np.where(self.scaler_std > 1e-8, self.scaler_std, 1.0)
             obs = ((obs - self.scaler_mean) / safe_std).astype(np.float32)
-        
+
         return obs
 
     def get_info(

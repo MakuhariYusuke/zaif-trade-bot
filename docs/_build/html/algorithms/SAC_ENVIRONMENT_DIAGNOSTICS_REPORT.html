@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="========================================" href="SAC_PARAMETER_TUNING_GUIDE.html" />
-    <link rel="prev" title="SAC Entropy Tuning - Critical Insight" href="SAC_ENTROPY_ANALYSIS.html" /> 
+    <link rel="prev" title="SAC Entropy Tuning - Critical Insight" href="SAC_ENTROPY_ANALYSIS.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -156,7 +156,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="sac">
 <h1>SAC環境診断レポート<a class="headerlink" href="#sac" title="Link to this heading"></a></h1>
 <p><strong>作成日</strong>: 2025年10月11日<br />
@@ -259,19 +259,19 @@
     <span class="bp">self</span><span class="p">,</span> <span class="n">pnl</span><span class="p">,</span> <span class="n">portfolio_value</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">old_position</span><span class="p">,</span> <span class="n">action</span>
 <span class="p">):</span>
     <span class="c1"># v3.0: actionパラメータ追加</span>
-    
+
     <span class="c1"># 1. PnLベースの報酬（既存）</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="p">(</span><span class="n">pnl</span> <span class="o">/</span> <span class="n">portfolio_value</span><span class="p">)</span> <span class="o">*</span> <span class="n">reward_scale</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="n">clip</span><span class="p">(</span><span class="n">reward</span><span class="p">,</span> <span class="n">clip_min</span><span class="p">,</span> <span class="n">clip_max</span><span class="p">)</span>
-    
+
     <span class="c1"># 2. 無活動ペナルティ（新規）</span>
     <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">HOLD</span> <span class="ow">and</span> <span class="n">position</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">old_position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">reward</span> <span class="o">-=</span> <span class="n">inactivity_penalty_rate</span>  <span class="c1"># デフォルト: -0.001</span>
-    
+
     <span class="c1"># 3. 機会費用ペナルティ（新規）</span>
     <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">HOLD</span> <span class="ow">and</span> <span class="n">position</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">reward</span> <span class="o">-=</span> <span class="n">opportunity_cost_rate</span>  <span class="c1"># デフォルト: -0.0005</span>
-    
+
     <span class="k">return</span> <span class="n">reward</span>
 </pre></div>
 </div>
@@ -554,7 +554,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -565,7 +565,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

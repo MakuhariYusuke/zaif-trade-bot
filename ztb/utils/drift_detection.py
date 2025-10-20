@@ -10,16 +10,17 @@ Thresholds:
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, TypedDict
+from typing import Tuple, TypedDict
 
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from scipy import stats
 
 
 class DriftResultDict(TypedDict):
     """Drift detection result dictionary."""
+
     feature_name: str
     psi: float
     psi_drift: bool
@@ -41,27 +42,27 @@ def calculate_psi(
 ) -> float:
     """
     Calculate Population Stability Index (PSI) between two distributions.
-    
+
     PSI measures the shift in distribution between two datasets.
     - PSI < 0.1: No significant change
     - 0.1 ≤ PSI < 0.2: Moderate change
     - PSI ≥ 0.2: Significant change (ACTION REQUIRED)
-    
+
     Args:
         expected: Expected distribution (e.g., training data)
         actual: Actual distribution (e.g., evaluation data)
         bins: Number of bins for discretization
         epsilon: Small constant to avoid log(0)
-    
+
     Returns:
         PSI value (higher = more drift)
-    
+
     Examples:
         >>> expected = np.random.normal(0, 1, 1000)
         >>> actual = np.random.normal(0, 1, 1000)  # Same distribution
         >>> calculate_psi(expected, actual)
         0.05  # Low PSI (similar distributions)
-        
+
         >>> actual_shifted = np.random.normal(1, 1, 1000)  # Shifted distribution
         >>> calculate_psi(expected, actual_shifted)
         0.35  # High PSI (significant drift)
@@ -69,33 +70,33 @@ def calculate_psi(
     # Remove NaN values
     expected = expected[~np.isnan(expected)]
     actual = actual[~np.isnan(actual)]
-    
+
     if len(expected) == 0 or len(actual) == 0:
         return np.nan
-    
+
     # Create bins based on expected distribution
     breakpoints = np.percentile(expected, np.linspace(0, 100, bins + 1))
     breakpoints = np.unique(breakpoints)  # Remove duplicates
-    
+
     # Handle case where all values are identical
     if len(breakpoints) <= 2:
         return 0.0  # No variation, no drift
-    
+
     # Count frequencies in each bin
     expected_counts = np.histogram(expected, bins=breakpoints)[0]
     actual_counts = np.histogram(actual, bins=breakpoints)[0]
-    
+
     # Convert to percentages
     expected_pct = expected_counts / len(expected)
     actual_pct = actual_counts / len(actual)
-    
+
     # Add epsilon to avoid division by zero
     expected_pct = np.where(expected_pct == 0, epsilon, expected_pct)
     actual_pct = np.where(actual_pct == 0, epsilon, actual_pct)
-    
+
     # Calculate PSI
     psi = np.sum((actual_pct - expected_pct) * np.log(actual_pct / expected_pct))
-    
+
     return float(psi)
 
 
@@ -105,26 +106,26 @@ def calculate_ks(
 ) -> Tuple[float, float]:
     """
     Calculate Kolmogorov-Smirnov test statistic and p-value.
-    
+
     KS test checks if two samples come from the same distribution.
     - p-value < 0.01: Distributions are significantly different (ACTION REQUIRED)
     - p-value ≥ 0.01: No significant difference
-    
+
     Args:
         expected: Expected distribution (e.g., training data)
         actual: Actual distribution (e.g., evaluation data)
-    
+
     Returns:
         Tuple of (statistic, p_value)
         - statistic: KS statistic (0 to 1, higher = more different)
         - p_value: Probability that distributions are the same
-    
+
     Examples:
         >>> expected = np.random.normal(0, 1, 1000)
         >>> actual = np.random.normal(0, 1, 1000)  # Same distribution
         >>> stat, p = calculate_ks(expected, actual)
         >>> p > 0.01  # True (no significant difference)
-        
+
         >>> actual_shifted = np.random.normal(1, 1, 1000)  # Shifted distribution
         >>> stat, p = calculate_ks(expected, actual_shifted)
         >>> p < 0.01  # True (significant difference)
@@ -132,13 +133,13 @@ def calculate_ks(
     # Remove NaN values
     expected = expected[~np.isnan(expected)]
     actual = actual[~np.isnan(actual)]
-    
+
     if len(expected) == 0 or len(actual) == 0:
         return (np.nan, np.nan)
-    
+
     # Run KS test
     statistic, p_value = stats.ks_2samp(expected, actual)
-    
+
     return (float(statistic), float(p_value))
 
 
@@ -151,14 +152,14 @@ def detect_drift_single_feature(
 ) -> DriftResultDict:
     """
     Detect drift for a single feature.
-    
+
     Args:
         train_values: Feature values from training data
         eval_values: Feature values from evaluation data
         feature_name: Name of the feature
         psi_threshold: PSI threshold for drift detection
         ks_p_threshold: KS p-value threshold for drift detection
-    
+
     Returns:
         Dictionary with drift statistics:
         - feature_name: Name of the feature
@@ -176,20 +177,20 @@ def detect_drift_single_feature(
     # Calculate PSI
     psi = calculate_psi(train_values, eval_values)
     psi_drift = psi >= psi_threshold if not np.isnan(psi) else False
-    
+
     # Calculate KS
     ks_stat, ks_p = calculate_ks(train_values, eval_values)
     ks_drift = ks_p < ks_p_threshold if not np.isnan(ks_p) else False
-    
+
     # Overall drift flag
     drift_detected = psi_drift or ks_drift
-    
+
     # Basic statistics
     train_mean = float(np.nanmean(train_values))
     eval_mean = float(np.nanmean(eval_values))
     train_std = float(np.nanstd(train_values))
     eval_std = float(np.nanstd(eval_values))
-    
+
     return {
         "feature_name": feature_name,
         "psi": psi,
@@ -213,25 +214,25 @@ def detect_drift_all_features(
 ) -> pd.DataFrame:
     """
     Detect drift for all features in datasets.
-    
+
     Args:
         train_df: Training dataset (features as columns)
         eval_df: Evaluation dataset (features as columns)
         psi_threshold: PSI threshold for drift detection
         ks_p_threshold: KS p-value threshold for drift detection
-    
+
     Returns:
         DataFrame with drift statistics for each feature
     """
     results = []
-    
+
     for feature_name in train_df.columns:
         if feature_name not in eval_df.columns:
             continue
-        
+
         train_values = np.asarray(train_df[feature_name].values)
         eval_values = np.asarray(eval_df[feature_name].values)
-        
+
         result = detect_drift_single_feature(
             train_values,
             eval_values,
@@ -240,7 +241,7 @@ def detect_drift_all_features(
             ks_p_threshold,
         )
         results.append(result)
-    
+
     return pd.DataFrame(results)
 
 
@@ -250,7 +251,7 @@ def generate_drift_report_html(
 ) -> None:
     """
     Generate HTML drift report.
-    
+
     Args:
         drift_df: Drift statistics DataFrame (from detect_drift_all_features)
         output_path: Path to save HTML report
@@ -274,7 +275,7 @@ def generate_drift_report_html(
     </head>
     <body>
         <h1>Feature Drift Report</h1>
-        
+
         <div class="summary">
             <h2>Summary</h2>
             <p><strong>Total Features:</strong> {total_features}</p>
@@ -282,7 +283,7 @@ def generate_drift_report_html(
             <p><strong>PSI Threshold:</strong> 0.2 (Significant drift)</p>
             <p><strong>KS p-value Threshold:</strong> 0.01 (Significant difference)</p>
         </div>
-        
+
         <h2>Detailed Results</h2>
         <table>
             <thead>
@@ -302,18 +303,18 @@ def generate_drift_report_html(
             </thead>
             <tbody>
     """
-    
+
     # Add summary stats
     total_features = len(drift_df)
     drift_count = drift_df["drift_detected"].sum()
     drift_pct = (drift_count / total_features * 100) if total_features > 0 else 0
-    
+
     html = html.format(
         total_features=total_features,
         drift_count=drift_count,
         drift_pct=drift_pct,
     )
-    
+
     # Add rows
     for _, row in drift_df.iterrows():
         row_class = "drift" if row["drift_detected"] else "no-drift"
@@ -332,12 +333,12 @@ def generate_drift_report_html(
                     <td>{row['eval_std']:.4f}</td>
                 </tr>
         """
-    
+
     html += """
             </tbody>
         </table>
     </body>
     </html>
     """
-    
+
     output_path.write_text(html, encoding="utf-8")

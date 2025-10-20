@@ -3,21 +3,20 @@ Test Continuous Evaluation Manager
 継続的評価マネージャーのテスト
 """
 
-import unittest
 import time
-from unittest.mock import Mock, patch, MagicMock
+import unittest
 from datetime import datetime, timedelta
-import numpy as np
+from unittest.mock import Mock, patch
 
 from .evaluation_manager import ContinuousEvaluationManager
-from .config import EvaluationConfig, AlertConfig, ContinuousMonitoringConfig
 from .evaluation_types import (
-    EvaluationResult, MonitoringAlert, SystemMetrics,
-    EvaluationMetrics, AlertType, AlertLevel
+    AlertLevel,
+    AlertType,
+    EvaluationMetrics,
+    EvaluationResult,
+    MonitoringAlert,
+    SystemMetrics,
 )
-from ..monitoring.monitor import PerformanceMonitor
-from ..monitoring.safety import SafetyManager
-from ..concept_drift.manager import ConceptDriftManager
 
 
 class TestContinuousEvaluationManager(unittest.TestCase):
@@ -32,28 +31,28 @@ class TestContinuousEvaluationManager(unittest.TestCase):
 
         # モックの設定
         self.mock_monitor.get_latest_metrics.return_value = {
-            'win_rate': Mock(name='win_rate', value=0.55),
-            'precision': Mock(name='precision', value=0.60),
-            'recall': Mock(name='recall', value=0.50),
-            'f1_score': Mock(name='f1_score', value=0.55),
-            'sharpe_ratio': Mock(name='sharpe_ratio', value=1.2),
-            'max_drawdown': Mock(name='max_drawdown', value=0.15),
-            'total_return': Mock(name='total_return', value=0.08),
-            'volatility': Mock(name='volatility', value=0.12)
+            "win_rate": Mock(name="win_rate", value=0.55),
+            "precision": Mock(name="precision", value=0.60),
+            "recall": Mock(name="recall", value=0.50),
+            "f1_score": Mock(name="f1_score", value=0.55),
+            "sharpe_ratio": Mock(name="sharpe_ratio", value=1.2),
+            "max_drawdown": Mock(name="max_drawdown", value=0.15),
+            "total_return": Mock(name="total_return", value=0.08),
+            "volatility": Mock(name="volatility", value=0.12),
         }
 
         self.mock_safety_manager.get_safety_status.return_value = Mock(
             overall_safety_level=Mock(value="HIGH"),
             active_anomalies=[],
             recent_checks=[],
-            system_health_score=0.85
+            system_health_score=0.85,
         )
 
         # マネージャーの作成
         self.manager = ContinuousEvaluationManager(
             monitor=self.mock_monitor,
             safety_manager=self.mock_safety_manager,
-            drift_manager=self.mock_drift_manager
+            drift_manager=self.mock_drift_manager,
         )
 
     def tearDown(self):
@@ -84,7 +83,11 @@ class TestContinuousEvaluationManager(unittest.TestCase):
         """ドリフト検知付き評価テスト"""
         # ドリフト検知のモック設定
         self.mock_drift_manager.detect_drift.return_value = [
-            Mock(drift_detected=True, severity=Mock(value=4), drift_type=Mock(value="feature_drift"))
+            Mock(
+                drift_detected=True,
+                severity=Mock(value=4),
+                drift_type=Mock(value="feature_drift"),
+            )
         ]
 
         result = self.manager.perform_evaluation()
@@ -107,19 +110,25 @@ class TestContinuousEvaluationManager(unittest.TestCase):
         safety_metrics = self.manager._evaluate_safety()
 
         self.assertIsInstance(safety_metrics, dict)
-        self.assertIn('overall_safety_level', safety_metrics)
-        self.assertIn('active_anomalies', safety_metrics)
-        self.assertIn('safety_score', safety_metrics)
+        self.assertIn("overall_safety_level", safety_metrics)
+        self.assertIn("active_anomalies", safety_metrics)
+        self.assertIn("safety_score", safety_metrics)
 
     def test_calculate_overall_score(self):
         """総合スコア計算テスト"""
         results = {
-            'performance': EvaluationMetrics(
-                accuracy=0.6, precision=0.65, recall=0.55, f1_score=0.6,
-                sharpe_ratio=1.5, max_drawdown=0.1, total_return=0.1, volatility=0.1
+            "performance": EvaluationMetrics(
+                accuracy=0.6,
+                precision=0.65,
+                recall=0.55,
+                f1_score=0.6,
+                sharpe_ratio=1.5,
+                max_drawdown=0.1,
+                total_return=0.1,
+                volatility=0.1,
             ),
-            'safety': {'safety_score': 0.9},
-            'drift': {'drift_detected': False, 'severity': 0}
+            "safety": {"safety_score": 0.9},
+            "drift": {"drift_detected": False, "severity": 0},
         }
 
         score = self.manager._calculate_overall_score(results)
@@ -131,12 +140,18 @@ class TestContinuousEvaluationManager(unittest.TestCase):
     def test_generate_recommendations(self):
         """推奨事項生成テスト"""
         results = {
-            'performance': EvaluationMetrics(
-                accuracy=0.35, precision=0.4, recall=0.3, f1_score=0.35,
-                sharpe_ratio=0.8, max_drawdown=0.3, total_return=-0.05, volatility=0.2
+            "performance": EvaluationMetrics(
+                accuracy=0.35,
+                precision=0.4,
+                recall=0.3,
+                f1_score=0.35,
+                sharpe_ratio=0.8,
+                max_drawdown=0.3,
+                total_return=-0.05,
+                volatility=0.2,
             ),
-            'safety': {'active_anomalies': 6, 'safety_score': 0.5},
-            'drift': {'drift_detected': True, 'severity': 4}
+            "safety": {"active_anomalies": 6, "safety_score": 0.5},
+            "drift": {"drift_detected": True, "severity": 4},
         }
 
         recommendations = self.manager._generate_recommendations(results)
@@ -151,10 +166,16 @@ class TestContinuousEvaluationManager(unittest.TestCase):
         low_perf_result = EvaluationResult(
             timestamp=datetime.now(),
             performance_metrics=EvaluationMetrics(
-                accuracy=0.35, precision=0.4, recall=0.3, f1_score=0.35,
-                sharpe_ratio=0.8, max_drawdown=0.3, total_return=-0.05, volatility=0.2
+                accuracy=0.35,
+                precision=0.4,
+                recall=0.3,
+                f1_score=0.35,
+                sharpe_ratio=0.8,
+                max_drawdown=0.3,
+                total_return=-0.05,
+                volatility=0.2,
             ),
-            overall_score=0.4
+            overall_score=0.4,
         )
         self.manager.evaluation_history.append(low_perf_result)
 
@@ -171,7 +192,7 @@ class TestContinuousEvaluationManager(unittest.TestCase):
             overall_safety_level=Mock(value="HIGH"),
             active_anomalies=[Mock()] * 6,  # 6つの異常
             recent_checks=[],
-            system_health_score=0.4
+            system_health_score=0.4,
         )
 
         alerts = self.manager._check_safety_alerts()
@@ -186,7 +207,7 @@ class TestContinuousEvaluationManager(unittest.TestCase):
             timestamp=datetime.now(),
             drift_detected=True,
             drift_severity=4,
-            overall_score=0.6
+            overall_score=0.6,
         )
         self.manager.evaluation_history.append(drift_result)
 
@@ -204,28 +225,36 @@ class TestContinuousEvaluationManager(unittest.TestCase):
             alert_level=AlertLevel.HIGH,
             message="Test alert",
             timestamp=datetime.now() - timedelta(minutes=10),
-            details={"accuracy": 0.35}
+            details={"accuracy": 0.35},
         )
 
         # 現在のパフォーマンスが改善されていることをシミュレート
         improved_result = EvaluationResult(
             timestamp=datetime.now(),
             performance_metrics=EvaluationMetrics(
-                accuracy=0.6, precision=0.65, recall=0.55, f1_score=0.6,
-                sharpe_ratio=1.5, max_drawdown=0.1, total_return=0.1, volatility=0.1
+                accuracy=0.6,
+                precision=0.65,
+                recall=0.55,
+                f1_score=0.6,
+                sharpe_ratio=1.5,
+                max_drawdown=0.1,
+                total_return=0.1,
+                volatility=0.1,
             ),
-            overall_score=0.8
+            overall_score=0.8,
         )
         self.manager.evaluation_history.append(improved_result)
 
         self.assertTrue(self.manager._is_alert_resolved(resolved_alert))
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
-    @patch('psutil.net_connections')
-    @patch('threading.active_count')
-    def test_collect_system_metrics(self, mock_threads, mock_net, mock_disk, mock_memory, mock_cpu):
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
+    @patch("psutil.net_connections")
+    @patch("threading.active_count")
+    def test_collect_system_metrics(
+        self, mock_threads, mock_net, mock_disk, mock_memory, mock_cpu
+    ):
         """システムメトリクス収集テスト"""
         # モックの設定
         mock_cpu.return_value = 45.5
@@ -253,16 +282,16 @@ class TestContinuousEvaluationManager(unittest.TestCase):
             result = EvaluationResult(
                 timestamp=datetime.now() - timedelta(hours=i),
                 overall_score=0.7 + i * 0.05,
-                drift_detected=i % 2 == 0
+                drift_detected=i % 2 == 0,
             )
             self.manager.evaluation_history.append(result)
 
         summary = self.manager.get_evaluation_summary(hours=24)
 
-        self.assertIn('total_evaluations', summary)
-        self.assertIn('average_score', summary)
-        self.assertIn('drift_rate', summary)
-        self.assertEqual(summary['total_evaluations'], 5)
+        self.assertIn("total_evaluations", summary)
+        self.assertIn("average_score", summary)
+        self.assertIn("drift_rate", summary)
+        self.assertEqual(summary["total_evaluations"], 5)
 
     def test_callback_system(self):
         """コールバックシステムテスト"""
@@ -278,7 +307,7 @@ class TestContinuousEvaluationManager(unittest.TestCase):
             alert_type=AlertType.SYSTEM,
             alert_level=AlertLevel.MEDIUM,
             message="Test alert",
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
         self.manager._trigger_alert_callbacks(alert)
 
@@ -307,5 +336,5 @@ class TestContinuousEvaluationManager(unittest.TestCase):
         self.assertGreater(len(self.manager.evaluation_history), 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

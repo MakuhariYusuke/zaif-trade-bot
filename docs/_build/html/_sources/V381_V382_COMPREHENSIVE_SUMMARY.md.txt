@@ -1,6 +1,6 @@
 # v381/v382 トレーニング総括レポート
 
-**作成日**: 2025年10月10日  
+**作成日**: 2025年10月10日
 **対象**: v381_hybrid → v381_revised → v382_revised の進化過程
 
 ---
@@ -165,17 +165,17 @@ Iteration    HOLD    BUY    SELL   平均報酬  ExplainedVar
 
 ### v381_revisedで改善したこと
 
-✅ target_kl: 0.001 → 0.01（まだ不十分だが一歩前進）  
-✅ vf_coef: 0.1 → 0.3（**劇的改善**: EV 0.5%→51.7%）  
-✅ learning_rate削減: 安定性向上  
+✅ target_kl: 0.001 → 0.01（まだ不十分だが一歩前進）
+✅ vf_coef: 0.1 → 0.3（**劇的改善**: EV 0.5%→51.7%）
+✅ learning_rate削減: 安定性向上
 ✅ 報酬関数強化: HOLD削減、BUY促進、利益重視
 
 ### v382_revisedで更に改善すること
 
-✅✅ target_kl: 0.01 → 0.05（**根本解決**）  
-✅✅ clip_range: 0.1 → 0.2（**根本解決**）  
-✅ vf_coef: 0.3 → 0.5（更なる安定化）  
-✅ timesteps: 50k → 100k（長期学習）  
+✅✅ target_kl: 0.01 → 0.05（**根本解決**）
+✅✅ clip_range: 0.1 → 0.2（**根本解決**）
+✅ vf_coef: 0.3 → 0.5（更なる安定化）
+✅ timesteps: 50k → 100k（長期学習）
 ✅ 報酬関数: 更なる調整（HOLD削減、BUY促進）
 
 ---
@@ -303,9 +303,9 @@ python backtest.py --model models/ppo_reward_v382_revised_aggressive.zip
 
 ### v382_revisedへの期待
 
-✨ **target_kl/clip_range修正で根本的問題を解決**  
-✨ **vf_coef=0.5で更なる安定化**  
-✨ **100k学習で十分な収束**  
+✨ **target_kl/clip_range修正で根本的問題を解決**
+✨ **vf_coef=0.5で更なる安定化**
+✨ **100k学習で十分な収束**
 ✨ **強化されたBUY incentiveで目標達成**
 
 **次のステップ**: v382_revisedを実行し、結果を分析！

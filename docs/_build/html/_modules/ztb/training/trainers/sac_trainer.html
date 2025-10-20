@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.trainers.sac_trainer</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">SAC (Soft Actor-Critic) Algorithm Trainer.</span>
@@ -134,11 +134,11 @@
 <span class="sd">    これにより、TensorBoardのデフォルト記録頻度に依存せず、</span>
 <span class="sd">    100ステップごとに確実にメトリクスを記録できる。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> 
-        <span class="n">log_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> 
-        <span class="n">training_logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">log_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+        <span class="n">training_logger</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">csv_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">verbose</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -157,11 +157,11 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">episode_lengths</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">csv_writer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">csv_file</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="c1"># CSVファイルを初期化</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_path</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_init_csv_file</span><span class="p">()</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_init_csv_file</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;CSVファイルを初期化してヘッダーを書き込む&quot;&quot;&quot;</span>
         <span class="k">try</span><span class="p">:</span>
@@ -170,7 +170,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">csv_writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">csv_file</span><span class="p">)</span>
             <span class="c1"># ヘッダー行を書き込み（拡張メトリクス追加）</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">csv_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span>
-                <span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">,</span> 
+                <span class="s1">&#39;timestamp&#39;</span><span class="p">,</span> <span class="s1">&#39;step&#39;</span><span class="p">,</span>
                 <span class="c1"># 基本メトリクス</span>
                 <span class="s1">&#39;critic_loss&#39;</span><span class="p">,</span> <span class="s1">&#39;actor_loss&#39;</span><span class="p">,</span> <span class="s1">&#39;ent_coef&#39;</span><span class="p">,</span> <span class="s1">&#39;ent_coef_loss&#39;</span><span class="p">,</span> <span class="s1">&#39;learning_rate&#39;</span><span class="p">,</span> <span class="s1">&#39;fps&#39;</span><span class="p">,</span>
                 <span class="c1"># 拡張メトリクス</span>
@@ -184,12 +184,12 @@
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize CSV file: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">csv_writer</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">csv_file</span> <span class="o">=</span> <span class="kc">None</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_write_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;CSVファイルにメトリクスを書き込む&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_writer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
             <span class="n">row</span> <span class="o">=</span> <span class="p">[</span>
@@ -216,16 +216,16 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">csv_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>  <span class="c1"># 即座にディスクに書き込み</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to write to CSV: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_write_to_tensorboard</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;TensorBoardに直接書き込む&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;logger&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># TensorBoard writerを取得</span>
             <span class="n">tb_writer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">output_formats</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">output_formats</span> <span class="k">else</span> <span class="kc">None</span>
-            
+
             <span class="k">if</span> <span class="n">tb_writer</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tb_writer</span><span class="p">,</span> <span class="s1">&#39;writer&#39;</span><span class="p">):</span>
                 <span class="c1"># TensorBoardのSummaryWriterに直接書き込み</span>
                 <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -236,7 +236,7 @@
             <span class="c1"># TensorBoard書き込みエラーは警告のみ（訓練は継続）</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TensorBoard write failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_on_step</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        各ステップで呼ばれるコールバック。</span>
@@ -255,12 +255,12 @@
             <span class="c1"># メトリクスを収集</span>
             <span class="n">metrics</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">total_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">_total_timesteps</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;_total_timesteps&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
-            
+
             <span class="c1"># SACモデルの内部メトリクスを確認</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;logger&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">name_to_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">name_to_value</span>
-                    
+
                     <span class="c1"># 基本メトリクスを抽出</span>
                     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">name_to_value</span><span class="p">:</span>
                         <span class="k">if</span> <span class="s1">&#39;train/critic_loss&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
@@ -282,46 +282,46 @@
                             <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;episode_length_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name_to_value</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
                 <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                     <span class="k">pass</span>
-            
+
             <span class="c1"># エピソード報酬の統計を計算（直近のエピソード）</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;ep_info_buffer&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">ep_info_buffer</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="n">ep_rewards</span> <span class="o">=</span> <span class="p">[</span><span class="n">ep_info</span><span class="p">[</span><span class="s1">&#39;r&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ep_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">ep_info_buffer</span> <span class="k">if</span> <span class="s1">&#39;r&#39;</span> <span class="ow">in</span> <span class="n">ep_info</span><span class="p">]</span>
                     <span class="n">ep_lengths</span> <span class="o">=</span> <span class="p">[</span><span class="n">ep_info</span><span class="p">[</span><span class="s1">&#39;l&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ep_info</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">ep_info_buffer</span> <span class="k">if</span> <span class="s1">&#39;l&#39;</span> <span class="ow">in</span> <span class="n">ep_info</span><span class="p">]</span>
-                    
+
                     <span class="k">if</span> <span class="n">ep_rewards</span><span class="p">:</span>
                         <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;episode_reward_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ep_rewards</span><span class="p">)</span>
                         <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;episode_reward_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">ep_rewards</span><span class="p">)</span>
                         <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;total_episodes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ep_rewards</span><span class="p">)</span>
-                    
+
                     <span class="k">if</span> <span class="n">ep_lengths</span><span class="p">:</span>
                         <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;episode_length_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ep_lengths</span><span class="p">)</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to extract episode info: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Q値統計を取得（可能であれば）</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;replay_buffer&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="o">.</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">128</span><span class="p">:</span>
                     <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-                    
+
                     <span class="c1"># リプレイバッファから最近のサンプルを取得してQ値を推定</span>
                     <span class="n">sample_size</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="o">.</span><span class="n">size</span><span class="p">())</span>
                     <span class="n">replay_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">replay_buffer</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_size</span><span class="p">)</span>
-                    
+
                     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;critic&#39;</span><span class="p">):</span>
                         <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>  <span class="c1"># 勾配計算不要</span>
                             <span class="c1"># Observationsとactionsをtensorに変換</span>
                             <span class="n">obs_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">replay_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
                             <span class="n">act_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">as_tensor</span><span class="p">(</span><span class="n">replay_data</span><span class="o">.</span><span class="n">actions</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-                            
+
                             <span class="c1"># Q値を計算（両方のCriticの平均）</span>
                             <span class="n">q_values_1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">critic</span><span class="o">.</span><span class="n">q1_forward</span><span class="p">(</span><span class="n">obs_tensor</span><span class="p">,</span> <span class="n">act_tensor</span><span class="p">)</span>
                             <span class="n">q_values_2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">critic</span><span class="o">.</span><span class="n">q2_forward</span><span class="p">(</span><span class="n">obs_tensor</span><span class="p">,</span> <span class="n">act_tensor</span><span class="p">)</span>
-                            
+
                             <span class="n">q_values</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_values_1</span> <span class="o">+</span> <span class="n">q_values_2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
                             <span class="n">q_values_np</span> <span class="o">=</span> <span class="n">q_values</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
-                            
+
                             <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;q_value_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">q_values_np</span><span class="p">))</span>
                             <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;q_value_std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">q_values_np</span><span class="p">))</span>
                             <span class="n">metrics</span><span class="p">[</span><span class="s1">&#39;q_value_min&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">q_values_np</span><span class="p">))</span>
@@ -330,7 +330,7 @@
                 <span class="c1"># Q値取得は失敗しても継続</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to extract Q-values: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># メトリクスが取得できなかった場合、モデルの内部状態から直接取得を試みる</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">metrics</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;_last_obs&#39;</span><span class="p">):</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -344,7 +344,7 @@
                             <span class="k">break</span>
                 <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
                     <span class="k">pass</span>
-            
+
             <span class="c1"># TrainingLoggerを使用して標準出力</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">training_logger</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">training_logger</span><span class="o">.</span><span class="n">print_training_progress</span><span class="p">(</span>
@@ -359,18 +359,18 @@
                     <span class="n">output_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot; | &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_parts</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-                
+
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
-            
+
             <span class="c1"># CSVファイルに書き込み</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
-            
+
             <span class="c1"># TensorBoardに直接書き込み</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_write_to_tensorboard</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_calls</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="kc">True</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_on_training_end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        訓練終了時のコールバック。</span>
@@ -381,11 +381,11 @@
         <span class="n">critic_loss</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">actor_loss</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">ent_coef</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;logger&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">name_to_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">name_to_value</span>
-                
+
                 <span class="c1"># メトリクスを抽出</span>
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">name_to_value</span><span class="p">:</span>
                     <span class="k">if</span> <span class="s1">&#39;train/critic_loss&#39;</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
@@ -396,33 +396,33 @@
                         <span class="n">ent_coef</span> <span class="o">=</span> <span class="n">name_to_value</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
                 <span class="k">pass</span>
-        
+
         <span class="c1"># 最終メトリクスを出力</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;SAC Training Completed - Final Metrics:&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">critic_loss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Critic Loss: </span><span class="si">{</span><span class="n">critic_loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Critic Loss: Not available&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">actor_loss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Actor Loss: </span><span class="si">{</span><span class="n">actor_loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Actor Loss: Not available&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">ent_coef</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Entropy Coef: </span><span class="si">{</span><span class="n">ent_coef</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Final Entropy Coef: Not available&quot;</span><span class="p">)</span>
-        
+
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># ロガーにも出力（メトリクスがある場合のみ）</span>
         <span class="k">if</span> <span class="n">critic_loss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">actor_loss</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training completed: critic_loss=</span><span class="si">{</span><span class="n">critic_loss</span><span class="si">}</span><span class="s2">, actor_loss=</span><span class="si">{</span><span class="n">actor_loss</span><span class="si">}</span><span class="s2">, ent_coef=</span><span class="si">{</span><span class="n">ent_coef</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># CSVファイルをクローズ</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">csv_file</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -442,7 +442,7 @@
 <span class="sd">    AlgorithmFactoryから生成されたSACAlgorithmを使用して、</span>
 <span class="sd">    環境の作成、モデルの初期化、訓練、保存を実行する。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_manager</span><span class="p">:</span> <span class="n">ConfigManager</span><span class="p">,</span> <span class="n">progress_bar_enabled</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        SACAlgorithmTrainerを初期化。</span>
@@ -455,7 +455,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span> <span class="o">=</span> <span class="n">config_manager</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar_enabled</span> <span class="o">=</span> <span class="n">progress_bar_enabled</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-    
+
 <div class="viewcode-block" id="SACAlgorithmTrainer.train">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.trainers.html#ztb.training.trainers.sac_trainer.SACAlgorithmTrainer.train">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">unified_config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -471,12 +471,12 @@
         <span class="c1"># TrainingLoggerを作成</span>
         <span class="n">model_name</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="s2">&quot;sac_model&quot;</span><span class="p">)</span>
         <span class="n">training_logger</span> <span class="o">=</span> <span class="n">create_training_logger</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🚀 Starting SAC training&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Initialize ensemble system if enabled</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">initialize_ensemble</span><span class="p">(</span><span class="n">unified_config</span><span class="p">)</span>
-        
+
         <span class="c1"># 1. SAC設定を取得</span>
         <span class="n">sac_config</span> <span class="o">=</span> <span class="p">(</span>
             <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sac_hyperparameters&quot;</span><span class="p">)</span>
@@ -489,12 +489,12 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No SAC hyperparameters found in config, using defaults&quot;</span><span class="p">)</span>
             <span class="n">sac_config</span> <span class="o">=</span> <span class="n">SACAlgorithm</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">()</span>
-        
+
         <span class="c1"># Expose resolved config for logging/debugging</span>
         <span class="n">unified_config</span><span class="p">[</span><span class="s2">&quot;sac_hyperparameters&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sac_config</span>
         <span class="k">if</span> <span class="s2">&quot;sac_params&quot;</span> <span class="ow">in</span> <span class="n">unified_config</span><span class="p">:</span>
             <span class="n">unified_config</span><span class="p">[</span><span class="s2">&quot;sac_params&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">sac_config</span>
-        
+
         <span class="c1"># 2. 環境を作成</span>
         <span class="n">raw_env_config</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;environment&quot;</span><span class="p">,</span> <span class="p">{})</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_env_config</span><span class="p">,</span> <span class="n">EnvironmentConfig</span><span class="p">):</span>
@@ -503,26 +503,26 @@
             <span class="n">env_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">raw_env_config</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">env_config</span> <span class="o">=</span> <span class="p">{}</span>
-        
+
         <span class="c1"># SAC requires continuous action space</span>
         <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;use_continuous_actions&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;enable_action_masking&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># SAC doesn&#39;t support action masking</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🔧 Configured environment for SAC: continuous actions enabled&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># ConfigManagerからデータを取得</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils.data_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_csv_data_optimized</span>
         <span class="n">data_path</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data_path&quot;</span><span class="p">,</span> <span class="s2">&quot;btc_jpy_real_dataset.csv&quot;</span><span class="p">)</span>
-        
+
         <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data_optimized</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
-        
+
         <span class="c1"># HeavyTradingEnvを直接作成（env_configをconfigオブジェクトに変換）</span>
         <span class="n">config_obj</span> <span class="o">=</span> <span class="n">EnvironmentConfig</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">env_config</span><span class="p">)</span>
         <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config_obj</span><span class="p">)</span>
         <span class="n">vec_env</span> <span class="o">=</span> <span class="n">DummyVecEnv</span><span class="p">([</span><span class="k">lambda</span><span class="p">:</span> <span class="n">env</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Environment created with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">}</span><span class="s2"> timesteps (continuous action space)&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Action space: </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># データ情報を収集</span>
         <span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
         <span class="n">data_info</span> <span class="o">=</span> <span class="p">{</span>
@@ -531,37 +531,37 @@
             <span class="s2">&quot;Action Space&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="p">),</span>
             <span class="s2">&quot;Observation Dim&quot;</span><span class="p">:</span> <span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="p">,</span> <span class="s1">&#39;shape&#39;</span><span class="p">)</span> <span class="k">else</span> <span class="s1">&#39;N/A&#39;</span>
         <span class="p">}</span>
-        
+
         <span class="c1"># 訓練開始バナーを表示</span>
         <span class="n">training_logger</span><span class="o">.</span><span class="n">print_training_start_banner</span><span class="p">(</span>
             <span class="n">config</span><span class="o">=</span><span class="n">unified_config</span><span class="p">,</span>
             <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
             <span class="n">data_info</span><span class="o">=</span><span class="n">data_info</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># 3. SACAlgorithmを作成</span>
         <span class="n">sac_algo</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="s2">&quot;sac&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Algorithm created: </span><span class="si">{</span><span class="n">sac_algo</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 4. モデルを作成</span>
         <span class="n">model_name</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="s2">&quot;sac_model&quot;</span><span class="p">)</span>
         <span class="n">session_id</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;sac_session&quot;</span><span class="p">)</span>
         <span class="n">log_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;checkpoints&quot;</span><span class="p">)</span> <span class="o">/</span> <span class="n">session_id</span>
         <span class="n">log_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        
+
         <span class="n">model</span> <span class="o">=</span> <span class="n">sac_algo</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span>
             <span class="n">env</span><span class="o">=</span><span class="n">vec_env</span><span class="p">,</span>
             <span class="n">config</span><span class="o">=</span><span class="n">sac_config</span><span class="p">,</span>
             <span class="n">tensorboard_log</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Model created: </span><span class="si">{</span><span class="n">model</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 5. コールバックを作成</span>
         <span class="n">callbacks</span> <span class="o">=</span> <span class="p">[]</span>
-        
+
         <span class="c1"># CSVメトリクスファイルのパスを準備</span>
         <span class="n">csv_metrics_path</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">_training_metrics.csv&quot;</span>
-        
+
         <span class="c1"># メトリクス出力コールバック（拡張メトリクス対応）</span>
         <span class="n">metrics_log_interval</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;metrics_log_interval&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
         <span class="n">metrics_callback</span> <span class="o">=</span> <span class="n">SACMetricsCallback</span><span class="p">(</span>
@@ -571,9 +571,9 @@
             <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span>
         <span class="p">)</span>
         <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metrics_callback</span><span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 Metrics will be logged to: </span><span class="si">{</span><span class="n">csv_metrics_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Early Stopping機能（オプション）</span>
         <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_early_stopping&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="n">early_stopping_config</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;early_stopping&quot;</span><span class="p">,</span> <span class="p">{})</span>
@@ -588,7 +588,7 @@
             <span class="p">)</span>
             <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">early_stopping_callback</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🛑 Early Stopping enabled&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Best Model保存機能（オプション）</span>
         <span class="k">if</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_best_model_saving&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="n">best_model_config</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;best_model&quot;</span><span class="p">,</span> <span class="p">{})</span>
@@ -602,7 +602,7 @@
             <span class="p">)</span>
             <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">best_model_callback</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🏆 Best Model saving enabled&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># チェックポイントコールバック</span>
         <span class="n">checkpoint_interval</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;checkpoint_interval&quot;</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span>
         <span class="n">checkpoint_callback</span> <span class="o">=</span> <span class="n">CheckpointCallback</span><span class="p">(</span>
@@ -611,24 +611,24 @@
             <span class="n">name_prefix</span><span class="o">=</span><span class="n">model_name</span>
         <span class="p">)</span>
         <span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">checkpoint_callback</span><span class="p">)</span>
-        
+
         <span class="n">callback_list</span> <span class="o">=</span> <span class="n">CallbackList</span><span class="p">(</span><span class="n">callbacks</span><span class="p">)</span>
-        
+
         <span class="c1"># 6. 訓練実行</span>
         <span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">,</span> <span class="mi">100000</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;🏃 Training for </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2"> timesteps...&quot;</span><span class="p">)</span>
-        
+
         <span class="n">trained_model</span> <span class="o">=</span> <span class="n">sac_algo</span><span class="o">.</span><span class="n">train</span><span class="p">(</span>
             <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
             <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
             <span class="n">callback</span><span class="o">=</span><span class="n">callback_list</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># 7. モデル保存</span>
         <span class="n">model_path</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">_final.zip&quot;</span>
         <span class="n">sac_algo</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">trained_model</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">))</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💾 Model saved to: </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 8. 最終メトリクスを取得（TensorBoardから）</span>
         <span class="n">final_metrics</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="k">try</span><span class="p">:</span>
@@ -644,7 +644,7 @@
                         <span class="n">final_metrics</span><span class="p">[</span><span class="s1">&#39;ent_coef&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name_to_value</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not extract final metrics: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 9. 結果を返す</span>
         <span class="n">result</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">),</span>
@@ -653,15 +653,15 @@
             <span class="s2">&quot;algorithm&quot;</span><span class="p">:</span> <span class="s2">&quot;sac&quot;</span><span class="p">,</span>
             <span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="kc">True</span>
         <span class="p">}</span>
-        
+
         <span class="c1"># 訓練完了バナーを表示</span>
         <span class="n">training_logger</span><span class="o">.</span><span class="n">print_training_complete_banner</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">final_metrics</span><span class="p">)</span>
-        
+
         <span class="c1"># メトリクスをJSONで保存（最適化スクリプト用）</span>
         <span class="k">if</span> <span class="n">final_metrics</span><span class="p">:</span>
             <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">log_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">_final_metrics.json&quot;</span>
             <span class="n">training_logger</span><span class="o">.</span><span class="n">save_metrics_json</span><span class="p">(</span><span class="n">final_metrics</span><span class="p">,</span> <span class="n">metrics_path</span><span class="p">)</span>
-        
+
         <span class="c1"># Generate ensemble report if enabled</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ensemble_enabled</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -673,7 +673,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">print_ensemble_status</span><span class="p">(</span><span class="n">ui</span><span class="p">)</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ensemble report generation failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;🎉 SAC training completed successfully!&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">result</span></div>
 </div>
@@ -693,7 +693,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -704,7 +704,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

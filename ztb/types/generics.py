@@ -6,16 +6,15 @@ across different components to ensure consistent typing patterns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 from pathlib import Path
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 import numpy as np
 import pandas as pd
 
-
 # Generic type variables
-TConfig = TypeVar('TConfig')
-TState = TypeVar('TState')
+TConfig = TypeVar("TConfig")
+TState = TypeVar("TState")
 
 
 class ConfigurableMixin(Generic[TConfig]):
@@ -41,7 +40,7 @@ class ConfigurableMixin(Generic[TConfig]):
 
     def update_config(self, updates: Dict[str, Any]) -> None:
         """Update configuration with new values."""
-        if hasattr(self._config, 'update') and isinstance(self._config, dict):
+        if hasattr(self._config, "update") and isinstance(self._config, dict):
             self._config.update(updates)
 
     def get_config_value(self, key: str, default: Any = None) -> Any:

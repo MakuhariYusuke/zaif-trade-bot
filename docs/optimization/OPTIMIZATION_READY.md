@@ -236,7 +236,7 @@ ztb/optimization/
 python scripts\optimization\run_sac_optimization_lightweight.py
 ```
 
-**推定所要時間**: 約1.5-2時間  
+**推定所要時間**: 約1.5-2時間
 **期待される改善**: Critic Loss 5-15%向上
 
 🚀 **最適化を開始しますか？**

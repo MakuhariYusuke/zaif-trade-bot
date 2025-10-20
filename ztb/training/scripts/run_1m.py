@@ -19,9 +19,11 @@ from typing import Any, Dict, Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.training.config.ppo_config import get_ppo_config
+from ztb.training.core.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier
+
+
 def _create_streaming_pipeline(
     enable_streaming: bool, stream_batch_size: int, logger: logging.Logger
 ):
@@ -34,10 +36,10 @@ def _create_streaming_pipeline(
 
     pipeline = _factory(buffer_capacity=max(stream_batch_size * 2000, 1_000_000))
     logger.debug(
-        "Streaming buffer capacity=%s rows", getattr(pipeline.buffer, "capacity", "unknown")
+        "Streaming buffer capacity=%s rows",
+        getattr(pipeline.buffer, "capacity", "unknown"),
     )
     return pipeline
-
 
 
 def setup_logging(verbose: bool) -> logging.Logger:
@@ -49,10 +51,12 @@ def setup_logging(verbose: bool) -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-def validate_training_setup(data_path: str, checkpoint_dir: str, correlation_id: str) -> bool:
+def validate_training_setup(
+    data_path: str, checkpoint_dir: str, correlation_id: str
+) -> bool:
     """Validate training setup before starting."""
     logger = logging.getLogger(__name__)
-    
+
     # Validate data path
     data_path_obj = Path(data_path)
     if not data_path_obj.exists():
@@ -65,7 +69,7 @@ def validate_training_setup(data_path: str, checkpoint_dir: str, correlation_id:
         logger.warning(f"Session {correlation_id} already exists at {session_dir}")
         logger.warning("Use resume functionality or choose a different correlation-id")
         return False
-    
+
     return True
 
 
@@ -105,7 +109,9 @@ def _load_unified_overrides() -> Dict[str, Any]:
         return {}
 
 
-def _apply_cli_overrides(config: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
+def _apply_cli_overrides(
+    config: Dict[str, Any], args: argparse.Namespace
+) -> Dict[str, Any]:
     """Apply CLI-sourced overrides on top of the merged configuration."""
     cfg = copy.deepcopy(config)
 
@@ -340,7 +346,9 @@ def main() -> int:
         DiscordNotifier()
 
     # Validate training setup
-    if not validate_training_setup(args.data_path, args.checkpoint_dir, args.correlation_id):
+    if not validate_training_setup(
+        args.data_path, args.checkpoint_dir, args.correlation_id
+    ):
         return 1
 
     if args.dry_run:
@@ -355,7 +363,9 @@ def main() -> int:
         config = build_training_config(args, config_overrides=config_overrides)
 
         if config_overrides:
-            logger.info("Applying unified configuration overrides for iterative training")
+            logger.info(
+                "Applying unified configuration overrides for iterative training"
+            )
 
         logger.info(f"Starting 1M training session: {args.correlation_id}")
         logger.info(f"Data: {args.data_path}")

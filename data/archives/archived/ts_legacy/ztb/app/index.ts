@@ -183,7 +183,7 @@ async function strategyOnce(pair: string, EXECUTE: boolean) {
             const bestAsk = Number(overview.orderBook?.asks?.[0]?.[0] || currentPrice * 1.001);
             const flow = tradeFlow;
             const flows: Record<string, () => Promise<void>> = {
-                BUY_ONLY: async () => { 
+                BUY_ONLY: async () => {
                     await place('bid', bestBid);
                     incBuyEntry(today, pair);
                 },
@@ -243,7 +243,7 @@ if (require.main === module) {
     })();
 }
 
-/** 
+/**
  * Re-exports strategy helpers from app/index.ts
  * Starts the periodic strategy loop when this file is executed directly (npm start)
  */

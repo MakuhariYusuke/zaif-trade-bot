@@ -25,7 +25,7 @@ def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.Da
     macd, macd_signal, macd_hist = TaLibWrapper.macd(prices)
     # ボリンジャーバンドを先に計算
     bb_upper, bb_middle, bb_lower = TaLibWrapper.bbands(prices, 20, 2.0, 2.0)
-    
+
     # 価格変動率とボラティリティを先に計算
     price_changes = np.concatenate([[0], np.diff(prices) / prices[:-1]])
     price_change_1 = np.concatenate([[0], np.diff(prices) / prices[:-1]])
@@ -34,7 +34,7 @@ def generate_sample_data(start_date: str, end_date: str, filename: str) -> pd.Da
     volatility_5 = pd.Series(price_changes).rolling(5).std().values
     volatility_10 = pd.Series(price_changes).rolling(10).std().values
     volatility_20 = pd.Series(price_changes).rolling(20).std().values
-    
+
     data = {
         "ts": date_range,
         "price": prices,

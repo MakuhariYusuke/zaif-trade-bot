@@ -10,8 +10,8 @@
 
 ### 1. 最小ホールド期間バグ (High) ✅
 
-**問題:** ポジション保有中でもクローズできず、損失拡大リスク  
-**修正:** ポジションクローズは常に許可するように変更  
+**問題:** ポジション保有中でもクローズできず、損失拡大リスク
+**修正:** ポジションクローズは常に許可するように変更
 **ファイル:** `ztb/trading/environment/environment.py`
 
 ```python
@@ -28,8 +28,8 @@ if steps_since_last_trade < min_holding_period:
 
 ### 2. アンサンブルのaction_masksバグ (High) ✅
 
-**問題:** MaskablePPOでaction_masksを無視、不正アクション選択  
-**修正:** mask_providerを追加、自動でaction_masksを適用  
+**問題:** MaskablePPOでaction_masksを無視、不正アクション選択
+**修正:** mask_providerを追加、自動でaction_masksを適用
 **ファイル:** `ztb/training/ensemble.py`
 
 ```python
@@ -44,7 +44,7 @@ ensemble = EnsemblePredictor(
 
 ### 3. 共通ヘルパー追加 ✅
 
-**改善:** MaskablePPO用の統一インターフェース作成  
+**改善:** MaskablePPO用の統一インターフェース作成
 **ファイル:** `ztb/training/policy_utils.py`
 
 ```python
@@ -59,7 +59,7 @@ action, _ = predict_with_masks(model, obs, env, deterministic=False)
 
 ### 4. 環境クリーンアップ強化 ✅
 
-**改善:** トレーニング終了時の明示的なリソース解放  
+**改善:** トレーニング終了時の明示的なリソース解放
 **ファイル:** `ztb/training/ppo_trainer.py`
 
 ```python
@@ -165,8 +165,8 @@ gc.collect()
 
 ---
 
-**修正完了日:** 2025年10月8日  
-**修正件数:** 4件 (バグ2件、改善2件)  
+**修正完了日:** 2025年10月8日
+**修正件数:** 4件 (バグ2件、改善2件)
 **詳細レポート:** `BUGFIX_EXTERNAL_REVIEW.md`
 
 ---
@@ -179,9 +179,9 @@ SACモデル検証の実装完了に伴い、以下の技術的負債が特定�
 
 ### 1. サマリー表示の問題 (Medium)
 
-**問題:** dry-runモードで最終サマリーが表示されない  
-**影響:** テスト実行時の結果確認が困難  
-**原因:** ログレベル設定と出力先の不一致  
+**問題:** dry-runモードで最終サマリーが表示されない
+**影響:** テスト実行時の結果確認が困難
+**原因:** ログレベル設定と出力先の不一致
 
 **現在の実装:**
 ```python
@@ -198,9 +198,9 @@ logger.info(f"   Total trades: {trades_count}")
 
 ### 2. Discord通知の無効化 (Low)
 
-**問題:** dry-runモードでDiscord通知が完全に無効化されている  
-**影響:** ライブモード移行時の通知テストができない  
-**原因:** dry-run初期化でnotifier = None固定  
+**問題:** dry-runモードでDiscord通知が完全に無効化されている
+**影響:** ライブモード移行時の通知テストができない
+**原因:** dry-run初期化でnotifier = None固定
 
 **現在の実装:**
 ```python
@@ -215,9 +215,9 @@ self.notifier = None  # No notifications in dry-run
 
 ### 3. 非同期/同期処理の混在 (Medium)
 
-**問題:** _get_current_priceでasyncio.runを使用  
-**影響:** イベントループの競合リスク、テスト時の不安定さ  
-**原因:** CoincheckAdapterがasyncだが、trading_loopがsync  
+**問題:** _get_current_priceでasyncio.runを使用
+**影響:** イベントループの競合リスク、テスト時の不安定さ
+**原因:** CoincheckAdapterがasyncだが、trading_loopがsync
 
 **現在の実装:**
 ```python
@@ -234,9 +234,9 @@ price = asyncio.run(_async_get_price())
 
 ### 4. TTLCache.clear_expiredの問題 (Low)
 
-**問題:** clear_expiredメソッドが存在しない可能性  
-**影響:** メモリリークのリスク  
-**原因:** TTLCache実装の不一致  
+**問題:** clear_expiredメソッドが存在しない可能性
+**影響:** メモリリークのリスク
+**原因:** TTLCache実装の不一致
 
 **現在の実装:**
 ```python
@@ -251,9 +251,9 @@ self.price_cache.clear_expired()  # メソッド存在未確認
 
 ### 5. ログレベルの設定不足 (Low)
 
-**問題:** ログ出力レベルが環境によって異なる  
-**影響:** デバッグ時の情報不足  
-**原因:** 明示的なログレベル設定なし  
+**問題:** ログ出力レベルが環境によって異なる
+**影響:** デバッグ時の情報不足
+**原因:** 明示的なログレベル設定なし
 
 **推奨対応:**
 - 環境変数でのログレベル制御
@@ -262,9 +262,9 @@ self.price_cache.clear_expired()  # メソッド存在未確認
 
 ### 6. テストカバレッジの不足 (Medium)
 
-**問題:** dry-run機能の自動テストなし  
-**影響:** リグレッションリスク  
-**原因:** 統合テストの不在  
+**問題:** dry-run機能の自動テストなし
+**影響:** リグレッションリスク
+**原因:** 統合テストの不在
 
 **推奨対応:**
 - dry-runモードのユニットテスト追加
@@ -273,9 +273,9 @@ self.price_cache.clear_expired()  # メソッド存在未確認
 
 ### 7. 設定管理の複雑化 (Low)
 
-**問題:** dry-run/liveモードの条件分岐が散在  
-**影響:** コード保守性の低下  
-**原因:** 初期設計時のモード分離不足  
+**問題:** dry-run/liveモードの条件分岐が散在
+**影響:** コード保守性の低下
+**原因:** 初期設計時のモード分離不足
 
 **推奨対応:**
 - モード固有設定の集中管理

@@ -7,7 +7,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 import jsonschema
 import pytest
@@ -15,7 +15,7 @@ import pytest
 
 class TestConfig:
     """Test configuration management."""
-    
+
     @staticmethod
     def get_test_config() -> Dict[str, Any]:
         """Get test configuration with environment overrides."""
@@ -25,16 +25,18 @@ class TestConfig:
             "test_timeout": 30,
             "parallel_tests": os.getenv("PARALLEL_TESTS", "false").lower() == "true",
         }
-        
+
         # Environment-specific overrides
         if os.getenv("CI"):
-            base_config.update({
-                "test_timeout": 60,
-                "mock_api_responses": True,
-            })
-            
+            base_config.update(
+                {
+                    "test_timeout": 60,
+                    "mock_api_responses": True,
+                }
+            )
+
         return base_config
-    
+
     @staticmethod
     def create_test_data_dir() -> Path:
         """Create and return test data directory."""

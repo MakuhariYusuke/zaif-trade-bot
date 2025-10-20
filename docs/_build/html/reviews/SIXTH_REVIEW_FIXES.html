@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="bug-fixes-sixth-review-cycle">
 <h1>🐛 Bug Fixes - Sixth Review Cycle<a class="headerlink" href="#bug-fixes-sixth-review-cycle" title="Link to this heading"></a></h1>
 <section id="overview">
@@ -126,7 +126,7 @@
 <span class="sd">    proper MaskablePPO support with action masking in production.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">PPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="p">))</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
         <span class="s2">&quot;Bug #27: Model loaded as PPO instead of MaskablePPO. &quot;</span>
         <span class="s2">&quot;Action masking safety features (min_holding_period, forced closes) &quot;</span>
@@ -177,7 +177,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
         <span class="c1"># Bug #28 fix: Pass max_position_size to prevent scale mismatch</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_position_size</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> 
+            <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span>
             <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
         <span class="p">)</span>
 </pre></div>
@@ -220,7 +220,7 @@
 <span class="c1"># Validate PnL if it changed</span>
 <span class="k">if</span> <span class="n">pnl_change</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
     <span class="c1"># ... validation logic ...</span>
-    
+
     <span class="c1"># Update auto-stop system with PnL change</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_stop</span> <span class="ow">and</span> <span class="n">pnl_change</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_stop</span><span class="o">.</span><span class="n">update_trade_result</span><span class="p">(</span><span class="n">pnl_change</span><span class="p">,</span> <span class="p">{</span><span class="o">...</span><span class="p">})</span>
@@ -258,7 +258,7 @@
 <span class="sd">        trade_pnl: PnL from this specific trade INCLUDING entry fees (negative for new positions)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">trade_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
-    
+
     <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat</span>
             <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_position</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="p">)</span>
@@ -316,14 +316,14 @@
         <span class="c1"># Allow warmup period before enabling short positions</span>
         <span class="c1"># After warmup, allow SELL to open short positions</span>
         <span class="n">sell_warmup_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sell_warmup_trades&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">&lt;</span> <span class="n">sell_warmup_trades</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Suppressing SELL signal in warmup period &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;(trade #</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">sell_warmup_trades</span><span class="si">}</span><span class="s2">)&quot;</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
-        
+
         <span class="c1"># After warmup: allow SELL for both closing longs and opening shorts</span>
         <span class="k">return</span> <span class="kc">True</span>
 </pre></div>
@@ -393,15 +393,15 @@ Total: 10/10 passed
 <p><strong>Lightweight Mask Provider Implementation</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">LiveActionMaskProvider</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Lightweight service for action masking in production.&quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">current_step</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate legal actions based on current state.&quot;&quot;&quot;</span>
         <span class="n">legal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>  <span class="c1"># [HOLD, BUY, SELL]</span>
-        
+
         <span class="c1"># Enforce min_holding_period</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">steps_since_trade</span> <span class="o">=</span> <span class="n">current_step</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span>
@@ -411,7 +411,7 @@ Total: 10/10 passed
                     <span class="n">legal</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Block BUY</span>
                 <span class="k">elif</span> <span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                     <span class="n">legal</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Block SELL</span>
-                    
+
         <span class="k">return</span> <span class="n">legal</span>
 </pre></div>
 </div>
@@ -456,7 +456,7 @@ Total: 10/10 passed
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -467,7 +467,7 @@ Total: 10/10 passed
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

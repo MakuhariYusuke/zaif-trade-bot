@@ -88,4 +88,3 @@ describe('tools/live/test-minimal-live', () => {
         expect(calls.trade.length).toBeGreaterThan(0);
     });
 });
-

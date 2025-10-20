@@ -93,15 +93,15 @@ def get_ppo_core_config(self) -> PPOCoreConfig:
 ```python
 def get_ppo_core_config(self) -> PPOCoreConfig:
     from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-    
+
     # 🔧 FIX: ppo_hyperparametersキーもチェック（v392等で使用）
     ppo_hyperparams = self.config.get("ppo_hyperparameters", {})
-    
+
     def get_param(key: str, default: Any = None) -> Any:
         """トップレベルとppo_hyperparametersの両方をチェック"""
         # トップレベルを優先、次にppo_hyperparameters、最後にデフォルト
         return self.config.get(key, ppo_hyperparams.get(key, DEFAULT_PPO_CONFIG.get(key, default)))
-    
+
     return {
         "learning_rate": get_param("learning_rate", 3e-4),
         "n_steps": get_param("n_steps", 1024),
@@ -133,14 +133,14 @@ def get_ppo_core_config(self) -> PPOCoreConfig:
 ```python
 def get_environment_config(self) -> EnvironmentConfig:
     from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-    
+
     # 🔧 FIX: environmentキーもチェック（v392等で使用）
     env_config = self.config.get("environment", {})
-    
+
     def get_param(key: str, default: Any = None) -> Any:
         """トップレベルとenvironmentの両方をチェック"""
         return self.config.get(key, env_config.get(key, DEFAULT_PPO_CONFIG.get(key, default)))
-    
+
     return {
         "max_position_size": get_param("max_position_size", 1.0),
         "initial_balance": get_param("initial_balance", 1000000),

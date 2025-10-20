@@ -1,8 +1,8 @@
 # Bug #27 Complete Fix: Action Masking in Live Trading
 
-**Date:** 2025年10月8日  
-**Bug ID:** #27  
-**Severity:** CRITICAL → **RESOLVED**  
+**Date:** 2025年10月8日
+**Bug ID:** #27
+**Severity:** CRITICAL → **RESOLVED**
 **Status:** ✅ FIXED (Complete Implementation)
 
 ---
@@ -31,11 +31,11 @@ LiveTrader loaded models using `PPO.load()` instead of `MaskablePPO.load()`, com
 class ActionMaskProvider:
     """
     Lightweight action mask provider for MaskablePPO in live trading.
-    
+
     Provides the same action masking logic as the gym environment
     but without requiring a full environment instance.
     """
-    
+
     def get_action_mask(self) -> np.ndarray:
         """Returns boolean array [buy_valid, sell_valid, hold_valid]"""
 ```
@@ -102,7 +102,7 @@ def _load_model(self) -> PPO | MaskablePPO:
         model = PPO.load(str(self.model_path))
         logger.info("Model loaded as standard PPO (no action masking)")
         self._is_maskable_ppo = False
-    
+
     return model
 ```
 
@@ -121,10 +121,10 @@ if self._is_maskable_ppo:
     action_mask = self.mask_provider.get_action_mask()
     mask_info = self.mask_provider.get_mask_info()
     logger.debug(f"Action mask: {mask_info['mask_human']}")
-    
+
     action, _ = self.model.predict(  # type: ignore
-        obs, 
-        deterministic=True, 
+        obs,
+        deterministic=True,
         action_masks=action_mask.reshape(1, -1)
     )
 else:
@@ -212,8 +212,8 @@ mask = trader.mask_provider.get_action_mask()
 ## Known Limitations
 
 ### 1. Forced Close Detection Not Integrated (Yet)
-**Status:** TODO  
-**Impact:** MEDIUM  
+**Status:** TODO
+**Impact:** MEDIUM
 **Description:** `forced_close_reason` is always `None` in current implementation
 
 **Future Work:**
@@ -233,8 +233,8 @@ self.mask_provider.update_state(..., forced_close_reason=forced_close_reason)
 ```
 
 ### 2. Step Counter Overflow (Long-term)
-**Status:** Acknowledged  
-**Impact:** LOW  
+**Status:** Acknowledged
+**Impact:** LOW
 **Description:** `_current_step` increments indefinitely, may overflow after weeks of continuous operation
 
 **Mitigation:**
@@ -336,6 +336,6 @@ Bug #27 is now **completely fixed** with the implementation of ActionMaskProvide
 
 ---
 
-**Implementation Date:** 2025年10月8日  
-**Implemented By:** AI Development Team  
+**Implementation Date:** 2025年10月8日
+**Implemented By:** AI Development Team
 **Reviewed By:** Self-Review (SELF_REVIEW_SIXTH_CYCLE.md)

@@ -1,8 +1,8 @@
 # Bug #50: BUY Scarcity Limits SELL Opportunities
 
-**Status**: 🔍 IDENTIFIED → 🔧 FIX IN PROGRESS  
-**Severity**: 🔴 CRITICAL (Root cause of persistent SELL avoidance)  
-**Discovered**: 2025-10-08  
+**Status**: 🔍 IDENTIFIED → 🔧 FIX IN PROGRESS
+**Severity**: 🔴 CRITICAL (Root cause of persistent SELL avoidance)
+**Discovered**: 2025-10-08
 **Fixed In**: v3.6.5
 
 ---
@@ -106,7 +106,7 @@ Even with correct reward propagation and array order, the **reward structure its
 **Deferred**: Requires reward_calculator.py modifications, not backward compatible
 
 #### Option C: Curriculum Learning
-Start with SELL target 10%, gradually increase to 33%  
+Start with SELL target 10%, gradually increase to 33%
 **Deferred**: Adds training complexity, try simpler fix first
 
 ---
@@ -252,6 +252,6 @@ OUTPUT PATHS:
 
 ---
 
-**Related Bugs**: #47 (CLI), #48 (reward_settings), #49 (array order)  
-**Supersedes**: v3.6.1-v3.6.4 SELL mitigation attempts  
+**Related Bugs**: #47 (CLI), #48 (reward_settings), #49 (array order)
+**Supersedes**: v3.6.1-v3.6.4 SELL mitigation attempts
 **Config**: `configs/training/ppo_balanced_mem_optimized.json`

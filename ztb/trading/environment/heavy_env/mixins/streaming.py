@@ -73,7 +73,9 @@ def _append_streaming_rows(self: Any) -> bool:
         self._stream_last_timestamp = pd.to_datetime(buffer_df["timestamp"]).max()
 
     self._refresh_features()
-    self.data_processor.apply_feature_storage_dtype(self.df, self.features, self.config.__dict__)
+    self.data_processor.apply_feature_storage_dtype(
+        self.df, self.features, self.config.__dict__
+    )
     self._build_fast_access_buffers()
     self.memory_manager.log_memory_usage("stream_append", df_override=self.df)
 

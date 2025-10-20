@@ -4,25 +4,28 @@ Test Dynamic Hyperparameter Adaptation System
 """
 
 import unittest
+from datetime import datetime, timedelta
+from unittest.mock import Mock
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
 
 from ztb.adaptation.dynamic_hyperparameter_adapter import (
+    AdaptationResult,
+    AdaptationStrategy,
     DynamicHyperparameterAdapter,
+    HyperparameterAdaptation,
     HyperparameterConfig,
     HyperparameterType,
-    AdaptationStrategy,
-    AdaptationResult,
-    HyperparameterAdaptation
+)
+from ztb.adaptation.hyperparameter_adaptation_system import (
+    HyperparameterAdaptationSystem,
 )
 from ztb.adaptation.market_aware_hyperparameter_manager import (
-    MarketAwareHyperparameterManager,
     MarketAwareConfig,
-    MarketCondition
+    MarketAwareHyperparameterManager,
+    MarketCondition,
 )
-from ztb.adaptation.hyperparameter_adaptation_system import HyperparameterAdaptationSystem
 
 
 class TestDynamicHyperparameterAdapter(unittest.TestCase):
@@ -38,9 +41,7 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
 
         self.config = HyperparameterConfig()
         self.adapter = DynamicHyperparameterAdapter(
-            self.mock_online_learning,
-            self.mock_evaluation_manager,
-            self.config
+            self.mock_online_learning, self.mock_evaluation_manager, self.config
         )
 
     def test_initialization(self):
@@ -52,26 +53,25 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
     def test_evaluate_market_conditions(self):
         """市場条件評価テスト"""
         # テストデータ作成
-        dates = pd.date_range(start='2023-01-01', periods=100, freq='1min')
+        dates = pd.date_range(start="2023-01-01", periods=100, freq="1min")
         prices = np.random.normal(100, 1, 100)
-        market_data = pd.DataFrame({
-            'close': prices,
-            'volume': np.random.normal(1000, 100, 100)
-        }, index=dates)
+        market_data = pd.DataFrame(
+            {"close": prices, "volume": np.random.normal(1000, 100, 100)}, index=dates
+        )
 
         conditions = self.adapter._evaluate_market_conditions(market_data)
 
-        self.assertIn('volatility', conditions)
-        self.assertIn('trend_strength', conditions)
-        self.assertIn('market_state', conditions)
-        self.assertIsInstance(conditions['volatility'], float)
+        self.assertIn("volatility", conditions)
+        self.assertIn("trend_strength", conditions)
+        self.assertIn("market_state", conditions)
+        self.assertIsInstance(conditions["volatility"], float)
 
     def test_performance_based_adaptation(self):
         """パフォーマンスベース適応テスト"""
         market_conditions = {
-            'volatility': 0.02,
-            'trend_strength': 0.05,
-            'market_state': 1.0
+            "volatility": 0.02,
+            "trend_strength": 0.05,
+            "market_state": 1.0,
         }
 
         # パフォーマンス履歴を追加
@@ -93,9 +93,9 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
         """ボラティリティベース適応テスト"""
         # 高ボラティリティ条件
         high_vol_conditions = {
-            'volatility': 0.05,
-            'trend_strength': 0.05,
-            'market_state': 2.0
+            "volatility": 0.05,
+            "trend_strength": 0.05,
+            "market_state": 2.0,
         }
 
         adaptations = self.adapter._volatility_based_adaptation(high_vol_conditions)
@@ -108,9 +108,9 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
 
         # 低ボラティリティ条件
         low_vol_conditions = {
-            'volatility': 0.005,
-            'trend_strength': 0.05,
-            'market_state': 0.0
+            "volatility": 0.005,
+            "trend_strength": 0.05,
+            "market_state": 0.0,
         }
 
         adaptations_low = self.adapter._volatility_based_adaptation(low_vol_conditions)
@@ -127,7 +127,7 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
                 adaptation_strategy=AdaptationStrategy.PERFORMANCE_BASED,
                 performance_score=0.02,
                 volatility_score=0.02,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             ),
             HyperparameterAdaptation(
                 parameter_type=HyperparameterType.LEARNING_RATE,
@@ -136,8 +136,8 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
                 adaptation_strategy=AdaptationStrategy.VOLATILITY_BASED,
                 performance_score=0.0,
                 volatility_score=0.05,
-                timestamp=datetime.now()
-            )
+                timestamp=datetime.now(),
+            ),
         ]
 
         combined = self.adapter._combine_adaptations(adaptations)
@@ -151,12 +151,14 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
         adaptations = [
             HyperparameterAdaptation(
                 parameter_type=HyperparameterType.LEARNING_RATE,
-                old_value=self.adapter.current_parameters[HyperparameterType.LEARNING_RATE],
+                old_value=self.adapter.current_parameters[
+                    HyperparameterType.LEARNING_RATE
+                ],
                 new_value=1.5e-3,
                 adaptation_strategy=AdaptationStrategy.PERFORMANCE_BASED,
                 performance_score=0.02,
                 volatility_score=0.02,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
         ]
 
@@ -164,8 +166,7 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
 
         self.assertEqual(len(applied), 1)
         self.assertEqual(
-            self.adapter.current_parameters[HyperparameterType.LEARNING_RATE],
-            1.5e-3
+            self.adapter.current_parameters[HyperparameterType.LEARNING_RATE], 1.5e-3
         )
 
     def test_adaptation_safety(self):
@@ -178,7 +179,7 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
             adaptation_strategy=AdaptationStrategy.PERFORMANCE_BASED,
             performance_score=0.02,
             volatility_score=0.02,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         self.assertTrue(self.adapter._is_adaptation_safe(safe_adaptation))
@@ -191,7 +192,7 @@ class TestDynamicHyperparameterAdapter(unittest.TestCase):
             adaptation_strategy=AdaptationStrategy.PERFORMANCE_BASED,
             performance_score=0.02,
             volatility_score=0.02,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         self.assertFalse(self.adapter._is_adaptation_safe(unsafe_adaptation))
@@ -217,14 +218,14 @@ class TestMarketAwareHyperparameterManager(unittest.TestCase):
 
         # モックの設定
         self.mock_evaluation_manager.get_current_performance.return_value = 0.7
-        self.mock_market_detector.detect_regime.return_value = {'regime': 'neutral'}
+        self.mock_market_detector.detect_regime.return_value = {"regime": "neutral"}
 
         self.config = MarketAwareConfig()
         self.manager = MarketAwareHyperparameterManager(
             self.mock_online_learning,
             self.mock_evaluation_manager,
             self.mock_market_detector,
-            self.config
+            self.config,
         )
 
     def test_initialization(self):
@@ -236,12 +237,11 @@ class TestMarketAwareHyperparameterManager(unittest.TestCase):
     def test_get_market_condition(self):
         """市場条件取得テスト"""
         # テストデータ作成
-        dates = pd.date_range(start='2023-01-01', periods=50, freq='1min')
+        dates = pd.date_range(start="2023-01-01", periods=50, freq="1min")
         prices = np.random.normal(100, 2, 50)
-        market_data = pd.DataFrame({
-            'close': prices,
-            'volume': np.random.normal(1000, 100, 50)
-        }, index=dates)
+        market_data = pd.DataFrame(
+            {"close": prices, "volume": np.random.normal(1000, 100, 50)}, index=dates
+        )
 
         condition = self.manager._get_current_market_condition(market_data)
 
@@ -255,9 +255,9 @@ class TestMarketAwareHyperparameterManager(unittest.TestCase):
             timestamp=datetime.now(),
             volatility=0.02,
             trend_strength=0.05,
-            market_regime='neutral',
+            market_regime="neutral",
             volume_profile=1000.0,
-            liquidity_score=0.8
+            liquidity_score=0.8,
         )
 
         # 学習データを追加（実際の予測には必要）
@@ -279,14 +279,16 @@ class TestMarketAwareHyperparameterManager(unittest.TestCase):
             timestamp=datetime.now(),
             volatility=0.05,  # 高ボラティリティ
             trend_strength=0.15,  # 強いトレンド
-            market_regime='volatile',
+            market_regime="volatile",
             volume_profile=1000.0,
-            liquidity_score=0.8
+            liquidity_score=0.8,
         )
 
         predictions = {}  # 空の予測
 
-        strategies = self.manager._select_adaptation_strategies(market_condition, predictions)
+        strategies = self.manager._select_adaptation_strategies(
+            market_condition, predictions
+        )
 
         self.assertIsInstance(strategies, list)
         self.assertIn(AdaptationStrategy.VOLATILITY_BASED, strategies)
@@ -317,8 +319,8 @@ class TestMarketAwareHyperparameterManager(unittest.TestCase):
         stats = self.manager.get_adaptation_statistics()
 
         self.assertIsInstance(stats, dict)
-        self.assertIn('total_adaptations', stats)
-        self.assertIn('market_conditions_count', stats)
+        self.assertIn("total_adaptations", stats)
+        self.assertIn("market_conditions_count", stats)
 
 
 class TestIntegration(unittest.TestCase):
@@ -333,14 +335,12 @@ class TestIntegration(unittest.TestCase):
 
         # アダプター作成
         adapter = DynamicHyperparameterAdapter(
-            mock_online_learning,
-            mock_evaluation_manager
+            mock_online_learning, mock_evaluation_manager
         )
 
         # マネージャー作成
         manager = MarketAwareHyperparameterManager(
-            mock_online_learning,
-            mock_evaluation_manager
+            mock_online_learning, mock_evaluation_manager
         )
 
         # 適応実行
@@ -368,26 +368,25 @@ class TestBacktestIntegration(unittest.TestCase):
 
         # 適応システムの初期化
         self.adaptation_system = HyperparameterAdaptationSystem(
-            self.mock_online_learning,
-            self.mock_evaluation_manager
+            self.mock_online_learning, self.mock_evaluation_manager
         )
 
     def test_backtest_engine_with_adaptation(self):
         """適応機能付きバックテストエンジンテスト"""
         try:
-            from ztb.trading.backtest.runner import BacktestEngine
             from ztb.trading.backtest.adapters import BuyAndHoldAdapter
+            from ztb.trading.backtest.runner import BacktestEngine
 
             # 適応機能付きエンジンの作成
             engine = BacktestEngine(
                 initial_capital=10000.0,
                 enable_adaptation=True,
                 adaptation_config={
-                    'hyperparameter_config': {
-                        'adaptation_interval_minutes': 5,
-                        'safety_margin': 0.1
+                    "hyperparameter_config": {
+                        "adaptation_interval_minutes": 5,
+                        "safety_margin": 0.1,
                     }
-                }
+                },
             )
 
             # 適応システムが初期化されていることを確認
@@ -401,7 +400,9 @@ class TestBacktestIntegration(unittest.TestCase):
             strategy = BuyAndHoldAdapter()
 
             # バックテスト実行
-            equity_curve, orders, adaptation_summary = engine.run_backtest(strategy, data)
+            equity_curve, orders, adaptation_summary = engine.run_backtest(
+                strategy, data
+            )
 
             # 結果検証
             self.assertIsInstance(equity_curve, pd.Series)
@@ -409,8 +410,8 @@ class TestBacktestIntegration(unittest.TestCase):
             self.assertIsInstance(adaptation_summary, (dict, type(None)))
 
             if adaptation_summary:
-                self.assertIn('total_adaptations', adaptation_summary)
-                self.assertIn('final_hyperparameters', adaptation_summary)
+                self.assertIn("total_adaptations", adaptation_summary)
+                self.assertIn("final_hyperparameters", adaptation_summary)
 
         except ImportError:
             self.skipTest("Backtest components not available")
@@ -428,10 +429,7 @@ class TestBacktestIntegration(unittest.TestCase):
             self.assertEqual(adapter.slow_period, 20)
 
             # ハイパーパラメータ更新
-            new_params = {
-                'fast_period': 15,
-                'slow_period': 30
-            }
+            new_params = {"fast_period": 15, "slow_period": 30}
             adapter.update_hyperparameters(new_params)
 
             # 更新後のパラメータ確認
@@ -444,8 +442,12 @@ class TestBacktestIntegration(unittest.TestCase):
     def test_adaptation_during_backtest_simulation(self):
         """バックテスト中の適応シミュレーションテスト"""
         try:
-            from ztb.trading.backtest.runner import BacktestEngine, MockOnlineLearningPipeline, MockEvaluationManager
             from ztb.trading.backtest.adapters import BuyAndHoldAdapter
+            from ztb.trading.backtest.runner import (
+                BacktestEngine,
+                MockEvaluationManager,
+                MockOnlineLearningPipeline,
+            )
 
             # モックコンポーネント
             mock_online = MockOnlineLearningPipeline()
@@ -456,27 +458,30 @@ class TestBacktestIntegration(unittest.TestCase):
             self.assertTrue(adaptation_system.initialize())
 
             # テスト市場データ作成
-            dates = pd.date_range(start='2023-01-01', periods=100, freq='D')
+            dates = pd.date_range(start="2023-01-01", periods=100, freq="D")
             prices = np.random.normal(30000, 1000, 100)
-            market_data = pd.DataFrame({
-                'open': prices * 0.99,
-                'high': prices * 1.01,
-                'low': prices * 0.98,
-                'close': prices,
-                'volume': np.random.uniform(1000, 10000, 100)
-            }, index=dates)
+            market_data = pd.DataFrame(
+                {
+                    "open": prices * 0.99,
+                    "high": prices * 1.01,
+                    "low": prices * 0.98,
+                    "close": prices,
+                    "volume": np.random.uniform(1000, 10000, 100),
+                },
+                index=dates,
+            )
 
             # 適応実行
             result = adaptation_system.adapt_hyperparameters(market_data)
 
             # 結果検証
-            self.assertIn('success', result)
-            self.assertIn('adaptations', result)
-            self.assertIn('performance_improvement', result)
+            self.assertIn("success", result)
+            self.assertIn("adaptations", result)
+            self.assertIn("performance_improvement", result)
 
         except ImportError:
             self.skipTest("Adaptation system components not available")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -151,7 +151,7 @@ export function warnOnce(id: string, message: string, meta?: any){
 }
 
 
-/** 
+/**
  * Clears the entire logger context if no keys are provided.
  * If keys are provided, only those keys are removed from the context.
  * @param {string[]} [keys] - Optional array of keys to remove from the context. If omitted, clears all context.

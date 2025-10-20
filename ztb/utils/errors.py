@@ -22,26 +22,31 @@ class ZTBError(Exception):
 
 class TradingBotError(ZTBError):
     """Base exception for all trading bot errors (legacy compatibility)."""
+
     pass
 
 
 class InsufficientFundsError(TradingBotError):
     """Raised when trading operation fails due to insufficient funds."""
+
     pass
 
 
 class OrderError(TradingBotError):
     """Base class for order-related errors."""
+
     pass
 
 
 class OrderNotFoundError(OrderError):
     """Raised when trying to cancel or query a non-existent order."""
+
     pass
 
 
 class MinimumSizeError(OrderError):
     """Raised when order size is below exchange minimum requirements."""
+
     pass
 
 
@@ -175,9 +180,7 @@ def safe_operation(*args: Any, **kwargs: Any) -> Any:
     try:
         result = operation(*call_args, **call_kwargs)
         return result
-    except (
-        Exception
-    ) as e:  # noqa: BLE001 - we intentionally catch exceptions to return default
+    except Exception as e:  # noqa: BLE001 - we intentionally catch exceptions to return default
         # If caller asked to only handle specific types, re-raise others
         if error_types is not None and not isinstance(e, tuple(error_types)):
             raise

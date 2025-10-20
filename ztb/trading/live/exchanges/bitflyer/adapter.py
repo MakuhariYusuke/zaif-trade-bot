@@ -9,12 +9,12 @@ import hmac
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import requests
 
-from ztb.utils.rate_limiter import RateLimiter
 from ztb.utils.errors import InsufficientFundsError, MinimumSizeError
+from ztb.utils.rate_limiter import RateLimiter
 
 from ..base.adapter import BaseExchangeAdapter
 from ..base.broker_interfaces import Balance, Order, Position
@@ -114,7 +114,7 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         self,
         method: Literal["GET", "POST"],
         path: str,
-        data: Optional[Dict[str, Any]] = None
+        data: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """Make authenticated API request to bitFlyer.
 
@@ -237,14 +237,20 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Failed to place order on bitFlyer: {error_msg}")
-            
+
             # Check for specific API errors and raise appropriate exceptions
             if "insufficient funds" in error_msg.lower():
                 logger.warning(f"Order failed due to insufficient funds: {error_msg}")
-                raise InsufficientFundsError(f"Insufficient funds for {side} order of {quantity} {symbol}")
+                raise InsufficientFundsError(
+                    f"Insufficient funds for {side} order of {quantity} {symbol}"
+                )
             elif "minimum" in error_msg.lower() or "size" in error_msg.lower():
-                logger.warning(f"Order failed due to minimum size requirements: {error_msg}")
-                raise MinimumSizeError(f"Order size {quantity} below minimum requirements")
+                logger.warning(
+                    f"Order failed due to minimum size requirements: {error_msg}"
+                )
+                raise MinimumSizeError(
+                    f"Order size {quantity} below minimum requirements"
+                )
             else:
                 # Re-raise other errors
                 raise
@@ -263,10 +269,15 @@ class BitFlyerAdapter(BaseExchangeAdapter):
         except Exception as e:
             error_msg = str(e)
             logger.error(f"Failed to cancel order on bitFlyer: {error_msg}")
-            
+
             # Check for specific API errors
-            if "not found" in error_msg.lower() or "already cancelled" in error_msg.lower():
-                logger.warning(f"Order cancellation failed (order may have already executed or been cancelled): {error_msg}")
+            if (
+                "not found" in error_msg.lower()
+                or "already cancelled" in error_msg.lower()
+            ):
+                logger.warning(
+                    f"Order cancellation failed (order may have already executed or been cancelled): {error_msg}"
+                )
                 return False
             else:
                 # Re-raise other errors

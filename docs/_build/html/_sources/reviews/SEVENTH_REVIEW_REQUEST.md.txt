@@ -1,7 +1,7 @@
 # 第7回 外部AIレビュー依頼
 
-**日付:** 2025年10月8日  
-**レビュー対象:** Zaif Trade Bot - Bitcoin自動取引システム  
+**日付:** 2025年10月8日
+**レビュー対象:** Zaif Trade Bot - Bitcoin自動取引システム
 **レビュー戦略:** デュアルレビュー（2名の独立AI専門家による並行レビュー）
 
 ---
@@ -185,10 +185,10 @@ zaif-trade-bot/
 ```
 1. トレーニング時:
    Environment → PositionManager.execute_action() → reward (trade_pnlを含む)
-   
+
 2. ライブ取引時:
    LiveTrader → PositionManager.execute_action() → realized_pnl同期
-   
+
 3. PnL計算:
    全てPositionManagerで一元管理
    entry_fee, exit_fee, price変動を統合計算
@@ -405,8 +405,8 @@ live_trade.py:880-1000 (_update_state_after_action)
 
 ---
 
-**レビュー期限:** なし（徹底的に実施してください）  
-**想定所要時間:** 2-3時間  
+**レビュー期限:** なし（徹底的に実施してください）
+**想定所要時間:** 2-3時間
 **レビュアー:** 2名（独立並行レビュー）
 
 ---

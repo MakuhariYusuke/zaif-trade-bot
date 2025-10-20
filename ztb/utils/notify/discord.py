@@ -105,20 +105,28 @@ class DiscordNotifier:
                     error_msg = f"Timeout sending Discord notification (attempt {attempt + 1}/{self.max_retries + 1})"
                     logger.warning(f"{error_msg}: {e}")
                     if attempt < self.max_retries:
-                        time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                        time.sleep(
+                            self.retry_delay * (2**attempt)
+                        )  # Exponential backoff
                         continue
                     else:
-                        logger.error(f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}")
+                        logger.error(
+                            f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}"
+                        )
                         return False
 
                 except RequestException as e:
                     error_msg = f"Request error sending Discord notification (attempt {attempt + 1}/{self.max_retries + 1})"
                     logger.warning(f"{error_msg}: {e}")
                     if attempt < self.max_retries:
-                        time.sleep(self.retry_delay * (2 ** attempt))  # Exponential backoff
+                        time.sleep(
+                            self.retry_delay * (2**attempt)
+                        )  # Exponential backoff
                         continue
                     else:
-                        logger.error(f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}")
+                        logger.error(
+                            f"Failed to send Discord notification after {self.max_retries + 1} attempts: {e}"
+                        )
                         return False
 
                 except Exception as e:
@@ -135,7 +143,7 @@ class DiscordNotifier:
     def notify_data_pipeline_status(self, status: str, details: Dict[str, Any]) -> None:
         """Notify about data pipeline status"""
         title = f"📊 Data Pipeline {status.title()}"
-        message = f"Data acquisition and integrity check completed"
+        message = "Data acquisition and integrity check completed"
         self.send_notification(
             title, message, "success" if status == "success" else "error", details
         )

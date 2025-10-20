@@ -481,7 +481,7 @@ $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $
 	- 列挙は TypeScript の文字列リテラル Union を優先（`"bid"|"ask"` / `"BUY"|"SELL"`）。
 
 - 関数の語彙（prefix）
-	- 取得系: `get*`（キャッシュ/同期）, `fetch*`（外部IO/HTTP）, 読み込み: `load*`, 保存: `save*`, 
+	- 取得系: `get*`（キャッシュ/同期）, `fetch*`（外部IO/HTTP）, 読み込み: `load*`, 保存: `save*`,
 		変更: `update*`, 追加: `append*`, 削除: `remove*`。
 	- 計算系: `calculate*`（SMA/RSI 等）, 記述/整形: `describe*`, 管理: `manage*`（例: `manageTrailingStop`）。
 	- 非同期関数名に Async 接尾辞は付けない（Promise/await で判別）。

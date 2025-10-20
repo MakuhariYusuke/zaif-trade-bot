@@ -1,6 +1,6 @@
 # 🎯 儲かるモデルを探す - 実行計画
 
-**作成日**: 2025-01-10  
+**作成日**: 2025-01-10
 **目的**: 既知の知見（v378安定性、v379積極性）を活かし、収益性のあるモデルを発見する
 
 ---
@@ -77,9 +77,9 @@
 
 ```bash
 # 全モデルのスキーマファイルを確認
-Get-ChildItem models\*_schema.json | ForEach-Object { 
-  Write-Host "`n=== $($_.Name) ==="; 
-  python -c "import json; s=json.load(open('$_')); print(f'Features: {len(s.get(\"features\", []))}'); print(f'Env: {s.get(\"env_config\", {})}'); print(f'Date: {s.get(\"timestamp\", \"N/A\")}')" 
+Get-ChildItem models\*_schema.json | ForEach-Object {
+  Write-Host "`n=== $($_.Name) ===";
+  python -c "import json; s=json.load(open('$_')); print(f'Features: {len(s.get(\"features\", []))}'); print(f'Env: {s.get(\"env_config\", {})}'); print(f'Date: {s.get(\"timestamp\", \"N/A\")}')"
 }
 ```
 

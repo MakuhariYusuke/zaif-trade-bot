@@ -374,8 +374,8 @@ class LoggerManager:
         content += f"Max Drawdown: {pnl_stats.get('max_drawdown', 0):.4f}\n"
         content += f"Avg Hold Time: {trading_stats.get('mean_trades_per_episode', 0):.1f} trades/episode\n"
         content += f"Total Fees: {total_trades * 0.001:,.4f} BTC\n"
-        content += f"Max Position Size: 1.0\n"
-        content += f"Risk Reduction Triggers: 0\n"
+        content += "Max Position Size: 1.0\n"
+        content += "Risk Reduction Triggers: 0\n"
         content += "```"
 
         # 色設定：勝率が閾値下回りなら黄、それ以外は緑

@@ -1,8 +1,8 @@
 # 特徴量スキーマ管理改革 - 完全版サマリー
 
-**プロジェクト**: zaif-trade-bot  
-**期間**: 2025年10月9日 - 2025年10月10日  
-**バージョン**: 4.0.0  
+**プロジェクト**: zaif-trade-bot
+**期間**: 2025年10月9日 - 2025年10月10日
+**バージョン**: 4.0.0
 **ステータス**: 🎉 **全Phase完了**
 
 ---
@@ -39,12 +39,12 @@
 
 ### ユーザーの宣言
 
-> 「特徴量を増やしたり減らしたりするときにすごい不便なので  
+> 「特徴量を増やしたり減らしたりするときにすごい不便なので
 > これについて**unified_trainer.pyを軸に改めて根本的に改修**を行って下さい」
 
 ### 設計方針
 
-**Single Source of Truth**: 
+**Single Source of Truth**:
 - モデルごとに独立したスキーマを保存
 - UnifiedTrainerを軸に全自動化
 - 全システム（トレーニング・バックテスト・実取引）で統一利用
@@ -55,8 +55,8 @@
 
 ### Phase 1-2: FeatureSchemaManager基盤構築
 
-**実装日**: 2025年10月9日  
-**担当**: Main Copilot  
+**実装日**: 2025年10月9日
+**担当**: Main Copilot
 **ステータス**: ✅ 完了
 
 #### 主要成果物
@@ -67,18 +67,18 @@
        def __init__(self, model_name: str):
            self.model_name = model_name
            self.schema_dir = Path("models/schemas") / model_name
-       
+
        def save_schema(
-           self, 
+           self,
            feature_names: List[str],
            config: Dict[str, Any],
            scaler_data: Optional[Dict[str, np.ndarray]] = None
        ) -> SchemaMetadata:
            """スキーマをモデル専用ディレクトリに保存"""
-       
+
        def load_schema(self) -> SchemaMetadata:
            """スキーマを読み込み、検証"""
-       
+
        def verify_compatibility(self, other_model: str) -> bool:
            """他モデルとの互換性チェック"""
    ```
@@ -89,17 +89,17 @@
        """トレーニング完了時に自動的にスキーマを保存"""
        model_name = final_model_path.stem
        schema_manager = FeatureSchemaManager(model_name)
-       
+
        # 特徴量リスト取得
        feature_names = self.env.get_wrapper_attr("feature_columns")
-       
+
        # スキーマ保存
        metadata = schema_manager.save_schema(
            feature_names=feature_names,
            config=self.config,
            scaler_data=scaler_data
        )
-       
+
        self.logger.info("✅ Schema saved: %s features, hash: %s",
                         metadata.num_features,
                         metadata.schema_hash[:16])
@@ -184,8 +184,8 @@ scaler.npz
 
 ### Phase 3: 環境・バックテスト統合
 
-**実装日**: 2025年10月9日  
-**担当**: Secondary Copilot → レビュー: Main Copilot  
+**実装日**: 2025年10月9日
+**担当**: Secondary Copilot → レビュー: Main Copilot
 **ステータス**: ✅ 完了（修正後）
 
 #### 主要成果物
@@ -198,19 +198,19 @@ scaler.npz
        config: Optional[Dict[str, Any]] = None
    ) -> DummyVecEnv:
        """スキーマからEnvironmentを動的生成"""
-       
+
        schema_manager = FeatureSchemaManager(model_name)
        metadata = schema_manager.load_schema()
-       
+
        # ユーザー設定を尊重
        env_config = metadata.config.copy()
        if config:
            env_config.update(config)
-       
+
        # デフォルト値は設定がない場合のみ適用
        if "enable_correlation_reduction" not in env_config:
            env_config["enable_correlation_reduction"] = False
-       
+
        env = TradingEnvironment(df=df, config=env_config)
        return DummyVecEnv([lambda: env])
    ```
@@ -220,13 +220,13 @@ scaler.npz
    def main():
        model_path = Path(args.model_path)
        df = load_csv_data_optimized(args.data)
-       
+
        # スキーマベースでEnvironment作成（設定は自動）
        env = create_env_from_model_path(model_path, df)
-       
+
        # モデル読み込み
        model = MaskablePPO.load(str(model_path), env=env)
-       
+
        # バックテスト実行
        run_backtest(model, env, episodes=args.episodes)
    ```
@@ -236,7 +236,7 @@ scaler.npz
    # v381の実際の特徴量数を診断
    schema_manager = FeatureSchemaManager("ppo_reward_v381_revised_profit_focused")
    metadata = schema_manager.load_schema()
-   
+
    print(f"Model features: {metadata.num_features}")
    # 出力: Model features: 68 (報告では110だったが実際は68)
    ```
@@ -284,8 +284,8 @@ Backtest completed
 
 ### Phase 4: 実取引・ペーパートレード統合
 
-**実装日**: 2025年10月10日  
-**担当**: Main Copilot  
+**実装日**: 2025年10月10日
+**担当**: Main Copilot
 **ステータス**: ✅ 完了
 
 #### 主要成果物
@@ -297,18 +297,18 @@ Backtest completed
    # 改善前: テスト環境作成 → 間接的スキーマ検証
    dummy_env = self._create_env()
    schema_info = dummy_env.get_attr("feature_schema")
-   
+
    # 改善後: 直接スキーマ読み込み
    from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-   
+
    model_name = self.model_path.stem
    schema_manager = FeatureSchemaManager(model_name)
    metadata = schema_manager.load_schema()
-   
+
    self.expected_features = metadata.num_features
    self.feature_names = metadata.feature_names
    self.schema_hash = metadata.schema_hash
-   
+
    self.logger.info("✅ Schema loaded for model: %s", model_name)
    self.logger.info("   Expected features: %d", self.expected_features)
    self.logger.info("   Schema hash: %s", self.schema_hash[:16])
@@ -328,7 +328,7 @@ Backtest completed
        expected_features = self.model.observation_space.shape[0]  # 2. モデル
    else:
        expected_features = 68  # 3. デフォルト
-   
+
    # TODO: 将来的には特徴量の並び順もスキーマに基づいて検証・修正
    ```
 
@@ -338,7 +338,7 @@ Backtest completed
        feature_info = f"{self.expected_features} features (schema-validated ✅)"
    else:
        feature_info = f"{expected_features} features (no schema ⚠️)"
-   
+
    notifier.send_notification(
        title="🚀 BTC/JPY Live Trading Started",
        fields={"Features": feature_info, ...}
@@ -356,19 +356,19 @@ Backtest completed
    scaler_path = model_dir / "scaler.npz"
    saved_stats = load_scaler(model_dir, strict=True)
    # ... ~90行の手動検証ロジック
-   
+
    # 新しいコード (~50行):
    from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-   
+
    model_name = self.model_path.stem
    schema_manager = FeatureSchemaManager(model_name)
    metadata = schema_manager.load_schema()
-   
+
    self.expected_features = metadata.num_features
    self.feature_names = metadata.feature_names
    self.schema_hash = metadata.schema_hash
    self.schema_available = True
-   
+
    # シンプルな特徴量数検証
    if len(feature_columns) != self.expected_features:
        raise ValueError(...)
@@ -381,7 +381,7 @@ Backtest completed
        if trader.schema_available and trader.expected_features
        else "schema not available ⚠️"
    )
-   
+
    notifier.send_notification(
        title="📈 Paper Trading Started",
        fields={"Features": schema_status, ...}
@@ -648,15 +648,15 @@ class ModelEnsemble:
     def __init__(self, model_paths: List[Path]):
         self.models = []
         self.schemas = []
-        
+
         for path in model_paths:
             model = load_model(path)
             schema = FeatureSchemaManager(path.stem).load_schema()
-            
+
             # スキーマ互換性チェック
             if not self._verify_compatibility(schema, self.schemas):
                 raise ValueError(...)
-            
+
             self.models.append(model)
             self.schemas.append(schema)
 ```
@@ -679,17 +679,17 @@ class ModelEnsemble:
 
 ### 達成事項
 
-✅ **Phase 1-2**: FeatureSchemaManager基盤構築（自動スキーマ保存）  
-✅ **Phase 3**: 環境・バックテスト統合（動的Environment生成）  
-✅ **Phase 4**: 実取引・ペーパートレード統合（統一スキーマ利用）  
+✅ **Phase 1-2**: FeatureSchemaManager基盤構築（自動スキーマ保存）
+✅ **Phase 3**: 環境・バックテスト統合（動的Environment生成）
+✅ **Phase 4**: 実取引・ペーパートレード統合（統一スキーマ利用）
 
 ### 成果
 
-🎯 **Single Source of Truth実現**  
-🎯 **完全自動化**（特徴量変更時の手動作業0）  
-🎯 **次元不一致エラー完全解消**  
-🎯 **コード品質向上**（重複削除、一貫性向上）  
-🎯 **後方互換性維持**  
+🎯 **Single Source of Truth実現**
+🎯 **完全自動化**（特徴量変更時の手動作業0）
+🎯 **次元不一致エラー完全解消**
+🎯 **コード品質向上**（重複削除、一貫性向上）
+🎯 **後方互換性維持**
 
 ### 次のステップ
 
@@ -700,8 +700,8 @@ class ModelEnsemble:
 
 ---
 
-**プロジェクト完了日**: 2025年10月10日  
-**バージョン**: 4.0.0  
+**プロジェクト完了日**: 2025年10月10日
+**バージョン**: 4.0.0
 **ステータス**: 🎉 **All Phases Complete**
 
 **貢献者**:
@@ -719,5 +719,5 @@ class ModelEnsemble:
 ---
 
 > 「特徴量を増やしたり減らしたりするときにすごい不便」
-> 
+>
 > → **解決しました。** 🎉

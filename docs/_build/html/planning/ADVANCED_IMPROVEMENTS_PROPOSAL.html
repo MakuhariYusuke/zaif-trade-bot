@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="ai">
 <h1>AIエージェント提案: 高度な改善案の検討<a class="headerlink" href="#ai" title="Link to this heading"></a></h1>
 <p><strong>日時</strong>: 2025年10月6日<br />
@@ -207,7 +207,7 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
 <span class="k">class</span><span class="w"> </span><span class="nc">CustomLSTMPolicy</span><span class="p">(</span><span class="n">ActorCriticPolicy</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">lstm_hidden_size</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">n_lstm_layers</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        
+
         <span class="c1"># LSTM layers</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span>
             <span class="n">input_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span>
@@ -215,21 +215,21 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
             <span class="n">num_layers</span><span class="o">=</span><span class="n">n_lstm_layers</span><span class="p">,</span>
             <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Policy head (actor)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">lstm_hidden_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
-        
+
         <span class="c1"># Value head (critic)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">lstm_hidden_size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">lstm_states</span><span class="p">,</span> <span class="n">episode_starts</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="c1"># LSTM forward pass</span>
         <span class="n">lstm_out</span><span class="p">,</span> <span class="n">lstm_states</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lstm</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">lstm_states</span><span class="p">)</span>
-        
+
         <span class="c1"># Policy and value</span>
         <span class="n">action_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">)</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">lstm_out</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">action_logits</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">lstm_states</span>
 </pre></div>
 </div>
@@ -346,7 +346,7 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
 <span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">(</span><span class="n">gym</span><span class="o">.</span><span class="n">Env</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">use_continuous_actions</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">use_continuous_actions</span> <span class="o">=</span> <span class="n">use_continuous_actions</span>
-        
+
         <span class="k">if</span> <span class="n">use_continuous_actions</span><span class="p">:</span>
             <span class="c1"># 連続アクション: ポジションサイズ</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span>
@@ -357,16 +357,16 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># 従来の離散アクション</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span> <span class="o">=</span> <span class="n">Discrete</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_continuous_actions</span><span class="p">:</span>
             <span class="c1"># actionは-1.0~1.0の連続値</span>
             <span class="n">target_position</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            
+
             <span class="c1"># ポジション調整</span>
             <span class="n">current_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
             <span class="n">position_change</span> <span class="o">=</span> <span class="n">target_position</span> <span class="o">-</span> <span class="n">current_position</span>
-            
+
             <span class="c1"># トレード実行</span>
             <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">position_change</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.01</span><span class="p">:</span>  <span class="c1"># 閾値</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_execute_trade</span><span class="p">(</span><span class="n">position_change</span><span class="p">)</span>
@@ -396,14 +396,14 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
 連続アクション空間ではAction Maskingが使えないため、以下で対応:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">):</span>
     <span class="n">target_position</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    
+
     <span class="c1"># 制約チェック</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_invalid_trade</span><span class="p">(</span><span class="n">target_position</span><span class="p">):</span>
         <span class="c1"># 無効なアクションには大きなペナルティ</span>
         <span class="n">reward</span> <span class="o">=</span> <span class="o">-</span><span class="mf">10.0</span>
         <span class="c1"># ポジションは変更しない</span>
         <span class="n">target_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
-    
+
     <span class="c1"># ...</span>
 </pre></div>
 </div>
@@ -542,51 +542,51 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
 <span class="k">class</span><span class="w"> </span><span class="nc">MultiTaskPolicy</span><span class="p">(</span><span class="n">ActorCriticPolicy</span><span class="p">):</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">aux_task_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        
+
         <span class="c1"># Shared feature extractor (既存)</span>
         <span class="c1"># self.features_extractor = ...</span>
-        
+
         <span class="c1"># Policy head (Actor) - 既存</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">n</span><span class="p">)</span>
-        
+
         <span class="c1"># Value head (Critic) - 既存</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-        
+
         <span class="c1"># Auxiliary task head - 新規</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">aux_net</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">features_dim</span><span class="p">,</span> <span class="mi">128</span><span class="p">),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(),</span>
             <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>  <span class="c1"># 価格変化予測</span>
         <span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">=</span> <span class="n">aux_task_weight</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
-        
+
         <span class="c1"># Main task: Policy and Value</span>
         <span class="n">action_logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
         <span class="n">value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-        
+
         <span class="c1"># Auxiliary task: Price prediction</span>
         <span class="n">price_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_net</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">action_logits</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">price_pred</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">actions</span><span class="p">):</span>
         <span class="c1"># Standard PPO loss</span>
         <span class="n">action_log_probs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">entropy</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">evaluate_actions</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">actions</span><span class="p">)</span>
-        
+
         <span class="c1"># Auxiliary task loss</span>
         <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">price_pred</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
-        
+
         <span class="c1"># 価格変化のground truth (環境から取得)</span>
         <span class="n">next_price_change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_next_price_change</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
         <span class="n">aux_loss</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()(</span><span class="n">price_pred</span><span class="p">,</span> <span class="n">next_price_change</span><span class="p">)</span>
-        
+
         <span class="c1"># Total loss = PPO loss + aux_weight * aux_loss</span>
         <span class="c1"># (CustomPPO内で統合)</span>
-        
+
         <span class="k">return</span> <span class="n">action_log_probs</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">entropy</span><span class="p">,</span> <span class="n">aux_loss</span>
 </pre></div>
 </div>
@@ -597,16 +597,16 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">aux_task_weight</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">=</span> <span class="n">aux_task_weight</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">rollout_data</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rollout_buffer</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">):</span>
             <span class="c1"># ... 既存のPPO train処理 ...</span>
-            
+
             <span class="c1"># Auxiliary task loss追加</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">aux_loss</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">evaluate_actions</span><span class="p">(</span>
                 <span class="n">rollout_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">rollout_data</span><span class="o">.</span><span class="n">actions</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># Total loss</span>
             <span class="n">total_loss</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">policy_loss</span>
@@ -614,12 +614,12 @@ from<span class="w"> </span>sb3_contrib<span class="w"> </span>import<span class
                 <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ent_coef</span> <span class="o">*</span> <span class="n">entropy_loss</span>
                 <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">aux_task_weight</span> <span class="o">*</span> <span class="n">aux_loss</span>  <span class="c1"># ← 追加</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># Backward and optimize</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
             <span class="n">total_loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-            
+
             <span class="c1"># Logging</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">record</span><span class="p">(</span><span class="s2">&quot;train/aux_loss&quot;</span><span class="p">,</span> <span class="n">aux_loss</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
 </pre></div>
@@ -950,7 +950,7 @@ pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -961,7 +961,7 @@ pip<span class="w"> </span>install<span class="w"> </span>stable-baselines3<span
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -5,7 +5,7 @@ This module provides mixin classes that can be added to trainers
 to provide additional functionality like progress tracking.
 """
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from ztb.utils.logging_utils import get_logger
 
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class ProgressTrackingMixin:
     """
     Mixin class providing rich progress bar functionality.
-    
+
     This can be mixed into trainer classes to add visual progress tracking
     during training with the rich library.
     """
@@ -39,10 +39,12 @@ class ProgressTrackingMixin:
         if self.progress:
             self.stop_progress_bar()
 
-    def start_progress_bar(self, total_steps: int, description: str = "Training") -> None:
+    def start_progress_bar(
+        self, total_steps: int, description: str = "Training"
+    ) -> None:
         """
         Start the progress bar.
-        
+
         Args:
             total_steps: Total number of steps for the progress bar.
             description: Description text to display with the progress bar.
@@ -57,9 +59,7 @@ class ProgressTrackingMixin:
             console = Console()
             self.progress = Progress(console=console)
             self.task_id = self.progress.add_task(
-                f"[green]{description}...",
-                total=total_steps,
-                completed=0
+                f"[green]{description}...", total=total_steps, completed=0
             )
             self.progress.start()
             logger.debug(f"Progress bar started for {total_steps} steps")
@@ -73,7 +73,7 @@ class ProgressTrackingMixin:
     def update_progress_bar(self, completed: int) -> None:
         """
         Update the progress bar.
-        
+
         Args:
             completed: Number of completed steps.
         """
@@ -101,7 +101,7 @@ class ProgressTrackingMixin:
 class EntropyScheduleMixin:
     """
     Mixin class providing entropy coefficient scheduling.
-    
+
     This can be mixed into trainer classes to add entropy coefficient
     scheduling during training (e.g., cosine decay).
     """
@@ -121,7 +121,7 @@ class EntropyScheduleMixin:
     ) -> None:
         """
         Configure entropy coefficient scheduling.
-        
+
         Args:
             schedule_type: Type of schedule ("cosine_decay", "linear", etc.)
             initial_ent_coef: Initial entropy coefficient value.
@@ -130,7 +130,9 @@ class EntropyScheduleMixin:
         self._entropy_schedule_enabled = True
         self._entropy_schedule_type = schedule_type
         self._initial_ent_coef = initial_ent_coef
-        self._final_ent_coef = final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        self._final_ent_coef = (
+            final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        )
         logger.info(
             f"Entropy schedule configured: {schedule_type}, "
             f"initial={initial_ent_coef:.4f}, final={self._final_ent_coef:.4f}"
@@ -139,7 +141,7 @@ class EntropyScheduleMixin:
     def update_entropy_coefficient(self, current_step: int, total_steps: int) -> None:
         """
         Update entropy coefficient based on the configured schedule.
-        
+
         Args:
             current_step: Current training step.
             total_steps: Total number of training steps.

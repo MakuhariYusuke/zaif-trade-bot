@@ -4,12 +4,12 @@ Cache management utilities for Zaif Trade Bot.
 This module provides various caching strategies including LRU, TTL, and memory-aware caching.
 """
 
-import time
-from functools import lru_cache, wraps
-from typing import Any, Callable, Dict, Optional, TypeVar
 import threading
+import time
+from functools import wraps
+from typing import Any, Callable, Dict, Optional, TypeVar
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 class TTLCache:
@@ -49,7 +49,8 @@ class TTLCache:
         with self.lock:
             current_time = time.time()
             expired_keys = [
-                key for key, (_, timestamp) in self.cache.items()
+                key
+                for key, (_, timestamp) in self.cache.items()
                 if current_time - timestamp >= self.ttl
             ]
             for key in expired_keys:
@@ -64,7 +65,9 @@ class MemoryAwareCache:
 
     def __init__(self, max_memory_mb: float = 100.0):
         self.max_memory_bytes = max_memory_mb * 1024 * 1024
-        self.cache: Dict[str, tuple[Any, float, int]] = {}  # key -> (value, timestamp, size_bytes)
+        self.cache: Dict[
+            str, tuple[Any, float, int]
+        ] = {}  # key -> (value, timestamp, size_bytes)
         self.current_memory = 0
         self.lock = threading.RLock()
 
@@ -78,7 +81,9 @@ class MemoryAwareCache:
         elif isinstance(obj, (list, tuple)):
             return 64 + sum(self._get_size(item) for item in obj)
         elif isinstance(obj, dict):
-            return 240 + sum(self._get_size(k) + self._get_size(v) for k, v in obj.items())
+            return 240 + sum(
+                self._get_size(k) + self._get_size(v) for k, v in obj.items()
+            )
         else:
             return 1000  # Default estimate for complex objects
 
@@ -100,8 +105,7 @@ class MemoryAwareCache:
             # Check if we need to evict entries
             while self.current_memory + size > self.max_memory_bytes and self.cache:
                 # Remove oldest accessed entry
-                oldest_key = min(self.cache.keys(),
-                               key=lambda k: self.cache[k][1])
+                oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k][1])
                 _, _, removed_size = self.cache.pop(oldest_key)
                 self.current_memory -= removed_size
 

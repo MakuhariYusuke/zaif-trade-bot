@@ -4,15 +4,15 @@ Common test utilities for ztb testing.
 
 import sys
 import types
-from typing import Dict, Any
+from typing import Any, Dict
 from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.trading.environment.environment import EnvironmentConfig, HeavyTradingEnv
 from ztb.trading.env_config import get_trading_env_config
+from ztb.trading.environment.environment import HeavyTradingEnv
 
 
 def create_mock_feature_engine():
@@ -63,17 +63,17 @@ def get_sample_trading_data() -> pd.DataFrame:
     volume_mult = np.random.uniform(0.5, 2.0, n_steps)
 
     data = {
-        'open': prices * (1 + np.random.normal(0, 0.002, n_steps)),
-        'high': prices * high_mult,
-        'low': prices * low_mult,
-        'close': prices,
-        'volume': 1000 * volume_mult
+        "open": prices * (1 + np.random.normal(0, 0.002, n_steps)),
+        "high": prices * high_mult,
+        "low": prices * low_mult,
+        "close": prices,
+        "volume": 1000 * volume_mult,
     }
 
     df = pd.DataFrame(data)
     # Ensure high >= max(open, close) and low <= min(open, close)
-    df['high'] = np.maximum(df[['open', 'close']].max(axis=1), df['high'])
-    df['low'] = np.minimum(df[['open', 'close']].min(axis=1), df['low'])
+    df["high"] = np.maximum(df[["open", "close"]].max(axis=1), df["high"])
+    df["low"] = np.minimum(df[["open", "close"]].min(axis=1), df["low"])
 
     return df
 
@@ -87,12 +87,14 @@ def get_default_env_config() -> Dict[str, Any]:
 def mock_feature_registry():
     """Create a mock feature registry for testing."""
     mock_registry = Mock()
-    mock_registry.compute_features.return_value = pd.DataFrame({
-        'close': [100.0, 101.0, 102.0],
-        'volume': [1000, 1100, 1200],
-        'sma_20': [99.0, 100.0, 101.0],
-        'rsi_14': [50.0, 55.0, 60.0]
-    })
+    mock_registry.compute_features.return_value = pd.DataFrame(
+        {
+            "close": [100.0, 101.0, 102.0],
+            "volume": [1000, 1100, 1200],
+            "sma_20": [99.0, 100.0, 101.0],
+            "rsi_14": [50.0, 55.0, 60.0],
+        }
+    )
     mock_registry.is_cache_enabled.return_value = False
     return mock_registry
 
@@ -105,7 +107,9 @@ def mock_fee_model():
     return mock_fee
 
 
-def create_test_env(sample_data: pd.DataFrame, config: Dict[str, Any]) -> HeavyTradingEnv:
+def create_test_env(
+    sample_data: pd.DataFrame, config: Dict[str, Any]
+) -> HeavyTradingEnv:
     """Helper function to create HeavyTradingEnv with common test setup."""
     return HeavyTradingEnv(df=sample_data, config=config)
 
@@ -113,9 +117,9 @@ def create_test_env(sample_data: pd.DataFrame, config: Dict[str, Any]) -> HeavyT
 def assert_env_initialized_correctly(env: HeavyTradingEnv, expected_steps: int):
     """Common assertions for environment initialization."""
     assert env is not None
-    assert hasattr(env, 'df')
+    assert hasattr(env, "df")
     assert len(env.df) == expected_steps
-    assert hasattr(env, 'current_step')
+    assert hasattr(env, "current_step")
     assert env.current_step == 0
-    assert hasattr(env, 'position')
+    assert hasattr(env, "position")
     assert env.position == 0.0

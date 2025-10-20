@@ -90,7 +90,7 @@ class DiscordNotifier:
     def notify_data_pipeline_status(self, status: str, details: Dict[str, Any]) -> None:
         """Notify about data pipeline status"""
         title = f"📊 Data Pipeline {status.title()}"
-        message = f"Data acquisition and integrity check completed"
+        message = "Data acquisition and integrity check completed"
         self.send_notification(
             title, message, "success" if status == "success" else "error", details
         )

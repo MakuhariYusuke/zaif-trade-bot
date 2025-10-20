@@ -1,7 +1,7 @@
 # 追加機能提案リスト
 
-**日付**: 2025年10月7日  
-**背景**: 100kテスト実行中、並行して追加機能を導入  
+**日付**: 2025年10月7日
+**背景**: 100kテスト実行中、並行して追加機能を導入
 **目標**: 型安全性・保守性向上、運用効率化
 
 ---
@@ -50,25 +50,25 @@ def check_config_consistency(config_files: List[Path]) -> Dict[str, List[str]]:
         "type_mismatches": [],
         "default_value_differences": [],
     }
-    
+
     # 全設定ファイル読み込み
     configs = {}
     for path in config_files:
         with open(path) as f:
             configs[path.name] = json.load(f)
-    
+
     # 1. パラメータ命名の一貫性チェック
     all_keys: Set[str] = set()
     for config in configs.values():
         all_keys.update(flatten_keys(config))
-    
+
     # スネークケース以外を検出
     for key in all_keys:
         if not is_snake_case(key):
             issues["naming_inconsistencies"].append(
                 f"Non-snake_case key: {key}"
             )
-    
+
     # 2. 必須パラメータ存在チェック
     required_params = [
         "algorithm",
@@ -76,14 +76,14 @@ def check_config_consistency(config_files: List[Path]) -> Dict[str, List[str]]:
         "total_timesteps",
         "checkpoint_interval",
     ]
-    
+
     for filename, config in configs.items():
         for param in required_params:
             if param not in config:
                 issues["missing_required_params"].append(
                     f"{filename}: Missing required parameter '{param}'"
                 )
-    
+
     # 3. 型不一致チェック
     for filename, config in configs.items():
         if "total_timesteps" in config:
@@ -91,7 +91,7 @@ def check_config_consistency(config_files: List[Path]) -> Dict[str, List[str]]:
                 issues["type_mismatches"].append(
                     f"{filename}: total_timesteps should be int, got {type(config['total_timesteps'])}"
                 )
-    
+
     # 4. デフォルト値の差異チェック
     # 同じキーで異なるデフォルト値を使っている場合に警告
     key_values: Dict[str, List[Any]] = {}
@@ -100,7 +100,7 @@ def check_config_consistency(config_files: List[Path]) -> Dict[str, List[str]]:
             if key not in key_values:
                 key_values[key] = []
             key_values[key].append((filename, value))
-    
+
     for key, values in key_values.items():
         unique_values = set(v for _, v in values)
         if len(unique_values) > 1:
@@ -109,7 +109,7 @@ def check_config_consistency(config_files: List[Path]) -> Dict[str, List[str]]:
                 issues["default_value_differences"].append(
                     f"{key}: Different values across configs: {unique_values}"
                 )
-    
+
     return issues
 
 def flatten_keys(d: Dict, parent_key: str = "") -> Set[str]:
@@ -139,17 +139,17 @@ def is_snake_case(s: str) -> bool:
 
 if __name__ == "__main__":
     import sys
-    
+
     config_files = [Path(p) for p in sys.argv[1:]]
     issues = check_config_consistency(config_files)
-    
+
     print("=" * 60)
     print("設定ファイル不整合検出結果")
     print("=" * 60)
     print()
-    
+
     total_issues = sum(len(v) for v in issues.values())
-    
+
     if total_issues == 0:
         print("✅ 不整合は検出されませんでした")
     else:
@@ -158,7 +158,7 @@ if __name__ == "__main__":
                 print(f"\n❌ {category}:")
                 for item in items:
                     print(f"  - {item}")
-        
+
         print()
         print("=" * 60)
         print(f"合計 {total_issues} 件の問題が検出されました")
@@ -213,15 +213,15 @@ def watch_training(log_dir: Path, interval: int = 10):
     print(f"🔍 Monitoring: {log_dir}")
     print(f"📊 Refresh interval: {interval}s")
     print("=" * 80)
-    
+
     ea = event_accumulator.EventAccumulator(str(log_dir))
-    
+
     while True:
         ea.Reload()
-        
+
         # スカラー値取得
         scalars = ea.Tags().get('scalars', [])
-        
+
         # 重要な指標を表示
         important_metrics = [
             "train/legal_sell_rate",
@@ -230,18 +230,18 @@ def watch_training(log_dir: Path, interval: int = 10):
             "train/grad_norm(SELL)",
             "rollout/ep_rew_mean",
         ]
-        
+
         print("\n" + "=" * 80)
         print(f"⏱️  {time.strftime('%H:%M:%S')}")
         print("=" * 80)
-        
+
         for metric in important_metrics:
             if metric in scalars:
                 values = ea.Scalars(metric)
                 if values:
                     latest = values[-1]
                     print(f"{metric:30s}: {latest.value:10.4f} (step {latest.step})")
-        
+
         time.sleep(interval)
 
 if __name__ == "__main__":
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument("--log-dir", required=True)
     parser.add_argument("--interval", type=int, default=10)
     args = parser.parse_args()
-    
+
     watch_training(Path(args.log_dir), args.interval)
 ```
 
@@ -296,31 +296,31 @@ except ImportError:
 def compare_checkpoints(checkpoint_dir: Path):
     """チェックポイントの性能を比較"""
     checkpoints = sorted(checkpoint_dir.glob("checkpoint_*"))
-    
+
     print("=" * 100)
     print(f"📊 Checkpoint Comparison: {checkpoint_dir.name}")
     print("=" * 100)
     print()
-    
+
     # ヘッダー
     print(f"{'Checkpoint':20s} {'SELL Rate':12s} {'Sharpe':12s} {'Entropy':12s} {'Reward':12s}")
     print("-" * 100)
-    
+
     for ckpt in checkpoints:
         step = ckpt.name.split("_")[-1]
-        
+
         # 対応するログディレクトリから指標を取得
         log_dir = checkpoint_dir.parent.parent / "logs" / checkpoint_dir.name
-        
+
         if log_dir.exists():
             ea = event_accumulator.EventAccumulator(str(log_dir))
             ea.Reload()
-            
+
             sell_rate = get_metric_at_step(ea, "train/legal_sell_rate", int(step))
             sharpe = get_metric_at_step(ea, "eval/sharpe_proxy", int(step))
             entropy = get_metric_at_step(ea, "train/entropy", int(step))
             reward = get_metric_at_step(ea, "rollout/ep_rew_mean", int(step))
-            
+
             print(f"{ckpt.name:20s} {sell_rate:12.4f} {sharpe:12.4f} {entropy:12.4f} {reward:12.4f}")
 
 def get_metric_at_step(ea, metric: str, step: int) -> float:
@@ -337,7 +337,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint-dir", required=True)
     args = parser.parse_args()
-    
+
     compare_checkpoints(Path(args.checkpoint_dir))
 ```
 
@@ -353,7 +353,7 @@ python compare_checkpoints.py --checkpoint-dir checkpoints/ensemble_B_100k_test
 📊 Checkpoint Comparison: ensemble_B_100k_test
 ====================================================================================================
 
-Checkpoint           SELL Rate    Sharpe       Entropy      Reward      
+Checkpoint           SELL Rate    Sharpe       Entropy      Reward
 ----------------------------------------------------------------------------------------------------
 checkpoint_10000        0.0300      -0.5000       0.8500      100.0000
 checkpoint_20000        0.0450       0.2000       0.7800      150.0000
@@ -456,7 +456,7 @@ sphinx-build -b html docs docs/_build
   "data_path": "ml-dataset-enhanced.csv",
   "session_id": "YOUR_SESSION_ID",
   "total_timesteps": 100000,
-  
+
   "training": {
     "learning_rate": 3.0e-4,
     "n_steps": 2048,
@@ -464,7 +464,7 @@ sphinx-build -b html docs docs/_build
     "ent_coef": 0.7,
     "seed": 42
   },
-  
+
   "checkpoint_interval": 10000,
   "checkpoint_dir": "checkpoints/YOUR_SESSION_ID",
   "log_dir": "logs/YOUR_SESSION_ID",

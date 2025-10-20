@@ -24,7 +24,7 @@ v381（110特徴量）とv384（68厳選特徴量）を過去のBTC/JPY市場デ
 
 ### 次元不一致エラー
 ```
-ValueError: Error: Unexpected observation shape (68,) for Box environment, 
+ValueError: Error: Unexpected observation shape (68,) for Box environment,
 please use (110,) or (n_env, 110) for the observation shape.
 ```
 
@@ -64,7 +64,7 @@ config = {
 }
 ```
 
-**課題**: 
+**課題**:
 - v381訓練時のfeature schemaが保存されていない
 - 110特徴量の順序が不明
 
@@ -148,5 +148,5 @@ Environment observation space: 68 features
 
 ---
 
-**作成日**: 2025-10-10  
+**作成日**: 2025-10-10
 **ステータス**: バックテスト実行中（v384）

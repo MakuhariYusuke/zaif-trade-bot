@@ -1,7 +1,7 @@
 # 100k テスト実行ガイド
 
-**目的**: 1M学習前の動作確認・パラメータ調整  
-**所要時間**: 約15-30分（並列実行時）  
+**目的**: 1M学習前の動作確認・パラメータ調整
+**所要時間**: 約15-30分（並列実行時）
 **チェックポイント**: 10個（10k毎）
 
 ---
@@ -71,7 +71,7 @@ python -m ztb.training.unified_trainer --config configs\train\ensemble_B_100k_te
 - `ERROR`: エラーのみ
 - `CRITICAL`: 致命的エラーのみ
 
-**Tips**: 
+**Tips**:
 - 通常実行は `--log-level INFO`（デフォルト）で十分
 - エラー調査時のみ `--log-level DEBUG` を使用
 - 安定稼働時は `--log-level WARNING` で静かに実行
@@ -340,6 +340,6 @@ python -m ztb.training.unified_trainer --config configs\train\ensemble_C_1M.json
 
 ---
 
-**所要時間**: 15-30分  
-**推奨**: モデルB（Moderate）から開始  
+**所要時間**: 15-30分
+**推奨**: モデルB（Moderate）から開始
 **次の目標**: 1M学習で儲かるモデルを探す 🚀

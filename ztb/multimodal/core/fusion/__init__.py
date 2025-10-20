@@ -5,9 +5,11 @@
 
 __version__ = "1.0.0"
 
+from typing import Optional
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import Optional
+
 
 class TemporalIntegrationLayer(nn.Module):
     """時間的統合レイヤー
@@ -16,11 +18,13 @@ class TemporalIntegrationLayer(nn.Module):
     短期依存性（BiLSTM）と長期依存性（Transformer）を同時に学習。
     """
 
-    def __init__(self,
-                 hidden_dim: int = 256,
-                 num_layers: int = 2,
-                 num_heads: int = 8,
-                 dropout: float = 0.1):
+    def __init__(
+        self,
+        hidden_dim: int = 256,
+        num_layers: int = 2,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ):
         super().__init__()
 
         self.hidden_dim = hidden_dim
@@ -33,7 +37,7 @@ class TemporalIntegrationLayer(nn.Module):
             num_layers=num_layers,
             bidirectional=True,
             dropout=dropout if num_layers > 1 else 0,
-            batch_first=True
+            batch_first=True,
         )
 
         # Transformer for long-range dependencies
@@ -42,20 +46,19 @@ class TemporalIntegrationLayer(nn.Module):
             nhead=num_heads,
             dim_feedforward=hidden_dim * 4,
             dropout=dropout,
-            batch_first=True
+            batch_first=True,
         )
         self.transformer = nn.TransformerEncoder(
-            self.transformer_layer,
-            num_layers=num_layers
+            self.transformer_layer, num_layers=num_layers
         )
 
         # 出力投影層
         self.output_projection = nn.Linear(hidden_dim, hidden_dim)
         self.layer_norm = nn.LayerNorm(hidden_dim)
 
-    def forward(self,
-                x: torch.Tensor,
-                attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """
         時間的統合の順伝播
 
@@ -78,7 +81,9 @@ class TemporalIntegrationLayer(nn.Module):
         else:
             transformer_mask = None
 
-        transformer_out = self.transformer(lstm_out, src_key_padding_mask=transformer_mask)
+        transformer_out = self.transformer(
+            lstm_out, src_key_padding_mask=transformer_mask
+        )
         # transformer_out: (batch_size, seq_len, hidden_dim)
 
         # 最終投影と正規化
@@ -87,16 +92,19 @@ class TemporalIntegrationLayer(nn.Module):
 
         return output
 
+
 class ModalityFusion(nn.Module):
     """モダリティ融合レイヤー
 
     複数モダリティの特徴量を統合し、統一された表現を生成。
     """
 
-    def __init__(self,
-                 num_modalities: int = 3,
-                 hidden_dim: int = 256,
-                 fusion_method: str = "attention"):
+    def __init__(
+        self,
+        num_modalities: int = 3,
+        hidden_dim: int = 256,
+        fusion_method: str = "attention",
+    ):
         super().__init__()
 
         self.num_modalities = num_modalities
@@ -109,7 +117,7 @@ class ModalityFusion(nn.Module):
                 nn.Linear(hidden_dim * num_modalities, hidden_dim),
                 nn.Tanh(),
                 nn.Linear(hidden_dim, num_modalities),
-                nn.Softmax(dim=-1)
+                nn.Softmax(dim=-1),
             )
         elif fusion_method == "concat":
             # 単純結合
@@ -180,66 +188,65 @@ class ModalityFusion(nn.Module):
 
         return fused
 
+
 class MultiModalFeatureEncoder(nn.Module):
     """マルチモーダル特徴量エンコーダー
 
     各モダリティのエンコーダーと融合層を統合した完全な特徴量エンコーダー。
     """
 
-    def __init__(self,
-                 price_dim: int = 156,
-                 text_dim: int = 768,
-                 economic_dim: int = 20,
-                 hidden_dim: int = 256,
-                 num_heads: int = 8,
-                 dropout: float = 0.1):
+    def __init__(
+        self,
+        price_dim: int = 156,
+        text_dim: int = 768,
+        economic_dim: int = 20,
+        hidden_dim: int = 256,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ):
         super().__init__()
 
         # 個別モダリティエンコーダー
-        from ..encoders import PriceEncoder, TextEncoder, EconomicEncoder
+        from ..encoders import EconomicEncoder, PriceEncoder, TextEncoder
 
         self.price_encoder = PriceEncoder(
             input_dim=price_dim,
             hidden_dims=[128, hidden_dim // 2],
-            output_dim=hidden_dim
+            output_dim=hidden_dim,
         )
 
         self.text_encoder = TextEncoder(
-            model_name="bert-base-uncased",
-            output_dim=hidden_dim,
-            fine_tune=True
+            model_name="bert-base-uncased", output_dim=hidden_dim, fine_tune=True
         )
 
         self.economic_encoder = EconomicEncoder(
             input_dim=economic_dim,
             hidden_dims=[64, hidden_dim // 2],
-            output_dim=hidden_dim
+            output_dim=hidden_dim,
         )
 
         # クロスモーダル・アテンション
         from ..attention import CrossModalAttention
+
         self.cross_attention = CrossModalAttention(
-            hidden_dim=hidden_dim,
-            num_heads=num_heads,
-            dropout=dropout
+            hidden_dim=hidden_dim, num_heads=num_heads, dropout=dropout
         )
 
         # 時間的統合
         self.temporal_integration = TemporalIntegrationLayer(
-            hidden_dim=hidden_dim,
-            num_layers=2,
-            num_heads=num_heads,
-            dropout=dropout
+            hidden_dim=hidden_dim, num_layers=2, num_heads=num_heads, dropout=dropout
         )
 
         # 最終出力投影
         self.output_projection = nn.Linear(hidden_dim, hidden_dim)
 
-    def forward(self,
-                price_data: torch.Tensor,
-                text_data: torch.Tensor,
-                economic_data: torch.Tensor,
-                attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self,
+        price_data: torch.Tensor,
+        text_data: torch.Tensor,
+        economic_data: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         マルチモーダル特徴量エンコーディング
 
@@ -258,9 +265,13 @@ class MultiModalFeatureEncoder(nn.Module):
         # テキスト特徴量のシーケンス化（簡易実装）
         batch_size = price_features.size(0)
         seq_len = text_data.size(1) if text_data.dim() > 1 else 1
-        text_features = self.text_encoder(text_data, attention_mask)  # (batch_size, hidden_dim)
+        text_features = self.text_encoder(
+            text_data, attention_mask
+        )  # (batch_size, hidden_dim)
 
-        economic_features = self.economic_encoder(economic_data)  # (batch_size, hidden_dim)
+        economic_features = self.economic_encoder(
+            economic_data
+        )  # (batch_size, hidden_dim)
 
         # 特徴量のシーケンス化（時間軸の追加）
         # 実際の実装では、各タイムステップの特徴量が必要

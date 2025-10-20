@@ -89,7 +89,7 @@ import { BaseExchangePrivate } from './base-private';
  *
  * @param {string} apiKey - Coincheck API key (ACCESS-KEY).
  * @param {string} apiSecret - Coincheck API secret used to compute HMAC-SHA256 signatures.
- * @returns {PrivateApi} A PrivateApi-compatible client exposing get_info2, active_orders, 
+ * @returns {PrivateApi} A PrivateApi-compatible client exposing get_info2, active_orders,
  *          trade_history, trade, and cancel_order methods.
  *
  * @throws {Error} When required inputs are invalid (e.g., invalid trade action) or when Coincheck
@@ -284,4 +284,3 @@ class CoincheckPrivate extends BaseExchangePrivate implements PrivateApi {
 export function createCoincheckPrivate(apiKey: string, apiSecret: string): PrivateApi {
     return new CoincheckPrivate(apiKey, apiSecret);
 }
- 

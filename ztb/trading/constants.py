@@ -26,20 +26,25 @@ MULTIPLIER_INDEX_SELL = 1
 MULTIPLIER_INDEX_HOLD = 2
 
 # SAC continuous action discretization thresholds
-SAC_CONTINUOUS_THRESHOLD = 0.3333  # Threshold for converting continuous actions to discrete
+SAC_CONTINUOUS_THRESHOLD = (
+    0.3333  # Threshold for converting continuous actions to discrete
+)
 SAC_CONTINUOUS_THRESHOLD_NEG = -0.3333  # Negative threshold for SELL action
+
+# Financial constants
+TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days in a year
 
 
 def get_action_name(action: int) -> str:
     """
     Get human-readable name for action.
-    
+
     Args:
         action: Action index (0=HOLD, 1=BUY, -1=SELL, or legacy 2=SELL)
-        
+
     Returns:
         Action name as a string
-        
+
     Raises:
         ValueError: If action is not a valid action index
     """
@@ -54,12 +59,12 @@ def get_action_name(action: int) -> str:
 def normalize_action(action: int) -> int:
     """
     Normalize action value to current standard.
-    
+
     Legacy support: converts old ACTION_SELL=2 to new ACTION_SELL=-1.
-    
+
     Args:
         action: Action value (may be legacy format)
-        
+
     Returns:
         Normalized action value
     """

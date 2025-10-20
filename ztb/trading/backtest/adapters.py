@@ -6,7 +6,10 @@ Provides adapters to wrap different trading strategies for unified backtest inte
 
 from typing import Any, Dict, Optional, Protocol
 
+import numpy as np
 import pandas as pd
+
+from ztb.features.sac_v427_feature_engineering import SACv427FeatureEngineer
 from ztb.training.policies.policy_utils import predict_with_masks
 
 
@@ -41,57 +44,237 @@ class StrategyAdapter(Protocol):
 class RLPolicyAdapter:
     """Adapter for RL policy (PPO trained model)."""
 
-    def __init__(self, model_path: Optional[str] = None):
-        """Initialize with trained model path."""
+    def __init__(
+        self, model_path: Optional[str] = None, enable_150d_features: bool = True
+    ):
+        """Initialize with trained model path and 150-dimensional feature support."""
         self.model_path = model_path
         self.model = None
+        self.observation_space_shape = None
+        self.enable_150d_features = enable_150d_features
+        self.feature_engineer = (
+            SACv427FeatureEngineer() if enable_150d_features else None
+        )
+        self.feature_cache = {}  # Cache for computed features
         self.hyperparameters = {
             "learning_rate": 1e-4,
             "batch_size": 64,
             "regularization_strength": 1e-5,
-            "dropout_rate": 0.1
+            "dropout_rate": 0.1,
         }
         if model_path:
-            from stable_baselines3 import SAC
+            try:
+                from stable_baselines3 import SAC
 
-            self.model = SAC.load(model_path)
+                self.model = SAC.load(model_path)
+                # Get observation space shape dynamically
+                self.observation_space_shape = self.model.observation_space.shape[0]
+                print(
+                    f"Loaded RL model with observation space: {self.observation_space_shape}"
+                )
+                if self.enable_150d_features:
+                    print("150-dimensional feature expansion enabled")
+            except Exception as e:
+                print(f"Warning: Failed to load RL model from {model_path}: {e}")
+                print("Falling back to momentum strategy")
+                self.model = None
 
     def generate_signal(
         self, data: pd.DataFrame, current_position: int
     ) -> Dict[str, Any]:
-        """Generate signal using RL policy."""
-        if self.model is None:
-            # Fallback: Simple momentum strategy
+        """Generate signal using RL policy with comprehensive error handling."""
+        try:
+            if self.model is None:
+                # Fallback: Simple momentum strategy
+                return self._momentum_signal(data, current_position)
+
+            # Input validation
+            if data.empty:
+                print("Warning: Empty data provided, using momentum fallback")
+                return self._momentum_signal(data, current_position)
+
+            if len(data) < 2:
+                print("Warning: Insufficient data points, using momentum fallback")
+                return self._momentum_signal(data, current_position)
+
+            # Enhanced feature processing with 150-dimensional expansion
+            if self.enable_150d_features and self.feature_engineer:
+                # Generate comprehensive 150+ dimensional features
+                cache_key = (
+                    f"{len(data)}_{data.index[-1]}" if len(data) > 0 else "empty"
+                )
+                if cache_key not in self.feature_cache:
+                    try:
+                        enhanced_data = self.feature_engineer.generate_v427_features(
+                            data
+                        )
+                        self.feature_cache[cache_key] = enhanced_data
+                        print(
+                            f"Generated 150+ dimensional features: {len(enhanced_data.columns)} total columns"
+                        )
+                    except Exception as feat_e:
+                        print(
+                            f"Feature engineering failed: {feat_e}, falling back to basic features"
+                        )
+                        enhanced_data = data
+                else:
+                    enhanced_data = self.feature_cache[cache_key]
+
+                # Use enhanced features
+                numeric_columns = enhanced_data.select_dtypes(
+                    include=[np.number]
+                ).columns.tolist()
+            else:
+                # Fallback to basic features
+                enhanced_data = data
+                numeric_columns = data.select_dtypes(
+                    include=[np.number]
+                ).columns.tolist()
+
+            # Remove timestamp and non-feature columns
+            exclude_cols = ["timestamp", "open", "high", "low", "volume"]
+            selected_features = [
+                col for col in numeric_columns if col not in exclude_cols
+            ]
+
+            # Prioritize features with valid values (not all NaN)
+            valid_features = []
+            for col in selected_features:
+                try:
+                    if not enhanced_data[col].isna().all():
+                        valid_features.append(col)
+                except Exception:
+                    continue  # Skip problematic columns
+
+            selected_features = valid_features[
+                : min(150, len(valid_features))
+            ]  # Limit to 150 features max
+
+            if not selected_features:
+                print("Warning: No valid features found, using basic price data")
+                selected_features = (
+                    ["close"] if "close" in enhanced_data.columns else []
+                )
+
+            if not selected_features:
+                print("Warning: No basic price data available, using momentum fallback")
+                return self._momentum_signal(data, current_position)
+
+            # Get the latest data point with error handling
+            try:
+                obs = (
+                    enhanced_data[selected_features].iloc[-1].values.astype(np.float32)
+                )
+            except (IndexError, KeyError, ValueError) as obs_e:
+                print(f"Error extracting observation: {obs_e}, using momentum fallback")
+                return self._momentum_signal(data, current_position)
+
+            # Advanced NaN handling: forward fill, then backward fill, then interpolation
+            if np.isnan(obs).any():
+                print(
+                    f"Warning: Found NaN values in {np.sum(np.isnan(obs))} features, applying advanced filling"
+                )
+                try:
+                    # Forward fill then backward fill
+                    filled_data = (
+                        enhanced_data[selected_features]
+                        .fillna(method="ffill")
+                        .fillna(method="bfill")
+                    )
+                    # Interpolate remaining NaN
+                    filled_data = filled_data.interpolate(
+                        method="linear", limit_direction="both"
+                    )
+                    obs = filled_data.iloc[-1].values.astype(np.float32)
+                    # Final fallback to 0
+                    if np.isnan(obs).any():
+                        obs = np.nan_to_num(obs, nan=0.0)
+                except Exception as nan_e:
+                    print(f"NaN handling failed: {nan_e}, using zeros")
+                    obs = np.nan_to_num(obs, nan=0.0)
+
+            print(
+                f"Using {len(obs)}/{len(selected_features)} features for RL model (150d enabled: {self.enable_150d_features})"
+            )
+
+            # Adjust to model's expected observation space
+            expected_features = self.observation_space_shape or 13
+            if len(obs) < expected_features:
+                # Pad with zeros
+                padding = np.zeros(expected_features - len(obs), dtype=np.float32)
+                obs = np.concatenate([obs, padding])
+            elif len(obs) > expected_features:
+                # Truncate to expected size
+                obs = obs[:expected_features]
+
+            print(
+                f"Final observation shape: {obs.shape} (expected: {expected_features})"
+            )
+
+            # Generate action with model
+            try:
+                action, _ = self.model.predict(obs, deterministic=True)
+                action_value = (
+                    float(action[0]) if hasattr(action, "__len__") else float(action)
+                )
+
+                # Convert to trading signal
+                if action_value > 0.1:
+                    signal_action = "buy"
+                elif action_value < -0.1:
+                    signal_action = "sell"
+                else:
+                    signal_action = "hold"
+
+                return {
+                    "action": signal_action,
+                    "confidence": abs(action_value),
+                    "raw_action": action_value,
+                    "features_used": len(selected_features),
+                    "observation_shape": obs.shape,
+                }
+
+            except Exception as pred_e:
+                print(f"Model prediction failed: {pred_e}, using momentum fallback")
+                return self._momentum_signal(data, current_position)
+
+        except Exception as e:
+            print(f"Unexpected error in generate_signal: {e}, using momentum fallback")
             return self._momentum_signal(data, current_position)
-
-        # Extract features (exclude metadata columns)
-        exclude_cols = [
-            "ts",
-            "timestamp",
-            "exchange",
-            "pair",
-            "episode_id",
-            "side",
-            "source",
-        ]
-        features = [c for c in data.columns if c not in exclude_cols]
-        print(
-            f"RL features: {len(features)}, data shape: {data.shape}, columns: {data.columns.tolist()}"
-        )
-
-        # Get latest observation
-        import numpy as np
-
-        obs = data[features].iloc[-1].values.astype(np.float32)
 
         # Predict action (using predict_with_masks for MaskablePPO support)
         # Note: No environment available in backtest adapter, so action masks won't be applied
         # TODO: Refactor to pass environment instance for proper action masking
         action, _ = predict_with_masks(self.model, obs, env=None, deterministic=True)
 
+        # Debug: Log the raw action to file
+        with open("debug_actions.log", "a") as f:
+            f.write(f"Raw action from model: {action}\n")
+
+        # Convert continuous action to discrete action
+        # SAC uses continuous actions in range [-1, 1], convert to discrete
+        if isinstance(action, (int, np.integer)):
+            # Already discrete
+            discrete_action = int(action)
+        else:
+            # Convert continuous to discrete
+            action_val = (
+                float(action[0]) if hasattr(action, "__len__") else float(action)
+            )
+            if action_val < -0.33:
+                discrete_action = -1  # SELL
+            elif action_val > 0.33:
+                discrete_action = 1  # BUY
+            else:
+                discrete_action = 0  # HOLD
+
+        # Debug: Log the discrete action to file
+        with open("debug_actions.log", "a") as f:
+            f.write(f"Discrete action: {discrete_action}\n")
+
         # Map action to signal
         action_map = {-1: "sell", 0: "hold", 1: "buy", 2: "sell"}
-        return {"action": action_map[int(action)], "confidence": 0.5}
+        return {"action": action_map[discrete_action], "confidence": 0.5}
 
     def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         """Generate signals for backtest (returns DataFrame)."""
@@ -122,13 +305,39 @@ class RLPolicyAdapter:
         if self.model is not None:
             try:
                 # Update learning rate if supported by the model
-                if "learning_rate" in hyperparameters and hasattr(self.model, 'learning_rate'):
+                if "learning_rate" in hyperparameters and hasattr(
+                    self.model, "learning_rate"
+                ):
                     # Note: This is a simplified example. Actual implementation would depend on the model type
-                    print(f"Updated model learning rate to {hyperparameters['learning_rate']}")
+                    print(
+                        f"Updated model learning rate to {hyperparameters['learning_rate']}"
+                    )
             except Exception as e:
                 print(f"Warning: Could not update model hyperparameters: {e}")
 
         print(f"Updated strategy hyperparameters: {hyperparameters}")
+
+    def clear_feature_cache(self):
+        """Clear feature cache to prevent memory leaks."""
+        cache_size = len(self.feature_cache)
+        self.feature_cache.clear()
+        print(f"Cleared feature cache ({cache_size} entries)")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get feature cache statistics for monitoring."""
+        total_entries = len(self.feature_cache)
+        memory_usage = (
+            sum(df.memory_usage(deep=True).sum() for df in self.feature_cache.values())
+            if self.feature_cache
+            else 0
+        )
+
+        return {
+            "cache_entries": total_entries,
+            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "features_enabled": self.enable_150d_features,
+            "model_loaded": self.model is not None,
+        }
 
     def _momentum_signal(
         self, data: pd.DataFrame, current_position: int
@@ -216,7 +425,31 @@ class SMACrossoverAdapter:
             self.fast_period = int(hyperparameters["fast_period"])
         if "slow_period" in hyperparameters:
             self.slow_period = int(hyperparameters["slow_period"])
-        print(f"Updated SMA parameters: fast_period={self.fast_period}, slow_period={self.slow_period}")
+        print(
+            f"Updated SMA parameters: fast_period={self.fast_period}, slow_period={self.slow_period}"
+        )
+
+    def clear_feature_cache(self):
+        """Clear feature cache to prevent memory leaks."""
+        cache_size = len(self.feature_cache)
+        self.feature_cache.clear()
+        print(f"Cleared feature cache ({cache_size} entries)")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get feature cache statistics for monitoring."""
+        total_entries = len(self.feature_cache)
+        memory_usage = (
+            sum(df.memory_usage(deep=True).sum() for df in self.feature_cache.values())
+            if self.feature_cache
+            else 0
+        )
+
+        return {
+            "cache_entries": total_entries,
+            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "features_enabled": self.enable_150d_features,
+            "model_loaded": self.model is not None,
+        }
 
 
 class BuyAndHoldAdapter:
@@ -255,6 +488,28 @@ class BuyAndHoldAdapter:
                 "signal": signal_values,
             }
         )
+
+    def clear_feature_cache(self):
+        """Clear feature cache to prevent memory leaks."""
+        cache_size = len(self.feature_cache)
+        self.feature_cache.clear()
+        print(f"Cleared feature cache ({cache_size} entries)")
+
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get feature cache statistics for monitoring."""
+        total_entries = len(self.feature_cache)
+        memory_usage = (
+            sum(df.memory_usage(deep=True).sum() for df in self.feature_cache.values())
+            if self.feature_cache
+            else 0
+        )
+
+        return {
+            "cache_entries": total_entries,
+            "estimated_memory_mb": memory_usage / (1024 * 1024),
+            "features_enabled": self.enable_150d_features,
+            "model_loaded": self.model is not None,
+        }
 
     def update_hyperparameters(self, hyperparameters: Dict[str, float]) -> None:
         """Update buy and hold strategy hyperparameters."""

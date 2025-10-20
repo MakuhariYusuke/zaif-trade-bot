@@ -528,12 +528,12 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
      total_steps: 100000
      dataset: "coingecko"
      features: "extended"
-     
+
    logging:
      level: "INFO"
      discord_webhook: "your_webhook_url"
      enable_async: true
-     
+
    monitoring:
      heartbeat_interval: 300  # 5分
      memory_threshold: 80.0   # パーセント
@@ -560,20 +560,20 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
        def run(self):
            # ハートビート開始
            self._start_heartbeat()
-           
+
            results = []
            for step in range(self.config['total_steps']):
                # 実験ロジック
                result = self.run_single_step(step)
                results.append(result)
-               
+
                # 進捗通知（1000ステップごと）
                if step % 1000 == 0:
                    progress = (step / self.config['total_steps']) * 100
                    self.logger_manager.enqueue_notification(
                        f"Progress: {progress:.1f}% ({step}/{self.config['total_steps']})"
                    )
-           
+
            return self._prepare_session_results({
                'total_steps': len(results),
                'avg_reward': sum(r['reward'] for r in results) / len(results),
@@ -596,11 +596,11 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)"
    def main():
        # 設定読み込み
        config = load_config("config/experiment_config.yaml")
-       
+
        # 実験実行
        experiment = LargeScaleExperiment(config)
        result = experiment.execute()
-       
+
        print(f"Experiment completed: {result.status}")
        print(f"Total steps: {result.metrics.get('total_steps', 0)}")
        print(f"Average reward: {result.metrics.get('avg_reward', 0):.4f}")
@@ -1091,7 +1091,7 @@ $env:EXCHANGE="coincheck"; $env:TRADE_FLOW="BUY_ONLY"; $env:TEST_FLOW_QTY="1"; $
 	- 列挙は TypeScript の文字列リテラル Union を優先（`"bid"|"ask"` / `"BUY"|"SELL"`）。
 
 - 関数の語彙（prefix）
-	- 取得系: `get*`（キャッシュ/同期）, `fetch*`（外部IO/HTTP）, 読み込み: `load*`, 保存: `save*`, 
+	- 取得系: `get*`（キャッシュ/同期）, `fetch*`（外部IO/HTTP）, 読み込み: `load*`, 保存: `save*`,
 		変更: `update*`, 追加: `append*`, 削除: `remove*`。
 	- 計算系: `calculate*`（SMA/RSI 等）, 記述/整形: `describe*`, 管理: `manage*`（例: `manageTrailingStop`）。
 	- 非同期関数名に Async 接尾辞は付けない（Promise/await で判別）。

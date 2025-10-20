@@ -1,7 +1,7 @@
 # モデル評価レポート - 検証状況
 
-**作成日**: 2025年10月10日  
-**目的**: 実取引で儲かるモデルを特定する  
+**作成日**: 2025年10月10日
+**目的**: 実取引で儲かるモデルを特定する
 **ステータス**: ⚠️ **検証中断（環境問題）**
 
 ---
@@ -10,7 +10,7 @@
 
 ### 対象モデル
 1. **v385** (ppo_reward_v385_curated.zip) - 最新・68特徴量
-2. **v384** (ppo_reward_v384_curated_60.zip) - 60k steps・68特徴量  
+2. **v384** (ppo_reward_v384_curated_60.zip) - 60k steps・68特徴量
 3. **v381** (ppo_reward_v381_revised_profit_focused.zip) - ベースライン
 
 ### 評価指標
@@ -35,7 +35,7 @@ File "ztb/training/scripts/paper_trade.py", line 187, in _load_model
 KeyboardInterrupt (during PyTorch import)
 ```
 
-**原因**: Python 3.13環境でPyTorchインポート時にクラッシュ  
+**原因**: Python 3.13環境でPyTorchインポート時にクラッシュ
 **影響**: paper_trade.pyが使用不可
 
 ### 問題2: backtest_with_schema.py ログ出力エラー
@@ -48,7 +48,7 @@ File "ztb/training/policies/policy_utils.py", line 74, in predict_with_masks
 KeyboardInterrupt (during numpy array formatting)
 ```
 
-**原因**: ログ出力時のnumpy配列フォーマットでクラッシュ  
+**原因**: ログ出力時のnumpy配列フォーマットでクラッシュ
 **影響**: backtest_with_schema.pyが使用不可
 
 ### 問題3: live_trade.py 実行時エラー
@@ -61,7 +61,7 @@ File "live_trade.py", line 438, in _load_model
 KeyboardInterrupt (during torch._dynamo import)
 ```
 
-**原因**: PyTorch動的コンパイルモジュールのインポートエラー  
+**原因**: PyTorch動的コンパイルモジュールのインポートエラー
 **影響**: live_trade.pyが使用不可
 
 ### 問題4: 既存バックテスト結果の問題
@@ -80,7 +80,7 @@ KeyboardInterrupt (during torch._dynamo import)
 }
 ```
 
-**問題点**: HOLD 100%、取引なし  
+**問題点**: HOLD 100%、取引なし
 **原因**: 環境設定orモデルの問題（要調査）
 
 ---
@@ -228,7 +228,7 @@ tensorboard --logdir logs/
 3. **マルチモデル管理** → 優先度MEDIUM（環境修復後）
 4. **スキーマバージョニング** → 優先度LOW（将来的に）
 
-**現在の最優先事項**: 
+**現在の最優先事項**:
 ✅ **環境修復** → まず1つのモデルでバックテストを成功させる
 
 ---
@@ -248,5 +248,5 @@ tensorboard --logdir logs/
 - ✅ 最も収益性の高いモデルを特定
 - ✅ 実取引での検証開始
 
-**現状**: ⚠️ **環境問題により検証中断**  
+**現状**: ⚠️ **環境問題により検証中断**
 **次のステップ**: 🔧 **環境修復 → 軽量テスト → 段階的評価**

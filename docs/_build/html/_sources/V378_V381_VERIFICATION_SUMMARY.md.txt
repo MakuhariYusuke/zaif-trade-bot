@@ -152,7 +152,7 @@ n_steps:       512    → 1024    (2x) ✅
 
 ---
 
-**作成日**: 2025-10-10  
-**分析者**: GitHub Copilot  
-**モデル**: v378_scale vs v381_revised_profit_focused  
+**作成日**: 2025-10-10
+**分析者**: GitHub Copilot
+**モデル**: v378_scale vs v381_revised_profit_focused
 **結論**: v381_revised採用を推奨 ✅

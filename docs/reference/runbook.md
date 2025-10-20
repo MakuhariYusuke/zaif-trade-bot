@@ -880,5 +880,3 @@ python -m pytest ztb/tests/unit/live/test_order_submission.py::TestOrderPreparer
 - **ValidationError**: 無効なvenue/symbol/数量/価格
 - **IdempotencyError**: 同一client_order_idの重複注文
 - **精度警告**: 量子化により価格/数量が変更された場合のログ出力
-
-

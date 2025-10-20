@@ -299,6 +299,13 @@ class RunMetadata:
 
         return "\n".join(summary)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert metadata to dictionary for JSON serialization."""
+        return {
+            "random_seed": self.random_seed,
+            "metadata": self.metadata,
+        }
+
 
 def capture_run_metadata(output_path: str, random_seed: int = 42) -> RunMetadata:
     """Convenience function to capture and save run metadata."""

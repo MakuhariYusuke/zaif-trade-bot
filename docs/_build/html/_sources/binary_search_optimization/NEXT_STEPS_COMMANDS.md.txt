@@ -1,6 +1,6 @@
 # 次のステップ実行コマンド集
 
-**作成日**: 2025年10月10日  
+**作成日**: 2025年10月10日
 **対象**: max_grad_norm の再検証 (100k×2シード)
 
 ---
@@ -59,7 +59,7 @@ Get-Content binary_search_results\max_grad_norm_binary_search.jsonl | Select-Obj
 
 ### Step 2: max_grad_norm 100k検証 (seed 123 - 再現性確認)
 
-**推定所要時間**: 5-8時間  
+**推定所要時間**: 5-8時間
 **注意**: Step 1 完了後に実行してください
 
 ```cmd
@@ -229,7 +229,7 @@ python -m ztb.training.binary_search.max_grad_norm_optimized --mode binary --max
 ```
 
 ### 実行が途中で停止
-**解決策**: 
+**解決策**:
 1. 結果ファイルを確認 (`binary_search_results\max_grad_norm_binary_search.jsonl`)
 2. 最後に評価された値を確認
 3. `--search_range` から既に評価済みの値を除外して再実行

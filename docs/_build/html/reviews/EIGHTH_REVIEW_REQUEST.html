@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="ai">
 <h1>第8回 外部AIレビュー依頼<a class="headerlink" href="#ai" title="Link to this heading"></a></h1>
 <p><strong>日付:</strong> 2025年10月8日<br />
@@ -181,7 +181,7 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns: [hold_valid, buy_valid, sell_valid]</span>
 <span class="sd">                Indices: ACTION_HOLD=0, ACTION_BUY=1, ACTION_SELL=2&quot;&quot;&quot;</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>  <span class="c1"># [HOLD, BUY, SELL]</span>
-    
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_get_forced_close_mask</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="c1"># Long: only SELL allowed → [False, False, True]</span>
@@ -189,13 +189,13 @@
     <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="c1"># Short: only BUY allowed → [False, True, False]</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-        
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_block_closing_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">mask</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Block SELL (index 2)</span>
     <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">mask</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Block BUY (index 1)</span>
-        
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_apply_position_constraints</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">mask</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># Long: block BUY (index 1)</span>
@@ -230,7 +230,7 @@
 
 <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_SELL</span><span class="p">:</span>
     <span class="n">sell_warmup_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sell_warmup_trades&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-    
+
     <span class="c1"># Check if this SELL would OPEN a short position (flat → short)</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">&lt;</span> <span class="n">sell_warmup_trades</span><span class="p">:</span>
         <span class="c1"># Only suppress SELL when opening new short during warmup</span>
@@ -238,7 +238,7 @@
             <span class="sa">f</span><span class="s2">&quot;Suppressing SHORT opening in warmup period (trade #</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">sell_warmup_trades</span><span class="si">}</span><span class="s2">)&quot;</span>
         <span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
-    
+
     <span class="c1"># After warmup OR when closing long: allow SELL</span>
     <span class="k">return</span> <span class="kc">True</span>
 </pre></div>
@@ -290,8 +290,8 @@
 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_maskable_ppo</span><span class="p">:</span>
     <span class="n">action_mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mask_provider</span><span class="o">.</span><span class="n">get_action_mask</span><span class="p">()</span>
     <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
-        <span class="n">obs</span><span class="p">,</span> 
-        <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">obs</span><span class="p">,</span>
+        <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">action_masks</span><span class="o">=</span><span class="n">action_mask</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
     <span class="p">)</span>
 </pre></div>
@@ -500,7 +500,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -511,7 +511,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

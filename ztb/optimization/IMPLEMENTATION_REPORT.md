@@ -158,7 +158,7 @@ def get_sac_parameter_spaces(preset: str):
 ```python
 def create_sac_objective_function(...):
     """SAC訓練を実行して結果を返す目的関数"""
-    
+
 def create_mock_objective_function(...):
     """テスト用モック目的関数"""
 ```
@@ -378,7 +378,7 @@ optimizer = RandomSearchOptimizer(
 
 ---
 
-**実装完了日**: 2025年10月11日  
-**総開発時間**: 約2時間  
-**総コード量**: 約2,050行  
+**実装完了日**: 2025年10月11日
+**総開発時間**: 約2時間
+**総コード量**: 約2,050行
 **テスト状況**: Random Search, Binary Search動作確認済み ✅

@@ -2,11 +2,11 @@
   "session_id": "ppo_reward_v379_dynamic",
   "algorithm": "ppo",
   "description": "Reward Improvement v2: Dynamic scale with market adaptation - v378 + volatility/trend-adjusted rewards",
-  
+
   "comment_experiment": "v379: Advanced reward function - market-adaptive rewards based on volatility and trend strength",
   "comment_strategy": "Build on v378 scale adjustments + add dynamic market-aware reward scaling",
   "comment_target": "Reduce HOLD rate to 40-50% with intelligent market-adaptive trading",
-  
+
   "comment_reward_improvements": [
     "✅ All v378 improvements (4x HOLD penalty, 3x profit, 3x trading bonus, exponential consecutive HOLD)",
     "✅ NEW: volatility_adjusted_penalty: True (increase HOLD penalty in high volatility)",
@@ -14,16 +14,16 @@
     "✅ NEW: range_market_hold_tolerance: 0.5 (reduce penalty in range-bound markets)",
     "✅ Dynamic scaling based on ATR, trend strength, and market regime"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -45,7 +45,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -66,7 +66,7 @@
       "range_market_hold_tolerance": 0.5
     }
   },
-  
+
   "training": {
     "total_timesteps": 30000,
     "checkpoint_interval": 2000,
@@ -75,7 +75,7 @@
     "n_eval_episodes": 10,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -89,9 +89,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_comparison": "Comparison with other versions:",
   "comparison": {
     "v377_baseline": {
@@ -114,7 +114,7 @@
       "risk_level": "Medium-High"
     }
   },
-  
+
   "comment_dynamic_scaling": [
     "High volatility (ATR > mean): HOLD penalty increased by 1.5-2x",
     "Strong trend (MACD, EMA alignment): Trading bonus increased by 1.5-2x",

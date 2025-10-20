@@ -1,0 +1,90 @@
+{
+  "model_name": "sac_v427_market_adaptive_ensemble",
+  "algorithm": "sac",
+  "total_timesteps": 10000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -2.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "curriculum_stage": "strong_penalty_trading",
+    "continuous_to_discrete_threshold": 0.1,
+    "feature_set": "v427_adaptive",
+    "adaptive_feature_selection": {
+      "enabled": true,
+      "regime_classifier": {
+        "adx_threshold": 25.0,
+        "volatility_percentile": 70.0
+      },
+      "attention_layer": {
+        "enabled": true,
+        "hidden_dim": 128
+      },
+      "min_weight_threshold": 0.3
+    },
+    "reward_settings": {
+      "use_simple_reward": false,
+      "reward_scale": 100.0,
+      "trading_bonus": 0.01,
+      "profit_bonuses": {
+        "trading_bonus": 0.01
+      },
+      "base_profit_bonus_atr_coeff": 1.5,
+      "base_profit_bonus_portfolio_coeff": 1.2,
+      "profit_bonus_multipliers": [1.0, 1.0, 0.8],
+      "base_action_penalty": 0.015,
+      "hold_penalty_base": 0.01,
+      "hold_penalty_position_factor": 0.04,
+      "hold_action_penalty": 0.0,
+      "buy_action_penalty": 0.0,
+      "sell_action_penalty": 0.0,
+      "reward_clip_min": -80.0,
+      "reward_clip_max": 80.0,
+      "eps": 1e-8,
+      "scale_adjustment_base": 1.0,
+      "forced_balance_scaling": 1.0
+    }
+  },
+  "logging": {
+    "log_interval": 500,
+    "eval_interval": 2500,
+    "save_interval": 2500,
+    "tensorboard_log": "./tensorboard/sac_v427",
+    "advanced_metrics": true,
+    "regime_tracking": true,
+    "ensemble_monitoring": true
+  },
+  "notes": "SAC v427: Market-adaptive ensemble system with SELL bias reduction experiments",
+  "improvements_v427": {
+    "market_adaptation": "Advanced regime detection and correlation-aware rewards",
+    "ensemble_methods": "Multi-specialized model ensemble with confidence weighting",
+    "meta_learning": "MAML-based rapid adaptation to new market conditions",
+    "federated_learning": "Privacy-preserving strategy aggregation across market segments",
+    "continual_learning": "Knowledge retention and catastrophic forgetting prevention",
+    "reward_engineering": "Market-correlated reward functions with risk adjustment",
+    "expected_outcomes": "Target 15-25% annual returns with <15% max drawdown"
+  },
+  "eval_freq": 10000,
+  "n_eval_episodes": 10,
+  "save_freq": 25000
+}

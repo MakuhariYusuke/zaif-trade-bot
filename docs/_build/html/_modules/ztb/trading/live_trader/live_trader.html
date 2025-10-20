@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.trading.live_trader.live_trader</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -218,7 +218,7 @@
         <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;LiveTrader.__init__ started&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;LiveTrader.__init__ started&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Quick dry-run initialization</span>
         <span class="k">if</span> <span class="n">dry_run</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Dry-run mode: using simplified initialization with live components&quot;</span><span class="p">)</span>
@@ -244,7 +244,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span> <span class="o">=</span> <span class="mi">64</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">schema_available</span> <span class="o">=</span> <span class="kc">False</span>
-            
+
             <span class="c1"># Initialize essential attributes for dry-run</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">price_cache</span> <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="n">ttl_seconds</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">=</span> <span class="mf">0.0</span>
@@ -259,7 +259,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_current_step</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_counter</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_interval</span> <span class="o">=</span> <span class="mi">100</span>
-            
+
             <span class="c1"># Initialize exchange adapter for live price access in dry-run</span>
             <span class="n">venue</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">options</span><span class="o">.</span><span class="n">venue</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">venue</span> <span class="o">==</span> <span class="s2">&quot;coincheck&quot;</span><span class="p">:</span>
@@ -269,7 +269,7 @@
                 <span class="n">adapter_name</span> <span class="o">=</span> <span class="s2">&quot;coincheck&quot;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unsupported venue for dry-run: </span><span class="si">{</span><span class="n">venue</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">broker_registry</span> <span class="o">=</span> <span class="n">get_broker_registry</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">exchange_adapter</span> <span class="o">=</span> <span class="n">broker_registry</span><span class="o">.</span><span class="n">get_broker</span><span class="p">(</span>
@@ -282,7 +282,7 @@
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize </span><span class="si">{</span><span class="n">venue</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> adapter for dry-run: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">exchange_adapter</span> <span class="o">=</span> <span class="kc">None</span>
-            
+
             <span class="c1"># Initialize PositionManager for dry-run</span>
             <span class="k">if</span> <span class="n">position_manager_available</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -293,14 +293,14 @@
                             <span class="bp">self</span><span class="o">.</span><span class="n">allow_reverse</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;allow_reverse&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">max_position_size</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                                <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> 
+                                <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span>
                                 <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
                             <span class="p">)</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">enforce_reverse_cooldown</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enforce_reverse_cooldown&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span> <span class="mf">200000.0</span><span class="p">)</span>
-                            
+
                     <span class="n">position_config</span> <span class="o">=</span> <span class="n">LivePositionConfig</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-                    
+
                     <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span> <span class="o">=</span> <span class="n">PositionManager</span><span class="p">(</span>  <span class="c1"># type: ignore[name-defined]</span>
                         <span class="n">config</span><span class="o">=</span><span class="n">position_config</span><span class="p">,</span>
                         <span class="n">get_price_callback</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_last_valid_price&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">5000000.0</span>
@@ -312,7 +312,7 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;PositionManager not available, using legacy position logic&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Initialize action mask provider for dry-run</span>
             <span class="n">mask_config</span> <span class="o">=</span> <span class="n">ActionMaskConfig</span><span class="p">(</span>
                 <span class="n">min_holding_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
@@ -322,7 +322,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">mask_provider</span> <span class="o">=</span> <span class="n">ActionMaskProvider</span><span class="p">(</span><span class="n">mask_config</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_is_maskable_ppo</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_position_entry_step</span> <span class="o">=</span> <span class="mi">0</span>
-            
+
             <span class="c1"># Initialize minimal components for dry-run</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">trading_loop</span> <span class="o">=</span> <span class="n">TradingLoop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">feature_computation</span> <span class="o">=</span> <span class="n">FeatureComputation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
@@ -331,7 +331,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">model_loading</span> <span class="o">=</span> <span class="n">ModelLoading</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
             <span class="c1"># Load model for dry-run</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_loading</span><span class="o">.</span><span class="n">load_model</span><span class="p">()</span>
-            
+
             <span class="c1"># Initialize price history with current live price for dry-run</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Get live price synchronously for dry-run initialization</span>
@@ -353,7 +353,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">=</span> <span class="n">fallback_price</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">fallback_price</span><span class="p">]</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span>
-            
+
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Dry-run initialization completed with live components&quot;</span><span class="p">)</span>
             <span class="k">return</span>
 
@@ -456,14 +456,14 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
                         <span class="c1"># Bug #28 fix: Pass max_position_size to prevent scale mismatch</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">max_position_size</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-                            <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> 
+                            <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span>
                             <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
                         <span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">enforce_reverse_cooldown</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enforce_reverse_cooldown&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;initial_portfolio_value&quot;</span><span class="p">,</span> <span class="mf">200000.0</span><span class="p">)</span>
-                        
+
                 <span class="n">position_config</span> <span class="o">=</span> <span class="n">LivePositionConfig</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-                
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span> <span class="o">=</span> <span class="n">PositionManager</span><span class="p">(</span>  <span class="c1"># type: ignore[name-defined]</span>
                     <span class="n">config</span><span class="o">=</span><span class="n">position_config</span><span class="p">,</span>
                     <span class="n">get_price_callback</span><span class="o">=</span><span class="k">lambda</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_last_valid_price&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">5000000.0</span>
@@ -489,12 +489,12 @@
 
         <span class="c1"># Initialize price validation</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">=</span> <span class="mf">0.0</span>
-        
+
         <span class="c1"># Initialize schema attributes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">schema_available</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span> <span class="o">=</span> <span class="mi">64</span>  <span class="c1"># Default</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="c1"># Initialize action mask provider for MaskablePPO support (Bug #27 fix)</span>
         <span class="n">mask_config</span> <span class="o">=</span> <span class="n">ActionMaskConfig</span><span class="p">(</span>
             <span class="n">min_holding_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
@@ -525,7 +525,7 @@
         <span class="c1"># Initialize utility components</span>
         <span class="c1"># Price cache for API response caching (TTL: 30 seconds)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">price_cache</span> <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="n">ttl_seconds</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span>
-        
+
         <span class="c1"># Rate limiter for API calls (1 request per second, burst limit 5)</span>
         <span class="n">rate_limit_config</span> <span class="o">=</span> <span class="n">RateLimitConfig</span><span class="p">(</span>
             <span class="n">requests_per_second</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
@@ -533,7 +533,7 @@
             <span class="n">window_seconds</span><span class="o">=</span><span class="mf">1.0</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">rate_limiter</span> <span class="o">=</span> <span class="n">TokenBucketRateLimiter</span><span class="p">(</span><span class="n">rate_limit_config</span><span class="p">)</span>
-        
+
         <span class="c1"># Circuit breaker for API protection (5 failures -&gt; open, 60s recovery)</span>
         <span class="n">circuit_config</span> <span class="o">=</span> <span class="n">CircuitBreakerConfig</span><span class="p">(</span>
             <span class="n">failure_threshold</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
@@ -542,7 +542,7 @@
             <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">api_circuit_breaker</span> <span class="o">=</span> <span class="n">CircuitBreaker</span><span class="p">(</span><span class="s2">&quot;coincheck_api&quot;</span><span class="p">,</span> <span class="n">circuit_config</span><span class="p">)</span>
-        
+
         <span class="c1"># Update price history if adapter is available (skip in dry-run)</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange_adapter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_update_price_history</span><span class="p">()</span>
@@ -554,7 +554,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">price_history</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">mock_price</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">,</span> <span class="mi">100</span><span class="p">))</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Price history update deferred until adapter is available&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Memory optimization: Periodic cleanup counter</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_counter</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_interval</span> <span class="o">=</span> <span class="mi">100</span>  <span class="c1"># Clean up every 100 iterations</span>
@@ -572,7 +572,7 @@
             <span class="n">feature_info</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span><span class="si">}</span><span class="s2"> features (schema-validated ✅)&quot;</span>
         <span class="k">elif</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;expected_features&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span><span class="p">:</span>
             <span class="n">feature_info</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span><span class="si">}</span><span class="s2"> features (detected)&quot;</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
             <span class="s2">&quot;🚀 BTC/JPY Live Trading Started&quot;</span><span class="p">,</span>
             <span class="sa">f</span><span class="s2">&quot;Model: </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="se">\n</span><span class="s2">Strategy: Sell-biased</span><span class="se">\n</span><span class="s2">Mode: </span><span class="si">{</span><span class="s1">&#39;DEMO&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">demo_mode</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;LIVE&#39;</span><span class="si">}</span><span class="se">\n</span><span class="s2">Features: </span><span class="si">{</span><span class="n">feature_info</span><span class="si">}</span><span class="se">\n</span><span class="s2">Trading Mode: Normal (1M timeframe)</span><span class="se">\n</span><span class="s2">Utils: RateLimiter+CircuitBreaker+Cache enabled&quot;</span><span class="p">,</span>
@@ -701,9 +701,9 @@
                     <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Traceback: </span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Traceback: </span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="n">consecutive_errors</span> <span class="o">+=</span> <span class="mi">1</span>
-                    
+
                     <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="s2">&quot;⚠️ Trading Error&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Critical error in iteration </span><span class="si">{</span><span class="n">iteration_count</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
-                    
+
                     <span class="k">if</span> <span class="n">consecutive_errors</span> <span class="o">&gt;=</span> <span class="n">max_consecutive_errors</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">), stopping trading loop&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span><span class="s2">&quot;🚨 CRITICAL: Trading Stopped&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Too many consecutive errors (</span><span class="si">{</span><span class="n">consecutive_errors</span><span class="si">}</span><span class="s2">). Manual intervention required.&quot;</span><span class="p">,</span> <span class="s2">&quot;error&quot;</span><span class="p">)</span>
@@ -735,7 +735,7 @@
 <span class="sd">            Current price as float</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
-        
+
         <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_async_get_price</span><span class="p">():</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange_adapter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
@@ -747,7 +747,7 @@
                     <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get price from adapter: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
-        
+
         <span class="c1"># Run async function synchronously</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">price</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">_async_get_price</span><span class="p">())</span>
@@ -756,7 +756,7 @@
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to get current price: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Fallback to last valid price or mock price</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span>
@@ -771,10 +771,10 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
                 <span class="k">return</span> <span class="mf">50.0</span>
-                
+
             <span class="n">gains</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">losses</span> <span class="o">=</span> <span class="p">[]</span>
-            
+
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">prices</span><span class="p">)):</span>
                 <span class="n">change</span> <span class="o">=</span> <span class="n">prices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">prices</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
                 <span class="k">if</span> <span class="n">change</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -783,19 +783,19 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">gains</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
                     <span class="n">losses</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="n">change</span><span class="p">)</span>
-            
+
             <span class="n">avg_gain</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">gains</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">gains</span><span class="p">)</span> <span class="k">if</span> <span class="n">gains</span> <span class="k">else</span> <span class="mi">0</span>
             <span class="n">avg_loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span> <span class="k">if</span> <span class="n">losses</span> <span class="k">else</span> <span class="mi">0</span>
-            
+
             <span class="k">if</span> <span class="n">avg_loss</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">return</span> <span class="mf">100.0</span>
-                
+
             <span class="n">rs</span> <span class="o">=</span> <span class="n">avg_gain</span> <span class="o">/</span> <span class="n">avg_loss</span>
             <span class="n">rsi</span> <span class="o">=</span> <span class="mi">100</span> <span class="o">-</span> <span class="p">(</span><span class="mi">100</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">rs</span><span class="p">))</span>
-            
+
             <span class="c1"># Validate RSI is in reasonable range</span>
             <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mf">100.0</span><span class="p">,</span> <span class="n">rsi</span><span class="p">))</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error computing RSI: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="mf">50.0</span>
@@ -815,42 +815,42 @@
 <span class="sd">            pnl: PnL from the action</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Use PositionManager for execution</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span>
-                    <span class="n">action</span><span class="p">,</span> 
+                    <span class="n">action</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_current_step</span><span class="p">,</span>
                     <span class="n">min_holding_period</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_holding_period&quot;</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
                 <span class="p">)</span>
-                
+
                 <span class="c1"># Sync position state with PositionManager</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">total_pnl</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
-                
+
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action executed via PositionManager: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ACTION_NAMES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action</span><span class="p">,</span><span class="w"> </span><span class="sa">f</span><span class="s1">&#39;UNKNOWN(</span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">, PnL: </span><span class="si">{</span><span class="n">pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="n">pnl</span>
-                
+
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to execute action via PositionManager: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="mf">0.0</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Legacy execution logic (fallback)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;PositionManager not available, using legacy execution logic&quot;</span><span class="p">)</span>
-            
+
             <span class="n">old_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span>
             <span class="n">current_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_valid_price</span>
-            
+
             <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># BUY</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat or short</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mi">1</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;BUY executed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;min_trade_amount&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.001</span><span class="p">)</span><span class="si">}</span><span class="s2"> BTC at ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    
+
                     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
                             <span class="s2">&quot;📈 Trade Executed&quot;</span><span class="p">,</span>
@@ -859,16 +859,16 @@
                             <span class="sa">f</span><span class="s2">&quot;New Position: long&quot;</span><span class="p">,</span>
                             <span class="s2">&quot;success&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
-                    
+
                     <span class="k">return</span> <span class="o">-</span><span class="n">current_price</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># Entry cost</span>
-                    
+
             <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># SELL</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Flat or long</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="n">current_price</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SELL executed: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;min_trade_amount&#39;</span><span class="p">,</span><span class="w"> </span><span class="mf">0.001</span><span class="p">)</span><span class="si">}</span><span class="s2"> BTC at ¥</span><span class="si">{</span><span class="n">current_price</span><span class="si">:</span><span class="s2">,.0f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    
+
                     <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
                             <span class="s2">&quot;📈 Trade Executed&quot;</span><span class="p">,</span>
@@ -877,28 +877,28 @@
                             <span class="sa">f</span><span class="s2">&quot;New Position: short&quot;</span><span class="p">,</span>
                             <span class="s2">&quot;success&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
-                    
+
                     <span class="k">return</span> <span class="o">-</span><span class="n">current_price</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;transaction_cost&#39;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># Entry cost</span>
-            
+
             <span class="c1"># Calculate PnL if position was closed/reversed</span>
             <span class="k">if</span> <span class="n">old_position</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="ow">and</span> <span class="n">old_position</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">old_position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Closing long position</span>
                     <span class="n">pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>  <span class="c1"># Closing short position</span>
                     <span class="n">pnl</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
-                
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">+=</span> <span class="n">pnl</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Position closed, PnL: </span><span class="si">{</span><span class="n">pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">, Total PnL: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                
+
                 <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_run</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
                         <span class="s2">&quot;📊 Position Update&quot;</span><span class="p">,</span>
                         <span class="sa">f</span><span class="s2">&quot;PnL: </span><span class="si">{</span><span class="n">pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY</span><span class="se">\n</span><span class="s2">Total PnL: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY</span><span class="se">\n</span><span class="s2">Trades: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                         <span class="s2">&quot;info&quot;</span><span class="p">,</span>
                     <span class="p">)</span>
-                
+
                 <span class="k">return</span> <span class="n">pnl</span>
-            
+
             <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># HOLD or no action</span>
 
 <div class="viewcode-block" id="LiveTrader.get_health_status">
@@ -921,7 +921,7 @@
             <span class="c1"># Fallback to current price</span>
             <span class="n">current_price</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_current_price</span><span class="p">())</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_safe_update_price_history</span><span class="p">([</span><span class="n">current_price</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;price_history_length&quot;</span><span class="p">])</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_safe_update_price_history</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prices</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Safely update price history with None checks.&quot;&quot;&quot;</span>
         <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
@@ -934,7 +934,7 @@
             <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No valid prices to update history&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_periodic_cleanup</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Perform periodic memory cleanup to prevent accumulation.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_counter</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -1085,7 +1085,7 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Observation shape: </span><span class="si">{</span><span class="n">obs_space</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model action space: </span><span class="si">{</span><span class="n">action_space</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action space type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">action_space</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Check if action space is continuous</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">gymnasium</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gym</span>
@@ -1101,7 +1101,7 @@
                 <span class="n">Box</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
                 <span class="n">Discrete</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Could not import gym/gymnasium spaces, cannot detect action space type&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action_space</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">is_continuous_action</span> <span class="o">=</span> <span class="kc">True</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Detected continuous action space - will discretize actions&quot;</span><span class="p">)</span>
@@ -1118,40 +1118,40 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.schema_env_factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_env_from_model_path</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.core.feature_schema_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeatureSchemaManager</span>
-            
+
             <span class="c1"># Load model schema</span>
             <span class="n">model_name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span><span class="o">.</span><span class="n">stem</span>
             <span class="n">schema_manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
-            
+
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">metadata</span> <span class="o">=</span> <span class="n">schema_manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Schema loaded for model: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Expected features: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Schema hash: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Created at: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">created_at</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                
+
                 <span class="c1"># Store schema info for feature validation</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">model_schema_hash</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">schema_available</span> <span class="o">=</span> <span class="kc">True</span>
-                
+
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📋 Model feature requirements:&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Total: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   First 5: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Last 5: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                
+
             <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Schema not found for model: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Schema file expected at: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">ztb_config</span><span class="o">.</span><span class="n">get_model_dir</span><span class="p">()</span><span class="si">}</span><span class="s2">/schemas/</span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Falling back to legacy validation&quot;</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Recommendation: Run migration if this is an old model&quot;</span><span class="p">)</span>
-                
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">model_schema_hash</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">schema_available</span> <span class="o">=</span> <span class="kc">False</span>
-                
+
         <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Schema system not available: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Using legacy feature validation&quot;</span><span class="p">)</span>
@@ -1202,7 +1202,7 @@
             <span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Exchange adapter not available, cannot fetch balance&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{}</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="n">balances</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">exchange_adapter</span><span class="o">.</span><span class="n">get_balance</span><span class="p">(</span><span class="n">currency</span><span class="o">=</span><span class="n">currency</span><span class="p">)</span>
             <span class="n">result</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1506,7 +1506,7 @@
         <span class="c1"># ========================================================================</span>
         <span class="c1"># Determine expected feature count from schema or model</span>
         <span class="n">expected_features</span> <span class="o">=</span> <span class="mi">68</span>  <span class="c1"># Default fallback</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">schema_available</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Use schema information (most reliable)</span>
             <span class="n">expected_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_features</span>
@@ -1571,7 +1571,7 @@
             <span class="c1"># Bug #33 Fix: Warmup only restricts SHORT opening, not position closing</span>
             <span class="c1"># Allow warmup period before enabling short positions</span>
             <span class="n">sell_warmup_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sell_warmup_trades&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
-            
+
             <span class="c1"># Check if this SELL would OPEN a short position (flat → short)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">&lt;</span> <span class="n">sell_warmup_trades</span><span class="p">:</span>
                 <span class="c1"># Only suppress SELL when opening new short during warmup</span>
@@ -1580,18 +1580,18 @@
                     <span class="sa">f</span><span class="s2">&quot;Suppressing SHORT opening in warmup period (trade #</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">sell_warmup_trades</span><span class="si">}</span><span class="s2">)&quot;</span>
                 <span class="p">)</span>
                 <span class="k">return</span> <span class="kc">False</span>
-            
+
             <span class="c1"># After warmup OR when closing long: allow SELL</span>
             <span class="c1"># (position &gt; 0: closing long, position == 0 and trades &gt;= warmup: opening short OK)</span>
             <span class="k">return</span> <span class="kc">True</span>
-            
+
         <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_BUY</span><span class="p">:</span>  <span class="c1"># Buy signal</span>
             <span class="c1"># Bug #41 Fix: Always allow BUY when closing short position</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Closing short position (short → flat or short → long)</span>
                 <span class="c1"># Always allow position closing regardless of probability filter</span>
                 <span class="k">return</span> <span class="kc">True</span>
-            
+
             <span class="c1"># Promote BUY actions to balance with SELL bias</span>
             <span class="c1"># Use higher probability for BUY to counteract SELL bias from reward function</span>
             <span class="n">buy_probability</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
@@ -1670,7 +1670,7 @@
             <span class="c1"># Use PositionManager for correct position and PnL management</span>
             <span class="n">old_position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
             <span class="n">old_trades</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
-            
+
             <span class="c1"># Execute action through PositionManager</span>
             <span class="c1"># Note: Using _current_step=0 since live trading doesn&#39;t have step counter</span>
             <span class="c1"># and min_holding_period=0 to allow flexible trading</span>
@@ -1679,11 +1679,11 @@
                 <span class="n">current_step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>  <span class="c1"># Live trading doesn&#39;t use step-based timing</span>
                 <span class="n">min_holding_period</span><span class="o">=</span><span class="mi">0</span>  <span class="c1"># No min holding period for live trading</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># Sync state from PositionManager</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">entry_price</span>
-            
+
             <span class="c1"># Update position entry step for mask provider (Bug #27 fix)</span>
             <span class="k">if</span> <span class="n">old_position</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Position opened</span>
@@ -1691,7 +1691,7 @@
             <span class="k">elif</span> <span class="n">old_position</span> <span class="o">!=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Position closed</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_position_entry_step</span> <span class="o">=</span> <span class="mi">0</span>
-            
+
             <span class="c1"># Convert numeric position to string representation</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">position_str</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
@@ -1699,12 +1699,12 @@
                 <span class="n">position_str</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">position_str</span> <span class="o">=</span> <span class="s2">&quot;flat&quot;</span>
-            
+
             <span class="c1"># Update trade counters</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">&gt;</span> <span class="n">old_trades</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">trades_count</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">daily_trades</span> <span class="o">+=</span> <span class="mi">1</span>
-            
+
             <span class="c1"># Execute actual trade if position changed</span>
             <span class="k">if</span> <span class="n">old_position</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">position</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="n">ACTION_BUY</span><span class="p">:</span>
@@ -1727,13 +1727,13 @@
                             <span class="sa">f</span><span class="s2">&quot;New Position: </span><span class="si">{</span><span class="n">position_str</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
                             <span class="s2">&quot;success&quot;</span><span class="p">,</span>
                         <span class="p">)</span>
-            
+
             <span class="c1"># Bug #29 fix: Always sync realized_pnl, even when trade_pnl is 0</span>
             <span class="c1"># (Opening positions have 0 trade_pnl but negative entry fees)</span>
             <span class="n">old_total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">position_manager</span><span class="o">.</span><span class="n">realized_pnl</span>
             <span class="n">pnl_change</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">-</span> <span class="n">old_total_pnl</span>
-            
+
             <span class="c1"># Validate PnL if it changed</span>
             <span class="k">if</span> <span class="n">pnl_change</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
                 <span class="c1"># Validate PnL calculation (Reviewer B recommendation)</span>
@@ -1744,7 +1744,7 @@
                     <span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">=</span> <span class="n">old_total_pnl</span>
                     <span class="n">pnl_change</span> <span class="o">=</span> <span class="mf">0.0</span>
-                
+
                 <span class="c1"># Sanity check: PnL change shouldn&#39;t exceed 10x estimated portfolio value</span>
                 <span class="c1"># Estimate portfolio as 1M JPY base + total accumulated PnL</span>
                 <span class="n">estimated_portfolio</span> <span class="o">=</span> <span class="mf">1_000_000.0</span> <span class="o">+</span> <span class="n">old_total_pnl</span>
@@ -1755,7 +1755,7 @@
                         <span class="sa">f</span><span class="s2">&quot;(estimated portfolio: </span><span class="si">{</span><span class="n">estimated_portfolio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY). &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;This may indicate a calculation bug. Please verify.&quot;</span>
                     <span class="p">)</span>
-                
+
                 <span class="c1"># Update auto-stop system with PnL change</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_stop</span> <span class="ow">and</span> <span class="n">pnl_change</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">auto_stop</span><span class="o">.</span><span class="n">update_trade_result</span><span class="p">(</span>
@@ -1769,7 +1769,7 @@
                             <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(),</span>
                         <span class="p">},</span>
                     <span class="p">)</span>
-                
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">_send_notification</span><span class="p">(</span>
                     <span class="s2">&quot;📊 Position Update&quot;</span><span class="p">,</span>
                     <span class="sa">f</span><span class="s2">&quot;PnL: </span><span class="si">{</span><span class="n">trade_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY</span><span class="se">\n</span><span class="s2">Total PnL: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY</span><span class="se">\n</span><span class="s2">Position: </span><span class="si">{</span><span class="n">position_str</span><span class="si">}</span><span class="se">\n</span><span class="s2">Trades: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
@@ -1824,7 +1824,7 @@
                 <span class="k">else</span><span class="p">:</span>  <span class="c1"># Closing short position</span>
                     <span class="n">pnl</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">-</span> <span class="n">current_price</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span>
                         <span class="s2">&quot;min_trade_amount&quot;</span>
-                    <span class="p">]</span> 
+                    <span class="p">]</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">+=</span> <span class="n">pnl</span>
 
@@ -1863,7 +1863,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -1874,7 +1874,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="P1実装サマリー：1M学習前の品質向上施策" href="P1_IMPLEMENTATION_SUMMARY.html" />
-    <link rel="prev" title="Implementation" href="index.html" /> 
+    <link rel="prev" title="Implementation" href="index.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -140,7 +140,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="p0">
 <h1>P0実装完了サマリー（手戻り防止・地雷埋め戻し）<a class="headerlink" href="#p0" title="Link to this heading"></a></h1>
 <p><strong>実装日時</strong>: 2025年10月7日<br />
@@ -250,10 +250,10 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">compute_dataset_metadata</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
     <span class="c1"># SHA256ハッシュ計算</span>
     <span class="n">dataset_sha256</span> <span class="o">=</span> <span class="n">compute_file_hash</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span>
-    
+
     <span class="c1"># データセット読み込み（CSV/pickle対応）</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="o">/</span><span class="n">pickle</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span>
-    
+
     <span class="c1"># メタデータ抽出</span>
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;sha256&quot;</span><span class="p">:</span> <span class="n">dataset_sha256</span><span class="p">,</span>
@@ -364,7 +364,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># ロングポジション保有中</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_close_position</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_consecutive_trade_steps</span> <span class="o">+=</span> <span class="mi">1</span>
-            
+
             <span class="c1"># allow_reverse=Trueの場合のみ、即座にショートを開く</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">allow_reverse</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_open_position</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
@@ -549,7 +549,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -560,7 +560,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

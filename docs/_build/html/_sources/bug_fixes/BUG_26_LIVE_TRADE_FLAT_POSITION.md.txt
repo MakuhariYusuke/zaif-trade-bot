@@ -1,9 +1,9 @@
 # 🐛 Bug #26: Live Trading Cannot Achieve Flat Position
 
-**Discovered By:** External Reviewer B (Fifth Review Cycle)  
-**Discovery Date:** 2024 (Fifth Review)  
-**Status:** 🔴 OPEN - Not Yet Fixed  
-**Severity:** CRITICAL - PRODUCTION BLOCKER  
+**Discovered By:** External Reviewer B (Fifth Review Cycle)
+**Discovery Date:** 2024 (Fifth Review)
+**Status:** 🔴 OPEN - Not Yet Fixed
+**Severity:** CRITICAL - PRODUCTION BLOCKER
 **Category:** Position Management, Trading Logic, Risk Controls
 
 ---
@@ -21,8 +21,8 @@ This makes emergency stops impossible, violates the 3-action trading model (BUY/
 
 ## Location
 
-**File:** `live_trade.py`  
-**Lines:** 855-909 (in `_update_position` method)  
+**File:** `live_trade.py`
+**Lines:** 855-909 (in `_update_position` method)
 **Function:** `LiveTrader._update_position()`
 
 ---
@@ -244,13 +244,13 @@ def _update_position(self, action: int, current_price: float) -> float:
     """Update position based on action."""
     size = self.portfolio_value * 0.01 / current_price
     realized_pnl = 0.0
-    
+
     if action == 1:  # BUY
         if self.current_position == "short":
             # ✅ Just close to flat, don't open long
             old_entry_price = self.entry_price
             realized_pnl = (old_entry_price - current_price) * abs(self.position_size)
-            
+
             self.current_position = "flat"  # ✅ Go flat
             self.position_size = 0.0         # ✅ Zero size
             self.entry_price = 0.0           # ✅ Clear entry price
@@ -262,13 +262,13 @@ def _update_position(self, action: int, current_price: float) -> float:
         elif self.current_position == "long":
             # Already long, do nothing (or could add to position)
             pass
-    
+
     elif action == 2:  # SELL
         if self.current_position == "long":
             # ✅ Just close to flat, don't open short
             old_entry_price = self.entry_price
             realized_pnl = (current_price - old_entry_price) * abs(self.position_size)
-            
+
             self.current_position = "flat"  # ✅ Go flat
             self.position_size = 0.0         # ✅ Zero size
             self.entry_price = 0.0           # ✅ Clear entry price
@@ -280,7 +280,7 @@ def _update_position(self, action: int, current_price: float) -> float:
         elif self.current_position == "short":
             # Already short, do nothing (or could add to position)
             pass
-    
+
     return realized_pnl
 ```
 
@@ -306,25 +306,25 @@ def _update_position(self, action: int, current_price: float) -> float:
             get_current_price=lambda: current_price,
             get_portfolio_value=lambda: self.portfolio_value
         )
-    
+
     # Sync current state to PositionManager
     self._position_manager.position = self.position_size
     if self.current_position != "flat":
         self._position_manager.entry_price = self.entry_price
     else:
         self._position_manager.entry_price = 0.0
-    
+
     # Execute action using proven logic
     realized_pnl = self._position_manager.execute_action(
         action=action,
         current_price=current_price,
         portfolio_value=self.portfolio_value
     )
-    
+
     # Sync state back from PositionManager
     self.position_size = self._position_manager.position
     self.entry_price = self._position_manager.entry_price
-    
+
     # Derive current_position from position_size (single source of truth)
     if self.position_size > 0:
         self.current_position = "long"
@@ -332,7 +332,7 @@ def _update_position(self, action: int, current_price: float) -> float:
         self.current_position = "short"
     else:
         self.current_position = "flat"
-    
+
     return realized_pnl
 ```
 
@@ -357,26 +357,26 @@ def _update_position(self, action: int, current_price: float) -> float:
 ```python
 def test_live_trader_position_closure():
     """Regression test for Bug #26: Live trading can't go flat.
-    
+
     Verifies that closing positions goes to flat, not reverse.
     """
     config = create_test_config()
-    
+
     # Test 1: Close short → should go flat
     trader = LiveTrader(config)
     trader._update_position(action=2, current_price=100.0)  # Open short
     assert trader.current_position == "short"
-    
+
     trader._update_position(action=1, current_price=95.0)   # Close short
     assert trader.current_position == "flat", \
         f"Closing short should go flat, got {trader.current_position}"
     assert trader.position_size == 0.0
-    
+
     # Test 2: Close long → should go flat
     trader = LiveTrader(config)
     trader._update_position(action=1, current_price=100.0)  # Open long
     assert trader.current_position == "long"
-    
+
     trader._update_position(action=2, current_price=105.0)  # Close long
     assert trader.current_position == "flat", \
         f"Closing long should go flat, got {trader.current_position}"
@@ -384,11 +384,11 @@ def test_live_trader_position_closure():
 
 def test_live_trader_matches_position_manager_behavior():
     """Verify LiveTrader position transitions match PositionManager.
-    
+
     Both should transition between positions identically.
     """
     config = create_test_config()
-    
+
     test_scenarios = [
         # (start_action, start_price, end_action, end_price, expected_final_position)
         (2, 100.0, 1, 95.0, 0.0),   # Short → close → flat
@@ -396,7 +396,7 @@ def test_live_trader_matches_position_manager_behavior():
         (0, 100.0, 1, 100.0, 1.0),  # Flat → buy → long
         (0, 100.0, 2, 100.0, -1.0), # Flat → sell → short
     ]
-    
+
     for start_action, start_price, end_action, end_price, expected_pos_sign in test_scenarios:
         # Test with LiveTrader
         trader = LiveTrader(config)
@@ -404,7 +404,7 @@ def test_live_trader_matches_position_manager_behavior():
             trader._update_position(start_action, start_price)
         trader._update_position(end_action, end_price)
         trader_final_pos = trader.position_size
-        
+
         # Test with PositionManager
         pm = PositionManager(
             position_config=config.position,
@@ -415,7 +415,7 @@ def test_live_trader_matches_position_manager_behavior():
             pm.execute_action(start_action, start_price, config.initial_capital)
         pm.execute_action(end_action, end_price, config.initial_capital)
         pm_final_pos = pm.position
-        
+
         # Sign of position should match
         assert np.sign(trader_final_pos) == np.sign(pm_final_pos) == expected_pos_sign, \
             f"Position sign mismatch: trader={np.sign(trader_final_pos)}, pm={np.sign(pm_final_pos)}, expected={expected_pos_sign}"
@@ -426,36 +426,36 @@ def test_live_trader_matches_position_manager_behavior():
 ```python
 def test_live_trader_emergency_stop():
     """Test emergency stop functionality.
-    
+
     Verify that operator can exit all positions to cash.
     """
     config = create_test_config()
     trader = LiveTrader(config)
-    
+
     # Scenario 1: Emergency stop from long position
     trader._update_position(action=1, current_price=100.0)  # Open long
     assert trader.current_position == "long"
-    
+
     # Emergency: close position
     trader._update_position(action=2, current_price=90.0)   # SELL to close
-    
+
     # Should be flat (in cash, safe)
     assert trader.current_position == "flat", \
         "Emergency stop should exit to cash (flat)"
     assert trader.position_size == 0.0
-    
+
     # Should be able to stay flat (not forced to trade)
     trader._update_position(action=0, current_price=85.0)   # HOLD
     assert trader.current_position == "flat"
-    
+
     # Scenario 2: Emergency stop from short position
     trader = LiveTrader(config)
     trader._update_position(action=2, current_price=100.0)  # Open short
     assert trader.current_position == "short"
-    
+
     # Emergency: close position
     trader._update_position(action=1, current_price=110.0)  # BUY to close
-    
+
     # Should be flat (in cash, safe)
     assert trader.current_position == "flat", \
         "Emergency stop should exit to cash (flat)"
@@ -571,7 +571,7 @@ Explicit API for emergency scenarios:
 ```python
 def emergency_stop(self, current_price: float) -> float:
     """Immediately close all positions and go flat.
-    
+
     Returns:
         realized_pnl: PnL from closing position
     """

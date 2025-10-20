@@ -5,11 +5,12 @@ This module provides standardized environment configurations to reduce duplicati
 across training scripts and improve consistency.
 """
 
-from typing import Dict, Any, List, Optional, TypedDict, cast
+from typing import Any, Dict, List, Optional, TypedDict, cast
 
 
 class TradingEnvConfig(TypedDict, total=False):
     """Type definition for trading environment configuration."""
+
     reward_scaling: float
     transaction_cost: float
     position_penalty_scale: float
@@ -36,7 +37,9 @@ DEFAULT_TRADING_ENV_CONFIG: TradingEnvConfig = {
 }
 
 
-def get_trading_env_config(overrides: Optional[Dict[str, Any]] = None) -> TradingEnvConfig:
+def get_trading_env_config(
+    overrides: Optional[Dict[str, Any]] = None,
+) -> TradingEnvConfig:
     """Get trading environment configuration with optional overrides."""
     config: Dict[str, Any] = dict(DEFAULT_TRADING_ENV_CONFIG)
     if overrides:

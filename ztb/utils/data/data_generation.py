@@ -15,8 +15,8 @@ from typing import Any, Dict, List, Optional, cast
 import numpy as np
 import pandas as pd
 
-from ztb.utils.errors import safe_operation, ZTBError
 from ztb.utils.cache_utils import cached_with_ttl
+from ztb.utils.errors import safe_operation
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.performance_utils import timed
 
@@ -207,7 +207,11 @@ class DataGenerator:
         cache_key = f"{dataset}_{'forced' if force_reload else 'cached'}"
 
         # Check memory cache first
-        if not force_reload and self.enable_memory_cache and cache_key in self._memory_cache:
+        if (
+            not force_reload
+            and self.enable_memory_cache
+            and cache_key in self._memory_cache
+        ):
             logger.info(f"Loading {dataset} from memory cache")
             return cast(pd.DataFrame, self._memory_cache[cache_key].copy())
 
@@ -269,11 +273,7 @@ class DataGenerator:
                 cache_file.unlink()
             logger.info(f"Cleared disk cache: {self.cache_dir}")
 
-    def preload_datasets(
-        self,
-        datasets: List[str],
-        max_workers: int = 2
-    ) -> None:
+    def preload_datasets(self, datasets: List[str], max_workers: int = 2) -> None:
         """
         Preload multiple datasets in parallel for faster subsequent access.
 
@@ -328,7 +328,8 @@ class DataGenerator:
             # Partitioned save
             for partition_values, group_df in df.groupby(partition_cols):
                 partition_path = base_path / "/".join(
-                    f"{col}={str(val)}" for col, val in zip(partition_cols, partition_values)
+                    f"{col}={str(val)}"
+                    for col, val in zip(partition_cols, partition_values)
                 )
 
                 ensure_dir(partition_path)
@@ -402,18 +403,16 @@ class DataGenerator:
                 logger.warning(f"Failed to load {file_path}: {e}")
 
         if not dfs:
-            raise FileNotFoundError(f"No Parquet files found matching pattern: {pattern}")
+            raise FileNotFoundError(
+                f"No Parquet files found matching pattern: {pattern}"
+            )
 
         combined_df = pd.concat(dfs, ignore_index=True)
         logger.info(f"Loaded {len(combined_df)} rows from {len(dfs)} Parquet files")
         return combined_df
 
     def save_parquet_monthly_chunked(
-        self,
-        df: pd.DataFrame,
-        path: str,
-        chunk: str = "M",
-        compression: str = "zstd"
+        self, df: pd.DataFrame, path: str, chunk: str = "M", compression: str = "zstd"
     ) -> List[str]:
         """
         Save DataFrame to Parquet files in monthly chunks with zstd compression.
@@ -610,7 +609,9 @@ def save_parquet_chunked(
         List of saved file paths
     """
     generator = DataGenerator()
-    return generator.save_parquet_chunked(df, base_path, partition_cols, compression, chunk_rows)
+    return generator.save_parquet_chunked(
+        df, base_path, partition_cols, compression, chunk_rows
+    )
 
 
 def load_parquet_pattern(

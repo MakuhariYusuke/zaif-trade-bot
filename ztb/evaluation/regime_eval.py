@@ -130,8 +130,8 @@ class RegimeDetector:
             if current_regime != regime:
                 # End previous segment
                 segment = self._create_segment(
-                    price_data, start_idx, i - 1, current_regime  # type: ignore[arg-type]
-                )
+                    price_data, start_idx, i - 1, current_regime
+                )  # type: ignore[arg-type]
                 if segment:
                     regimes.append(segment)
                 start_idx = i

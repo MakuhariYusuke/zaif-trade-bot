@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.unified_trainer_old</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -314,7 +314,7 @@
 <span class="sd">            total_timesteps: Override total_timesteps from config (for quick validation runs)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
-        
+
         <span class="c1"># Store configuration</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">force</span> <span class="o">=</span> <span class="n">force</span>
@@ -323,7 +323,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">stream_batch_size</span> <span class="o">=</span> <span class="n">stream_batch_size</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">max_features</span> <span class="o">=</span> <span class="n">max_features</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span> <span class="o">=</span> <span class="n">total_timesteps</span>
-        
+
         <span class="c1"># Initialize components</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span> <span class="o">=</span> <span class="n">ConfigManager</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span> <span class="o">=</span> <span class="n">ConfigBuilder</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>  <span class="c1"># 🆕 New config builder</span>
@@ -331,10 +331,10 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_config_cache</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_config_cache_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]]]</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="c1"># Configure progress bar</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar_enabled</span> <span class="o">=</span> <span class="n">configure_progress_bar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
-        
+
         <span class="c1"># Initialize Discord notifier (disabled in offline mode)</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;offline_mode&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscordNotifier</span>
@@ -358,11 +358,11 @@
             <span class="n">offline_mode</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;offline_mode&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
             <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
         <span class="p">)</span>
-    
+
     <span class="c1"># ==================================================================================</span>
     <span class="c1"># CONFIGURATION MANAGEMENT HELPERS (Bug #52 fix - unified configuration interface)</span>
     <span class="c1"># ==================================================================================</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_get_config_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">sections</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Get configuration value with priority order.</span>
@@ -372,7 +372,7 @@
 <span class="sd">        Note: This method delegates to ConfigBuilder.get_config_value()</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">get_config_value</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">sections</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
-    
+
 <div class="viewcode-block" id="UnifiedTrainer.get_memory_optimization_config">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.unified_trainer_old.UnifiedTrainer.get_memory_optimization_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_memory_optimization_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MemoryOptimizationConfig</span><span class="p">:</span>
@@ -383,7 +383,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">get_memory_optimization_config</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="UnifiedTrainer.get_environment_config">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.unified_trainer_old.UnifiedTrainer.get_environment_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_environment_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">EnvironmentConfig</span><span class="p">:</span>
@@ -394,7 +394,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">get_environment_config</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="UnifiedTrainer.get_ppo_core_config">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.unified_trainer_old.UnifiedTrainer.get_ppo_core_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_ppo_core_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PPOCoreConfig</span><span class="p">:</span>
@@ -405,7 +405,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="UnifiedTrainer.get_feature_config">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.unified_trainer_old.UnifiedTrainer.get_feature_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_feature_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -416,7 +416,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">get_feature_config</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="UnifiedTrainer.build_unified_config">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.unified_trainer_old.UnifiedTrainer.build_unified_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_unified_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -455,27 +455,27 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Implementation of training execution.&quot;&quot;&quot;</span>
         <span class="c1"># Build unified config</span>
         <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">()</span>
-        
+
         <span class="c1"># Apply overrides to config</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">unified_config</span><span class="p">[</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Overriding total_timesteps: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">total_timesteps</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 訓練開始時のログ出力</span>
         <span class="n">model_name</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">)</span>
         <span class="n">algorithm</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;algorithm&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="p">))</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">algorithm</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting </span><span class="si">{</span><span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> training: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Configuration: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">unified_config</span><span class="p">)</span><span class="si">}</span><span class="s2"> settings loaded&quot;</span><span class="p">)</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Create algorithm trainer</span>
             <span class="n">algorithm_trainer</span> <span class="o">=</span> <span class="n">AlgorithmTrainer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_manager</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">progress_bar_enabled</span><span class="p">)</span>
-            
+
             <span class="c1"># Execute training</span>
             <span class="n">result</span> <span class="o">=</span> <span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">algorithm</span><span class="p">,</span> <span class="n">unified_config</span><span class="p">)</span>
-            
+
             <span class="c1"># 訓練成功時のログ</span>
             <span class="k">if</span> <span class="n">result</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Training completed successfully&quot;</span><span class="p">)</span>
@@ -483,9 +483,9 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Model saved: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;model_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="k">if</span> <span class="s1">&#39;log_path&#39;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   Logs saved: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;log_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="k">return</span> <span class="n">result</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="c1"># エラー時の詳細ログ</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ Training failed: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -505,7 +505,7 @@
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;PYTORCH_DISABLE_TORCH_DYNAMO&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TORCH_USE_CUDA_DSA&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
             <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;CUDA_LAUNCH_BLOCKING&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
-        
+
         <span class="c1"># Memory optimization: Set garbage collection thresholds</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;aggressive_memory_management&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">gc</span>
@@ -553,21 +553,21 @@
         <span class="k">if</span> <span class="n">enable_sell_mitigation</span><span class="p">:</span>
             <span class="c1"># Import SELLMitigationParams</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.config.trainer_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">SELLMitigationParams</span>
-            
+
             <span class="c1"># Build Lagrange parameters dict from config</span>
             <span class="c1"># 🔧 FIX: lagrange_constraintキーもチェック（v392等で使用）</span>
             <span class="n">lagrange_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lagrange_constraint&quot;</span><span class="p">,</span> <span class="p">{})</span>
-            
+
             <span class="k">def</span><span class="w"> </span><span class="nf">get_lagrange_param</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
 <span class="w">                </span><span class="sd">&quot;&quot;&quot;Check both top-level (lagrange_ prefix) and lagrange_constraint&quot;&quot;&quot;</span>
                 <span class="c1"># Prioritize lagrange_ prefixed key, then lagrange_constraint, then default</span>
                 <span class="n">prefixed_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;lagrange_</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">prefixed_key</span><span class="p">,</span> <span class="n">lagrange_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">LAGRANGE_DEFAULTS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="p">)))</span>
-            
+
             <span class="n">lagrange_params</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="c1"># enable_lagrangeは特別扱い（プレフィックスなしとlagrange_constraint.enabledの両方をチェック）</span>
             <span class="n">enable_lagrange</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enable_lagrange&quot;</span><span class="p">,</span> <span class="n">lagrange_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;enabled&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">))</span>
-            
+
             <span class="k">if</span> <span class="n">enable_lagrange</span><span class="p">:</span>
                 <span class="n">lagrange_params</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="s2">&quot;r_target&quot;</span><span class="p">:</span> <span class="n">get_lagrange_param</span><span class="p">(</span><span class="s2">&quot;r_target&quot;</span><span class="p">),</span>
@@ -577,7 +577,7 @@
                     <span class="s2">&quot;warmup_steps&quot;</span><span class="p">:</span> <span class="n">get_lagrange_param</span><span class="p">(</span><span class="s2">&quot;warmup_steps&quot;</span><span class="p">),</span>
                 <span class="p">}</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Lagrange parameters: </span><span class="si">{</span><span class="n">lagrange_params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Create mitigation params with unified config</span>
             <span class="c1"># Note: unified_config contains all required fields for PPOConfig</span>
             <span class="n">mitigation_params</span> <span class="o">=</span> <span class="n">SELLMitigationParams</span><span class="p">(</span>
@@ -596,12 +596,12 @@
                 <span class="n">probe_csv_path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;probe_csv_path&quot;</span><span class="p">),</span>
                 <span class="n">lagrange_params</span><span class="o">=</span><span class="n">lagrange_params</span> <span class="k">if</span> <span class="n">lagrange_params</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
             <span class="p">)</span>
-            
+
             <span class="n">trainer</span> <span class="o">=</span> <span class="n">trainer_class</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">mitigation_params</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># Import TrainerParams for standard PPO</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.config.trainer_params</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainerParams</span>
-            
+
             <span class="c1"># Use unified config directly (no need for additional wrapping)</span>
             <span class="c1"># The unified config already has the proper structure:</span>
             <span class="c1"># {&quot;ppo&quot;: {...}, &quot;memory_optimization&quot;: {...}, ...all top-level settings}</span>
@@ -612,7 +612,7 @@
                 <span class="n">checkpoint_interval</span><span class="o">=</span><span class="n">checkpoint_interval</span><span class="p">,</span>
                 <span class="n">progress_bar</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">progress_bar_enabled</span><span class="p">,</span>
             <span class="p">)</span>
-            
+
             <span class="n">trainer</span> <span class="o">=</span> <span class="n">trainer_class</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">trainer_params</span><span class="p">)</span>
 
         <span class="c1"># Memory optimization: Periodic cleanup during training</span>
@@ -621,7 +621,7 @@
             <span class="c1"># Schedule memory cleanup after training phases</span>
             <span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
             <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">)</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># Log training start with structured info</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting PPO training&quot;</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span>
@@ -631,15 +631,15 @@
                 <span class="s2">&quot;enable_sell_mitigation&quot;</span><span class="p">:</span> <span class="n">enable_sell_mitigation</span><span class="p">,</span>
                 <span class="s2">&quot;memory_optimization&quot;</span><span class="p">:</span> <span class="n">memory_opt</span><span class="p">,</span>
             <span class="p">})</span>
-            
+
             <span class="n">model</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">session_id</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo_session&quot;</span><span class="p">))</span>
-            
+
             <span class="c1"># Log training completion</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PPO training completed successfully&quot;</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span>
                 <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo_session&quot;</span><span class="p">),</span>
                 <span class="s2">&quot;model_saved&quot;</span><span class="p">:</span> <span class="n">model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span>
             <span class="p">})</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;PPO training failed&quot;</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span>
                 <span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;session_id&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo_session&quot;</span><span class="p">),</span>
@@ -665,11 +665,11 @@
             <span class="n">model_path</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">model_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;session_id&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ppo_session&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">.zip&quot;</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># Clear memory before saving large model</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Preparing to save model...&quot;</span><span class="p">)</span>
             <span class="n">gc</span><span class="o">.</span><span class="n">collect</span><span class="p">()</span>
-            
+
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saving model to </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
                 <span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">model_path</span><span class="p">))</span>
@@ -698,7 +698,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_train_iterative</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Train using iterative approach (from run_1m.py).&quot;&quot;&quot;</span>
         <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">()</span>
-        
+
         <span class="c1"># Apply trading mode presets</span>
         <span class="n">trading_mode</span> <span class="o">=</span> <span class="n">unified_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;trading_mode&quot;</span><span class="p">,</span> <span class="s2">&quot;normal&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">trading_mode</span> <span class="o">==</span> <span class="s2">&quot;scalping&quot;</span><span class="p">:</span>
@@ -869,7 +869,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_train_ensemble</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Train using ensemble approach (load and combine existing models).&quot;&quot;&quot;</span>
         <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">()</span>
-        
+
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.models.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">EnsembleTradingSystem</span>
 
         <span class="c1"># Get model configurations from config</span>
@@ -915,7 +915,7 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">_train_curriculum</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Train using curriculum learning approach (P0→P2 staged learning).&quot;&quot;&quot;</span>
         <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">()</span>
-        
+
         <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.training.experiments.curriculum_learning</span><span class="w"> </span><span class="kn">import</span> <span class="n">main</span> <span class="k">as</span> <span class="n">curriculum_main</span>
 
         <span class="c1"># Set up environment for curriculum learning</span>
@@ -976,7 +976,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -987,7 +987,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -3,24 +3,29 @@ Online Learning Pipeline Implementation
 インクリメンタル学習とストリーミングデータ処理
 """
 
+import gc
 import logging
-import time
 import threading
-from typing import Dict, List, Optional, Any, Callable, Iterator
+import time
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, Iterator, List, Optional
+
 import numpy as np
+import psutil
 import torch
 import torch.nn as nn
-from torch.optim import Adam, SGD, Adagrad
-import psutil
-import gc
+from torch.optim import SGD, Adagrad, Adam
 
 from .config import OnlineLearningConfig
 from .types import (
-    LearningState, DataBatch, UpdateResult, LearningMode,
-    UpdateStrategy, MemoryStrategy, StreamingConfig,
-    ModelCheckpoint, DriftAdaptation, ResourceMetrics
+    DataBatch,
+    DriftAdaptation,
+    LearningState,
+    MemoryStrategy,
+    ModelCheckpoint,
+    ResourceMetrics,
+    UpdateResult,
+    UpdateStrategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,7 +37,7 @@ class OnlineLearningPipeline:
     def __init__(self, config: OnlineLearningConfig, model: nn.Module):
         self.config = config
         self.model = model
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(self.device)
 
         # オプティマイザー設定
@@ -47,7 +52,7 @@ class OnlineLearningPipeline:
             loss_history=[],
             last_update_time=datetime.now(),
             memory_usage_mb=0.0,
-            gpu_memory_usage_mb=None
+            gpu_memory_usage_mb=None,
         )
 
         # メモリ管理
@@ -72,7 +77,9 @@ class OnlineLearningPipeline:
         self.drift_detector = DriftDetector(config.adaptation_trigger_threshold)
         self.last_adaptation_time = datetime.now()
 
-        logger.info(f"Online Learning Pipeline initialized with mode: {config.learning_mode}")
+        logger.info(
+            f"Online Learning Pipeline initialized with mode: {config.learning_mode}"
+        )
 
     def _create_optimizer(self) -> torch.optim.Optimizer:
         """オプティマイザー作成"""
@@ -95,9 +102,7 @@ class OnlineLearningPipeline:
 
         self.is_streaming = True
         self.streaming_thread = threading.Thread(
-            target=self._streaming_worker,
-            args=(data_iterator,),
-            daemon=True
+            target=self._streaming_worker, args=(data_iterator,), daemon=True
         )
         self.streaming_thread.start()
         logger.info("Streaming learning started")
@@ -120,14 +125,19 @@ class OnlineLearningPipeline:
                 self.streaming_buffer.append(batch)
 
                 # バッファサイズチェック
-                if len(self.streaming_buffer) >= self.config.streaming_config.batch_size:
+                if (
+                    len(self.streaming_buffer)
+                    >= self.config.streaming_config.batch_size
+                ):
                     # バッチ処理
                     combined_batch = self._combine_batches(self.streaming_buffer)
                     self.update_model(combined_batch)
                     self.streaming_buffer.clear()
 
                 # 定期チェックポイント
-                if (datetime.now() - self.last_checkpoint_time).seconds >= self.config.streaming_config.checkpoint_interval:
+                if (
+                    datetime.now() - self.last_checkpoint_time
+                ).seconds >= self.config.streaming_config.checkpoint_interval:
                     self._create_checkpoint()
 
         except Exception as e:
@@ -159,7 +169,7 @@ class OnlineLearningPipeline:
             weights=weights,
             timestamps=timestamps,
             batch_id=f"combined_{datetime.now().isoformat()}",
-            priority=1.0
+            priority=1.0,
         )
 
     def update_model(self, batch: DataBatch) -> UpdateResult:
@@ -185,7 +195,9 @@ class OnlineLearningPipeline:
 
             # 勾配クリッピング
             if self.config.gradient_clipping > 0:
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.gradient_clipping)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.config.gradient_clipping
+                )
 
             # パラメータ更新
             self.optimizer.step()
@@ -203,10 +215,13 @@ class OnlineLearningPipeline:
                 success=True,
                 loss_change=loss.item(),
                 gradient_norm=self.learning_state.gradient_norm,
-                parameter_updates=sum(p.numel() for p in self.model.parameters() if p.grad is not None),
+                parameter_updates=sum(
+                    p.numel() for p in self.model.parameters() if p.grad is not None
+                ),
                 processing_time_ms=(time.time() - start_time) * 1000,
-                memory_delta_mb=resource_metrics.memory_usage_mb - self.learning_state.memory_usage_mb,
-                error_message=None
+                memory_delta_mb=resource_metrics.memory_usage_mb
+                - self.learning_state.memory_usage_mb,
+                error_message=None,
             )
 
             # パフォーマンス記録
@@ -223,7 +238,7 @@ class OnlineLearningPipeline:
                 parameter_updates=0,
                 processing_time_ms=(time.time() - start_time) * 1000,
                 memory_delta_mb=0.0,
-                error_message=str(e)
+                error_message=str(e),
             )
 
     def _manage_memory(self, batch: DataBatch) -> None:
@@ -272,11 +287,11 @@ class OnlineLearningPipeline:
         sorted_batches = sorted(
             self.memory_buffer,
             key=lambda b: self.importance_scores.get(b.batch_id, 0),
-            reverse=True
+            reverse=True,
         )
 
         # 上位のみ保持
-        self.memory_buffer = sorted_batches[:self.config.max_memory_samples]
+        self.memory_buffer = sorted_batches[: self.config.max_memory_samples]
 
     def _apply_time_decay(self) -> None:
         """時間減衰適用"""
@@ -286,8 +301,12 @@ class OnlineLearningPipeline:
         for batch in self.memory_buffer:
             if batch.timestamps:
                 # 最新タイムスタンプからの経過時間
-                age_hours = (current_time - max(batch.timestamps)).total_seconds() / 3600
-                decay_factor = np.exp(-age_hours * (1 - self.config.memory_decay_factor))
+                age_hours = (
+                    current_time - max(batch.timestamps)
+                ).total_seconds() / 3600
+                decay_factor = np.exp(
+                    -age_hours * (1 - self.config.memory_decay_factor)
+                )
                 decayed_scores[batch.batch_id] = decay_factor
 
         # 減衰適用
@@ -297,15 +316,19 @@ class OnlineLearningPipeline:
                 if batch.weights is not None:
                     batch.weights *= decayed_scores[batch_id]
 
-    def _compute_loss(self, outputs: torch.Tensor, targets: torch.Tensor,
-                     weights: Optional[np.ndarray] = None) -> torch.Tensor:
+    def _compute_loss(
+        self,
+        outputs: torch.Tensor,
+        targets: torch.Tensor,
+        weights: Optional[np.ndarray] = None,
+    ) -> torch.Tensor:
         """損失計算"""
-        if isinstance(self.model, nn.Module) and hasattr(self.model, 'compute_loss'):
+        if isinstance(self.model, nn.Module) and hasattr(self.model, "compute_loss"):
             # カスタム損失関数がある場合
             return self.model.compute_loss(outputs, targets, weights)
         else:
             # デフォルトMSE損失
-            loss = nn.MSELoss(reduction='none')(outputs.squeeze(), targets.squeeze())
+            loss = nn.MSELoss(reduction="none")(outputs.squeeze(), targets.squeeze())
 
             if weights is not None:
                 weights_tensor = torch.FloatTensor(weights).to(self.device)
@@ -327,7 +350,7 @@ class OnlineLearningPipeline:
             if p.grad is not None:
                 param_norm = p.grad.data.norm(2)
                 total_norm += param_norm.item() ** 2
-        self.learning_state.gradient_norm = total_norm ** 0.5
+        self.learning_state.gradient_norm = total_norm**0.5
 
         # メモリ使用量更新
         resource_metrics = self.resource_monitor.get_metrics()
@@ -345,7 +368,7 @@ class OnlineLearningPipeline:
             drift_type="none",
             adaptation_applied=False,
             adaptation_params={},
-            performance_impact=0.0
+            performance_impact=0.0,
         )
 
         if not self.config.enable_drift_adaptation:
@@ -360,7 +383,9 @@ class OnlineLearningPipeline:
 
             # 適応が必要かチェック
             time_since_last_adaptation = datetime.now() - self.last_adaptation_time
-            if time_since_last_adaptation > timedelta(hours=self.config.adaptation_cooldown_hours):
+            if time_since_last_adaptation > timedelta(
+                hours=self.config.adaptation_cooldown_hours
+            ):
                 # 適応実行
                 adaptation_params = self._adapt_to_drift(drift_type, batch)
                 adaptation.adaptation_applied = True
@@ -380,7 +405,7 @@ class OnlineLearningPipeline:
             original_lr = self.config.learning_rate
             self.config.learning_rate *= 2.0
             for param_group in self.optimizer.param_groups:
-                param_group['lr'] = self.config.learning_rate
+                param_group["lr"] = self.config.learning_rate
 
             adaptation_params["learning_rate_boost"] = 2.0
             adaptation_params["original_lr"] = original_lr
@@ -410,10 +435,12 @@ class OnlineLearningPipeline:
                 optimizer_state=self.optimizer.state_dict(),
                 metrics={
                     "total_samples": self.learning_state.total_samples_processed,
-                    "current_loss": self.learning_state.loss_history[-1] if self.learning_state.loss_history else 0.0,
-                    "gradient_norm": self.learning_state.gradient_norm
+                    "current_loss": self.learning_state.loss_history[-1]
+                    if self.learning_state.loss_history
+                    else 0.0,
+                    "gradient_norm": self.learning_state.gradient_norm,
                 },
-                data_signature=self._compute_data_signature()
+                data_signature=self._compute_data_signature(),
             )
 
             self.checkpoints.append(checkpoint)
@@ -442,15 +469,18 @@ class OnlineLearningPipeline:
             "std": float(np.std(features)),
             "min": float(np.min(features)),
             "max": float(np.max(features)),
-            "sample_count": len(features)
+            "sample_count": len(features),
         }
 
         import hashlib
         import json
+
         signature_str = json.dumps(signature_data, sort_keys=True)
         return hashlib.md5(signature_str.encode()).hexdigest()
 
-    def _record_performance(self, result: UpdateResult, resource_metrics: ResourceMetrics) -> None:
+    def _record_performance(
+        self, result: UpdateResult, resource_metrics: ResourceMetrics
+    ) -> None:
         """パフォーマンス記録"""
         performance_record = {
             "timestamp": datetime.now(),
@@ -458,20 +488,20 @@ class OnlineLearningPipeline:
                 "success": result.success,
                 "loss_change": result.loss_change,
                 "processing_time_ms": result.processing_time_ms,
-                "memory_delta_mb": result.memory_delta_mb
+                "memory_delta_mb": result.memory_delta_mb,
             },
             "resource_metrics": {
                 "cpu_usage_percent": resource_metrics.cpu_usage_percent,
                 "memory_usage_mb": resource_metrics.memory_usage_mb,
                 "gpu_memory_mb": resource_metrics.gpu_memory_mb,
                 "disk_io_mb_per_sec": resource_metrics.disk_io_mb_per_sec,
-                "network_io_mb_per_sec": resource_metrics.network_io_mb_per_sec
+                "network_io_mb_per_sec": resource_metrics.network_io_mb_per_sec,
             },
             "learning_state": {
                 "total_samples_processed": self.learning_state.total_samples_processed,
                 "current_learning_rate": self.learning_state.current_learning_rate,
-                "gradient_norm": self.learning_state.gradient_norm
-            }
+                "gradient_norm": self.learning_state.gradient_norm,
+            },
         }
 
         self.performance_metrics.append(performance_record)
@@ -541,12 +571,14 @@ class DriftDetector:
             drift_type = self._classify_drift_type(drift_scores)
 
             # ドリフト履歴記録
-            self.drift_history.append({
-                "timestamp": datetime.now(),
-                "drift_score": max_drift,
-                "drift_type": drift_type,
-                "stats_diff": drift_scores
-            })
+            self.drift_history.append(
+                {
+                    "timestamp": datetime.now(),
+                    "drift_score": max_drift,
+                    "drift_type": drift_type,
+                    "stats_diff": drift_scores,
+                }
+            )
 
             # 参照統計更新（適応）
             self.reference_stats = current_stats
@@ -565,7 +597,7 @@ class DriftDetector:
             "skewness": float(self._compute_skewness(features)),
             "kurtosis": float(self._compute_kurtosis(features)),
             "range": float(np.ptp(features)),
-            "iqr": float(np.subtract(*np.percentile(features, [75, 25])))
+            "iqr": float(np.subtract(*np.percentile(features, [75, 25]))),
         }
 
     def _compute_skewness(self, data: np.ndarray) -> float:
@@ -627,16 +659,28 @@ class ResourceMonitor:
         current_disk_io = psutil.disk_io_counters()
         disk_io_mb_per_sec = 0.0
         if self.last_disk_io and time_delta > 0:
-            disk_read_mb = (current_disk_io.read_bytes - self.last_disk_io.read_bytes) / 1024 / 1024
-            disk_write_mb = (current_disk_io.write_bytes - self.last_disk_io.write_bytes) / 1024 / 1024
+            disk_read_mb = (
+                (current_disk_io.read_bytes - self.last_disk_io.read_bytes)
+                / 1024
+                / 1024
+            )
+            disk_write_mb = (
+                (current_disk_io.write_bytes - self.last_disk_io.write_bytes)
+                / 1024
+                / 1024
+            )
             disk_io_mb_per_sec = (disk_read_mb + disk_write_mb) / time_delta
 
         # ネットワークI/O
         current_net_io = psutil.net_io_counters()
         net_io_mb_per_sec = 0.0
         if self.last_net_io and time_delta > 0:
-            net_sent_mb = (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / 1024 / 1024
-            net_recv_mb = (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / 1024 / 1024
+            net_sent_mb = (
+                (current_net_io.bytes_sent - self.last_net_io.bytes_sent) / 1024 / 1024
+            )
+            net_recv_mb = (
+                (current_net_io.bytes_recv - self.last_net_io.bytes_recv) / 1024 / 1024
+            )
             net_io_mb_per_sec = (net_sent_mb + net_recv_mb) / time_delta
 
         # 状態更新
@@ -650,5 +694,5 @@ class ResourceMonitor:
             gpu_memory_mb=gpu_memory_mb,
             disk_io_mb_per_sec=disk_io_mb_per_sec,
             network_io_mb_per_sec=net_io_mb_per_sec,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )

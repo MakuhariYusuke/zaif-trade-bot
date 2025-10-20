@@ -163,7 +163,7 @@ python -m ztb.training.binary_search.batch_size_optimized `
 
 **期待時間**: 5-8時間
 
-**💡 ヒント**: 
+**💡 ヒント**:
 - TensorBoard で複数候補のスコア推移を比較
 - 収束の安定性も重要な判断材料
 - 時間に余裕があれば、広めの範囲で検証を推奨
@@ -174,7 +174,7 @@ python -m ztb.training.binary_search.batch_size_optimized `
 
 ### ❌ エラー: ModuleNotFoundError: No module named 'numpy'
 
-**原因1**: 仮想環境がアクティベートされていない  
+**原因1**: 仮想環境がアクティベートされていない
 **原因2**: 仮想環境が不完全 (依存関係未インストール)
 
 **解決策**:
@@ -291,7 +291,7 @@ python -m ztb.training.binary_search.batch_size_optimized --mode binary --max_it
    # 別々のターミナルで実行
    # Terminal 1
    python -m ztb.training.binary_search.batch_size_optimized ... &
-   
+
    # Terminal 2
    python -m ztb.training.binary_search.learning_rate_optimized ... &
    ```

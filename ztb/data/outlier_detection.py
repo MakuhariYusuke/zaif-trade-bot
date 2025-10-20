@@ -9,15 +9,16 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 from sklearn.ensemble import IsolationForest
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler
-from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.seasonal import STL
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class OutlierDetector:
         self,
         data: pd.DataFrame,
         methods: List[Dict[str, Union[str, float, int]]],
-        columns: Optional[List[str]] = None
+        columns: Optional[List[str]] = None,
     ) -> pd.DataFrame:
         """
         指定された手法で異常値を検出。
@@ -83,41 +84,48 @@ class OutlierDetector:
             try:
                 if method_type == "z_score":
                     flags = self._detect_z_score(
-                        result_data, columns,
-                        threshold=method_config.get("threshold", 3.0)
+                        result_data,
+                        columns,
+                        threshold=method_config.get("threshold", 3.0),
                     )
                 elif method_type == "iqr":
                     flags = self._detect_iqr(
-                        result_data, columns,
-                        multiplier=method_config.get("multiplier", 1.5)
+                        result_data,
+                        columns,
+                        multiplier=method_config.get("multiplier", 1.5),
                     )
                 elif method_type == "modified_z_score":
                     flags = self._detect_modified_z_score(
-                        result_data, columns,
-                        threshold=method_config.get("threshold", 3.5)
+                        result_data,
+                        columns,
+                        threshold=method_config.get("threshold", 3.5),
                     )
                 elif method_type == "isolation_forest":
                     flags = self._detect_isolation_forest(
-                        result_data, columns,
-                        contamination=method_config.get("contamination", 0.1)
+                        result_data,
+                        columns,
+                        contamination=method_config.get("contamination", 0.1),
                     )
                 elif method_type == "lof":
                     flags = self._detect_lof(
-                        result_data, columns,
+                        result_data,
+                        columns,
                         n_neighbors=method_config.get("n_neighbors", 20),
-                        contamination=method_config.get("contamination", 0.1)
+                        contamination=method_config.get("contamination", 0.1),
                     )
                 elif method_type == "stl_decomposition":
                     flags = self._detect_stl_decomposition(
-                        result_data, columns,
+                        result_data,
+                        columns,
                         seasonal=method_config.get("seasonal", 7),
-                        threshold=method_config.get("threshold", 2.0)
+                        threshold=method_config.get("threshold", 2.0),
                     )
                 elif method_type == "arima_residual":
                     flags = self._detect_arima_residual(
-                        result_data, columns,
+                        result_data,
+                        columns,
                         order=method_config.get("order", (1, 1, 1)),
-                        threshold=method_config.get("threshold", 2.0)
+                        threshold=method_config.get("threshold", 2.0),
                     )
                 else:
                     logger.warning(f"Unknown outlier detection method: {method_type}")
@@ -138,10 +146,7 @@ class OutlierDetector:
         return result_data
 
     def _detect_z_score(
-        self,
-        data: pd.DataFrame,
-        columns: List[str],
-        threshold: float = 3.0
+        self, data: pd.DataFrame, columns: List[str], threshold: float = 3.0
     ) -> Dict[str, np.ndarray]:
         """
         Z-score法による異常値検出。
@@ -174,14 +179,13 @@ class OutlierDetector:
 
             flags[col] = outlier_mask
 
-        logger.debug(f"Z-score detection completed for {len(columns)} columns with threshold {threshold}")
+        logger.debug(
+            f"Z-score detection completed for {len(columns)} columns with threshold {threshold}"
+        )
         return flags
 
     def _detect_iqr(
-        self,
-        data: pd.DataFrame,
-        columns: List[str],
-        multiplier: float = 1.5
+        self, data: pd.DataFrame, columns: List[str], multiplier: float = 1.5
     ) -> Dict[str, np.ndarray]:
         """
         IQR法による異常値検出。
@@ -214,19 +218,19 @@ class OutlierDetector:
 
             outlier_mask = np.full(len(data), False)
             valid_mask = ~data[col].isna()
-            outlier_mask[valid_mask] = (data.loc[valid_mask, col] < lower_bound) | \
-                                     (data.loc[valid_mask, col] > upper_bound)
+            outlier_mask[valid_mask] = (data.loc[valid_mask, col] < lower_bound) | (
+                data.loc[valid_mask, col] > upper_bound
+            )
 
             flags[col] = outlier_mask
 
-        logger.debug(f"IQR detection completed for {len(columns)} columns with multiplier {multiplier}")
+        logger.debug(
+            f"IQR detection completed for {len(columns)} columns with multiplier {multiplier}"
+        )
         return flags
 
     def _detect_modified_z_score(
-        self,
-        data: pd.DataFrame,
-        columns: List[str],
-        threshold: float = 3.5
+        self, data: pd.DataFrame, columns: List[str], threshold: float = 3.5
     ) -> Dict[str, np.ndarray]:
         """
         Modified Z-score法による異常値検出。
@@ -265,14 +269,13 @@ class OutlierDetector:
 
             flags[col] = outlier_mask
 
-        logger.debug(f"Modified Z-score detection completed for {len(columns)} columns with threshold {threshold}")
+        logger.debug(
+            f"Modified Z-score detection completed for {len(columns)} columns with threshold {threshold}"
+        )
         return flags
 
     def _detect_isolation_forest(
-        self,
-        data: pd.DataFrame,
-        columns: List[str],
-        contamination: float = 0.1
+        self, data: pd.DataFrame, columns: List[str], contamination: float = 0.1
     ) -> Dict[str, np.ndarray]:
         """
         Isolation Forestによる異常値検出。
@@ -305,11 +308,12 @@ class OutlierDetector:
         model_key = f"isolation_forest_{contamination}"
         if model_key not in self.trained_models:
             self.trained_models[model_key] = IsolationForest(
-                contamination=contamination,
-                random_state=self.random_seed
+                contamination=contamination, random_state=self.random_seed
             )
 
-        outlier_predictions = self.trained_models[model_key].fit_predict(scaled_features)
+        outlier_predictions = self.trained_models[model_key].fit_predict(
+            scaled_features
+        )
 
         # 各列に同じフラグを適用（特徴量全体としての異常値）
         outlier_mask = outlier_predictions == -1
@@ -320,7 +324,9 @@ class OutlierDetector:
         for col in columns:
             flags[col] = full_mask.copy()
 
-        logger.debug(f"Isolation Forest detection completed for {len(columns)} columns with contamination {contamination}")
+        logger.debug(
+            f"Isolation Forest detection completed for {len(columns)} columns with contamination {contamination}"
+        )
         return flags
 
     def _detect_lof(
@@ -328,7 +334,7 @@ class OutlierDetector:
         data: pd.DataFrame,
         columns: List[str],
         n_neighbors: int = 20,
-        contamination: float = 0.1
+        contamination: float = 0.1,
     ) -> Dict[str, np.ndarray]:
         """
         Local Outlier Factorによる異常値検出。
@@ -362,11 +368,12 @@ class OutlierDetector:
         model_key = f"lof_{n_neighbors}_{contamination}"
         if model_key not in self.trained_models:
             self.trained_models[model_key] = LocalOutlierFactor(
-                n_neighbors=n_neighbors,
-                contamination=contamination
+                n_neighbors=n_neighbors, contamination=contamination
             )
 
-        outlier_predictions = self.trained_models[model_key].fit_predict(scaled_features)
+        outlier_predictions = self.trained_models[model_key].fit_predict(
+            scaled_features
+        )
 
         # 各列に同じフラグを適用
         outlier_mask = outlier_predictions == -1
@@ -377,7 +384,9 @@ class OutlierDetector:
         for col in columns:
             flags[col] = full_mask.copy()
 
-        logger.debug(f"LOF detection completed for {len(columns)} columns with n_neighbors {n_neighbors}")
+        logger.debug(
+            f"LOF detection completed for {len(columns)} columns with n_neighbors {n_neighbors}"
+        )
         return flags
 
     def _detect_stl_decomposition(
@@ -385,7 +394,7 @@ class OutlierDetector:
         data: pd.DataFrame,
         columns: List[str],
         seasonal: int = 7,
-        threshold: float = 2.0
+        threshold: float = 2.0,
     ) -> Dict[str, np.ndarray]:
         """
         STL分解による時系列異常値検出。
@@ -430,7 +439,9 @@ class OutlierDetector:
                 logger.warning(f"STL decomposition failed for {col}: {e}")
                 flags[col] = np.zeros(len(data), dtype=bool)
 
-        logger.debug(f"STL decomposition detection completed for {len(columns)} columns")
+        logger.debug(
+            f"STL decomposition detection completed for {len(columns)} columns"
+        )
         return flags
 
     def _detect_arima_residual(
@@ -438,7 +449,7 @@ class OutlierDetector:
         data: pd.DataFrame,
         columns: List[str],
         order: Tuple[int, int, int] = (1, 1, 1),
-        threshold: float = 2.0
+        threshold: float = 2.0,
     ) -> Dict[str, np.ndarray]:
         """
         ARIMA残差分析による異常値検出。
@@ -489,7 +500,9 @@ class OutlierDetector:
         logger.debug(f"ARIMA residual detection completed for {len(columns)} columns")
         return flags
 
-    def _combine_outlier_flags(self, outlier_flags: Dict[str, Dict[str, np.ndarray]]) -> Dict[str, np.ndarray]:
+    def _combine_outlier_flags(
+        self, outlier_flags: Dict[str, Dict[str, np.ndarray]]
+    ) -> Dict[str, np.ndarray]:
         """
         複数の検出手法の結果を統合。
 
@@ -516,7 +529,9 @@ class OutlierDetector:
             if method_flags:
                 # 多数決で統合（過半数の手法が異常値と判定）
                 stacked_flags = np.stack(method_flags, axis=0)
-                combined_flags[col] = np.sum(stacked_flags, axis=0) > len(method_flags) / 2
+                combined_flags[col] = (
+                    np.sum(stacked_flags, axis=0) > len(method_flags) / 2
+                )
             else:
                 combined_flags[col] = np.zeros(len(first_method[col]), dtype=bool)
 
@@ -537,7 +552,7 @@ class OutlierHandler:
         data: pd.DataFrame,
         method: str = "remove",
         outlier_columns: Optional[List[str]] = None,
-        **kwargs
+        **kwargs,
     ) -> pd.DataFrame:
         """
         異常値を処理。
@@ -555,7 +570,9 @@ class OutlierHandler:
 
         if outlier_columns is None:
             # "_is_outlier" で終わる列を自動検出
-            outlier_columns = [col for col in data.columns if col.endswith("_is_outlier")]
+            outlier_columns = [
+                col for col in data.columns if col.endswith("_is_outlier")
+            ]
 
         if not outlier_columns:
             logger.warning("No outlier columns found")
@@ -566,19 +583,22 @@ class OutlierHandler:
                 processed_data = self._remove_outliers(processed_data, outlier_columns)
             elif method == "interpolate":
                 processed_data = self._interpolate_outliers(
-                    processed_data, outlier_columns,
-                    method=kwargs.get("interpolation_method", "linear")
+                    processed_data,
+                    outlier_columns,
+                    method=kwargs.get("interpolation_method", "linear"),
                 )
             elif method == "clip":
                 processed_data = self._clip_outliers(
-                    processed_data, outlier_columns,
+                    processed_data,
+                    outlier_columns,
                     lower_percentile=kwargs.get("lower_percentile", 5),
-                    upper_percentile=kwargs.get("upper_percentile", 95)
+                    upper_percentile=kwargs.get("upper_percentile", 95),
                 )
             elif method == "replace":
                 processed_data = self._replace_outliers(
-                    processed_data, outlier_columns,
-                    replacement_value=kwargs.get("replacement_value", "median")
+                    processed_data,
+                    outlier_columns,
+                    replacement_value=kwargs.get("replacement_value", "median"),
                 )
             else:
                 logger.warning(f"Unknown outlier handling method: {method}")
@@ -588,7 +608,9 @@ class OutlierHandler:
 
         return processed_data
 
-    def _remove_outliers(self, data: pd.DataFrame, outlier_columns: List[str]) -> pd.DataFrame:
+    def _remove_outliers(
+        self, data: pd.DataFrame, outlier_columns: List[str]
+    ) -> pd.DataFrame:
         """異常値を含む行を削除。"""
         outlier_mask = np.zeros(len(data), dtype=bool)
 
@@ -602,10 +624,7 @@ class OutlierHandler:
         return data[~outlier_mask].copy()
 
     def _interpolate_outliers(
-        self,
-        data: pd.DataFrame,
-        outlier_columns: List[str],
-        method: str = "linear"
+        self, data: pd.DataFrame, outlier_columns: List[str], method: str = "linear"
     ) -> pd.DataFrame:
         """異常値を補間。"""
         processed_data = data.copy()
@@ -620,7 +639,9 @@ class OutlierHandler:
                     valid_data = data.loc[~outlier_mask, base_col]
                     if len(valid_data) > 1:
                         interpolated = valid_data.interpolate(method=method)
-                        processed_data.loc[outlier_mask, base_col] = interpolated.reindex(data.index)[outlier_mask]
+                        processed_data.loc[
+                            outlier_mask, base_col
+                        ] = interpolated.reindex(data.index)[outlier_mask]
 
         logger.info(f"Interpolated outliers using {method} method")
         return processed_data
@@ -630,7 +651,7 @@ class OutlierHandler:
         data: pd.DataFrame,
         outlier_columns: List[str],
         lower_percentile: float = 5,
-        upper_percentile: float = 95
+        upper_percentile: float = 95,
     ) -> pd.DataFrame:
         """異常値をパーセンタイルでクリッピング。"""
         processed_data = data.copy()
@@ -651,14 +672,16 @@ class OutlierHandler:
                             data.loc[outlier_mask, base_col], lower_bound, upper_bound
                         )
 
-        logger.info(f"Clipped outliers to {lower_percentile}-{upper_percentile} percentiles")
+        logger.info(
+            f"Clipped outliers to {lower_percentile}-{upper_percentile} percentiles"
+        )
         return processed_data
 
     def _replace_outliers(
         self,
         data: pd.DataFrame,
         outlier_columns: List[str],
-        replacement_value: Union[str, float] = "median"
+        replacement_value: Union[str, float] = "median",
     ) -> pd.DataFrame:
         """異常値を指定値で置換。"""
         processed_data = data.copy()

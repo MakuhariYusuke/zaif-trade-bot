@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="bug-27">
 <h1>自己レビュー: 第6回修正 + Bug #27完全修正<a class="headerlink" href="#bug-27" title="Link to this heading"></a></h1>
 <p><strong>日付:</strong> 2025年10月8日<br />
@@ -138,7 +138,7 @@
         <span class="n">gross_pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">close_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">*</span> <span class="n">size</span>
         <span class="n">exit_fee</span> <span class="o">=</span> <span class="n">close_price</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span>
         <span class="n">trade_pnl</span> <span class="o">=</span> <span class="n">gross_pnl</span> <span class="o">-</span> <span class="n">exit_fee</span>
-        
+
         <span class="c1"># ここで問題: entry_feeを再度引いている</span>
         <span class="c1"># しかし、entry_feeは既にopen_position()時に報酬に反映済み</span>
         <span class="n">entry_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span>
@@ -158,7 +158,7 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
         <span class="c1"># 決済処理</span>
         <span class="n">gross_pnl</span> <span class="o">=</span> <span class="p">(</span><span class="n">close_price</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">*</span> <span class="n">size</span>
         <span class="n">exit_fee</span> <span class="o">=</span> <span class="n">close_price</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="n">size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">transaction_cost</span>
-        
+
         <span class="c1"># エントリー手数料は既にオープン時に計上済みなので、</span>
         <span class="c1"># 決済時はexit_feeのみを引く</span>
         <span class="n">trade_pnl</span> <span class="o">=</span> <span class="n">gross_pnl</span> <span class="o">-</span> <span class="n">exit_fee</span>
@@ -182,7 +182,7 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
 <p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:239-260</span></code></p>
 <p><strong>問題詳細:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">max_position_size</span> <span class="o">=</span> <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-    <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> 
+    <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span>
     <span class="n">config_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;min_trade_amount&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>  <span class="c1"># ← デフォルト: 0.001 BTC</span>
 <span class="p">)</span>
 </pre></div>
@@ -352,8 +352,8 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
 <p><strong>ファイル:</strong> <code class="docutils literal notranslate"><span class="pre">live_trade.py:1203-1210</span></code></p>
 <p><strong>問題詳細:</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
-    <span class="n">obs</span><span class="p">,</span> 
-    <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+    <span class="n">obs</span><span class="p">,</span>
+    <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="n">action_masks</span><span class="o">=</span><span class="n">action_mask</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 <span class="p">)</span>
 </pre></div>
@@ -369,8 +369,8 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
     <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span> <span class="k">as</span> <span class="n">MaskablePPOType</span>
     <span class="n">model_maskable</span><span class="p">:</span> <span class="n">MaskablePPOType</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span>
     <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model_maskable</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span>
-        <span class="n">obs</span><span class="p">,</span> 
-        <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
+        <span class="n">obs</span><span class="p">,</span>
+        <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
         <span class="n">action_masks</span><span class="o">=</span><span class="n">action_mask</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
     <span class="p">)</span>
 <span class="k">else</span><span class="p">:</span>
@@ -417,7 +417,7 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
     <span class="c1"># 1. オープン: trade_pnl = -entry_fee</span>
     <span class="c1"># 2. HOLD x N回: trade_pnl = 0</span>
     <span class="c1"># 3. クローズ: trade_pnl = gross_pnl - exit_fee (NOT - entry_fee again)</span>
-    
+
     <span class="c1"># 期待される累積報酬:</span>
     <span class="c1"># open: -5000</span>
     <span class="c1"># close: +10000 (gross) - 5000 (exit fee) = +5000</span>
@@ -599,7 +599,7 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -610,7 +610,7 @@ Test 9は「オープン時」のみをテストしており、「決済時」�
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

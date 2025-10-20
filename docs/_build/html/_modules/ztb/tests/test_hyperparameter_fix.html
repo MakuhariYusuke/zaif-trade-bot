@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.tests.test_hyperparameter_fix</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">ハイパーパラメータ適用バグ修正の単体テスト</span>
@@ -106,7 +106,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_training_config_hierarchical</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;TrainingConfig.from_dict()が階層化設定を正しく読み込むか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 1: TrainingConfig階層化ppo_hyperparameters&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># TrainingConfigを直接インポートせず、設定ファイル経由でテスト</span>
     <span class="n">config_dict</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
@@ -118,13 +118,13 @@
             <span class="s2">&quot;max_grad_norm&quot;</span><span class="p">:</span> <span class="mf">5.05</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="c1"># unified_trainer経由で間接的にTrainingConfigをテスト</span>
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>
     <span class="c1"># configが正しく保存されていることを確認</span>
     <span class="k">assert</span> <span class="s2">&quot;ppo_hyperparameters&quot;</span> <span class="ow">in</span> <span class="n">config_dict</span>
     <span class="k">assert</span> <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;ppo_hyperparameters&quot;</span><span class="p">][</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.007503</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ 階層化設定が正しく認識されました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ppo_hyperparameters.learning_rate: </span><span class="si">{</span><span class="n">config_dict</span><span class="p">[</span><span class="s1">&#39;ppo_hyperparameters&#39;</span><span class="p">][</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ppo_hyperparameters.batch_size: </span><span class="si">{</span><span class="n">config_dict</span><span class="p">[</span><span class="s1">&#39;ppo_hyperparameters&#39;</span><span class="p">][</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
@@ -136,7 +136,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_training_config_ppo_key</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;旧ppoキー形式も動作するか（後方互換性）&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 2: TrainingConfig ppoキー（後方互換性）&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config_dict</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -146,11 +146,11 @@
             <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config_dict</span><span class="p">)</span>
     <span class="k">assert</span> <span class="s2">&quot;ppo&quot;</span> <span class="ow">in</span> <span class="n">config_dict</span>
     <span class="k">assert</span> <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;ppo&quot;</span><span class="p">][</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.001</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ ppoキーが正しく認識されました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ppo.learning_rate: </span><span class="si">{</span><span class="n">config_dict</span><span class="p">[</span><span class="s1">&#39;ppo&#39;</span><span class="p">][</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   ppo.batch_size: </span><span class="si">{</span><span class="n">config_dict</span><span class="p">[</span><span class="s1">&#39;ppo&#39;</span><span class="p">][</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
@@ -162,7 +162,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_hierarchical_ppo_hyperparameters</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;階層化されたppo_hyperparametersが正しく読み込まれるか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 1: 階層化されたppo_hyperparameters&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -176,10 +176,10 @@
             <span class="s2">&quot;max_grad_norm&quot;</span><span class="p">:</span> <span class="mf">5.05</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
-    
+
     <span class="c1"># 検証</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.007503</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.007503, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">256</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 256, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
@@ -187,7 +187,7 @@
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;n_epochs&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">16</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 16, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;n_epochs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.8475</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.8475, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;max_grad_norm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">5.05</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 5.05, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;max_grad_norm&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ 階層化設定が正しく読み込まれました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   learning_rate: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   batch_size: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -200,7 +200,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_top_level_hyperparameters</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;トップレベルのハイパーパラメータが正しく読み込まれるか（後方互換性）&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 2: トップレベルハイパーパラメータ（後方互換性）&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -209,15 +209,15 @@
         <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>
         <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="mf">0.95</span><span class="p">,</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
-    
+
     <span class="c1"># 検証</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.001</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.001, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">64</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 64, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.95</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.95, got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ トップレベル設定が正しく読み込まれました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   learning_rate: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   batch_size: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
@@ -229,7 +229,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_top_level_override</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;トップレベルが階層キーを上書きするか（優先順位テスト）&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 3: トップレベル優先（オーバーライド）&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -240,14 +240,14 @@
             <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
-    
+
     <span class="c1"># 検証: トップレベルが優先</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.002</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.002 (top-level), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">256</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 256 (from ppo_hyperparameters), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ トップレベルが優先されました（正しい動作）&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   learning_rate: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (top-level優先)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   batch_size: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (ppo_hyperparameters)&quot;</span><span class="p">)</span></div>
@@ -259,22 +259,22 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_default_values</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;設定がない場合にデフォルト値が使われるか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 4: デフォルト値&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
         <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="s2">&quot;dummy.csv&quot;</span><span class="p">,</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
-    
+
     <span class="c1"># 検証: デフォルト値（DEFAULT_PPO_CONFIGの実際の値）</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">3e-4</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.0003 (default), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">64</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 64 (default), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;gamma&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.99</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.99 (default), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;gamma&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;n_steps&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2048</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 2048 (default), got </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;n_steps&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ デフォルト値が正しく使われました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   learning_rate: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   batch_size: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -287,7 +287,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_hierarchical_environment</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;階層化されたenvironment設定が正しく読み込まれるか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 5: 階層化されたenvironment設定&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -299,16 +299,16 @@
             <span class="s2">&quot;reward_scaling&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_environment_config</span><span class="p">()</span>
-    
+
     <span class="c1"># 検証</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200000</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 200000, got </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;max_position_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.01</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.01, got </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;transaction_cost&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.0005</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 0.0005, got </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;transaction_cost&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;reward_scaling&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">2.0</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;Expected 2.0, got </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;reward_scaling&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Environment設定が正しく読み込まれました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   initial_balance: </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   max_position_size: </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -321,20 +321,20 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_v392_config</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;実際のv392設定ファイルが正しく読み込まれるか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 6: v392実設定ファイル&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;configs/ppo_profitable_v392_bugfix.json&quot;</span><span class="p">)</span>
-    
+
     <span class="k">if</span> <span class="ow">not</span> <span class="n">config_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;⚠️  v392設定ファイルが見つかりません。スキップ。&quot;</span><span class="p">)</span>
         <span class="k">return</span>
-    
+
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="n">ppo_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_ppo_core_config</span><span class="p">()</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">get_environment_config</span><span class="p">()</span>
-    
+
     <span class="c1"># v392の期待値を検証</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   PPO設定:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     learning_rate: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 0.007503)&quot;</span><span class="p">)</span>
@@ -342,17 +342,17 @@
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     n_steps: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;n_steps&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 1024)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     n_epochs: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;n_epochs&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 16)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     max_grad_norm: </span><span class="si">{</span><span class="n">ppo_config</span><span class="p">[</span><span class="s1">&#39;max_grad_norm&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 5.05)&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;   Environment設定:&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     initial_balance: </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;initial_balance&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 200000)&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;     max_position_size: </span><span class="si">{</span><span class="n">env_config</span><span class="p">[</span><span class="s1">&#39;max_position_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> (期待: 0.01)&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 検証</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.007503</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;v392 learning_rate mismatch&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">256</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;v392 batch_size mismatch&quot;</span>
     <span class="k">assert</span> <span class="n">ppo_config</span><span class="p">[</span><span class="s2">&quot;max_grad_norm&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">5.05</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;v392 max_grad_norm mismatch&quot;</span>
     <span class="k">assert</span> <span class="n">env_config</span><span class="p">[</span><span class="s2">&quot;initial_balance&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">200000</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;v392 initial_balance mismatch&quot;</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ v392設定が正しく読み込まれました！&quot;</span><span class="p">)</span></div>
 
 
@@ -362,7 +362,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_lagrange_constraint</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;階層化されたlagrange_constraint設定が正しく読み込まれるか&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">📋 Test 7: Lagrange制約設定&quot;</span><span class="p">)</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="s2">&quot;test_model&quot;</span><span class="p">,</span>
         <span class="s2">&quot;total_timesteps&quot;</span><span class="p">:</span> <span class="mi">10000</span><span class="p">,</span>
@@ -375,18 +375,18 @@
             <span class="s2">&quot;lambda_max&quot;</span><span class="p">:</span> <span class="mf">5.0</span><span class="p">,</span>
         <span class="p">}</span>
     <span class="p">}</span>
-    
+
     <span class="n">trainer</span> <span class="o">=</span> <span class="n">UnifiedTrainer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    
+
     <span class="c1"># Lagrange設定は内部で使われるため、直接取得できない</span>
     <span class="c1"># configが正しく渡されていることを確認</span>
     <span class="n">lagrange_config</span> <span class="o">=</span> <span class="n">trainer</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;lagrange_constraint&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    
+
     <span class="k">assert</span> <span class="n">lagrange_config</span><span class="p">[</span><span class="s2">&quot;enabled&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span>
     <span class="k">assert</span> <span class="n">lagrange_config</span><span class="p">[</span><span class="s2">&quot;r_target&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.175</span>
     <span class="k">assert</span> <span class="n">lagrange_config</span><span class="p">[</span><span class="s2">&quot;tolerance&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.042625</span>
     <span class="k">assert</span> <span class="n">lagrange_config</span><span class="p">[</span><span class="s2">&quot;eta&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="mf">0.062875</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ Lagrange制約設定が正しく読み込まれました&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   enabled: </span><span class="si">{</span><span class="n">lagrange_config</span><span class="p">[</span><span class="s1">&#39;enabled&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;   r_target: </span><span class="si">{</span><span class="n">lagrange_config</span><span class="p">[</span><span class="s1">&#39;r_target&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -401,7 +401,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🧪 ハイパーパラメータ適用バグ修正テスト&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="n">tests</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">test_hierarchical_ppo_hyperparameters</span><span class="p">,</span>
         <span class="n">test_top_level_hyperparameters</span><span class="p">,</span>
@@ -411,10 +411,10 @@
         <span class="n">test_v392_config</span><span class="p">,</span>
         <span class="n">test_lagrange_constraint</span><span class="p">,</span>
     <span class="p">]</span>
-    
+
     <span class="n">passed</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="n">failed</span> <span class="o">=</span> <span class="mi">0</span>
-    
+
     <span class="k">for</span> <span class="n">test</span> <span class="ow">in</span> <span class="n">tests</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">test</span><span class="p">()</span>
@@ -425,11 +425,11 @@
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ エラー: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">failed</span> <span class="o">+=</span> <span class="mi">1</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;📊 結果: </span><span class="si">{</span><span class="n">passed</span><span class="si">}</span><span class="s2">件成功 / </span><span class="si">{</span><span class="n">failed</span><span class="si">}</span><span class="s2">件失敗&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)</span>
-    
+
     <span class="k">if</span> <span class="n">failed</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">🎉 全テスト合格！修正は正しく動作しています。&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">0</span>
@@ -456,7 +456,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -467,7 +467,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

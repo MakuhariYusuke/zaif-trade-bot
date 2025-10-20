@@ -1,11 +1,8 @@
 """Unit tests for path utilities."""
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from ztb.utils.path_utils import ensure_dir, get_project_root
 
@@ -19,8 +16,8 @@ class TestGetProjectRoot:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             # Create a project root marker
-            (temp_path / "pyproject.toml").write_text("[tool.poetry]\nname = \"test\"")
-            
+            (temp_path / "pyproject.toml").write_text('[tool.poetry]\nname = "test"')
+
             # Create a file deep in the structure
             deep_file = temp_path / "src" / "module" / "file.py"
             deep_file.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +35,7 @@ class TestGetProjectRoot:
             temp_path = Path(temp_dir)
             # Create a project root marker
             (temp_path / "requirements.txt").write_text("pytest\n")
-            
+
             # Create various nested files
             test_files = [
                 temp_path / "tests" / "unit" / "test_file.py",
@@ -60,7 +57,7 @@ class TestGetProjectRoot:
             temp_path = Path(temp_dir)
             # Create a project root marker
             (temp_path / ".git").mkdir()
-            
+
             test_file = temp_path / "src" / "main.py"
             test_file.parent.mkdir(parents=True)
             test_file.write_text("# test")

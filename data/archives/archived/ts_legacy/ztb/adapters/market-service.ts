@@ -138,7 +138,7 @@ interface MarketOverview {
   trades: Awaited<ReturnType<typeof getTrades>>;
 }
 
-/** 
+/**
  * Fetches market overview including ticker, order book, and recent trades for a given currency pair.
  * @param {string} pair The currency pair to fetch market overview for.
  * @returns {Promise<MarketOverview>} The market overview data.

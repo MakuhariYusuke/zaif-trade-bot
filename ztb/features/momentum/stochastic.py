@@ -20,8 +20,12 @@ def compute_stochastic(
     close_prices = np.asarray(df["close"].values, dtype=float)
 
     slowk, slowd = TaLibWrapper.stoch(
-        high_prices, low_prices, close_prices,
-        fastk_period=period, slowk_period=smooth_k, slowd_period=smooth_k
+        high_prices,
+        low_prices,
+        close_prices,
+        fastk_period=period,
+        slowk_period=smooth_k,
+        slowd_period=smooth_k,
     )
 
     # Return %D (slowd) as it's the smoothed signal line

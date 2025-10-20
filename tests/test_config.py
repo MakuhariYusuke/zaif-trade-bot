@@ -2,11 +2,13 @@
 Tests for configuration utilities.
 """
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from ztb.utils.config import TypedConfig, ValidatedConfig, ZTBConfig
-from ztb.utils.config_loader import load_config, load_toml_config, ConfigLoader
+from ztb.utils.config_loader import ConfigLoader, load_config, load_toml_config
 
 
 class TestTypedConfig:
@@ -15,10 +17,7 @@ class TestTypedConfig:
     def test_valid_config(self):
         """Test valid configuration creation."""
         config = TypedConfig(
-            learning_rate=0.001,
-            batch_size=32,
-            gamma=0.99,
-            total_timesteps=10000
+            learning_rate=0.001, batch_size=32, gamma=0.99, total_timesteps=10000
         )
 
         assert config.learning_rate == 0.001
@@ -56,11 +55,7 @@ class TestTypedConfig:
 
     def test_from_dict(self):
         """Test configuration from dict creation."""
-        data = {
-            "learning_rate": 0.001,
-            "batch_size": 32,
-            "gamma": 0.99
-        }
+        data = {"learning_rate": 0.001, "batch_size": 32, "gamma": 0.99}
         config = TypedConfig.from_dict(data)
 
         assert config.learning_rate == 0.001
@@ -74,7 +69,9 @@ class TestTypedConfig:
         models = config.get_models()
 
         assert len(models) == 1
-        assert models[0]["path"] == expected_config.get_model_path("trading_optimized_reward_v2_final.zip")
+        assert models[0]["path"] == expected_config.get_model_path(
+            "trading_optimized_reward_v2_final.zip"
+        )
         assert models[0]["weight"] == 1.0
         assert models[0]["feature_set"] == "full"
 
@@ -85,10 +82,7 @@ class TestValidatedConfig:
     def test_valid_validated_config(self):
         """Test valid validated configuration."""
         config = ValidatedConfig(
-            learning_rate=0.001,
-            batch_size=32,
-            gamma=0.99,
-            total_timesteps=10000
+            learning_rate=0.001, batch_size=32, gamma=0.99, total_timesteps=10000
         )
 
         assert config.learning_rate == 0.001
@@ -106,12 +100,14 @@ class TestConfigLoader:
 
     def test_load_yaml_config(self):
         """Test loading YAML configuration."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 learning_rate: 0.001
 batch_size: 32
 gamma: 0.99
-""")
+"""
+            )
             temp_path = f.name
 
         try:
@@ -124,14 +120,16 @@ gamma: 0.99
 
     def test_load_json_config(self):
         """Test loading JSON configuration."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write(
+                """
 {
   "learning_rate": 0.001,
   "batch_size": 32,
   "gamma": 0.99
 }
-""")
+"""
+            )
             temp_path = f.name
 
         try:
@@ -144,12 +142,14 @@ gamma: 0.99
 
     def test_load_toml_config(self):
         """Test loading TOML configuration."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as f:
+            f.write(
+                """
 learning_rate = 0.001
 batch_size = 32
 gamma = 0.99
-""")
+"""
+            )
             temp_path = f.name
 
         try:
@@ -163,11 +163,13 @@ gamma = 0.99
     def test_config_loader_class(self):
         """Test ConfigLoader class methods."""
         save_path = None
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            f.write("""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            f.write(
+                """
 learning_rate: 0.001
 batch_size: 32
-""")
+"""
+            )
             temp_path = f.name
 
         try:
@@ -177,8 +179,8 @@ batch_size: 32
             assert config["batch_size"] == 32
 
             # Test save
-            save_path = temp_path.replace('.yaml', '_saved.json')
-            ConfigLoader.save(config, save_path, format='json')
+            save_path = temp_path.replace(".yaml", "_saved.json")
+            ConfigLoader.save(config, save_path, format="json")
 
             # Verify saved file
             saved_config = ConfigLoader.load(save_path)

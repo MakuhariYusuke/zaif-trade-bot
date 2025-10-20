@@ -11,9 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Ultimate_Oscillator")
@@ -30,7 +31,13 @@ class UltimateOscillator(BaseFeature):
     Combines short-term, intermediate-term, and long-term momentum into one oscillator.
     """
 
-    def __init__(self, short_period: int = 7, medium_period: int = 14, long_period: int = 28, **kwargs: Any):
+    def __init__(
+        self,
+        short_period: int = 7,
+        medium_period: int = 14,
+        long_period: int = 28,
+        **kwargs: Any,
+    ):
         super().__init__("UltimateOscillator", deps=["high", "low", "close"])
         self.short_period = short_period
         self.medium_period = medium_period
@@ -52,7 +59,7 @@ class UltimateOscillator(BaseFeature):
             df["close"].values.astype(np.float64),
             short_period,
             medium_period,
-            long_period
+            long_period,
         )
 
         result_df = pd.DataFrame({"ultimate_oscillator": result}, index=df.index)

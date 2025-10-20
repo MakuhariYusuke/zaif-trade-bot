@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.unified_trainer.trainer</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -528,9 +528,9 @@
             <span class="c1"># Create algorithm trainer</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating </span><span class="si">{</span><span class="n">algorithm</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s2"> trainer...&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span> <span class="o">=</span> <span class="n">create_algorithm_trainer</span><span class="p">(</span>
-                <span class="n">algorithm</span><span class="p">,</span> 
-                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> 
-                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span> 
+                <span class="n">algorithm</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">,</span>
                 <span class="n">gradient_accumulation_steps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gradient_accumulation_steps</span><span class="p">,</span>
                 <span class="n">system_optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">system_optimizer</span>
             <span class="p">)</span>
@@ -657,20 +657,20 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">OPACUS_AVAILABLE</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Opacus not available. Federated learning will work without differential privacy.&quot;</span><span class="p">)</span>
-            
+
             <span class="n">num_clients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;num_clients&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">federated_clients</span> <span class="o">=</span> <span class="p">[]</span>
-            
+
             <span class="c1"># Initialize federated clients (simplified - in real implementation, </span>
             <span class="c1"># each client would have its own data and trainer)</span>
             <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_clients</span><span class="p">):</span>
                 <span class="n">client_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
                 <span class="n">client_config</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">federated_clients</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">client_config</span><span class="p">)</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initialized </span><span class="si">{</span><span class="n">num_clients</span><span class="si">}</span><span class="s2"> federated clients&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">True</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to setup federated learning: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
@@ -686,14 +686,14 @@
             <span class="k">if</span> <span class="ow">not</span> <span class="n">AMP_AVAILABLE</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;PyTorch AMP not available. Mixed precision training requires PyTorch &gt;= 1.6&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="kc">False</span>
-            
+
             <span class="k">if</span> <span class="ow">not</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;CUDA not available. Mixed precision training may not provide benefits on CPU.&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># GradScaler is already initialized in __init__</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Mixed precision training setup completed&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">True</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to setup mixed precision training: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
@@ -708,72 +708,72 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">num_rounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;federated_rounds&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
             <span class="n">client_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;client_fraction&#39;</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting federated training with </span><span class="si">{</span><span class="n">num_rounds</span><span class="si">}</span><span class="s2"> rounds&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Initialize global model</span>
             <span class="n">global_success</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">global_success</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Initial global model training failed&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="kc">False</span>
-            
+
             <span class="c1"># Get initial global model state</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="p">,</span> <span class="s1">&#39;get_model_state&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">global_model_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">get_model_state</span><span class="p">()</span>
-            
+
             <span class="c1"># Federated learning rounds</span>
             <span class="k">for</span> <span class="n">round_num</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_rounds</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Federated round </span><span class="si">{</span><span class="n">round_num</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_rounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                
+
                 <span class="c1"># Select participating clients</span>
                 <span class="n">num_participants</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">)</span> <span class="o">*</span> <span class="n">client_fraction</span><span class="p">))</span>
                 <span class="n">participating_clients</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">federated_clients</span><span class="p">[:</span><span class="n">num_participants</span><span class="p">]</span>
-                
+
                 <span class="n">client_updates</span> <span class="o">=</span> <span class="p">[]</span>
-                
+
                 <span class="c1"># Client training (simplified - in real implementation, </span>
                 <span class="c1"># each client would train on their local data)</span>
                 <span class="k">for</span> <span class="n">client_config</span> <span class="ow">in</span> <span class="n">participating_clients</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training client </span><span class="si">{</span><span class="n">client_config</span><span class="p">[</span><span class="s1">&#39;client_id&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-                    
+
                     <span class="c1"># Create client trainer with global model state</span>
                     <span class="n">client_trainer</span> <span class="o">=</span> <span class="n">create_algorithm_trainer</span><span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;algorithm&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> 
-                        <span class="n">client_config</span><span class="p">,</span> 
+                        <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;algorithm&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span>
+                        <span class="n">client_config</span><span class="p">,</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">logger</span>
                     <span class="p">)</span>
-                    
+
                     <span class="c1"># Load global model state</span>
                     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">client_trainer</span><span class="p">,</span> <span class="s1">&#39;set_model_state&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_model_state</span><span class="p">:</span>
                         <span class="n">client_trainer</span><span class="o">.</span><span class="n">set_model_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_model_state</span><span class="p">)</span>
-                    
+
                     <span class="c1"># Client training (reduced timesteps for federated learning)</span>
                     <span class="n">client_timesteps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;total_timesteps&#39;</span><span class="p">,</span> <span class="mi">10000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">10</span>
                     <span class="n">client_config</span><span class="p">[</span><span class="s1">&#39;total_timesteps&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">client_timesteps</span>
-                    
+
                     <span class="n">client_success</span> <span class="o">=</span> <span class="n">client_trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
                     <span class="k">if</span> <span class="n">client_success</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">client_trainer</span><span class="p">,</span> <span class="s1">&#39;get_model_state&#39;</span><span class="p">):</span>
                         <span class="n">client_updates</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">client_trainer</span><span class="o">.</span><span class="n">get_model_state</span><span class="p">())</span>
-                
+
                 <span class="c1"># Aggregate client updates (Federated Averaging)</span>
                 <span class="k">if</span> <span class="n">client_updates</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">global_model_state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_federated_average</span><span class="p">(</span><span class="n">client_updates</span><span class="p">)</span>
-                    
+
                     <span class="c1"># Update global model</span>
                     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="p">,</span> <span class="s1">&#39;set_model_state&#39;</span><span class="p">):</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">set_model_state</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">global_model_state</span><span class="p">)</span>
-                
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">ui</span><span class="o">.</span><span class="n">print_info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Completed federated round </span><span class="si">{</span><span class="n">round_num</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">num_rounds</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># Final global model training/refinement</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Performing final global model refinement&quot;</span><span class="p">)</span>
             <span class="n">final_success</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
-            
+
             <span class="k">if</span> <span class="n">final_success</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="p">,</span> <span class="s1">&#39;get_training_stats&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">training_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm_trainer</span><span class="o">.</span><span class="n">get_training_stats</span><span class="p">()</span>
-            
+
             <span class="k">return</span> <span class="n">final_success</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Federated training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
@@ -791,14 +791,14 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">client_updates</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">{}</span>
-            
+
             <span class="c1"># Simple averaging (in real implementation, this would be more sophisticated)</span>
             <span class="n">averaged_state</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">num_clients</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">client_updates</span><span class="p">)</span>
-            
+
             <span class="c1"># Get all parameter keys from first client</span>
             <span class="n">param_keys</span> <span class="o">=</span> <span class="n">client_updates</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
-            
+
             <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">param_keys</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">client_updates</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
                     <span class="c1"># Average parameters across clients</span>
@@ -809,12 +809,12 @@
                                 <span class="n">param_sum</span> <span class="o">=</span> <span class="n">client_state</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
                             <span class="k">else</span><span class="p">:</span>
                                 <span class="n">param_sum</span> <span class="o">+=</span> <span class="n">client_state</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-                    
+
                     <span class="k">if</span> <span class="n">param_sum</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="n">averaged_state</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_sum</span> <span class="o">/</span> <span class="n">num_clients</span>
-            
+
             <span class="k">return</span> <span class="n">averaged_state</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Federated averaging failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{}</span>
@@ -1188,7 +1188,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -1199,7 +1199,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

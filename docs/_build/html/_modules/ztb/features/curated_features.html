@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -88,7 +88,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.features.curated_features</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">質的に改善した特徴セット定義</span>
@@ -187,17 +187,17 @@
     <span class="s1">&#39;Time_Hour_of_Day&#39;</span><span class="p">,</span>
     <span class="s1">&#39;Time_Session&#39;</span><span class="p">,</span>
     <span class="s1">&#39;Time_Volatility_Adjustment&#39;</span><span class="p">,</span>
-    
+
     <span class="c1"># 2. 平均足の基本色 (1個) - 多時間軸版のみ使用</span>
     <span class="s1">&#39;HeikinAshi_Color&#39;</span><span class="p">,</span>
-    
+
     <span class="c1"># 3. 一目均衡表の単独無意味な線 (4個)</span>
     <span class="s1">&#39;Ichimoku_Chikou&#39;</span><span class="p">,</span>  <span class="c1"># 遅行スパン単独では無意味</span>
     <span class="s1">&#39;Ichimoku_Tenkan&#39;</span><span class="p">,</span>  <span class="c1"># 転換線単独では不十分(Crossで使用)</span>
     <span class="s1">&#39;Ichimoku_Kijun&#39;</span><span class="p">,</span>   <span class="c1"># 基準線単独では不十分(Crossで使用)</span>
     <span class="s1">&#39;Ichimoku_Senkou_A&#39;</span><span class="p">,</span>  <span class="c1"># 先行スパンA単独では不十分(Composite Signalで使用)</span>
     <span class="s1">&#39;Ichimoku_Senkou_B&#39;</span><span class="p">,</span>  <span class="c1"># 先行スパンB単独では不十分(Composite Signalで使用)</span>
-    
+
     <span class="c1"># 4. 高相関ペアの片方 (20個)</span>
     <span class="s1">&#39;price&#39;</span><span class="p">,</span>  <span class="c1"># closeと完全一致</span>
     <span class="s1">&#39;sma_long&#39;</span><span class="p">,</span>  <span class="c1"># BB_Middleと完全一致</span>
@@ -207,22 +207,22 @@
     <span class="s1">&#39;Kalman_Estimate&#39;</span><span class="p">,</span>  <span class="c1"># ema_5とほぼ一致(0.9999)</span>
     <span class="s1">&#39;sma_short&#39;</span><span class="p">,</span>  <span class="c1"># ema_5/TEMAと高相関</span>
     <span class="s1">&#39;Donchian_Price_Position&#39;</span><span class="p">,</span>  <span class="c1"># Donchian_Pos_20とほぼ一致</span>
-    
+
     <span class="c1"># 5. 重複するMA系 (3個)</span>
     <span class="s1">&#39;KAMA&#39;</span><span class="p">,</span>  <span class="c1"># ema_5/TEMAで代替可能</span>
-    
+
     <span class="c1"># 6. ボリンジャーバンドの冗長要素 (2個)</span>
     <span class="s1">&#39;BB_Lower&#39;</span><span class="p">,</span>  <span class="c1"># BB_PositionとWidthで計算可能</span>
     <span class="s1">&#39;BB_Upper&#39;</span><span class="p">,</span>  <span class="c1"># BB_PositionとWidthで計算可能</span>
-    
+
     <span class="c1"># 7. ドンチャンの冗長要素 (2個)</span>
     <span class="s1">&#39;Donchian_Width&#39;</span><span class="p">,</span>  <span class="c1"># Donchian_Squeeze_Ratioで代替</span>
     <span class="s1">&#39;Donchian_Slope_20&#39;</span><span class="p">,</span>  <span class="c1"># Donchian_Breakout_Strengthで代替</span>
-    
+
     <span class="c1"># 8. ケルトナーの冗長要素 (2個)</span>
     <span class="s1">&#39;Keltner_Lower&#39;</span><span class="p">,</span>  <span class="c1"># Keltner_Positionで代替</span>
     <span class="s1">&#39;Keltner_Upper&#39;</span><span class="p">,</span>  <span class="c1"># Keltner_Positionで代替</span>
-    
+
     <span class="c1"># 9. その他の低情報量特徴 (8個)</span>
     <span class="s1">&#39;rsi&#39;</span><span class="p">,</span>  <span class="c1"># RSIと重複(大文字小文字違い)</span>
     <span class="s1">&#39;pnl&#39;</span><span class="p">,</span>  <span class="c1"># トレーニングラベルなので除外</span>
@@ -238,11 +238,11 @@
 <span class="n">CURATED_FEATURES</span> <span class="o">=</span> <span class="p">[</span>
     <span class="c1"># 【価格基本】 (5個)</span>
     <span class="s1">&#39;close&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;open&#39;</span><span class="p">,</span> 
+    <span class="s1">&#39;open&#39;</span><span class="p">,</span>
     <span class="s1">&#39;high&#39;</span><span class="p">,</span>
     <span class="s1">&#39;low&#39;</span><span class="p">,</span>
     <span class="s1">&#39;volume&#39;</span><span class="p">,</span>
-    
+
     <span class="c1"># 【トレンド指標】 (47個) - 6つ追加</span>
     <span class="s1">&#39;ADX_M1&#39;</span><span class="p">,</span>           <span class="c1"># 1分足ADX</span>
     <span class="s1">&#39;ADX_M5&#39;</span><span class="p">,</span>           <span class="c1"># 5分足ADX</span>
@@ -291,7 +291,7 @@
     <span class="s1">&#39;HeikinAshi_Color_H1&#39;</span><span class="p">,</span>  <span class="c1"># 1時間足平均足色</span>
     <span class="s1">&#39;HeikinAshi_Color_H4&#39;</span><span class="p">,</span>  <span class="c1"># 4時間足平均足色</span>
     <span class="s1">&#39;HeikinAshi_Color_D1&#39;</span><span class="p">,</span>  <span class="c1"># 日足平均足色</span>
-    
+
     <span class="c1"># 【オシレーター】 (13個) - 6つ追加</span>
     <span class="s1">&#39;RSI&#39;</span><span class="p">,</span>              <span class="c1"># 相対力指数</span>
     <span class="s1">&#39;RSI_M1&#39;</span><span class="p">,</span>           <span class="c1"># 1分足RSI</span>
@@ -306,7 +306,7 @@
     <span class="s1">&#39;Stochastic_Signal_Strength&#39;</span><span class="p">,</span>  <span class="c1"># ストキャシグナル強度</span>
     <span class="s1">&#39;Williams_R&#39;</span><span class="p">,</span>       <span class="c1"># ウィリアムズ%R</span>
     <span class="s1">&#39;MFI&#39;</span><span class="p">,</span>              <span class="c1"># マネーフローインデックス</span>
-    
+
     <span class="c1"># 【ボラティリティ】 (17個) - 12つ追加</span>
     <span class="s1">&#39;ATR&#39;</span><span class="p">,</span>              <span class="c1"># 平均真の範囲</span>
     <span class="s1">&#39;ATR_M1&#39;</span><span class="p">,</span>           <span class="c1"># 1分足ATR</span>
@@ -328,19 +328,19 @@
     <span class="s1">&#39;BB_Position&#39;</span><span class="p">,</span>      <span class="c1"># ボリンジャーバンド位置</span>
     <span class="s1">&#39;Bollinger_Percent_B&#39;</span><span class="p">,</span>  <span class="c1"># ボリンジャー%B</span>
     <span class="s1">&#39;BB_Width&#39;</span><span class="p">,</span>         <span class="c1"># ボリンジャー幅</span>
-    
+
     <span class="c1"># 【ボリンジャーバンド】 (1個)</span>
     <span class="s1">&#39;Bollinger_Band_Expansion&#39;</span><span class="p">,</span>  <span class="c1"># バンド拡大</span>
-    
+
     <span class="c1"># 【ケルトナーチャネル】 (2個)</span>
     <span class="s1">&#39;Keltner_Position&#39;</span><span class="p">,</span> <span class="c1"># ケルトナー位置</span>
     <span class="s1">&#39;Keltner_Width&#39;</span><span class="p">,</span>    <span class="c1"># ケルトナー幅</span>
-    
+
     <span class="c1"># 【ドンチャンチャネル】 (3個)</span>
     <span class="s1">&#39;Donchian_Pos_20&#39;</span><span class="p">,</span>  <span class="c1"># ドンチャン位置</span>
     <span class="s1">&#39;Donchian_Squeeze_Ratio&#39;</span><span class="p">,</span>  <span class="c1"># スクイーズ比率</span>
     <span class="s1">&#39;Donchian_Width_Rel_20&#39;</span><span class="p">,</span>   <span class="c1"># 相対幅</span>
-    
+
     <span class="c1"># 【一目均衡表(組み合わせ+拡張+多時間軸)】 (34個) - 18つ追加</span>
     <span class="c1"># 基本ライン</span>
     <span class="s1">&#39;Ichimoku_Tenkan&#39;</span><span class="p">,</span>                 <span class="c1"># 転換線(Conversion Line)</span>
@@ -387,14 +387,14 @@
     <span class="s1">&#39;Ichimoku_Price_Cloud_Distance_H1&#39;</span><span class="p">,</span>   <span class="c1"># 1時間足価格-雲距離</span>
     <span class="s1">&#39;Ichimoku_Price_Cloud_Distance_H4&#39;</span><span class="p">,</span>   <span class="c1"># 4時間足価格-雲距離</span>
     <span class="s1">&#39;Ichimoku_Price_Cloud_Distance_D1&#39;</span><span class="p">,</span>   <span class="c1"># 日足価格-雲距離</span>
-    
+
     <span class="c1"># 【スーパートレンド】 (4個) - Reversal Signal除外(離散値)</span>
     <span class="s1">&#39;Supertrend&#39;</span><span class="p">,</span>                     <span class="c1"># スーパートレンド値</span>
     <span class="s1">&#39;Supertrend_Direction&#39;</span><span class="p">,</span>           <span class="c1"># 方向</span>
     <span class="s1">&#39;Supertrend_Strength&#39;</span><span class="p">,</span>            <span class="c1"># 強度</span>
     <span class="s1">&#39;Supertrend_Trend_Duration&#39;</span><span class="p">,</span>      <span class="c1"># トレンド継続期間</span>
     <span class="c1"># Note: Supertrend_Reversal_Signal, Supertrend_Volatility_Filter は除外</span>
-    
+
     <span class="c1"># 【ボリューム分析】 (8個) - 2つ追加</span>
     <span class="s1">&#39;OBV&#39;</span><span class="p">,</span>                            <span class="c1"># オンバランスボリューム</span>
     <span class="s1">&#39;CMF&#39;</span><span class="p">,</span>                            <span class="c1"># チャイキンマネーフロー</span>
@@ -404,7 +404,7 @@
     <span class="s1">&#39;Volume_Profile_Distribution&#39;</span><span class="p">,</span>    <span class="c1"># 出来高プロファイル分布</span>
     <span class="s1">&#39;Volume_Profile_Value_Area_High&#39;</span><span class="p">,</span> <span class="c1"># 値域上限</span>
     <span class="s1">&#39;liquidity_surge&#39;</span><span class="p">,</span>                <span class="c1"># 流動性急増</span>
-    
+
     <span class="c1"># 【その他の重要指標】 (6個)</span>
     <span class="s1">&#39;ROC&#39;</span><span class="p">,</span>                            <span class="c1"># 変化率</span>
     <span class="s1">&#39;ZScore&#39;</span><span class="p">,</span>                         <span class="c1"># Zスコア</span>
@@ -415,12 +415,12 @@
     <span class="s1">&#39;Ultimate_Oscillator&#39;</span><span class="p">,</span>        <span class="c1"># アルティメットオシレーター(3期間モメンタム統合)</span>
     <span class="s1">&#39;TSI&#39;</span><span class="p">,</span>                        <span class="c1"># True Strength Index(真の強度指数)</span>
     <span class="s1">&#39;KST&#39;</span><span class="p">,</span>                        <span class="c1"># Know Sure Thing(ノウシュアシング)</span>
-    
+
     <span class="c1"># 【マイクロ構造】 (2個) - 1つ削減</span>
     <span class="s1">&#39;micro_volatility&#39;</span><span class="p">,</span>               <span class="c1"># マイクロボラティリティ</span>
     <span class="s1">&#39;price_velocity&#39;</span><span class="p">,</span>                 <span class="c1"># 価格速度</span>
     <span class="s1">&#39;price_acceleration&#39;</span><span class="p">,</span>             <span class="c1"># 価格加速度</span>
-    
+
     <span class="c1"># 【時間特徴】 (2個追加)</span>
     <span class="s1">&#39;Time_Monthly_Cycle&#39;</span><span class="p">,</span>             <span class="c1"># 月次サイクル進行度</span>
     <span class="s1">&#39;Time_Quarterly_Cycle&#39;</span><span class="p">,</span>           <span class="c1"># 四半期サイクル進行度</span>
@@ -450,7 +450,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -461,7 +461,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

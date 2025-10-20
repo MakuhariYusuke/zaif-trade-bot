@@ -13,6 +13,7 @@ logger = get_logger(__name__)
 # Optional dependencies
 try:
     import stable_baselines3
+
     STABLE_BASELINES3_AVAILABLE = True
 except ImportError:
     STABLE_BASELINES3_AVAILABLE = False

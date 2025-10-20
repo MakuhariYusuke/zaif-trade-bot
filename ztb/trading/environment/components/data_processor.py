@@ -97,7 +97,10 @@ class DataProcessor:
         return optimized
 
     def fetch_streaming_snapshot(
-        self, streaming_pipeline: Optional["StreamingPipeline"], required_rows: int, stream_batch_size: int
+        self,
+        streaming_pipeline: Optional["StreamingPipeline"],
+        required_rows: int,
+        stream_batch_size: int,
     ) -> pd.DataFrame:
         """ストリーミングパイプラインから初期スナップショットを取得"""
         if not streaming_pipeline:
@@ -136,15 +139,11 @@ class DataProcessor:
         self, df: pd.DataFrame, features: List[str], config: dict[str, Any]
     ) -> None:
         """Ensure feature columns use the configured storage dtype"""
-        feature_dtype = str(
-            config.get("feature_storage_dtype", "float16")
-        ).lower()
+        feature_dtype = str(config.get("feature_storage_dtype", "float16")).lower()
         dtype_map = {"float16": np.float16, "float32": np.float32}
         target_dtype = dtype_map.get(feature_dtype, np.float32)
 
-        protected = {
-            str(col).lower() for col in config.get("precision_columns", [])
-        }
+        protected = {str(col).lower() for col in config.get("precision_columns", [])}
         candidate_features = [
             col
             for col in features

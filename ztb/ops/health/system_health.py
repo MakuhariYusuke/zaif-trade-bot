@@ -5,9 +5,7 @@ This module provides comprehensive health checks for system resources,
 dependencies, and trading bot components.
 """
 
-import logging
 import os
-import platform
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -67,12 +65,14 @@ class SystemHealthChecker:
             await self._check_venue_connectivity_async()
         except Exception as e:
             logger.warning(f"Venue connectivity check failed: {e}")
-            self.checks.append(HealthCheckResult(
-                name="venue_connectivity",
-                status="warning",
-                message="Venue connectivity check skipped due to dependency issues",
-                details={"error": str(e), "skipped": True}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="venue_connectivity",
+                    status="warning",
+                    message="Venue connectivity check skipped due to dependency issues",
+                    details={"error": str(e), "skipped": True},
+                )
+            )
 
         return self.checks
 
@@ -90,19 +90,23 @@ class SystemHealthChecker:
                 status = "healthy"
                 message = f"CPU usage is normal: {cpu_percent}%"
 
-            self.checks.append(HealthCheckResult(
-                name="cpu_usage",
-                status=status,
-                message=message,
-                details={"cpu_percent": cpu_percent}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="cpu_usage",
+                    status=status,
+                    message=message,
+                    details={"cpu_percent": cpu_percent},
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="cpu_usage",
-                status="critical",
-                message=f"Failed to check CPU usage: {e}",
-                details={"error": str(e)}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="cpu_usage",
+                    status="critical",
+                    message=f"Failed to check CPU usage: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     def _check_memory_usage(self) -> None:
         """Check memory usage."""
@@ -120,29 +124,33 @@ class SystemHealthChecker:
                 status = "healthy"
                 message = f"Memory usage is normal: {memory_percent}%"
 
-            self.checks.append(HealthCheckResult(
-                name="memory_usage",
-                status=status,
-                message=message,
-                details={
-                    "memory_percent": memory_percent,
-                    "total_gb": memory.total / (1024**3),
-                    "available_gb": memory.available / (1024**3)
-                }
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="memory_usage",
+                    status=status,
+                    message=message,
+                    details={
+                        "memory_percent": memory_percent,
+                        "total_gb": memory.total / (1024**3),
+                        "available_gb": memory.available / (1024**3),
+                    },
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="memory_usage",
-                status="critical",
-                message=f"Failed to check memory usage: {e}",
-                details={"error": str(e)}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="memory_usage",
+                    status="critical",
+                    message=f"Failed to check memory usage: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     def _check_disk_space(self) -> None:
         """Check disk space for data and model directories."""
         try:
             # Check current directory disk space
-            disk = psutil.disk_usage('.')
+            disk = psutil.disk_usage(".")
             disk_percent = disk.percent
 
             if disk_percent > 95:
@@ -155,43 +163,52 @@ class SystemHealthChecker:
                 status = "healthy"
                 message = f"Disk space is adequate: {disk_percent}% used"
 
-            self.checks.append(HealthCheckResult(
-                name="disk_space",
-                status=status,
-                message=message,
-                details={
-                    "disk_percent": disk_percent,
-                    "total_gb": disk.total / (1024**3),
-                    "free_gb": disk.free / (1024**3)
-                }
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="disk_space",
+                    status=status,
+                    message=message,
+                    details={
+                        "disk_percent": disk_percent,
+                        "total_gb": disk.total / (1024**3),
+                        "free_gb": disk.free / (1024**3),
+                    },
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="disk_space",
-                status="critical",
-                message=f"Failed to check disk space: {e}",
-                details={"error": str(e)}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="disk_space",
+                    status="critical",
+                    message=f"Failed to check disk space: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     def _check_network_connectivity(self) -> None:
         """Check network connectivity."""
         try:
             import socket
+
             # Try to connect to a reliable host
             socket.create_connection(("8.8.8.8", 53), timeout=5)
-            self.checks.append(HealthCheckResult(
-                name="network_connectivity",
-                status="healthy",
-                message="Network connectivity is available",
-                details={"connectivity": True}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="network_connectivity",
+                    status="healthy",
+                    message="Network connectivity is available",
+                    details={"connectivity": True},
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="network_connectivity",
-                status="warning",
-                message=f"Network connectivity check failed: {e}",
-                details={"connectivity": False, "error": str(e)}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="network_connectivity",
+                    status="warning",
+                    message=f"Network connectivity check failed: {e}",
+                    details={"connectivity": False, "error": str(e)},
+                )
+            )
 
     def _check_python_version(self) -> None:
         """Check Python version compatibility."""
@@ -201,27 +218,33 @@ class SystemHealthChecker:
 
             if version >= min_version:
                 status = "healthy"
-                message = f"Python version {version.major}.{version.minor} is compatible"
+                message = (
+                    f"Python version {version.major}.{version.minor} is compatible"
+                )
             else:
                 status = "critical"
                 message = f"Python version {version.major}.{version.minor} is too old. Minimum required: {min_version[0]}.{min_version[1]}"
 
-            self.checks.append(HealthCheckResult(
-                name="python_version",
-                status=status,
-                message=message,
-                details={
-                    "current_version": f"{version.major}.{version.minor}.{version.micro}",
-                    "required_version": f"{min_version[0]}.{min_version[1]}"
-                }
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="python_version",
+                    status=status,
+                    message=message,
+                    details={
+                        "current_version": f"{version.major}.{version.minor}.{version.micro}",
+                        "required_version": f"{min_version[0]}.{min_version[1]}",
+                    },
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="python_version",
-                status="critical",
-                message=f"Failed to check Python version: {e}",
-                details={"error": str(e)}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="python_version",
+                    status="critical",
+                    message=f"Failed to check Python version: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     def _check_dependencies(self) -> None:
         """Check critical dependencies."""
@@ -235,19 +258,23 @@ class SystemHealthChecker:
         for dep_name, description in critical_deps:
             try:
                 __import__(dep_name)
-                self.checks.append(HealthCheckResult(
-                    name=f"dependency_{dep_name}",
-                    status="healthy",
-                    message=f"{description} ({dep_name}) is available",
-                    details={"available": True}
-                ))
+                self.checks.append(
+                    HealthCheckResult(
+                        name=f"dependency_{dep_name}",
+                        status="healthy",
+                        message=f"{description} ({dep_name}) is available",
+                        details={"available": True},
+                    )
+                )
             except ImportError:
-                self.checks.append(HealthCheckResult(
-                    name=f"dependency_{dep_name}",
-                    status="critical",
-                    message=f"{description} ({dep_name}) is not available",
-                    details={"available": False}
-                ))
+                self.checks.append(
+                    HealthCheckResult(
+                        name=f"dependency_{dep_name}",
+                        status="critical",
+                        message=f"{description} ({dep_name}) is not available",
+                        details={"available": False},
+                    )
+                )
 
     def _check_data_access(self) -> None:
         """Check data directory access."""
@@ -260,26 +287,32 @@ class SystemHealthChecker:
                     missing_paths.append(path)
 
             if missing_paths:
-                self.checks.append(HealthCheckResult(
+                self.checks.append(
+                    HealthCheckResult(
+                        name="data_access",
+                        status="warning",
+                        message=f"Some data directories are missing: {', '.join(missing_paths)}",
+                        details={"missing_paths": missing_paths},
+                    )
+                )
+            else:
+                self.checks.append(
+                    HealthCheckResult(
+                        name="data_access",
+                        status="healthy",
+                        message="All data directories are accessible",
+                        details={"all_paths_exist": True},
+                    )
+                )
+        except Exception as e:
+            self.checks.append(
+                HealthCheckResult(
                     name="data_access",
                     status="warning",
-                    message=f"Some data directories are missing: {', '.join(missing_paths)}",
-                    details={"missing_paths": missing_paths}
-                ))
-            else:
-                self.checks.append(HealthCheckResult(
-                    name="data_access",
-                    status="healthy",
-                    message="All data directories are accessible",
-                    details={"all_paths_exist": True}
-                ))
-        except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="data_access",
-                status="warning",
-                message=f"Failed to check data access: {e}",
-                details={"error": str(e)}
-            ))
+                    message=f"Failed to check data access: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     def _check_model_access(self) -> None:
         """Check model directory access and basic functionality."""
@@ -288,37 +321,45 @@ class SystemHealthChecker:
                 # Check if we can write to models directory
                 test_file = os.path.join("models", ".health_check")
                 try:
-                    with open(test_file, 'w') as f:
+                    with open(test_file, "w") as f:
                         f.write("health_check")
                     os.remove(test_file)
 
-                    self.checks.append(HealthCheckResult(
-                        name="model_access",
-                        status="healthy",
-                        message="Model directory is writable",
-                        details={"writable": True}
-                    ))
+                    self.checks.append(
+                        HealthCheckResult(
+                            name="model_access",
+                            status="healthy",
+                            message="Model directory is writable",
+                            details={"writable": True},
+                        )
+                    )
                 except Exception as e:
-                    self.checks.append(HealthCheckResult(
+                    self.checks.append(
+                        HealthCheckResult(
+                            name="model_access",
+                            status="warning",
+                            message=f"Model directory is not writable: {e}",
+                            details={"writable": False, "error": str(e)},
+                        )
+                    )
+            else:
+                self.checks.append(
+                    HealthCheckResult(
                         name="model_access",
                         status="warning",
-                        message=f"Model directory is not writable: {e}",
-                        details={"writable": False, "error": str(e)}
-                    ))
-            else:
-                self.checks.append(HealthCheckResult(
+                        message="Model directory does not exist",
+                        details={"exists": False},
+                    )
+                )
+        except Exception as e:
+            self.checks.append(
+                HealthCheckResult(
                     name="model_access",
                     status="warning",
-                    message="Model directory does not exist",
-                    details={"exists": False}
-                ))
-        except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="model_access",
-                status="warning",
-                message=f"Failed to check model access: {e}",
-                details={"error": str(e)}
-            ))
+                    message=f"Failed to check model access: {e}",
+                    details={"error": str(e)},
+                )
+            )
 
     async def _check_venue_connectivity_async(self) -> None:
         """Check trading venue connectivity (async version)."""
@@ -327,24 +368,31 @@ class SystemHealthChecker:
             try:
                 import websockets
             except ImportError:
-                self.checks.append(HealthCheckResult(
-                    name="venue_connectivity",
-                    status="warning",
-                    message="Venue connectivity check requires websockets package",
-                    details={"available": False, "missing_dependency": "websockets"}
-                ))
+                self.checks.append(
+                    HealthCheckResult(
+                        name="venue_connectivity",
+                        status="warning",
+                        message="Venue connectivity check requires websockets package",
+                        details={
+                            "available": False,
+                            "missing_dependency": "websockets",
+                        },
+                    )
+                )
                 return
 
             # Try to import venue health checker
             try:
                 from .check_venue_health import VenueHealthChecker
             except ImportError:
-                self.checks.append(HealthCheckResult(
-                    name="venue_connectivity",
-                    status="warning",
-                    message="Venue health check module not available",
-                    details={"available": False}
-                ))
+                self.checks.append(
+                    HealthCheckResult(
+                        name="venue_connectivity",
+                        status="warning",
+                        message="Venue health check module not available",
+                        details={"available": False},
+                    )
+                )
                 return
 
             # Check primary venue (coincheck)
@@ -363,28 +411,32 @@ class SystemHealthChecker:
                 status = "warning"  # Change from critical to warning for venue issues
                 message = "Primary venue (Coincheck) connectivity check completed but services unavailable"
 
-            self.checks.append(HealthCheckResult(
-                name="venue_connectivity",
-                status=status,
-                message=message,
-                details={
-                    "venue": "coincheck",
-                    "symbol": "btc_jpy",
-                    "venue_status": result.get("status"),
-                    "latency_ms": result.get("latency", {}).get("rest_ms"),
-                    "api_available": api_available,
-                    "ws_available": ws_available,
-                    "internet_available": connectivity.get("internet", False),
-                    "errors": result.get("errors", [])
-                }
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="venue_connectivity",
+                    status=status,
+                    message=message,
+                    details={
+                        "venue": "coincheck",
+                        "symbol": "btc_jpy",
+                        "venue_status": result.get("status"),
+                        "latency_ms": result.get("latency", {}).get("rest_ms"),
+                        "api_available": api_available,
+                        "ws_available": ws_available,
+                        "internet_available": connectivity.get("internet", False),
+                        "errors": result.get("errors", []),
+                    },
+                )
+            )
         except Exception as e:
-            self.checks.append(HealthCheckResult(
-                name="venue_connectivity",
-                status="warning",
-                message=f"Venue connectivity check failed: {e}",
-                details={"error": str(e), "skipped": True}
-            ))
+            self.checks.append(
+                HealthCheckResult(
+                    name="venue_connectivity",
+                    status="warning",
+                    message=f"Venue connectivity check failed: {e}",
+                    details={"error": str(e), "skipped": True},
+                )
+            )
 
     def get_summary(self) -> Dict[str, Any]:
         """
@@ -415,7 +467,7 @@ class SystemHealthChecker:
             "healthy": status_counts["healthy"],
             "warning": status_counts["warning"],
             "critical": status_counts["critical"],
-            "checks": [check.__dict__ for check in self.checks]
+            "checks": [check.__dict__ for check in self.checks],
         }
 
 
@@ -431,6 +483,7 @@ async def run_health_check_async() -> Dict[str, Any]:
 
     # Get performance monitoring results
     from .performance_monitor import run_performance_check
+
     performance_report = run_performance_check()
 
     summary = checker.get_summary()
@@ -447,6 +500,7 @@ def run_health_check() -> Dict[str, Any]:
         Health check summary
     """
     import asyncio
+
     return asyncio.run(run_health_check_async())
 
 

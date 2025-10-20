@@ -2,7 +2,7 @@
 
 ## 📋 Context
 
-This is a **Bitcoin trading bot** using reinforcement learning (Stable-Baselines3 PPO/MaskablePPO). We have completed **4 comprehensive review cycles** that discovered and fixed **20 critical bugs**. 
+This is a **Bitcoin trading bot** using reinforcement learning (Stable-Baselines3 PPO/MaskablePPO). We have completed **4 comprehensive review cycles** that discovered and fixed **20 critical bugs**.
 
 We need a **fifth independent review** to ensure we haven't missed anything before production deployment.
 
@@ -61,7 +61,7 @@ Several components lack environment instances needed for proper action masking:
 ```python
 # These components cannot properly use action masks:
 - live_trade.py (no env instance)
-- backtest/adapters.py (no env instance)  
+- backtest/adapters.py (no env instance)
 - perm_importance.py (VecEnv limitation)
 ```
 
@@ -158,12 +158,12 @@ The step() method has multiple forced-close scenarios:
 def step(action):
     # Execute action
     trade_pnl = position_manager.execute_action(...)
-    
+
     # Stop-loss check (forced close)
     if unrealized_pnl < -stop_loss_threshold:
         position_manager.close_position()
         # ⚠️ Question: Is trade_pnl updated here?
-    
+
     # Max drawdown check (forced close)
     if drawdown > max_drawdown:
         position_manager.close_position()

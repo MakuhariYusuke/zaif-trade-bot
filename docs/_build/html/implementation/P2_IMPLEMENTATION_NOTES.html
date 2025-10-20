@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="run_training.py 修正完了 - v3.6.2" href="RUN_TRAINING_FIX_SUMMARY.html" />
-    <link rel="prev" title="P1実装サマリー：1M学習前の品質向上施策" href="P1_IMPLEMENTATION_SUMMARY.html" /> 
+    <link rel="prev" title="P1実装サマリー：1M学習前の品質向上施策" href="P1_IMPLEMENTATION_SUMMARY.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -135,7 +135,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="p2">
 <h1>P2実装ノート：学習コスト管理とリーク耐性強化<a class="headerlink" href="#p2" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -276,13 +276,13 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
 <span class="k">class</span><span class="w"> </span><span class="nc">MicrostructureConfig</span><span class="p">:</span>
     <span class="c1"># Spread (買値-売値差)</span>
     <span class="n">base_spread_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>  <span class="c1"># 0.05% base spread</span>
-    
+
     <span class="c1"># Minimum tick (最小呼値)</span>
     <span class="n">min_tick</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># BTC/JPY: 1円単位</span>
-    
+
     <span class="c1"># Minimum quantity (最小取引量)</span>
     <span class="n">min_qty</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.001</span>  <span class="c1"># BTC: 0.001 BTC</span>
-    
+
     <span class="c1"># Variable slippage (可変スリッページ)</span>
     <span class="n">slip_base_bps</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>  <span class="c1"># 0.02% base</span>
     <span class="n">slip_atr_coef</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>  <span class="c1"># ATR係数</span>
@@ -298,21 +298,21 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
         <span class="n">price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ask_price</span>  <span class="c1"># 買値 = mid + spread/2</span>
     <span class="k">elif</span> <span class="n">action</span> <span class="o">==</span> <span class="n">SELL</span><span class="p">:</span>
         <span class="n">price</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bid_price</span>  <span class="c1"># 売値 = mid - spread/2</span>
-    
+
     <span class="c1"># 2. Min tick丸め</span>
     <span class="n">price</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">price</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_tick</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_tick</span>
-    
+
     <span class="c1"># 3. Min quantity チェック</span>
     <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">quantity</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_qty</span><span class="p">:</span>
         <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># 最小量未満は約定しない</span>
-    
+
     <span class="c1"># 4. Variable slippage</span>
     <span class="n">atr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_atr</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
     <span class="n">slip</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slip_base_bps</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">slip_atr_coef</span> <span class="o">*</span> <span class="n">atr</span><span class="p">)</span>
-    
+
     <span class="c1"># 5. 最終約定価格</span>
     <span class="n">executed_price</span> <span class="o">=</span> <span class="n">price</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">slip</span><span class="o">/</span><span class="mi">10000</span> <span class="o">*</span> <span class="n">sign</span><span class="p">(</span><span class="n">action</span><span class="p">))</span>
-    
+
     <span class="k">return</span> <span class="n">executed_price</span>
 </pre></div>
 </div>
@@ -322,13 +322,13 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
 <p><strong>tests/trading/test_microstructure.py</strong>（約150行予定）:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_spread_application</span><span class="p">():</span>
     <span class="c1"># Spread適用で買値 &gt; 売値を確認</span>
-    
+
 <span class="k">def</span><span class="w"> </span><span class="nf">test_min_tick_rounding</span><span class="p">():</span>
     <span class="c1"># 最小呼値で価格が丸められることを確認</span>
-    
+
 <span class="k">def</span><span class="w"> </span><span class="nf">test_min_qty_rejection</span><span class="p">():</span>
     <span class="c1"># 最小量未満の注文が約定しないことを確認</span>
-    
+
 <span class="k">def</span><span class="w"> </span><span class="nf">test_variable_slippage</span><span class="p">():</span>
     <span class="c1"># ATR高時にスリッページが増加することを確認</span>
 </pre></div>
@@ -363,11 +363,11 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;特徴量を1期ずらすとSharpeが悪化するか&quot;&quot;&quot;</span>
     <span class="c1"># Original features</span>
     <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-    
+
     <span class="c1"># Shift features by 1 period</span>
     <span class="n">features_shifted</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">shift</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
     <span class="n">sharpe_shifted</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">features_shifted</span><span class="p">)</span>
-    
+
     <span class="c1"># Assert: Shifted should degrade</span>
     <span class="k">assert</span> <span class="n">sharpe_shifted</span> <span class="o">&lt;</span> <span class="n">sharpe_original</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s2">&quot;Time shift should degrade Sharpe&quot;</span>
 </pre></div>
@@ -378,11 +378,11 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_shuffle_sharpe_collapse</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;時系列シャッフルでSharpeが崩壊するか&quot;&quot;&quot;</span>
     <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
-    
+
     <span class="c1"># Shuffle time series</span>
     <span class="n">df_shuffled</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
     <span class="n">sharpe_shuffled</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df_shuffled</span><span class="p">)</span>
-    
+
     <span class="c1"># Assert: Shuffle should collapse Sharpe</span>
     <span class="k">assert</span> <span class="n">sharpe_shuffled</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">,</span> <span class="s2">&quot;Shuffle should collapse Sharpe to negative&quot;</span>
 </pre></div>
@@ -393,11 +393,11 @@ python<span class="w"> </span>scripts/gc_artifacts.py<span class="w"> </span>--c
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_duplicate_rows_overfitting</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;重複行追加で過学習しないか&quot;&quot;&quot;</span>
     <span class="n">sharpe_original</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
-    
+
     <span class="c1"># Duplicate 10% of rows</span>
     <span class="n">df_dup</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)],</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">sharpe_dup</span> <span class="o">=</span> <span class="n">train_and_evaluate</span><span class="p">(</span><span class="n">df_dup</span><span class="p">)</span>
-    
+
     <span class="c1"># Assert: Should not overfit</span>
     <span class="k">assert</span> <span class="nb">abs</span><span class="p">(</span><span class="n">sharpe_dup</span> <span class="o">-</span> <span class="n">sharpe_original</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.1</span><span class="p">,</span> <span class="s2">&quot;Duplicate should not overfit&quot;</span>
 </pre></div>
@@ -550,7 +550,7 @@ ent_coef: 0.01
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -561,7 +561,7 @@ ent_coef: 0.01
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

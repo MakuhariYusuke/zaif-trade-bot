@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="unified-trainer-refactoring-plan">
 <h1>Unified Trainer Refactoring Plan<a class="headerlink" href="#unified-trainer-refactoring-plan" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -161,19 +161,19 @@
 <p><strong>新規ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/core/config_builder.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">ConfigBuilder</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;設定構築の統一インターフェース&quot;&quot;&quot;</span>
-    
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_memory_optimization_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;メモリ最適化設定を構築&quot;&quot;&quot;</span>
-        
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_environment_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;環境設定を構築&quot;&quot;&quot;</span>
-        
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_ppo_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;PPO設定を構築&quot;&quot;&quot;</span>
-        
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">build_unified_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;統合設定を構築&quot;&quot;&quot;</span>
@@ -193,7 +193,7 @@
 <p><strong>更新ファイル</strong>: <code class="docutils literal notranslate"><span class="pre">ztb/training/algorithms/ppo/ppo_algorithm.py</span></code></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">PPOAlgorithm</span><span class="p">(</span><span class="n">BaseRLAlgorithm</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;PPO実装（完全版）&quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">train_full</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
@@ -224,33 +224,33 @@
 <span class="sd">    全てのアルゴリズムをAlgorithmFactoryで管理。</span>
 <span class="sd">    設定構築はConfigBuilderに委譲。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span> <span class="o">=</span> <span class="n">ConfigBuilder</span><span class="p">()</span>
-        
+
         <span class="c1"># 🆕 アルゴリズムを動的に選択</span>
         <span class="n">algorithm_name</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;algorithm&quot;</span><span class="p">,</span> <span class="s2">&quot;ppo&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span> <span class="o">=</span> <span class="n">AlgorithmFactory</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">algorithm_name</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;訓練実行（薄いラッパー）&quot;&quot;&quot;</span>
         <span class="c1"># 設定構築</span>
         <span class="n">unified_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_builder</span><span class="o">.</span><span class="n">build_unified_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span>
-        
+
         <span class="c1"># アルゴリズムに委譲</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">algorithm_name</span> <span class="o">==</span> <span class="s2">&quot;ppo&quot;</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_train_with_algorithm</span><span class="p">(</span><span class="n">unified_config</span><span class="p">)</span>
         <span class="c1"># 他のアルゴリズムも同様</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_train_with_algorithm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrainingResult</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;アルゴリズムを使用した訓練&quot;&quot;&quot;</span>
         <span class="c1"># 環境作成</span>
         <span class="n">env</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_environment</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-        
+
         <span class="c1"># モデル作成</span>
         <span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">create_model</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
-        
+
         <span class="c1"># 訓練実行</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">algorithm</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;total_timesteps&quot;</span><span class="p">])</span>
 </pre></div>
@@ -328,7 +328,7 @@
   <span class="o">-</span> <span class="n">AlgorithmFactory使用</span>
   <span class="o">-</span> <span class="n">薄いラッパー層</span>
   <span class="o">-</span> <span class="n">設定構築はConfigBuilderに委譲</span>
-  
+
 <span class="n">algorithms</span><span class="o">/</span><span class="n">ppo</span><span class="o">/</span><span class="p">:</span> <span class="n">PPOロジック集約</span>
 <span class="n">core</span><span class="o">/</span><span class="n">config_builder</span><span class="o">.</span><span class="n">py</span><span class="p">:</span> <span class="n">設定構築統一</span>
 </pre></div>
@@ -363,7 +363,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -374,7 +374,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

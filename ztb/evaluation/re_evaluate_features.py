@@ -15,8 +15,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypedDict, Union, cast
 
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
+
 from ztb.utils.config_loader import ConfigLoader
 
 
@@ -195,7 +196,9 @@ def evaluate_feature_class(
 
                     if len(signal_periods) > 10:
                         signal_returns = signal_periods["returns"]
-                        signal_returns_array: NDArray[np.float64] = np.array(signal_returns)
+                        signal_returns_array: NDArray[np.float64] = np.array(
+                            signal_returns
+                        )
                         signal_metrics = calculate_all_metrics(signal_returns_array)
                         delta_sharpe = (
                             signal_metrics["sharpe_ratio"]
@@ -220,9 +223,13 @@ def evaluate_feature_class(
                         bottom_periods = aligned_data[feature_data <= q25]
 
                         if len(top_periods) > 5 and len(bottom_periods) > 5:
-                            top_returns_array: NDArray[np.float64] = np.array(top_periods["returns"])
+                            top_returns_array: NDArray[np.float64] = np.array(
+                                top_periods["returns"]
+                            )
                             top_metrics = calculate_all_metrics(top_returns_array)
-                            bottom_returns_array: NDArray[np.float64] = np.array(bottom_periods["returns"])
+                            bottom_returns_array: NDArray[np.float64] = np.array(
+                                bottom_periods["returns"]
+                            )
                             bottom_metrics = calculate_all_metrics(bottom_returns_array)
 
                             feature_performances[col] = {
@@ -530,9 +537,11 @@ class ComprehensiveFeatureReEvaluator:
                 result = evaluate_feature_class(feature_class, ohlc_data, feature_name)
 
                 # Classify the feature
-                status_emoji, reason_tag, recommendation = (
-                    self.classify_harmful_feature_status(result)
-                )
+                (
+                    status_emoji,
+                    reason_tag,
+                    recommendation,
+                ) = self.classify_harmful_feature_status(result)
 
                 result["status_emoji"] = status_emoji
                 result["reason_tag"] = reason_tag
@@ -745,7 +754,9 @@ class ComprehensiveFeatureReEvaluator:
                     signal_periods = aligned_data[feature_data > feature_data.median()]
                     if len(signal_periods) > 10:
                         signal_returns = signal_periods["returns"]
-                        signal_returns_array: NDArray[np.float64] = np.array(signal_returns)
+                        signal_returns_array: NDArray[np.float64] = np.array(
+                            signal_returns
+                        )
                         signal_metrics = calculate_all_metrics(signal_returns_array)
 
                         delta_sharpe = (
@@ -776,7 +787,9 @@ class ComprehensiveFeatureReEvaluator:
                     if len(top_quantile) > 10 and len(bottom_quantile) > 10:
                         top_quantile_array: NDArray[np.float64] = np.array(top_quantile)
                         top_metrics = calculate_all_metrics(top_quantile_array)
-                        bottom_quantile_array: NDArray[np.float64] = np.array(bottom_quantile)
+                        bottom_quantile_array: NDArray[np.float64] = np.array(
+                            bottom_quantile
+                        )
                         bottom_metrics = calculate_all_metrics(bottom_quantile_array)
 
                         feature_results[feature_col] = {
@@ -825,8 +838,12 @@ class ComprehensiveFeatureReEvaluator:
 
                     if len(composite_periods) > 20:
                         composite_returns = composite_periods["returns"]
-                        composite_returns_array: NDArray[np.float64] = np.array(composite_returns)
-                        composite_metrics = calculate_all_metrics(composite_returns_array)
+                        composite_returns_array: NDArray[np.float64] = np.array(
+                            composite_returns
+                        )
+                        composite_metrics = calculate_all_metrics(
+                            composite_returns_array
+                        )
 
                         composite_result = {
                             "features_used": best_features,
@@ -928,9 +945,11 @@ class ComprehensiveFeatureReEvaluator:
 
                 result = self.evaluate_harmful_feature(feature_name, ohlc_data)
                 if result:
-                    status_emoji, reason_tag, recommendation = (
-                        self.classify_harmful_feature_status(result)
-                    )
+                    (
+                        status_emoji,
+                        reason_tag,
+                        recommendation,
+                    ) = self.classify_harmful_feature_status(result)
                     result["status_emoji"] = status_emoji
                     result["reason_tag"] = reason_tag
                     result["recommendation"] = recommendation
@@ -1345,7 +1364,7 @@ def main() -> None:
     print(f"\nComprehensive evaluation report saved to: {report_path}")
 
     # Display summary
-    print(f"\nEvaluation Summary:")
+    print("\nEvaluation Summary:")
 
     # Harmful features summary
     harmful_results = results["results"]["harmful"]
@@ -1378,7 +1397,7 @@ def main() -> None:
         elif status == "🔴":
             red_features.append(feature_name)
 
-    print(f"\nRecommendations:")
+    print("\nRecommendations:")
     if green_features:
         print(
             f"  🟢 Consider for production ({len(green_features)}): {', '.join(green_features)}"

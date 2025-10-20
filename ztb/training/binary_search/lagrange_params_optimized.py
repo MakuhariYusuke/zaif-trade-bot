@@ -28,12 +28,12 @@ sys.path.insert(0, str(project_root))
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.binary_search.base_optimizer import (
     BinarySearchArgumentParser,
     HyperparameterOptimizer,
 )
 from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
+from ztb.training.models.custom_ppo import CustomPPO
 
 
 class LagrangeOptimizerBase(HyperparameterOptimizer):
@@ -96,11 +96,19 @@ class LagrangeOptimizerBase(HyperparameterOptimizer):
             env,
             enable_lagrange=enable_lagrange,
             lagrange_target_action="SELL",
-            lagrange_r_target=lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
-            lagrange_tolerance=lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
+            lagrange_r_target=lagrange_params.get(
+                "r_target", LAGRANGE_DEFAULTS["r_target"]
+            ),
+            lagrange_tolerance=lagrange_params.get(
+                "tolerance", LAGRANGE_DEFAULTS["tolerance"]
+            ),
             lagrange_eta=lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
-            lagrange_lambda_max=lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
-            lagrange_warmup_steps=int(lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])),
+            lagrange_lambda_max=lagrange_params.get(
+                "lambda_max", LAGRANGE_DEFAULTS["lambda_max"]
+            ),
+            lagrange_warmup_steps=int(
+                lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])
+            ),
             **ppo_kwargs,
         )
 
@@ -147,21 +155,21 @@ class LagrangeRTargetOptimizer(LagrangeOptimizerBase):
     ) -> Tuple[float, Dict[str, Union[int, float]], Dict[str, Union[int, float]]]:
         """
         Evaluate training result.
-        
+
         Score is based purely on average episode reward.
         Action distribution balance is monitored but not penalized,
         as Lagrange constraint naturally encourages balanced actions.
         """
         stats = callback.get_training_stats()
         action_dist = callback.get_action_distribution()
-        
+
         avg_reward = float(stats.get("avg_reward", 0.0))
-        
+
         # Log action distribution for monitoring (but don't penalize)
         hold_pct = float(action_dist.get("hold_pct", 0.0))
         buy_pct = float(action_dist.get("buy_pct", 0.0))
         sell_pct = float(action_dist.get("sell_pct", 0.0))
-        
+
         # Note: Using print() here instead of logger because this is user-facing output
         # during optimization runs and should always be visible
         print(
@@ -261,7 +269,7 @@ def main() -> None:
     parser = BinarySearchArgumentParser.create_parser(
         description="Optimize Lagrange constraint parameters using binary search"
     )
-    
+
     # Add parameter selection
     parser.add_argument(
         "--parameter",
@@ -270,14 +278,14 @@ def main() -> None:
         default="r_target",
         help="Which Lagrange parameter to optimize",
     )
-    
+
     # Add value override for single mode
     parser.add_argument(
         "--value",
         type=float,
         help="Specific value to test (overrides parameter-specific defaults)",
     )
-    
+
     args = parser.parse_args()
 
     # Select optimizer based on parameter
@@ -308,11 +316,10 @@ def main() -> None:
     else:
         print(f"Optimizing {args.parameter} using binary search...")
         best_value, best_score = optimizer.binary_search_optimize(
-            max_iterations=args.max_iterations, 
-            total_timesteps=args.timesteps
+            max_iterations=args.max_iterations, total_timesteps=args.timesteps
         )
         print(f"\n{'=' * 80}")
-        print(f"OPTIMIZATION COMPLETE")
+        print("OPTIMIZATION COMPLETE")
         print(f"{'=' * 80}")
         print(f"Best {args.parameter}: {best_value}")
         print(f"Best score: {best_score:.6f}")

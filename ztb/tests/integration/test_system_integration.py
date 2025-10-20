@@ -7,20 +7,20 @@ the complete trading pipeline from data ingestion to model training
 and backtesting.
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Dict, Any
-import pandas as pd
-import numpy as np
 
-from ztb.utils.data_validation import validate_dataframe
-from ztb.utils.talib_wrapper import TaLibWrapper
-from ztb.utils.config import ZTBConfig
-from ztb.utils.logging_utils import setup_logging
+import numpy as np
+import pandas as pd
+import pytest
+
 from ztb.training.core.ppo_trainer import PPOTrainer
-from ztb.trading.environment.environment import HeavyTradingEnv
+from ztb.utils.config import ZTBConfig
+from ztb.utils.data_validation import validate_dataframe
+from ztb.utils.logging_utils import setup_logging
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 # from ztb.trading.backtest.runner import BacktestRunner  # Commented out due to import issues
 
 
@@ -64,14 +64,16 @@ class TestSystemIntegration:
         # Generate volume
         volume = np.random.randint(100, 10000, n_samples)
 
-        data = pd.DataFrame({
-            'open': open_prices,
-            'high': high_prices,
-            'low': low_prices,
-            'close': close_prices,
-            'volume': volume,
-            'timestamp': pd.date_range('2023-01-01', periods=n_samples, freq='1H')
-        })
+        data = pd.DataFrame(
+            {
+                "open": open_prices,
+                "high": high_prices,
+                "low": low_prices,
+                "close": close_prices,
+                "volume": volume,
+                "timestamp": pd.date_range("2023-01-01", periods=n_samples, freq="1H"),
+            }
+        )
 
         return data
 
@@ -80,12 +82,12 @@ class TestSystemIntegration:
         # Validate basic structure
         assert validate_dataframe(
             sample_market_data,
-            required_columns=['open', 'high', 'low', 'close', 'volume'],
-            min_rows=100
+            required_columns=["open", "high", "low", "close", "volume"],
+            min_rows=100,
         )
 
         # Test Ta-Lib integration
-        close_data = sample_market_data['close'].values
+        close_data = sample_market_data["close"].values
 
         # Test SMA calculation
         sma_values = TaLibWrapper.sma(close_data, period=20)
@@ -104,8 +106,8 @@ class TestSystemIntegration:
         assert len(hist) == len(close_data)
 
         # Test SAR calculation
-        high_data = sample_market_data['high'].values
-        low_data = sample_market_data['low'].values
+        high_data = sample_market_data["high"].values
+        low_data = sample_market_data["low"].values
         sar_values = TaLibWrapper.sar(high_data, low_data)
         assert len(sar_values) == len(close_data)
         assert not np.all(np.isnan(sar_values[-50:]))
@@ -121,24 +123,25 @@ class TestSystemIntegration:
 
         # Test environment variable handling
         import os
-        os.environ['TEST_VAR'] = 'test_value'
-        assert config.get('TEST_VAR') == 'test_value'
+
+        os.environ["TEST_VAR"] = "test_value"
+        assert config.get("TEST_VAR") == "test_value"
 
         # Test type conversion
-        os.environ['TEST_INT'] = '42'
-        assert config.get_int('TEST_INT') == 42
+        os.environ["TEST_INT"] = "42"
+        assert config.get_int("TEST_INT") == 42
 
-        os.environ['TEST_FLOAT'] = '3.14'
-        assert config.get_float('TEST_FLOAT') == 3.14
+        os.environ["TEST_FLOAT"] = "3.14"
+        assert config.get_float("TEST_FLOAT") == 3.14
 
-        os.environ['TEST_BOOL'] = 'true'
-        assert config.get_bool('TEST_BOOL') is True
+        os.environ["TEST_BOOL"] = "true"
+        assert config.get_bool("TEST_BOOL") is True
 
         # Cleanup
-        del os.environ['TEST_VAR']
-        del os.environ['TEST_INT']
-        del os.environ['TEST_FLOAT']
-        del os.environ['TEST_BOOL']
+        del os.environ["TEST_VAR"]
+        del os.environ["TEST_INT"]
+        del os.environ["TEST_FLOAT"]
+        del os.environ["TEST_BOOL"]
 
     def test_training_pipeline(self, sample_market_data, temp_dir):
         """Test complete training pipeline."""
@@ -146,24 +149,24 @@ class TestSystemIntegration:
 
         # Create minimal training configuration
         train_config = {
-            'total_timesteps': 100,  # Very small for testing
-            'learning_rate': 0.0003,
-            'batch_size': 64,
-            'n_epochs': 1,
-            'gamma': 0.99,
-            'gae_lambda': 0.95,
-            'clip_range': 0.2,
-            'verbose': 0,
-            'seed': 42
+            "total_timesteps": 100,  # Very small for testing
+            "learning_rate": 0.0003,
+            "batch_size": 64,
+            "n_epochs": 1,
+            "gamma": 0.99,
+            "gae_lambda": 0.95,
+            "clip_range": 0.2,
+            "verbose": 0,
+            "seed": 42,
         }
 
         # Create environment configuration
         env_config = {
-            'max_steps': 100,
-            'initial_balance': 10000.0,
-            'transaction_fee': 0.001,
-            'feature_columns': ['close', 'volume'],
-            'reward_scaling': 1.0
+            "max_steps": 100,
+            "initial_balance": 10000.0,
+            "transaction_fee": 0.001,
+            "feature_columns": ["close", "volume"],
+            "reward_scaling": 1.0,
         }
 
         try:
@@ -171,21 +174,20 @@ class TestSystemIntegration:
             trainer = PPOTrainer(
                 config=train_config,
                 env_config=env_config,
-                model_dir=temp_dir / 'models',
-                log_dir=temp_dir / 'logs'
+                model_dir=temp_dir / "models",
+                log_dir=temp_dir / "logs",
             )
 
             # Prepare data
-            features_df = sample_market_data[['close', 'volume']].copy()
-            features_df['sma_20'] = TaLibWrapper.sma(features_df['close'].values, 20)
-            features_df['rsi_14'] = TaLibWrapper.rsi(features_df['close'].values, 14)
+            features_df = sample_market_data[["close", "volume"]].copy()
+            features_df["sma_20"] = TaLibWrapper.sma(features_df["close"].values, 20)
+            features_df["rsi_14"] = TaLibWrapper.rsi(features_df["close"].values, 14)
             features_df = features_df.dropna()
 
             # Train model (short training for testing)
             model_path = trainer.train(
-                data=features_df,
-                total_timesteps=50  # Very short for testing
-            )
+                data=features_df, total_timesteps=50
+            )  # Very short for testing
 
             # Verify model was saved
             assert model_path.exists()
@@ -200,10 +202,10 @@ class TestSystemIntegration:
         try:
             # Create backtest configuration
             backtest_config = {
-                'initial_balance': 10000.0,
-                'transaction_fee': 0.001,
-                'slippage': 0.0005,
-                'max_position_size': 1.0
+                "initial_balance": 10000.0,
+                "transaction_fee": 0.001,
+                "slippage": 0.0005,
+                "max_position_size": 1.0,
             }
 
             # Skip backtest test due to import issues
@@ -217,7 +219,7 @@ class TestSystemIntegration:
 
             # Prepare market data
             market_data = sample_market_data.copy()
-            market_data = market_data.set_index('timestamp')
+            market_data = market_data.set_index("timestamp")
 
             # Run simple backtest with dummy strategy
             # results = runner.run_backtest(
@@ -242,20 +244,19 @@ class TestSystemIntegration:
             TaLibWrapper.sma([], 20)  # Empty data
 
         with pytest.raises(Exception):
-            TaLibWrapper.sma(sample_market_data['close'].values, 0)  # Invalid period
+            TaLibWrapper.sma(sample_market_data["close"].values, 0)  # Invalid period
 
         # Test data validation error handling
-        invalid_df = pd.DataFrame({'invalid_column': [1, 2, 3]})
+        invalid_df = pd.DataFrame({"invalid_column": [1, 2, 3]})
         assert not validate_dataframe(
-            invalid_df,
-            required_columns=['open', 'high', 'low', 'close']
+            invalid_df, required_columns=["open", "high", "low", "close"]
         )
 
     def test_performance_regression(self, sample_market_data):
         """Test for performance regressions in key operations."""
         import time
 
-        data = sample_market_data['close'].values
+        data = sample_market_data["close"].values
 
         # Test Ta-Lib performance
         start_time = time.time()
@@ -270,14 +271,15 @@ class TestSystemIntegration:
 
     def test_memory_usage(self, sample_market_data):
         """Test memory usage doesn't grow excessively."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Perform memory-intensive operations
-        data = sample_market_data['close'].values
+        data = sample_market_data["close"].values
         for _ in range(1000):
             _ = TaLibWrapper.sma(data, 20)
             _ = TaLibWrapper.macd(data)
@@ -292,4 +294,5 @@ class TestSystemIntegration:
 if __name__ == "__main__":
     # Allow running as standalone script for debugging
     import sys
+
     sys.exit(pytest.main([__file__, "-v"]))

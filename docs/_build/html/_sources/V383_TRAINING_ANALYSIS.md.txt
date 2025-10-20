@@ -1,7 +1,7 @@
 # v383 トレーニング結果分析レポート
 
-**実行日**: 2025年10月10日  
-**設定**: `ppo_reward_v383_optimized_stable.json`  
+**実行日**: 2025年10月10日
+**設定**: `ppo_reward_v383_optimized_stable.json`
 **目的**: v381_revisedをベースにtarget_kl無効化とHOLD/BUY微調整
 
 ---
@@ -43,7 +43,7 @@ Iteration 74 (最終):
 | train/                    |                                      |
 |    approx_kl              | 0.03977545                           |  ✅ 適度な範囲
 |    clip_fraction          | 0.183                                |  ✅ 適切な範囲
-|    clip_range             | 0.15                                 |  
+|    clip_range             | 0.15                                 |
 |    explained_variance     | 0.013675094                          |  ❌ 1.4%しかない
 |    learning_rate          | 0.003                                |
 |    n_updates              | 1168                                 |
@@ -210,7 +210,7 @@ v383: vf_coef=0.3 (同じ) → EV 1.4%
 
 ### 発見4: 報酬関数の効果は学習の安定性に依存 ⭐⭐
 
-**v381_revised**: 
+**v381_revised**:
 - target_kl制約あり → 報酬関数が効果発揮
 - hold_penalty_weight=0.05 → HOLD 51.2%
 

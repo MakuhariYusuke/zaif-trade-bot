@@ -35,7 +35,7 @@
 
 - --tariff jp_residential_tiered で三段階料金適用（基本料金1246.96円/月込み）
   - 0–120 kWh: 29.70 円/kWh
-  - 120–300 kWh: 35.69 円/kWh  
+  - 120–300 kWh: 35.69 円/kWh
   - 300+ kWh: 39.50 円/kWh
 - 月間消費kWhは run_metadata/tb_summary/steps_per_sec から推定、--kwh で手動上書き可
 - CLI: python -m ztb.ops.cost_estimator --tariff jp_residential_tiered --kwh `<override>`

@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="k">
 <h1>100kテスト &amp; コード品質改善 - 統合ガイド<a class="headerlink" href="#k" title="Link to this heading"></a></h1>
 <p><strong>日付</strong>: 2025年10月7日<br />
@@ -275,7 +275,7 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
 
 3. TensorBoard起動・監視:
    tensorboard --logdir logs --port 6006
-   
+
 4. 重要指標確認:
    - train/pan_total_samples &gt; 0 か?
    - train/legal_sell_rate ≥ 0.05 か?
@@ -299,23 +299,23 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
 
 <span class="mf">1.</span> <span class="n">現状分析</span><span class="p">:</span>
    <span class="n">mypy</span> <span class="o">--</span><span class="n">strict</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span> <span class="o">&gt;</span> <span class="n">mypy_strict_report</span><span class="o">.</span><span class="n">txt</span>
-   
+
 <span class="mf">2.</span> <span class="n">型ヒント追加</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">ppo_trainer</span><span class="o">.</span><span class="n">py</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">unified_trainer</span><span class="o">.</span><span class="n">py</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">custom_ppo</span><span class="o">.</span><span class="n">py</span>
-   
+
 <span class="mf">3.</span> <span class="nb">type</span><span class="p">:</span> <span class="n">ignore</span> <span class="n">削減</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">具体的なエラーコード指定</span>
    <span class="o">-</span> <span class="n">コメントで理由説明</span>
-   
+
 <span class="mf">4.</span> <span class="n">Protocol導入</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">protocols</span><span class="o">.</span><span class="n">py</span> <span class="n">作成</span>
    <span class="o">-</span> <span class="n">Trainer</span><span class="p">,</span> <span class="n">Environment</span><span class="p">,</span> <span class="n">Callback</span> <span class="n">のProtocol定義</span>
 
 <span class="mf">5.</span> <span class="n">検証</span><span class="p">:</span>
    <span class="n">mypy</span> <span class="o">--</span><span class="n">strict</span> <span class="n">ztb</span><span class="o">/</span><span class="n">training</span><span class="o">/</span>
-   
+
 <span class="n">目標</span><span class="p">:</span> <span class="n">mypy</span> <span class="n">エラー50</span><span class="o">%</span><span class="n">削減</span>
 </pre></div>
 </div>
@@ -329,16 +329,16 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
 
 <span class="mf">1.</span> <span class="n">不整合検出</span><span class="p">:</span>
    <span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">check_config_consistency</span><span class="o">.</span><span class="n">py</span>
-   
+
 <span class="mf">2.</span> <span class="n">パラメータ命名統一</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">スネークケースに統一</span>
    <span class="o">-</span> <span class="n">省略形を避ける</span>
    <span class="o">-</span> <span class="n">階層をトップレベルに統一</span>
-   
+
 <span class="mf">3.</span> <span class="n">デフォルト値統一</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="n">constants</span><span class="o">.</span><span class="n">py</span> <span class="n">作成</span>
    <span class="o">-</span> <span class="n">全ファイルで同じ定数参照</span>
-   
+
 <span class="mf">4.</span> <span class="n">スキーマ定義</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">ztb</span><span class="o">/</span><span class="n">config</span><span class="o">/</span><span class="n">schemas</span><span class="o">.</span><span class="n">py</span> <span class="n">作成</span>
    <span class="o">-</span> <span class="n">TypedDict</span> <span class="n">で設定スキーマ定義</span>
@@ -346,7 +346,7 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
 
 <span class="mf">5.</span> <span class="n">バリデーション</span><span class="p">:</span>
    <span class="n">python</span> <span class="n">scripts</span><span class="o">/</span><span class="n">validate_all_configs</span><span class="o">.</span><span class="n">py</span>
-   
+
 <span class="n">目標</span><span class="p">:</span> <span class="n">全設定ファイルでバリデーション全パス</span>
 </pre></div>
 </div>
@@ -369,14 +369,14 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
    <span class="o">-</span> <span class="n">PPOTrainer</span>
    <span class="o">-</span> <span class="n">SELLBiasMitigationPPOTrainer</span>
    <span class="o">-</span> <span class="n">PPOTrainerAutoHalt</span>
-   
+
 <span class="mf">3.</span> <span class="n">Callbackインターフェース統一</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">on_step</span><span class="p">()</span> <span class="n">シグネチャ統一</span>
    <span class="o">-</span> <span class="n">戻り値の型統一</span>
-   
+
 <span class="mf">4.</span> <span class="n">テスト追加</span><span class="p">:</span>
    <span class="o">-</span> <span class="n">tests</span><span class="o">/</span><span class="n">training</span><span class="o">/</span><span class="n">test_trainer_interface</span><span class="o">.</span><span class="n">py</span>
-   
+
 <span class="n">目標</span><span class="p">:</span> <span class="n">全トレーナーで統一インターフェース採用</span>
 </pre></div>
 </div>
@@ -479,7 +479,7 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -490,7 +490,7 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

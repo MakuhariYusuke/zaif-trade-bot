@@ -1,6 +1,6 @@
 # SELL回避緊急修正 v3.6.3 変更サマリー
 
-**適用日時**: 2025-10-08  
+**適用日時**: 2025-10-08
 **対象ファイル**: `configs/training/ppo_balanced_mem_optimized.json`
 
 ---
@@ -94,6 +94,6 @@ python run_training.py --config configs/training/ppo_balanced_mem_optimized.json
 
 ---
 
-**バージョン**: v3.6.3  
-**ステータス**: ⚠️ EXPERIMENTAL - 逆バイアス監視下  
+**バージョン**: v3.6.3
+**ステータス**: ⚠️ EXPERIMENTAL - 逆バイアス監視下
 **次のアクション**: 10,000ステップ検証実行 → 結果分析

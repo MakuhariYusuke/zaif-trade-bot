@@ -2,21 +2,23 @@
 Unit tests for Automatic Retraining Triggers Module
 """
 
-import unittest
-import numpy as np
-import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
 import gc
-import weakref
+import unittest
 from collections import deque
+from datetime import datetime, timedelta
+from unittest.mock import patch
 
-from ztb.adaptation.retraining.trigger import RetrainingTrigger
 from ztb.adaptation.retraining.config import RetrainingConfig, RetrainingPolicy
+from ztb.adaptation.retraining.trigger import RetrainingTrigger
 from ztb.adaptation.retraining.types import (
-    TriggerType, TriggerPriority, TriggerStatus, TriggerCondition,
-    PerformanceMetrics, DataDistributionMetrics, RetrainingRequest,
-    RetrainingResult
+    DataDistributionMetrics,
+    PerformanceMetrics,
+    RetrainingRequest,
+    RetrainingResult,
+    TriggerCondition,
+    TriggerPriority,
+    TriggerStatus,
+    TriggerType,
 )
 
 
@@ -33,7 +35,7 @@ class TestRetrainingTrigger(unittest.TestCase):
     def tearDown(self):
         """テスト後のクリーンアップ"""
         # メモリリーク防止のため明示的にクリーンアップ
-        if hasattr(self.trigger, '_cleanup_timer') and self.trigger._cleanup_timer:
+        if hasattr(self.trigger, "_cleanup_timer") and self.trigger._cleanup_timer:
             self.trigger._cleanup_timer.cancel()
 
         # 弱参照のクリーンアップ
@@ -60,7 +62,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             win_rate=0.5,  # 正常
             sharpe_ratio=1.5,
             max_drawdown=0.1,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # トリガーが発動しないことを確認
@@ -76,7 +78,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             win_rate=0.35,  # 低下（閾値0.45未満）
             sharpe_ratio=0.8,
             max_drawdown=0.15,
-            timestamp=datetime.now() + timedelta(minutes=70)  # 期間条件を満たす
+            timestamp=datetime.now() + timedelta(minutes=70),  # 期間条件を満たす
         )
 
         # 複数回更新して期間条件を満たす
@@ -102,7 +104,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             win_rate=0.48,
             sharpe_ratio=0.5,  # 低下（閾値1.0未満）
             max_drawdown=0.12,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 複数回更新して期間条件を満たす
@@ -126,7 +128,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={"feature1": 0.0, "feature2": 0.0},
             feature_kurtosis={"feature1": 0.0, "feature2": 0.0},
             sample_size=1000,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 分布変化なし
@@ -140,7 +142,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={"feature1": 0.0, "feature2": 0.0},
             feature_kurtosis={"feature1": 0.0, "feature2": 0.0},
             sample_size=1000,
-            timestamp=datetime.now() + timedelta(minutes=40)
+            timestamp=datetime.now() + timedelta(minutes=40),
         )
 
         requests = self.trigger.update_distribution_metrics(changed_metrics)
@@ -176,9 +178,14 @@ class TestRetrainingTrigger(unittest.TestCase):
         """クールダウン機構のテスト"""
         # トリガーを発動
         low_metrics = PerformanceMetrics(
-            accuracy=0.6, precision=0.55, recall=0.5, f1_score=0.52,
-            win_rate=0.35, sharpe_ratio=0.8, max_drawdown=0.15,
-            timestamp=datetime.now()
+            accuracy=0.6,
+            precision=0.55,
+            recall=0.5,
+            f1_score=0.52,
+            win_rate=0.35,
+            sharpe_ratio=0.8,
+            max_drawdown=0.15,
+            timestamp=datetime.now(),
         )
 
         # 複数回更新してトリガーを発動
@@ -202,7 +209,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             new_model_path="/path/to/model",
             performance_improvement=0.05,
             training_duration=timedelta(hours=1),
-            completed_at=datetime.now()
+            completed_at=datetime.now(),
         )
 
         # 記録前の履歴サイズ
@@ -229,20 +236,27 @@ class TestRetrainingTrigger(unittest.TestCase):
                 new_model_path=f"/path/to/model_{i}",
                 performance_improvement=0.01,
                 training_duration=timedelta(hours=1),
-                completed_at=datetime.now()
+                completed_at=datetime.now(),
             )
             self.trigger.record_retraining_result(result)
 
         # 履歴サイズが制限されていることを確認
-        self.assertLessEqual(len(self.trigger.retraining_history), self.config.max_history_size)
+        self.assertLessEqual(
+            len(self.trigger.retraining_history), self.config.max_history_size
+        )
 
     def test_reset_functionality(self):
         """リセット機能のテスト"""
         # 何らかの状態を作成
         metrics = PerformanceMetrics(
-            accuracy=0.8, precision=0.75, recall=0.7, f1_score=0.72,
-            win_rate=0.5, sharpe_ratio=1.5, max_drawdown=0.1,
-            timestamp=datetime.now()
+            accuracy=0.8,
+            precision=0.75,
+            recall=0.7,
+            f1_score=0.72,
+            win_rate=0.5,
+            sharpe_ratio=1.5,
+            max_drawdown=0.1,
+            timestamp=datetime.now(),
         )
         self.trigger.update_performance_metrics(metrics)
 
@@ -254,7 +268,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             priority=TriggerPriority.MEDIUM,
             requested_at=datetime.now(),
             estimated_duration=timedelta(hours=1),
-            required_resources={}
+            required_resources={},
         )
 
         # リセット前の状態を確認
@@ -273,28 +287,42 @@ class TestRetrainingTrigger(unittest.TestCase):
         # 大量のデータを追加
         for i in range(20):
             metrics = PerformanceMetrics(
-                accuracy=0.8, precision=0.75, recall=0.7, f1_score=0.72,
-                win_rate=0.5, sharpe_ratio=1.5, max_drawdown=0.1,
-                timestamp=datetime.now() + timedelta(minutes=i)
+                accuracy=0.8,
+                precision=0.75,
+                recall=0.7,
+                f1_score=0.72,
+                win_rate=0.5,
+                sharpe_ratio=1.5,
+                max_drawdown=0.1,
+                timestamp=datetime.now() + timedelta(minutes=i),
             )
             self.trigger.update_performance_metrics(metrics)
 
         # 履歴サイズが制限されていることを確認
-        self.assertLessEqual(len(self.trigger.performance_history), self.config.max_history_size)
+        self.assertLessEqual(
+            len(self.trigger.performance_history), self.config.max_history_size
+        )
 
         # 明示的なクリーンアップを実行
         self.trigger._cleanup_history_if_needed()
 
         # 引き続き制限内であることを確認
-        self.assertLessEqual(len(self.trigger.performance_history), self.config.max_history_size)
+        self.assertLessEqual(
+            len(self.trigger.performance_history), self.config.max_history_size
+        )
 
     def test_error_handling_invalid_metrics(self):
         """無効なメトリクスデータのエラーハンドリング"""
         # 無効な値を含むメトリクス（負の値）
         invalid_metrics = PerformanceMetrics(
-            accuracy=-0.1, precision=0.5, recall=0.4, f1_score=0.45,
-            win_rate=0.5, sharpe_ratio=0.8, max_drawdown=0.1,
-            timestamp=datetime.now()
+            accuracy=-0.1,
+            precision=0.5,
+            recall=0.4,
+            f1_score=0.45,
+            win_rate=0.5,
+            sharpe_ratio=0.8,
+            max_drawdown=0.1,
+            timestamp=datetime.now(),
         )
 
         # エラーが発生せず、適切に処理されることを確認
@@ -313,7 +341,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={"feature1": 0.0, "feature2": 0.0},
             feature_kurtosis={"feature1": 0.0, "feature2": 0.0},
             sample_size=1000,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         requests = new_trigger.update_distribution_metrics(distribution_metrics)
@@ -330,9 +358,14 @@ class TestRetrainingTrigger(unittest.TestCase):
 
         # パフォーマンスメトリクスを更新
         metrics = PerformanceMetrics(
-            accuracy=0.3, precision=0.25, recall=0.2, f1_score=0.22,
-            win_rate=0.2, sharpe_ratio=0.3, max_drawdown=0.3,
-            timestamp=datetime.now()
+            accuracy=0.3,
+            precision=0.25,
+            recall=0.2,
+            f1_score=0.22,
+            win_rate=0.2,
+            sharpe_ratio=0.3,
+            max_drawdown=0.3,
+            timestamp=datetime.now(),
         )
 
         requests = disabled_trigger.update_performance_metrics(metrics)
@@ -343,9 +376,14 @@ class TestRetrainingTrigger(unittest.TestCase):
         """トリガーの優先順位付け"""
         # 複数のトリガーが同時に発動する状況を作成
         low_metrics = PerformanceMetrics(
-            accuracy=0.4, precision=0.35, recall=0.3, f1_score=0.32,
-            win_rate=0.25, sharpe_ratio=0.4, max_drawdown=0.25,
-            timestamp=datetime.now()
+            accuracy=0.4,
+            precision=0.35,
+            recall=0.3,
+            f1_score=0.32,
+            win_rate=0.25,
+            sharpe_ratio=0.4,
+            max_drawdown=0.25,
+            timestamp=datetime.now(),
         )
 
         # 複数回更新して複数のトリガーを発動
@@ -356,7 +394,10 @@ class TestRetrainingTrigger(unittest.TestCase):
         states = self.trigger.get_trigger_states()
         for state in states.values():
             if state.condition:
-                self.assertIn(state.condition.priority, [TriggerPriority.LOW, TriggerPriority.MEDIUM, TriggerPriority.HIGH])
+                self.assertIn(
+                    state.condition.priority,
+                    [TriggerPriority.LOW, TriggerPriority.MEDIUM, TriggerPriority.HIGH],
+                )
 
     def test_configuration_changes_runtime(self):
         """実行時の設定変更"""
@@ -380,7 +421,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             priority=TriggerPriority.HIGH,
             requested_at=datetime.now(),
             estimated_duration=timedelta(hours=2),
-            required_resources={"cpu": 4, "memory_gb": 8}
+            required_resources={"cpu": 4, "memory_gb": 8},
         )
 
         # リクエストを記録
@@ -388,11 +429,14 @@ class TestRetrainingTrigger(unittest.TestCase):
 
         # リソースが追跡されていることを確認
         self.assertIn(request.request_id, self.trigger.active_requests)
-        self.assertEqual(self.trigger.active_requests[request.request_id].required_resources["cpu"], 4)
+        self.assertEqual(
+            self.trigger.active_requests[request.request_id].required_resources["cpu"],
+            4,
+        )
 
     def test_logging_functionality(self):
         """ログ機能のテスト"""
-        with patch('ztb.adaptation.retraining.trigger.logger') as mock_logger:
+        with patch("ztb.adaptation.retraining.trigger.logger") as mock_logger:
             # トリガーを初期化（ログが出力される）
             trigger = RetrainingTrigger(self.config)
 
@@ -432,9 +476,14 @@ class TestRetrainingTrigger(unittest.TestCase):
         """同時トリガー評価のテスト"""
         # 複数の異なるタイプのトリガーが同時に評価される状況
         performance_metrics = PerformanceMetrics(
-            accuracy=0.35, precision=0.3, recall=0.25, f1_score=0.27,
-            win_rate=0.3, sharpe_ratio=0.5, max_drawdown=0.22,
-            timestamp=datetime.now()
+            accuracy=0.35,
+            precision=0.3,
+            recall=0.25,
+            f1_score=0.27,
+            win_rate=0.3,
+            sharpe_ratio=0.5,
+            max_drawdown=0.22,
+            timestamp=datetime.now(),
         )
 
         distribution_metrics = DataDistributionMetrics(
@@ -443,7 +492,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={"feature1": 0.1, "feature2": -0.1},
             feature_kurtosis={"feature1": 0.2, "feature2": 0.3},
             sample_size=1000,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # まずパフォーマンス履歴を構築
@@ -462,9 +511,14 @@ class TestRetrainingTrigger(unittest.TestCase):
         """閾値の境界条件テスト"""
         # 閾値と等しい値でのテスト
         boundary_metrics = PerformanceMetrics(
-            accuracy=0.5, precision=0.45, recall=0.4, f1_score=0.42,
-            win_rate=0.4, sharpe_ratio=1.0, max_drawdown=0.15,  # シャープレシオが閾値と等しい
-            timestamp=datetime.now()
+            accuracy=0.5,
+            precision=0.45,
+            recall=0.4,
+            f1_score=0.42,
+            win_rate=0.4,
+            sharpe_ratio=1.0,
+            max_drawdown=0.15,  # シャープレシオが閾値と等しい
+            timestamp=datetime.now(),
         )
 
         # 境界値でトリガーが発動しないことを確認
@@ -473,9 +527,14 @@ class TestRetrainingTrigger(unittest.TestCase):
 
         # 閾値をわずかに下回る値
         below_threshold = PerformanceMetrics(
-            accuracy=0.5, precision=0.45, recall=0.4, f1_score=0.42,
-            win_rate=0.4, sharpe_ratio=0.99, max_drawdown=0.15,  # 閾値を下回る
-            timestamp=datetime.now()
+            accuracy=0.5,
+            precision=0.45,
+            recall=0.4,
+            f1_score=0.42,
+            win_rate=0.4,
+            sharpe_ratio=0.99,
+            max_drawdown=0.15,  # 閾値を下回る
+            timestamp=datetime.now(),
         )
 
         # 複数回更新してトリガーを発動
@@ -499,14 +558,22 @@ class TestRetrainingTrigger(unittest.TestCase):
         # 大量の履歴データを追加
         for i in range(100):
             metrics = PerformanceMetrics(
-                accuracy=0.5, precision=0.4, recall=0.3, f1_score=0.35,
-                win_rate=0.4, sharpe_ratio=0.6, max_drawdown=0.2,
-                timestamp=datetime.now()
+                accuracy=0.5,
+                precision=0.4,
+                recall=0.3,
+                f1_score=0.35,
+                win_rate=0.4,
+                sharpe_ratio=0.6,
+                max_drawdown=0.2,
+                timestamp=datetime.now(),
             )
             compression_trigger.update_performance_metrics(metrics)
 
         # 圧縮が実行されていることを確認（履歴サイズが制限されている）
-        self.assertLessEqual(len(compression_trigger.performance_history), compression_config.max_history_size)
+        self.assertLessEqual(
+            len(compression_trigger.performance_history),
+            compression_config.max_history_size,
+        )
 
     def test_trigger_state_persistence(self):
         """トリガー状態の永続性テスト"""
@@ -519,9 +586,15 @@ class TestRetrainingTrigger(unittest.TestCase):
         # 十分な回数更新してトリガーが発動するようにする（時間を進める）
         for i in range(20):
             current_metrics = PerformanceMetrics(
-                accuracy=0.3, precision=0.25, recall=0.2, f1_score=0.22,
-                win_rate=0.2, sharpe_ratio=0.3, max_drawdown=0.3,
-                timestamp=base_time + timedelta(minutes=i*10)  # 10分ごとに時間を進める
+                accuracy=0.3,
+                precision=0.25,
+                recall=0.2,
+                f1_score=0.22,
+                win_rate=0.2,
+                sharpe_ratio=0.3,
+                max_drawdown=0.3,
+                timestamp=base_time
+                + timedelta(minutes=i * 10),  # 10分ごとに時間を進める
             )
             self.trigger.update_performance_metrics(current_metrics)
 
@@ -532,9 +605,11 @@ class TestRetrainingTrigger(unittest.TestCase):
             if trigger_id in initial_states:
                 state = updated_states[trigger_id]
                 # トリガーが発動したことを確認（last_triggeredが設定されている、またはstatusがTRIGGERED）
-                if (state.last_triggered is not None or
-                    state.status == TriggerStatus.TRIGGERED or
-                    state.cooldown_until is not None):
+                if (
+                    state.last_triggered is not None
+                    or state.status == TriggerStatus.TRIGGERED
+                    or state.cooldown_until is not None
+                ):
                     trigger_fired = True
                     break
 
@@ -544,8 +619,26 @@ class TestRetrainingTrigger(unittest.TestCase):
         """パフォーマンスメトリクスのバリデーション"""
         # 無効な値を含むメトリクス（境界外の値）
         invalid_metrics = [
-            PerformanceMetrics(accuracy=-0.1, precision=0.5, recall=0.4, f1_score=0.45, win_rate=0.5, sharpe_ratio=0.8, max_drawdown=0.1, timestamp=datetime.now()),
-            PerformanceMetrics(accuracy=1.5, precision=0.5, recall=0.4, f1_score=0.45, win_rate=0.5, sharpe_ratio=0.8, max_drawdown=0.1, timestamp=datetime.now()),
+            PerformanceMetrics(
+                accuracy=-0.1,
+                precision=0.5,
+                recall=0.4,
+                f1_score=0.45,
+                win_rate=0.5,
+                sharpe_ratio=0.8,
+                max_drawdown=0.1,
+                timestamp=datetime.now(),
+            ),
+            PerformanceMetrics(
+                accuracy=1.5,
+                precision=0.5,
+                recall=0.4,
+                f1_score=0.45,
+                win_rate=0.5,
+                sharpe_ratio=0.8,
+                max_drawdown=0.1,
+                timestamp=datetime.now(),
+            ),
         ]
 
         for invalid_metric in invalid_metrics:
@@ -559,8 +652,14 @@ class TestRetrainingTrigger(unittest.TestCase):
         # NaN値のテスト
         try:
             nan_metrics = PerformanceMetrics(
-                accuracy=float('nan'), precision=0.5, recall=0.4, f1_score=0.45,
-                win_rate=0.5, sharpe_ratio=0.8, max_drawdown=0.1, timestamp=datetime.now()
+                accuracy=float("nan"),
+                precision=0.5,
+                recall=0.4,
+                f1_score=0.45,
+                win_rate=0.5,
+                sharpe_ratio=0.8,
+                max_drawdown=0.1,
+                timestamp=datetime.now(),
             )
             requests = self.trigger.update_performance_metrics(nan_metrics)
             self.assertIsInstance(requests, list)
@@ -577,7 +676,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={},
             feature_kurtosis={},
             sample_size=0,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 空のメトリクスが適切に処理されることを確認
@@ -591,7 +690,7 @@ class TestRetrainingTrigger(unittest.TestCase):
             feature_skewness={"feature1": 0.0},
             feature_kurtosis={"feature1": 0.0},
             sample_size=1000,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
         )
 
         # 不整合なメトリクスも適切に処理されることを確認
@@ -610,7 +709,7 @@ class TestRetrainingPolicy(unittest.TestCase):
             threshold=0.45,
             duration_minutes=60,
             cooldown_minutes=240,
-            priority=TriggerPriority.HIGH
+            priority=TriggerPriority.HIGH,
         )
         self.policy = RetrainingPolicy(
             policy_name="test_policy",
@@ -618,7 +717,7 @@ class TestRetrainingPolicy(unittest.TestCase):
             retraining_strategy="full",
             resource_requirements={"cpu": 2, "memory_gb": 4},
             max_execution_time_hours=4,
-            success_criteria={"min_improvement": 0.02}
+            success_criteria={"min_improvement": 0.02},
         )
 
     def test_should_trigger_true(self):
@@ -652,9 +751,7 @@ class TestRetrainingConfig(unittest.TestCase):
     def test_custom_initialization(self):
         """カスタム設定での初期化"""
         config = RetrainingConfig(
-            enabled=False,
-            max_concurrent_retraining=3,
-            max_history_size=500
+            enabled=False, max_concurrent_retraining=3, max_history_size=500
         )
 
         self.assertFalse(config.enabled)
@@ -674,5 +771,5 @@ class TestRetrainingConfig(unittest.TestCase):
             RetrainingConfig(max_history_size=50)  # 100未満
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

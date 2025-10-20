@@ -1,7 +1,7 @@
 # コードベース検査・改善指示書
 
-**日付**: 2025年10月7日  
-**目的**: 型安全性向上、保守性強化、不整合検出・修正  
+**日付**: 2025年10月7日
+**目的**: 型安全性向上、保守性強化、不整合検出・修正
 **対象**: zaif-trade-bot全体（特にztb/training/配下）
 
 ---
@@ -140,20 +140,20 @@ from typing import Dict, Set
 def check_config_consistency(config_dir: Path) -> Dict[str, Set[str]]:
     """設定ファイルのキー名の一貫性をチェック."""
     all_keys: Dict[str, Set[str]] = {}
-    
+
     for config_file in config_dir.glob("**/*.json"):
         with open(config_file) as f:
             config = json.load(f)
             keys = set(config.keys())
             all_keys[config_file.name] = keys
-    
+
     # キー名の差分検出
     common_keys = set.intersection(*all_keys.values())
     unique_keys = {
         name: keys - common_keys
         for name, keys in all_keys.items()
     }
-    
+
     return unique_keys
 
 if __name__ == "__main__":
@@ -214,7 +214,7 @@ class TrainingConfig(TypedDict):
     data_path: Required[str]
     total_timesteps: Required[int]
     checkpoint_interval: int  # Optional (has default)
-    
+
 # 使用
 config: TrainingConfig = load_config("config.json")
 ```
@@ -356,7 +356,7 @@ class PPOTrainer:
         checkpoint_dir: str,
         checkpoint_interval: int = ...,
     ) -> None: ...
-    
+
     def train(self, session_id: str) -> Optional[CustomPPO]: ...
 ```
 
@@ -395,7 +395,7 @@ def test_config_schema_validation():
     """設定ファイルがスキーマに準拠しているか."""
     from ztb.config.schemas import TrainingConfig
     import json
-    
+
     config = json.load(open("configs/train/ensemble_A_1M.json"))
     # TypedDictバリデーション
     assert "algorithm" in config
@@ -423,7 +423,7 @@ grep -rn "type: ignore" ztb/ | wc -l
 pydocstyle ztb/ > pydocstyle_report.txt
 ```
 
-**成果物**: 
+**成果物**:
 - `mypy_strict_report.txt`
 - `config_inconsistencies.txt`
 - `type_ignore_usage.txt`
@@ -438,7 +438,7 @@ pydocstyle ztb/ > pydocstyle_report.txt
 2. 🟠 中: 設定ファイル統一、インターフェース統一
 3. 🟡 低: ドキュメント整備
 
-**成果物**: 
+**成果物**:
 - `IMPROVEMENT_PRIORITY_LIST.md`（改善優先度リスト）
 
 ---
@@ -530,28 +530,28 @@ from typing import List, Dict, Any
 def validate_config(config: Dict[str, Any], schema: Dict[str, Any]) -> List[str]:
     """設定ファイルをスキーマに対してバリデーション."""
     errors = []
-    
+
     # 必須キーチェック
     required_keys = schema.get("required", [])
     for key in required_keys:
         if key not in config:
             errors.append(f"Missing required key: {key}")
-    
+
     # 型チェック
     # ... (実装)
-    
+
     return errors
 
 if __name__ == "__main__":
     # 全設定ファイルをバリデーション
     configs_dir = Path("configs/train")
     all_passed = True
-    
+
     for config_file in configs_dir.glob("*.json"):
         with open(config_file) as f:
             config = json.load(f)
             errors = validate_config(config, TRAINING_SCHEMA)
-            
+
             if errors:
                 print(f"❌ {config_file.name}:")
                 for error in errors:
@@ -559,7 +559,7 @@ if __name__ == "__main__":
                 all_passed = False
             else:
                 print(f"✅ {config_file.name}")
-    
+
     exit(0 if all_passed else 1)
 ```
 
@@ -607,8 +607,8 @@ if __name__ == "__main__":
 
 ## ✅ コード品質改善計画 - 完了
 
-**完了日時**: 2025年10月7日  
-**ステータス**: Phase 1-4完了 - 包括的なコード品質向上達成  
+**完了日時**: 2025年10月7日
+**ステータス**: Phase 1-4完了 - 包括的なコード品質向上達成
 **コミット**: 3311672 (GitHub push済み)
 
 ### 完了フェーズ詳細

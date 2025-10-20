@@ -88,7 +88,7 @@ LagrangeConstraint(
 # Before
 SELLGradientProbe()  # SELL専用
 
-# After  
+# After
 ActionGradientProbe(target_action="SELL")  # 任意アクション対応
 # または
 ActionGradientProbe(target_action="BUY")   # BUY監視用
@@ -124,11 +124,11 @@ class SELLBiasMitigationCallback(BaseCallback):
 1. **カスタムPPO実装** (~500-1000行)
    - MaskablePPOを継承してtrain()メソッドをオーバーライド
    - 完全制御可能だが、SB3バージョンとの結合度高
-   
+
 2. **データレベルのみに集中**
    - Mirror augmentation + より洗練されたルールベース拡張
    - 実装シンプル、既に動作実績あり
-   
+
 3. **ハイブリッド**
    - Mirror augmentation (主力)
    - サンプリングバイアス (補助、実装比較的容易)
@@ -152,11 +152,11 @@ SELL: 123 (11.1%)
 1. **追加データ拡張**
    - ベア相場データの追加収集
    - 合成データ生成 (GANなど)
-   
+
 2. **リワード再設計**
    - Action balanceにボーナス付与
    - Sharp ratio最大化 (方向性中立的)
-   
+
 3. **多環境訓練**
    - 複数の市場regime (bull/bear/sideways) でローテーション訓練
 
@@ -282,7 +282,7 @@ long_paper = {
   - `ztb/training/grad_probes.py` (320行, 一般化済み)
   - `ztb/training/weights.py` (250行, 未統合)
   - `scripts/mirror_augment.py` (220行, 動作確認済み)
-  
+
 - テスト結果:
   - 基本PPO: ep_rew_mean=-71 → 1410 (curriculum修正後)
   - SELL mitigation: SELL rate 0% (依然未達)

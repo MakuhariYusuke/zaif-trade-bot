@@ -206,7 +206,7 @@ ent_coef = α(t)  # 動的調整
 1. **Behavior Cloning** (高優先度)
    - バランスの取れた初期ポリシーを作成
    - Fine-tuningでPnL最適化
-   
+
 2. **Curriculum Learning強化** (中優先度)
    - Stage 0: Forced Diversity (entropy重視)
    - Stage 1: Balanced (entropy + PnL)
@@ -288,7 +288,7 @@ tensorboard --logdir=tensorboard/ppo_balanced_mem_optimized
 
 ## まとめ
 
-**問題**: 
+**問題**:
 1. Lagrange制約では推論時のSELL bias解決できず
 2. メモリ不足で学習が中断
 

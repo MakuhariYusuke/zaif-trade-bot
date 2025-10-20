@@ -49,7 +49,8 @@ class ComputableFeature(Protocol):
 class StrictComputableFeature(Protocol):
     """Strict computable feature protocol - no **params allowed"""
 
-    def compute(self, df: pd.DataFrame) -> pd.DataFrame: ...
+    def compute(self, df: pd.DataFrame) -> pd.DataFrame:
+        ...
 
 
 class BaseFeature(ABC):

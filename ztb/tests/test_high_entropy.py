@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / 'src'))
+sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 import numpy as np
 import pandas as pd
@@ -35,22 +35,26 @@ class TrainingCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         # Check if episode is done
-        if len(self.locals.get('infos', [])) > 0:
-            info = self.locals['infos'][0]
-            if 'episode' in info:
-                episode_info = info['episode']
-                reward = episode_info['r']
-                length = episode_info['l']
+        if len(self.locals.get("infos", [])) > 0:
+            info = self.locals["infos"][0]
+            if "episode" in info:
+                episode_info = info["episode"]
+                reward = episode_info["r"]
+                length = episode_info["l"]
 
                 self.episode_rewards.append(reward)
                 self.episode_lengths.append(length)
                 self.episode_count += 1
 
                 # Get actions from the environment
-                if hasattr(self.training_env, 'get_last_actions'):
+                if hasattr(self.training_env, "get_last_actions"):
                     actions = self.training_env.get_last_actions()
                     if actions:
-                        actions_list = [int(a) for a in actions] if hasattr(actions, '__iter__') else []
+                        actions_list = (
+                            [int(a) for a in actions]
+                            if hasattr(actions, "__iter__")
+                            else []
+                        )
                         # Count actions for this episode
                         h_count = actions_list.count(0)
                         b_count = actions_list.count(1)
@@ -59,9 +63,17 @@ class TrainingCallback(BaseCallback):
 
                 # Print episode summary every 5 episodes
                 if self.episode_count % 5 == 0:
-                    avg_reward = np.mean(self.episode_rewards[-5:]) if self.episode_rewards else 0
-                    print(f"Episode {self.episode_count}: Reward={reward:.4f}, Length={length}, Actions: H={h_count if 'h_count' in locals() else 0}, B={b_count if 'b_count' in locals() else 0}, S={s_count if 's_count' in locals() else 0}")
-                    print(f"Episode {self.episode_count}: Avg Reward = {avg_reward:.4f}")
+                    avg_reward = (
+                        np.mean(self.episode_rewards[-5:])
+                        if self.episode_rewards
+                        else 0
+                    )
+                    print(
+                        f"Episode {self.episode_count}: Reward={reward:.4f}, Length={length}, Actions: H={h_count if 'h_count' in locals() else 0}, B={b_count if 'b_count' in locals() else 0}, S={s_count if 's_count' in locals() else 0}"
+                    )
+                    print(
+                        f"Episode {self.episode_count}: Avg Reward = {avg_reward:.4f}"
+                    )
 
         return True
 
@@ -95,7 +107,7 @@ def test_high_entropy(ent_coef: float = 0.2):
         config=env_config,
         streaming_pipeline=None,
         stream_batch_size=1000,
-        max_features=68
+        max_features=68,
     )
 
     # Wrap environment
@@ -118,7 +130,7 @@ def test_high_entropy(ent_coef: float = 0.2):
         n_epochs=10,
         n_steps=2048,
         verbose=1,
-        tensorboard_log="./tensorboard/"
+        tensorboard_log="./tensorboard/",
     )
 
     # Create callback
@@ -126,19 +138,17 @@ def test_high_entropy(ent_coef: float = 0.2):
 
     # Train model for shorter time to test
     total_timesteps = 25000  # Shorter training for testing
-    model.learn(
-        total_timesteps=total_timesteps,
-        callback=callback,
-        progress_bar=True
-    )
+    model.learn(total_timesteps=total_timesteps, callback=callback, progress_bar=True)
 
     # Calculate final statistics
     if callback.episode_rewards:
         avg_reward = np.mean(callback.episode_rewards)
         reward_std = np.std(callback.episode_rewards)
 
-        print("""
-=== Training Results ===""")
+        print(
+            """
+=== Training Results ==="""
+        )
         print(f"Total episodes: {len(callback.episode_rewards)}")
         print(f"Average episode reward: {avg_reward:.6f}")
         print(f"Reward std: {reward_std:.6f}")
@@ -150,8 +160,10 @@ def test_high_entropy(ent_coef: float = 0.2):
             sell_count = callback.actions_taken.count(2)
             total_actions = len(callback.actions_taken)
 
-            print("""
-Action distribution:""")
+            print(
+                """
+Action distribution:"""
+            )
             print(f"  HOLD: {hold_count} ({hold_count/total_actions*100:.1f}%)")
             print(f"  BUY: {buy_count} ({buy_count/total_actions*100:.1f}%)")
             print(f"  SELL: {sell_count} ({sell_count/total_actions*100:.1f}%)")
@@ -159,23 +171,31 @@ Action distribution:""")
         # Save model
         ent_coef_str = f"{ent_coef:.3f}".replace(".", "_")
         config = TypedConfig()
-        model_path = config.get_model_path(f"test_high_entropy_ent_coef_{ent_coef_str}.zip")
+        model_path = config.get_model_path(
+            f"test_high_entropy_ent_coef_{ent_coef_str}.zip"
+        )
         os.makedirs(config.get_model_dir(), exist_ok=True)
         model.save(model_path)
         print(f"Model saved to: {model_path}")
 
         print(f"✅ Successfully trained: high_entropy_ent_coef_{ent_coef_str}")
 
-        return avg_reward, sell_count/total_actions if callback.actions_taken else 0
+        return avg_reward, sell_count / total_actions if callback.actions_taken else 0
     else:
         print("❌ No episodes completed")
         return 0.0, 0.0
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Test PPO with high entropy coefficient')
-    parser.add_argument('--ent_coef', type=float, default=0.2,
-                       help='Entropy coefficient for exploration (default: 0.2)')
+    parser = argparse.ArgumentParser(
+        description="Test PPO with high entropy coefficient"
+    )
+    parser.add_argument(
+        "--ent_coef",
+        type=float,
+        default=0.2,
+        help="Entropy coefficient for exploration (default: 0.2)",
+    )
 
     args = parser.parse_args()
 

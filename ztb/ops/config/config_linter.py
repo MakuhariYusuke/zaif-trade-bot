@@ -289,7 +289,7 @@ def main() -> None:
             all_valid &= result.is_valid
             all_go &= result.go_nogo
 
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  All configs valid: {'✓' if all_valid else '✗'}")
         print(f"  Go for deployment: {'GO' if all_go else 'NO-GO'}")
 

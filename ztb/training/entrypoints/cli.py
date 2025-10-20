@@ -7,18 +7,19 @@ Handles command-line argument parsing and main entry point.
 
 import argparse
 import logging
-from typing import Dict, Any, Optional, cast
+from typing import Any, Dict, Optional, cast
 
 from ztb.training.unified_trainer import UnifiedTrainer
 from ztb.utils.config_loader import ConfigLoader
-from ztb.utils.logging_utils import get_logger
 from ztb.utils.errors import safe_operation
+from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
 # Check for Stable-Baselines3 availability
 try:
     import stable_baselines3
+
     STABLE_BASELINES3_AVAILABLE = True
 except ImportError:
     STABLE_BASELINES3_AVAILABLE = False
@@ -163,12 +164,15 @@ def main() -> int:
     """
     Main entry point for unified training.
     """
-    return cast(int, safe_operation(
-        _main_impl,
-        logger=logger,
-        context="Unified training execution",
-        fallback=1,
-    ))
+    return cast(
+        int,
+        safe_operation(
+            _main_impl,
+            logger=logger,
+            context="Unified training execution",
+            fallback=1,
+        ),
+    )
 
 
 def _main_impl() -> int:
@@ -180,7 +184,7 @@ def _main_impl() -> int:
 
     # Setup logging
     # --log-level takes precedence over --verbose
-    if hasattr(args, 'log_level') and args.log_level:
+    if hasattr(args, "log_level") and args.log_level:
         log_level = getattr(logging, args.log_level)
     else:
         log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -243,4 +247,5 @@ def _main_impl() -> int:
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(main())

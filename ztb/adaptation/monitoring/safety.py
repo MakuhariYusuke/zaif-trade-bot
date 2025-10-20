@@ -6,19 +6,24 @@ Safety Mechanisms and Fallback System
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
-from datetime import datetime, timedelta
 from collections import defaultdict, deque
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Callable, Dict, List, Optional
+
 import numpy as np
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable, Tuple
 
 from .types import (
-    SafetyLevel, AnomalyType, FallbackType, AnomalyDetection,
-    SafetyCheck, FallbackAction, SafetyStatus, RecoveryPlan,
-    MetricType, MetricValue
+    AnomalyDetection,
+    AnomalyType,
+    FallbackAction,
+    FallbackType,
+    MetricType,
+    MetricValue,
+    RecoveryPlan,
+    SafetyCheck,
+    SafetyLevel,
+    SafetyStatus,
 )
 
 
@@ -61,7 +66,10 @@ class SafetyConfig:
         if not (0.0 <= self.emergency_shutdown_threshold <= 1.0):
             raise ValueError("emergency_shutdown_threshold must be between 0.0 and 1.0")
         if self.emergency_shutdown_threshold >= self.critical_safety_threshold:
-            raise ValueError("emergency_shutdown_threshold must be less than critical_safety_threshold")
+            raise ValueError(
+                "emergency_shutdown_threshold must be less than critical_safety_threshold"
+            )
+
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +82,9 @@ class AnomalyDetector:
         self.metric_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
         self.baseline_stats: Dict[str, Dict[str, float]] = {}
 
-    def detect_anomalies(self, metrics: Dict[str, MetricValue]) -> List[AnomalyDetection]:
+    def detect_anomalies(
+        self, metrics: Dict[str, MetricValue]
+    ) -> List[AnomalyDetection]:
         """異常検知"""
         anomalies = []
 
@@ -101,10 +111,12 @@ class AnomalyDetector:
             "std": float(np.std(values)),
             "median": float(np.median(values)),
             "q25": float(np.percentile(values, 25)),
-            "q75": float(np.percentile(values, 75))
+            "q75": float(np.percentile(values, 75)),
         }
 
-    def _detect_single_anomaly(self, metric_name: str, value: float) -> Optional[AnomalyDetection]:
+    def _detect_single_anomaly(
+        self, metric_name: str, value: float
+    ) -> Optional[AnomalyDetection]:
         """単一メトリクスの異常検知"""
         if metric_name not in self.baseline_stats:
             return None
@@ -120,10 +132,16 @@ class AnomalyDetector:
                     anomaly_type=AnomalyType.STATISTICAL,
                     metric_name=metric_name,
                     detected_value=value,
-                    expected_range=(mean - 2*std, mean + 2*std),
-                    confidence=min(z_score / self.config.statistical_anomaly_threshold, 1.0),
+                    expected_range=(mean - 2 * std, mean + 2 * std),
+                    confidence=min(
+                        z_score / self.config.statistical_anomaly_threshold, 1.0
+                    ),
                     timestamp=datetime.now(),
-                    context={"z_score": z_score, "baseline_mean": mean, "baseline_std": std}
+                    context={
+                        "z_score": z_score,
+                        "baseline_mean": mean,
+                        "baseline_std": std,
+                    },
                 )
 
         return None
@@ -144,11 +162,12 @@ class SafetyChecker:
             "performance_stability": self._check_performance_stability,
             "resource_usage": self._check_resource_usage,
             "error_rates": self._check_error_rates,
-            "market_conditions": self._check_market_conditions
+            "market_conditions": self._check_market_conditions,
         }
 
-    def perform_safety_checks(self, metrics: Dict[str, MetricValue],
-                            anomalies: List[AnomalyDetection]) -> List[SafetyCheck]:
+    def perform_safety_checks(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> List[SafetyCheck]:
         """安全チェック実行"""
         checks = []
 
@@ -158,19 +177,22 @@ class SafetyChecker:
                 checks.append(check)
             except Exception as e:
                 logger.error(f"Safety check {check_name} failed: {e}")
-                checks.append(SafetyCheck(
-                    check_name=check_name,
-                    safety_level=SafetyLevel.CRITICAL,
-                    passed=False,
-                    message=f"Check execution failed: {str(e)}",
-                    timestamp=datetime.now(),
-                    details={"error": str(e)}
-                ))
+                checks.append(
+                    SafetyCheck(
+                        check_name=check_name,
+                        safety_level=SafetyLevel.CRITICAL,
+                        passed=False,
+                        message=f"Check execution failed: {str(e)}",
+                        timestamp=datetime.now(),
+                        details={"error": str(e)},
+                    )
+                )
 
         return checks
 
-    def _check_system_health(self, metrics: Dict[str, MetricValue],
-                           anomalies: List[AnomalyDetection]) -> SafetyCheck:
+    def _check_system_health(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> SafetyCheck:
         """システムヘルスチェック"""
         # CPU使用率チェック
         cpu_metric = metrics.get("cpu_usage_percent")
@@ -181,7 +203,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"High CPU usage: {cpu_metric.value:.1f}%",
                 timestamp=datetime.now(),
-                details={"cpu_usage": cpu_metric.value}
+                details={"cpu_usage": cpu_metric.value},
             )
 
         # メモリ使用率チェック
@@ -193,7 +215,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"High memory usage: {memory_metric.value:.1f}%",
                 timestamp=datetime.now(),
-                details={"memory_usage": memory_metric.value}
+                details={"memory_usage": memory_metric.value},
             )
 
         return SafetyCheck(
@@ -202,12 +224,15 @@ class SafetyChecker:
             passed=True,
             message="System health is normal",
             timestamp=datetime.now(),
-            details={"cpu_usage": cpu_metric.value if cpu_metric else None,
-                    "memory_usage": memory_metric.value if memory_metric else None}
+            details={
+                "cpu_usage": cpu_metric.value if cpu_metric else None,
+                "memory_usage": memory_metric.value if memory_metric else None,
+            },
         )
 
-    def _check_performance_stability(self, metrics: Dict[str, MetricValue],
-                                   anomalies: List[AnomalyDetection]) -> SafetyCheck:
+    def _check_performance_stability(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> SafetyCheck:
         """パフォーマンス安定性チェック"""
         # 勝率チェック
         win_rate = metrics.get("win_rate")
@@ -218,7 +243,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"Low win rate: {win_rate.value:.3f}",
                 timestamp=datetime.now(),
-                details={"win_rate": win_rate.value}
+                details={"win_rate": win_rate.value},
             )
 
         # 最大ドローダウンチェック
@@ -230,7 +255,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"High drawdown: {max_drawdown.value:.3f}",
                 timestamp=datetime.now(),
-                details={"max_drawdown": max_drawdown.value}
+                details={"max_drawdown": max_drawdown.value},
             )
 
         return SafetyCheck(
@@ -239,12 +264,15 @@ class SafetyChecker:
             passed=True,
             message="Performance is stable",
             timestamp=datetime.now(),
-            details={"win_rate": win_rate.value if win_rate else None,
-                    "max_drawdown": max_drawdown.value if max_drawdown else None}
+            details={
+                "win_rate": win_rate.value if win_rate else None,
+                "max_drawdown": max_drawdown.value if max_drawdown else None,
+            },
         )
 
-    def _check_resource_usage(self, metrics: Dict[str, MetricValue],
-                            anomalies: List[AnomalyDetection]) -> SafetyCheck:
+    def _check_resource_usage(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> SafetyCheck:
         """リソース使用チェック"""
         # 基本的なリソースチェックはシステムヘルスチェックでカバー
         return SafetyCheck(
@@ -253,11 +281,12 @@ class SafetyChecker:
             passed=True,
             message="Resource usage is normal",
             timestamp=datetime.now(),
-            details={}
+            details={},
         )
 
-    def _check_error_rates(self, metrics: Dict[str, MetricValue],
-                          anomalies: List[AnomalyDetection]) -> SafetyCheck:
+    def _check_error_rates(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> SafetyCheck:
         """エラーレートチェック"""
         error_rate = metrics.get("error_rate")
         if error_rate and error_rate.value > 0.1:
@@ -267,7 +296,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"High error rate: {error_rate.value:.3f}",
                 timestamp=datetime.now(),
-                details={"error_rate": error_rate.value}
+                details={"error_rate": error_rate.value},
             )
 
         return SafetyCheck(
@@ -276,11 +305,12 @@ class SafetyChecker:
             passed=True,
             message="Error rates are normal",
             timestamp=datetime.now(),
-            details={"error_rate": error_rate.value if error_rate else None}
+            details={"error_rate": error_rate.value if error_rate else None},
         )
 
-    def _check_market_conditions(self, metrics: Dict[str, MetricValue],
-                               anomalies: List[AnomalyDetection]) -> SafetyCheck:
+    def _check_market_conditions(
+        self, metrics: Dict[str, MetricValue], anomalies: List[AnomalyDetection]
+    ) -> SafetyCheck:
         """市場状況チェック"""
         # ボラティリティチェック
         volatility = metrics.get("market_volatility")
@@ -291,7 +321,7 @@ class SafetyChecker:
                 passed=False,
                 message=f"High market volatility: {volatility.value:.3f}",
                 timestamp=datetime.now(),
-                details={"volatility": volatility.value}
+                details={"volatility": volatility.value},
             )
 
         return SafetyCheck(
@@ -300,7 +330,7 @@ class SafetyChecker:
             passed=True,
             message="Market conditions are normal",
             timestamp=datetime.now(),
-            details={"volatility": volatility.value if volatility else None}
+            details={"volatility": volatility.value if volatility else None},
         )
 
 
@@ -314,11 +344,12 @@ class FallbackHandler:
             FallbackType.GRADUAL: self._execute_gradual_rollback,
             FallbackType.IMMEDIATE: self._execute_immediate_rollback,
             FallbackType.CONSERVATIVE: self._execute_conservative_mode,
-            FallbackType.SHUTDOWN: self._execute_emergency_shutdown
+            FallbackType.SHUTDOWN: self._execute_emergency_shutdown,
         }
 
-    def initiate_fallback(self, fallback_type: FallbackType,
-                         reason: str, priority: int = 1) -> str:
+    def initiate_fallback(
+        self, fallback_type: FallbackType, reason: str, priority: int = 1
+    ) -> str:
         """フォールバック開始"""
         action_id = f"fallback_{int(time.time())}_{fallback_type.value}"
 
@@ -329,7 +360,7 @@ class FallbackHandler:
             priority=priority,
             estimated_duration_seconds=self._get_estimated_duration(fallback_type),
             rollback_steps=self._get_rollback_steps(fallback_type),
-            recovery_steps=self._get_recovery_steps(fallback_type)
+            recovery_steps=self._get_recovery_steps(fallback_type),
         )
 
         self.active_fallbacks[action_id] = action
@@ -350,7 +381,7 @@ class FallbackHandler:
             FallbackType.GRADUAL: 300,  # 5分
             FallbackType.IMMEDIATE: 60,  # 1分
             FallbackType.CONSERVATIVE: 3600,  # 1時間
-            FallbackType.SHUTDOWN: 30  # 30秒
+            FallbackType.SHUTDOWN: 30,  # 30秒
         }
         return durations.get(fallback_type, 60)
 
@@ -362,26 +393,26 @@ class FallbackHandler:
                 "Disable high-risk strategies",
                 "Enable conservative position sizing",
                 "Monitor performance for 5 minutes",
-                "Gradually restore normal operation"
+                "Gradually restore normal operation",
             ],
             FallbackType.IMMEDIATE: [
                 "Stop all active trades",
                 "Switch to cash-only mode",
                 "Disable automated trading",
-                "Wait for manual intervention"
+                "Wait for manual intervention",
             ],
             FallbackType.CONSERVATIVE: [
                 "Enable conservative trading mode",
                 "Reduce position sizes by 75%",
                 "Disable leverage",
-                "Enable strict risk limits"
+                "Enable strict risk limits",
             ],
             FallbackType.SHUTDOWN: [
                 "Stop all trading activities",
                 "Close all positions",
                 "Shutdown trading system",
-                "Require manual restart"
-            ]
+                "Require manual restart",
+            ],
         }
         return steps.get(fallback_type, ["Execute fallback procedure"])
 
@@ -392,26 +423,26 @@ class FallbackHandler:
                 "Verify system stability",
                 "Gradually increase trading frequency",
                 "Re-enable strategies one by one",
-                "Monitor performance metrics"
+                "Monitor performance metrics",
             ],
             FallbackType.IMMEDIATE: [
                 "Perform system diagnostics",
                 "Manually verify market conditions",
                 "Gradually resume trading",
-                "Monitor for anomalies"
+                "Monitor for anomalies",
             ],
             FallbackType.CONSERVATIVE: [
                 "Verify conservative mode effectiveness",
                 "Gradually increase position sizes",
                 "Re-enable advanced features",
-                "Monitor risk metrics"
+                "Monitor risk metrics",
             ],
             FallbackType.SHUTDOWN: [
                 "Perform complete system check",
                 "Verify all components",
                 "Manual restart with monitoring",
-                "Gradual return to normal operation"
-            ]
+                "Gradual return to normal operation",
+            ],
         }
         return steps.get(fallback_type, ["Perform recovery procedure"])
 
@@ -460,8 +491,9 @@ class RecoveryManager:
         self.recovery_plans: Dict[str, RecoveryPlan] = {}
         self.recovery_attempts: Dict[str, int] = defaultdict(int)
 
-    def create_recovery_plan(self, trigger_reason: str,
-                           steps: List[str], success_criteria: List[str]) -> str:
+    def create_recovery_plan(
+        self, trigger_reason: str, steps: List[str], success_criteria: List[str]
+    ) -> str:
         """回復計画作成"""
         plan_id = f"recovery_{int(time.time())}"
 
@@ -471,7 +503,7 @@ class RecoveryManager:
             steps=steps,
             estimated_completion_time=datetime.now() + timedelta(minutes=30),
             success_criteria=success_criteria,
-            rollback_plan=["Cancel recovery", "Return to safe state"]
+            rollback_plan=["Cancel recovery", "Return to safe state"],
         )
 
         self.recovery_plans[plan_id] = plan
@@ -488,7 +520,10 @@ class RecoveryManager:
         plan = self.recovery_plans[plan_id]
 
         # 試行回数チェック
-        if self.recovery_attempts[plan.triggered_by] >= self.config.recovery_attempt_limit:
+        if (
+            self.recovery_attempts[plan.triggered_by]
+            >= self.config.recovery_attempt_limit
+        ):
             logger.warning(f"Recovery attempt limit reached for {plan.triggered_by}")
             return False
 
@@ -538,7 +573,7 @@ class SafetyManager:
             recent_checks=[],
             active_fallbacks=[],
             last_updated=datetime.now(),
-            system_health_score=1.0
+            system_health_score=1.0,
         )
 
     def start_safety_monitoring(self) -> None:
@@ -549,8 +584,7 @@ class SafetyManager:
 
         self.is_monitoring = True
         self.monitoring_thread = threading.Thread(
-            target=self._safety_monitoring_worker,
-            daemon=True
+            target=self._safety_monitoring_worker, daemon=True
         )
         self.monitoring_thread.start()
         logger.info("Safety monitoring started")
@@ -600,7 +634,7 @@ class SafetyManager:
             recent_checks=checks[-10:],  # 最新10件
             active_fallbacks=self.fallback_handler.get_active_fallbacks(),
             last_updated=datetime.now(),
-            system_health_score=health_score
+            system_health_score=health_score,
         )
 
         # 自動対応
@@ -613,27 +647,31 @@ class SafetyManager:
                 name="cpu_usage_percent",
                 value=45.0 + np.random.normal(0, 5),
                 timestamp=datetime.now(),
-                metric_type=MetricType.SYSTEM
+                metric_type=MetricType.SYSTEM,
             ),
             "memory_usage_percent": MetricValue(
                 name="memory_usage_percent",
                 value=60.0 + np.random.normal(0, 3),
                 timestamp=datetime.now(),
-                metric_type=MetricType.SYSTEM
+                metric_type=MetricType.SYSTEM,
             ),
             "win_rate": MetricValue(
                 name="win_rate",
                 value=0.55 + np.random.normal(0, 0.05),
                 timestamp=datetime.now(),
-                metric_type=MetricType.PERFORMANCE
-            )
+                metric_type=MetricType.PERFORMANCE,
+            ),
         }
 
-    def _calculate_overall_safety_level(self, checks: List[SafetyCheck],
-                                      anomalies: List[AnomalyDetection]) -> SafetyLevel:
+    def _calculate_overall_safety_level(
+        self, checks: List[SafetyCheck], anomalies: List[AnomalyDetection]
+    ) -> SafetyLevel:
         """全体安全レベル計算"""
         # クリティカルチェックがある場合
-        if any(check.safety_level == SafetyLevel.CRITICAL and not check.passed for check in checks):
+        if any(
+            check.safety_level == SafetyLevel.CRITICAL and not check.passed
+            for check in checks
+        ):
             return SafetyLevel.CRITICAL
 
         # 緊急レベルの異常がある場合
@@ -641,7 +679,10 @@ class SafetyManager:
             return SafetyLevel.EMERGENCY
 
         # 警告チェックがある場合
-        if any(check.safety_level == SafetyLevel.WARNING and not check.passed for check in checks):
+        if any(
+            check.safety_level == SafetyLevel.WARNING and not check.passed
+            for check in checks
+        ):
             return SafetyLevel.WARNING
 
         # 異常がある場合
@@ -669,54 +710,56 @@ class SafetyManager:
 
         return total_score / len(checks)
 
-    def _handle_automatic_actions(self, safety_level: SafetyLevel,
-                                anomalies: List[AnomalyDetection]) -> None:
+    def _handle_automatic_actions(
+        self, safety_level: SafetyLevel, anomalies: List[AnomalyDetection]
+    ) -> None:
         """自動対応処理"""
         # 緊急レベルの場合
         if safety_level == SafetyLevel.EMERGENCY:
             self.fallback_handler.initiate_fallback(
-                FallbackType.SHUTDOWN,
-                "Emergency safety level detected",
-                priority=10
+                FallbackType.SHUTDOWN, "Emergency safety level detected", priority=10
             )
 
         # クリティカルレベルの場合
         elif safety_level == SafetyLevel.CRITICAL:
-            if self.current_status.system_health_score < self.config.emergency_shutdown_threshold:
+            if (
+                self.current_status.system_health_score
+                < self.config.emergency_shutdown_threshold
+            ):
                 self.fallback_handler.initiate_fallback(
                     FallbackType.IMMEDIATE,
                     "Critical health score threshold breached",
-                    priority=8
+                    priority=8,
                 )
             else:
                 self.fallback_handler.initiate_fallback(
-                    FallbackType.GRADUAL,
-                    "Critical safety level detected",
-                    priority=6
+                    FallbackType.GRADUAL, "Critical safety level detected", priority=6
                 )
 
         # 警告レベルの場合
         elif safety_level == SafetyLevel.WARNING:
             if len(anomalies) > 3:  # 複数の異常
                 self.fallback_handler.initiate_fallback(
-                    FallbackType.CONSERVATIVE,
-                    "Multiple anomalies detected",
-                    priority=4
+                    FallbackType.CONSERVATIVE, "Multiple anomalies detected", priority=4
                 )
 
     def get_safety_status(self) -> SafetyStatus:
         """安全ステータス取得"""
         return self.current_status
 
-    def initiate_manual_fallback(self, fallback_type: FallbackType,
-                               reason: str) -> str:
+    def initiate_manual_fallback(self, fallback_type: FallbackType, reason: str) -> str:
         """手動フォールバック開始"""
-        return self.fallback_handler.initiate_fallback(fallback_type, reason, priority=5)
+        return self.fallback_handler.initiate_fallback(
+            fallback_type, reason, priority=5
+        )
 
-    def create_recovery_plan(self, trigger_reason: str,
-                           steps: List[str], success_criteria: List[str]) -> str:
+    def create_recovery_plan(
+        self, trigger_reason: str, steps: List[str], success_criteria: List[str]
+    ) -> str:
         """回復計画作成"""
-        return self.recovery_manager.create_recovery_plan(trigger_reason, steps, success_criteria)
+        return self.recovery_manager.create_recovery_plan(
+            trigger_reason, steps, success_criteria
+        )
 
     def execute_recovery(self, plan_id: str) -> bool:
         """回復実行"""

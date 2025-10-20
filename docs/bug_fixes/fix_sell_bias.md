@@ -260,5 +260,5 @@ If fixes don't resolve issue, consider:
 
 ---
 
-**Last Updated**: 2025-10-06  
+**Last Updated**: 2025-10-06
 **Status**: Investigation ongoing, fixes in progress

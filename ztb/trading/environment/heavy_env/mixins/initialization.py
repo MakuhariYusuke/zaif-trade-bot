@@ -13,6 +13,7 @@ from gymnasium import spaces
 from numpy.typing import NDArray
 from pandas.api import types as ptypes
 
+from ztb.features.adaptive_selection import AdaptiveFeatureSelector
 from ztb.trading.environment.components import (
     ActionValidator,
     DataProcessor,
@@ -22,7 +23,6 @@ from ztb.trading.environment.components import (
     RewardCalculator,
     StreamingHandler,
 )
-from ztb.features.adaptive_selection import AdaptiveFeatureSelector
 from ztb.utils.errors import ValidationError
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root, safe_path_join
@@ -39,6 +39,7 @@ logger = get_logger(__name__)
 # Public helpers bound to HeavyTradingEnv
 # ---------------------------------------------------------------------------
 
+
 def _initialize_components(
     self: Any,
     streaming_pipeline: Optional["StreamingPipeline"],
@@ -51,7 +52,9 @@ def _initialize_components(
     if isinstance(raw_memory_log_path, str):
         path_candidate = Path(raw_memory_log_path)
         if not path_candidate.is_absolute():
-            path_candidate = safe_path_join(str(get_project_root()), raw_memory_log_path)
+            path_candidate = safe_path_join(
+                str(get_project_root()), raw_memory_log_path
+            )
         memory_log_path = str(path_candidate.resolve())
     elif raw_memory_log_path is not None:
         TypeValidator.validate_type(raw_memory_log_path, str, "memory_log_path")
@@ -77,8 +80,12 @@ def _initialize_components(
         gc_step_interval=self.memory_manager.gc_step_interval,
     )
 
-    timestamp_column = "timestamp" if df is not None and "timestamp" in df.columns else None
-    episode_id_column = "episode_id" if df is not None and "episode_id" in df.columns else None
+    timestamp_column = (
+        "timestamp" if df is not None and "timestamp" in df.columns else None
+    )
+    episode_id_column = (
+        "episode_id" if df is not None and "episode_id" in df.columns else None
+    )
 
     self.streaming_handler = StreamingHandler(
         streaming_pipeline=streaming_pipeline,
@@ -96,7 +103,9 @@ def _initialize_data_structures(self: Any) -> None:
     )
     volatility_window = max(
         self.DEFAULT_MIN_WINDOW_SIZE,
-        self._get_reward_setting_int("volatility_window", self.DEFAULT_VOLATILITY_WINDOW),
+        self._get_reward_setting_int(
+            "volatility_window", self.DEFAULT_VOLATILITY_WINDOW
+        ),
     )
     self.position_abs_history = deque(maxlen=inventory_window)
     self.pnl_history = deque(maxlen=volatility_window)
@@ -149,14 +158,18 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
     # Check if features are specified in config (schema-based approach)
     config_features = getattr(self.config, "feature_names", None)
     correlation_reduction = getattr(self.config, "enable_correlation_reduction", True)
-    logger.info(f"Config features: {config_features is not None}, correlation_reduction: {correlation_reduction}")
+    logger.info(
+        f"Config features: {config_features is not None}, correlation_reduction: {correlation_reduction}"
+    )
     if config_features is not None:
         logger.info(f"Using schema-defined features: {len(config_features)}")
         self.features = config_features
         # Validate that all required features exist in dataframe
         missing_features = set(config_features) - set(self.df.columns)
         if missing_features:
-            raise ValueError(f"Missing required features in dataframe: {missing_features}")
+            raise ValueError(
+                f"Missing required features in dataframe: {missing_features}"
+            )
     else:
         # Original feature discovery logic
         exclude_by_default = {"ts", "timestamp", "exchange", "pair", "episode_id"}
@@ -165,13 +178,17 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
             all_features = list(self.df.columns)
 
         feature_set = getattr(self.config, "feature_set", "full")
-        enable_feature_filtering = getattr(self.config, "enable_feature_filtering", False)
+        enable_feature_filtering = getattr(
+            self.config, "enable_feature_filtering", False
+        )
         feature_filter_mode = getattr(self.config, "feature_filter_mode", "whitelist")
 
         if enable_feature_filtering and feature_filter_mode == "whitelist":
             curated_features_spec = getattr(self.config, "curated_features_list", None)
             if curated_features_spec:
-                all_features = _apply_curated_feature_filter(curated_features_spec, all_features)
+                all_features = _apply_curated_feature_filter(
+                    curated_features_spec, all_features
+                )
 
         max_features_limit = _resolve_max_features_limit(self, max_features)
 
@@ -202,7 +219,10 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
             )
             correlation_threshold = getattr(self.config, "correlation_threshold", 0.95)
             try:
-                optimized_features, reduction_stats = self._select_features_by_correlation_in_env(
+                (
+                    optimized_features,
+                    reduction_stats,
+                ) = self._select_features_by_correlation_in_env(
                     self.features,
                     correlation_threshold,
                     target_feature_count=target_feature_count,
@@ -217,7 +237,9 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                                 "removed_count": removed_count,
                                 "remaining": len(self.features),
                                 "target": target_feature_count,
-                                "dropped_non_numeric": reduction_stats.get("non_numeric"),
+                                "dropped_non_numeric": reduction_stats.get(
+                                    "non_numeric"
+                                ),
                                 "dropped_constant": reduction_stats.get("constant"),
                                 "dropped_correlated": reduction_stats.get("correlated"),
                             },
@@ -255,7 +277,9 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
 
     # Apply adaptive feature selection if enabled
     adaptive_selection_config = getattr(self.config, "adaptive_feature_selection", None)
-    if adaptive_selection_config and getattr(adaptive_selection_config, "enabled", False):
+    if adaptive_selection_config and getattr(
+        adaptive_selection_config, "enabled", False
+    ):
         logger.info("Applying adaptive feature selection...")
         try:
             selector = AdaptiveFeatureSelector(adaptive_selection_config)
@@ -274,7 +298,9 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
                         "remaining": len(self.features),
                         "regime": selection_stats.get("regime"),
                         "attention_weighted": selection_stats.get("attention_weighted"),
-                        "selection_threshold": selection_stats.get("selection_threshold"),
+                        "selection_threshold": selection_stats.get(
+                            "selection_threshold"
+                        ),
                     },
                 )
             else:
@@ -302,17 +328,17 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         shape=(len(self.features),),
         dtype=np.float32,
     )
-    
+
     # Action space: Support both discrete (PPO) and continuous (SAC)
     from ztb.trading.environment.constants import (
-        NUM_DISCRETE_ACTIONS,
-        CONTINUOUS_ACTION_MIN,
-        CONTINUOUS_ACTION_MAX,
         CONTINUOUS_ACTION_DIM,
+        CONTINUOUS_ACTION_MAX,
+        CONTINUOUS_ACTION_MIN,
+        NUM_DISCRETE_ACTIONS,
     )
-    
+
     use_continuous_actions = getattr(self.config, "use_continuous_actions", False)
-    
+
     if use_continuous_actions:
         # Continuous action space for SAC and other continuous algorithms
         # Action value in [-1, 1]: negative=SELL, 0=HOLD, positive=BUY
@@ -329,13 +355,12 @@ def _initialize_features_and_spaces(self: Any, max_features: Optional[int]) -> N
         logger.info("Using discrete action space (PPO-compatible)")
 
 
-
 def _setup_scaler(self: Any) -> None:
     """Setup feature scaler from config or schema data."""
     # Check if scaler data is provided in config
     scaler_mean = getattr(self.config, "scaler_mean", None)
     scaler_std = getattr(self.config, "scaler_std", None)
-    
+
     if scaler_mean is not None and scaler_std is not None:
         # Store scaler data for later use
         self.scaler_mean = scaler_mean
@@ -439,7 +464,10 @@ def _initialize_remaining_components(self: Any) -> None:
 # Internal helpers used by the public initialization functions
 # ---------------------------------------------------------------------------
 
-def _apply_curated_feature_filter(curated_features_spec: str, all_features: List[str]) -> List[str]:
+
+def _apply_curated_feature_filter(
+    curated_features_spec: str, all_features: List[str]
+) -> List[str]:
     """Apply curated feature whitelist if available."""
     try:
         if "::" not in curated_features_spec:
@@ -506,7 +534,9 @@ def _apply_curated_feature_filter(curated_features_spec: str, all_features: List
         return all_features
 
 
-def _resolve_max_features_limit(self: Any, max_features: Optional[int]) -> Optional[int]:
+def _resolve_max_features_limit(
+    self: Any, max_features: Optional[int]
+) -> Optional[int]:
     """Resolve the effective max_features limit from various config locations."""
     max_features_limit = max_features
     if max_features_limit is None and hasattr(self.config, "get"):
@@ -537,7 +567,9 @@ def _enforce_feature_limit(self: Any, max_features_limit: int) -> None:
             continue
         try:
             variance_value = self.df[feature_name].var()
-            if pd.notna(variance_value) and isinstance(variance_value, (int, float, np.number)):
+            if pd.notna(variance_value) and isinstance(
+                variance_value, (int, float, np.number)
+            ):
                 variance = float(variance_value)
                 if not np.isnan(variance) and not np.isinf(variance):
                     feature_variances.append((feature_name, variance))
@@ -571,7 +603,9 @@ def _refresh_features(self: Any) -> None:
     )
 
 
-def _build_fast_access_buffers(self: Any) -> None:  # pragma: no cover - exercised via environment usage
+def _build_fast_access_buffers(
+    self: Any,
+) -> None:  # pragma: no cover - exercised via environment usage
     """Precompute numpy buffers for efficient runtime access."""
     if not self.features:
         self._feature_matrix = np.empty((0, 0), dtype=np.float32)
@@ -606,8 +640,12 @@ def _build_fast_access_buffers(self: Any) -> None:  # pragma: no cover - exercis
     self._nonfinite_warned_rows = set()
     self._feature_matrix.setflags(write=False)
 
-    self._price_array = _extract_numeric_column(self, ("price", "close", "adj_close", "open"), fallback=None)
-    self._close_array = _extract_numeric_column(self, ("close", "price", "adj_close", "open"), fallback=None)
+    self._price_array = _extract_numeric_column(
+        self, ("price", "close", "adj_close", "open"), fallback=None
+    )
+    self._close_array = _extract_numeric_column(
+        self, ("close", "price", "adj_close", "open"), fallback=None
+    )
     self._atr_array = _extract_numeric_column(
         self,
         ("atr_10", "atr_14", "atr_simplified", "ATR", "ATR_simplified"),
@@ -642,7 +680,9 @@ def _extract_numeric_column(
             continue
         array = np.ascontiguousarray(series.to_numpy(dtype=np.float32, copy=False))
         if fallback is not None and array.size:
-            np.nan_to_num(array, copy=False, nan=fallback, posinf=fallback, neginf=fallback)
+            np.nan_to_num(
+                array, copy=False, nan=fallback, posinf=fallback, neginf=fallback
+            )
         return array
 
     if fallback is None:
@@ -701,7 +741,9 @@ def _select_features_by_correlation_in_env(
             reduction_stats["non_numeric"].append(name)
 
     numeric_features = [
-        name for name in available_features if name not in reduction_stats["non_numeric"]
+        name
+        for name in available_features
+        if name not in reduction_stats["non_numeric"]
     ]
 
     if not numeric_features:
@@ -717,7 +759,9 @@ def _select_features_by_correlation_in_env(
     ]
     if constant_features:
         reduction_stats["constant"].extend(constant_features)
-        numeric_features = [name for name in numeric_features if name not in constant_features]
+        numeric_features = [
+            name for name in numeric_features if name not in constant_features
+        ]
         numeric_frame = numeric_frame.drop(columns=constant_features, errors="ignore")
         variances = variances.drop(labels=constant_features, errors="ignore")
 

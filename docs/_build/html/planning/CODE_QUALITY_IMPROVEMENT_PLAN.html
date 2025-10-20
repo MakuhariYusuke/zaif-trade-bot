@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>コードベース検査・改善指示書<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
 <p><strong>日付</strong>: 2025年10月7日<br />
@@ -245,20 +245,20 @@ grep<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;typ
 <span class="k">def</span><span class="w"> </span><span class="nf">check_config_consistency</span><span class="p">(</span><span class="n">config_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;設定ファイルのキー名の一貫性をチェック.&quot;&quot;&quot;</span>
     <span class="n">all_keys</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Set</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-    
+
     <span class="k">for</span> <span class="n">config_file</span> <span class="ow">in</span> <span class="n">config_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;**/*.json&quot;</span><span class="p">):</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="n">keys</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
             <span class="n">all_keys</span><span class="p">[</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">keys</span>
-    
+
     <span class="c1"># キー名の差分検出</span>
     <span class="n">common_keys</span> <span class="o">=</span> <span class="nb">set</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="o">*</span><span class="n">all_keys</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
     <span class="n">unique_keys</span> <span class="o">=</span> <span class="p">{</span>
         <span class="n">name</span><span class="p">:</span> <span class="n">keys</span> <span class="o">-</span> <span class="n">common_keys</span>
         <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">keys</span> <span class="ow">in</span> <span class="n">all_keys</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
     <span class="p">}</span>
-    
+
     <span class="k">return</span> <span class="n">unique_keys</span>
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
@@ -317,7 +317,7 @@ grep<span class="w"> </span>-rn<span class="w"> </span><span class="s2">&quot;\.
     <span class="n">data_path</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
     <span class="n">total_timesteps</span><span class="p">:</span> <span class="n">Required</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
     <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="nb">int</span>  <span class="c1"># Optional (has default)</span>
-    
+
 <span class="c1"># 使用</span>
 <span class="n">config</span><span class="p">:</span> <span class="n">TrainingConfig</span> <span class="o">=</span> <span class="n">load_config</span><span class="p">(</span><span class="s2">&quot;config.json&quot;</span><span class="p">)</span>
 </pre></div>
@@ -463,7 +463,7 @@ pydocstyle<span class="w"> </span>ztb/<span class="w"> </span>&gt;<span class="w
         <span class="n">checkpoint_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">checkpoint_interval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">...</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CustomPPO</span><span class="p">]:</span> <span class="o">...</span>
 </pre></div>
 </div>
@@ -502,7 +502,7 @@ pydocstyle<span class="w"> </span>ztb/<span class="w"> </span>&gt;<span class="w
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;設定ファイルがスキーマに準拠しているか.&quot;&quot;&quot;</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.config.schemas</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainingConfig</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-    
+
     <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s2">&quot;configs/train/ensemble_A_1M.json&quot;</span><span class="p">))</span>
     <span class="c1"># TypedDictバリデーション</span>
     <span class="k">assert</span> <span class="s2">&quot;algorithm&quot;</span> <span class="ow">in</span> <span class="n">config</span>
@@ -642,28 +642,28 @@ python<span class="w"> </span>scripts/validate_all_configs.py
 <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">schema</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;設定ファイルをスキーマに対してバリデーション.&quot;&quot;&quot;</span>
     <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
-    
+
     <span class="c1"># 必須キーチェック</span>
     <span class="n">required_keys</span> <span class="o">=</span> <span class="n">schema</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;required&quot;</span><span class="p">,</span> <span class="p">[])</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">required_keys</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
             <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required key: </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 型チェック</span>
     <span class="c1"># ... (実装)</span>
-    
+
     <span class="k">return</span> <span class="n">errors</span>
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="c1"># 全設定ファイルをバリデーション</span>
     <span class="n">configs_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;configs/train&quot;</span><span class="p">)</span>
     <span class="n">all_passed</span> <span class="o">=</span> <span class="kc">True</span>
-    
+
     <span class="k">for</span> <span class="n">config_file</span> <span class="ow">in</span> <span class="n">configs_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.json&quot;</span><span class="p">):</span>
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">config</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
             <span class="n">errors</span> <span class="o">=</span> <span class="n">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">TRAINING_SCHEMA</span><span class="p">)</span>
-            
+
             <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;❌ </span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
                 <span class="k">for</span> <span class="n">error</span> <span class="ow">in</span> <span class="n">errors</span><span class="p">:</span>
@@ -671,7 +671,7 @@ python<span class="w"> </span>scripts/validate_all_configs.py
                 <span class="n">all_passed</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ </span><span class="si">{</span><span class="n">config_file</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="n">exit</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">all_passed</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -813,7 +813,7 @@ python<span class="w"> </span>scripts/validate_all_configs.py
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -824,7 +824,7 @@ python<span class="w"> </span>scripts/validate_all_configs.py
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

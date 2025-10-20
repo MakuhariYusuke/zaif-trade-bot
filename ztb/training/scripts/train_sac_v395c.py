@@ -3,33 +3,35 @@ SAC v395c (Conservative) - 5k timesteps
 保守的なパラメータ調整
 """
 import json
+
 from ztb.training.unified_trainer import UnifiedTrainer
+
 
 def main():
     print("🧪 SAC v395c Test - Conservative Adjustments")
     print("=" * 80)
-    
+
     config_path = "configs/sac_v395c_conservative.json"
-    
+
     # 設定ファイル読み込み
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
-    
+
     print("📊 Key Changes from v395a:")
-    for change in config.get('changes_from_v395a', []):
+    for change in config.get("changes_from_v395a", []):
         print(f"  • {change}")
     print()
-    
+
     print("🎯 Expected Improvements:")
     print("  • Critic Loss < 1e7 (was 4.34e7)")
     print("  • ent_coef stable in 0.5-2.0 range (was 4.03)")
     print("  • Gradual, stable learning")
     print()
-    
+
     print("🚀 Starting 5k timesteps training...")
     trainer = UnifiedTrainer(config)
     result = trainer.train()
-    
+
     print("\n" + "=" * 80)
     if result:
         print("✅ Training completed!")
@@ -38,6 +40,7 @@ def main():
     else:
         print("❌ Training failed")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     main()

@@ -2,14 +2,14 @@
   "session_id": "ppo_reward_v381_revised_profit_focused",
   "algorithm": "ppo",
   "description": "v381 Revised: Profit-focused with aggressive HOLD reduction and stable learning",
-  
+
   "comment_revision_goals": [
     "🎯 目標1: HOLD率を35%以下に削減（現状52.7% → 35%以下）",
     "🎯 目標2: BUY率を30%以上に引き上げ（現状21.1% → 30%以上）",
     "🎯 目標3: 利益最大化 - 儲かる取引を優先",
     "🎯 目標4: 学習の安定性向上（KL divergence削減、Explained Variance向上）"
   ],
-  
+
   "comment_changes_from_v381": [
     "✅ target_kl: 0.001 → 0.01 (Early stopping削減)",
     "✅ vf_coef: 0.1 → 0.3 (価値関数学習強化)",
@@ -23,15 +23,15 @@
     "✅ NEW: profit_threshold_bonus: 0.5 (高利益取引にボーナス)",
     "✅ total_timesteps: 30000 → 50000 (収束性向上)"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.003,
     "n_steps": 1024,
@@ -55,7 +55,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -69,27 +69,27 @@
       "consecutive_hold_exponential": true,
       "consecutive_hold_threshold": 3,
       "hold_opportunity_cost": 0.015,
-      
+
       "comment_trading_incentives": "取引と利益を最大化",
       "trading_frequency_bonus": 0.25,
       "profit_reward_multiplier": 5.0,
       "action_diversity_bonus": 0.1,
       "successful_trade_bonus": 1.2,
-      
+
       "comment_buy_promotion": "BUY率を引き上げ",
       "buy_action_bonus": 0.15,
-      
+
       "comment_profit_focus": "高利益取引にボーナス",
       "profit_threshold_bonus": 0.5,
       "profit_threshold": 0.01,
-      
+
       "comment_dynamic_adaptation": "v379の市場適応型機能を完全採用",
       "volatility_adjusted_penalty": true,
       "trend_adjusted_bonus": true,
       "range_market_hold_tolerance": 0.5
     }
   },
-  
+
   "training": {
     "total_timesteps": 50000,
     "checkpoint_interval": 5000,
@@ -99,7 +99,7 @@
     "reward_scaling": 0.1,
     "progress_bar": false
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -113,7 +113,7 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "comment_lagrange_optimized": "二分探索最適化結果を完全採用",
   "lagrange": {
     "r_target": 0.175,
@@ -122,9 +122,9 @@
     "lambda_max": 3.875,
     "warmup_steps": 3874
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_expected_results": {
     "hold_rate": "30-35% (v381: 52.7%)",
     "buy_rate": "30-40% (v381: 21.1%)",
@@ -133,6 +133,6 @@
     "explained_variance": ">0.3 (v381: 0.005)",
     "training_time": "約2-3分 (50kステップ)"
   },
-  
+
   "comment_usage": "cmd /d /c \"cd /d C:\\Users\\Admin\\dev\\zaif-trade-bot && call .\\.venv\\Scripts\\activate.bat && python run_training.py --config configs/training/ppo_reward_v381_revised_profit_focused.json\""
 }

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.algorithms.sac.sac_algorithm</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">SAC（Soft Actor-Critic）アルゴリズム実装。</span>
@@ -136,10 +136,10 @@
 <span class="n">DEFAULT_SAC_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
     <span class="c1"># 学習率</span>
     <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="mf">3e-4</span><span class="p">,</span>
-    
+
     <span class="c1"># Replay Buffer</span>
     <span class="s2">&quot;buffer_size&quot;</span><span class="p">:</span> <span class="mi">50000</span><span class="p">,</span>  <span class="c1"># 金融データの季節性を考慮したサイズ</span>
-    
+
     <span class="c1"># 訓練パラメータ</span>
     <span class="s2">&quot;learning_starts&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>  <span class="c1"># バッファが十分溜まってから学習開始</span>
     <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">256</span><span class="p">,</span>
@@ -147,19 +147,19 @@
     <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="mf">0.99</span><span class="p">,</span>  <span class="c1"># 割引率</span>
     <span class="s2">&quot;train_freq&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># 毎ステップ訓練</span>
     <span class="s2">&quot;gradient_steps&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>  <span class="c1"># 各訓練で1回勾配更新</span>
-    
+
     <span class="c1"># エントロピー正則化</span>
     <span class="s2">&quot;ent_coef&quot;</span><span class="p">:</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>  <span class="c1"># 自動調整（推奨）</span>
     <span class="s2">&quot;target_entropy&quot;</span><span class="p">:</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>  <span class="c1"># 自動設定（-dim(A)）</span>
-    
+
     <span class="c1"># 特徴量設定（拡張されたIchimoku特徴量を含む）</span>
     <span class="s2">&quot;feature_set&quot;</span><span class="p">:</span> <span class="s2">&quot;curated&quot;</span><span class="p">,</span>  <span class="c1"># 使用する特徴量セット</span>
     <span class="s2">&quot;expected_features&quot;</span><span class="p">:</span> <span class="mi">80</span><span class="p">,</span>    <span class="c1"># 予想される特徴量数（CURATED_FEATURESの80個）</span>
-    
+
     <span class="c1"># ネットワーク構造</span>
     <span class="s2">&quot;policy_kwargs&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># デフォルトのMLP</span>
     <span class="s2">&quot;network_type&quot;</span><span class="p">:</span> <span class="s2">&quot;mlp&quot;</span><span class="p">,</span>  <span class="c1"># &quot;mlp&quot;, &quot;lstm&quot;, &quot;transformer&quot;</span>
-    
+
     <span class="c1"># LSTM/Transformer設定</span>
     <span class="s2">&quot;sequence_length&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>  <span class="c1"># シーケンス長</span>
     <span class="s2">&quot;lstm_hidden_size&quot;</span><span class="p">:</span> <span class="mi">128</span><span class="p">,</span>  <span class="c1"># LSTM隠れ層サイズ</span>
@@ -169,21 +169,21 @@
     <span class="s2">&quot;transformer_n_layers&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>  <span class="c1"># Transformer層数</span>
     <span class="s2">&quot;transformer_d_ff&quot;</span><span class="p">:</span> <span class="mi">512</span><span class="p">,</span>  <span class="c1"># Transformerフィードフォワード次元</span>
     <span class="s2">&quot;network_dropout&quot;</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">,</span>  <span class="c1"># ネットワークドロップアウト</span>
-    
+
     <span class="c1"># 効率的ネットワーク設定</span>
     <span class="s2">&quot;use_efficient_network&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># 効率的ネットワークを使用するか</span>
     <span class="s2">&quot;use_depthwise_conv&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># 深度分離畳み込みを使用するか</span>
     <span class="s2">&quot;use_efficient_attention&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># 効率的アテンションを使用するか</span>
     <span class="s2">&quot;use_dynamic_network&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># 動的ネットワークを使用するか</span>
     <span class="s2">&quot;attention_method&quot;</span><span class="p">:</span> <span class="s2">&quot;linformer&quot;</span><span class="p">,</span>  <span class="c1"># アテンション方法 (&quot;linformer&quot;, &quot;performer&quot;)</span>
-    
+
     <span class="c1"># 転移学習設定</span>
     <span class="s2">&quot;transfer_learning_enabled&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># 転移学習を使用するか</span>
     <span class="s2">&quot;pretrained_model_path&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># 事前学習済みモデルのパス</span>
     <span class="s2">&quot;freeze_layers&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>  <span class="c1"># 凍結する層の数（MLPの場合）または割合（LSTM/Transformerの場合）</span>
     <span class="s2">&quot;fine_tune_learning_rate&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># ファインチューニング時の学習率（Noneの場合は通常のlearning_rateを使用）</span>
     <span class="s2">&quot;fine_tune_layers_only&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># 最後の層のみファインチューニングするか</span>
-    
+
     <span class="c1"># その他</span>
     <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
     <span class="s2">&quot;tensorboard_log&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
@@ -202,7 +202,7 @@
     <span class="s2">&quot;distillation_temperature&quot;</span><span class="p">:</span> <span class="mf">2.0</span><span class="p">,</span>  <span class="c1"># 蒸留温度</span>
     <span class="s2">&quot;distillation_alpha&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>  <span class="c1"># 蒸留損失の重み</span>
     <span class="s2">&quot;compressed_model_path&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>  <span class="c1"># 圧縮モデルの保存パス</span>
-    
+
     <span class="c1"># 説明可能性設定</span>
     <span class="s2">&quot;explainability_enabled&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># 説明可能性機能を有効にするか</span>
     <span class="s2">&quot;shap_enabled&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>  <span class="c1"># SHAP分析を使用するか</span>
@@ -241,14 +241,14 @@
 <span class="sd">        &gt;&gt;&gt; model = sac.create_model(env, config)</span>
 <span class="sd">        &gt;&gt;&gt; sac.train(model, total_timesteps=100000)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;SACAlgorithmを初期化。&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BaseAlgorithm</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">compression_manager</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ModelCompressionManager</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">ExplainabilityAnalyzer</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;SACAlgorithm initialized&quot;</span><span class="p">)</span>
-    
+
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">algorithm_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -258,14 +258,14 @@
 <span class="sd">            &quot;sac&quot;</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;sac&quot;</span>
-    
+
 <div class="viewcode-block" id="SACAlgorithm.__repr__">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.__repr__">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;文字列表現。&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SACAlgorithm(model=</span><span class="si">{</span><span class="s1">&#39;initialized&#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;not_initialized&#39;</span><span class="si">}</span><span class="s2">)&quot;</span></div>
 
-    
+
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_resolve_policy_kwargs</span><span class="p">(</span>
         <span class="n">raw_kwargs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
@@ -347,7 +347,7 @@
             <span class="n">policy_kwargs</span><span class="p">[</span><span class="s2">&quot;activation_fn&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">activation_map</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
 
         <span class="k">return</span> <span class="n">policy_kwargs</span>
-    
+
 <div class="viewcode-block" id="SACAlgorithm.get_default_config">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.get_default_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_default_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -364,7 +364,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">DEFAULT_SAC_CONFIG</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="SACAlgorithm.validate_config">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.validate_config">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">validate_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -387,21 +387,21 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># 必須パラメータ</span>
         <span class="n">required_params</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="s2">&quot;buffer_size&quot;</span><span class="p">,</span> <span class="s2">&quot;batch_size&quot;</span><span class="p">]</span>
-        
+
         <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">required_params</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">param</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing required SAC parameter: </span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 値の範囲チェック</span>
         <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;learning_rate must be positive, got </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;buffer_size&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;buffer_size must be positive, got </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;buffer_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;batch_size must be positive, got </span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># buffer_size &gt;= batch_size</span>
         <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;buffer_size&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;batch_size&quot;</span><span class="p">]:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -437,16 +437,16 @@
             <span class="n">pretrained_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pretrained_model_path&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">pretrained_path</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;transfer_learning_enabled is True but pretrained_model_path is not specified&quot;</span><span class="p">)</span>
-            
+
             <span class="n">freeze_layers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;freeze_layers&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">freeze_layers</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;freeze_layers must be non-negative&quot;</span><span class="p">)</span>
-            
+
             <span class="k">if</span> <span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;mlp&quot;</span> <span class="ow">and</span> <span class="n">freeze_layers</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>  <span class="c1"># MLPの最大層数</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;freeze_layers (</span><span class="si">{</span><span class="n">freeze_layers</span><span class="si">}</span><span class="s2">) too large for MLP network&quot;</span><span class="p">)</span>
             <span class="k">elif</span> <span class="n">network_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lstm&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">freeze_layers</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;freeze_layers (</span><span class="si">{</span><span class="n">freeze_layers</span><span class="si">}</span><span class="s2">) must be &lt;= 1.0 for </span><span class="si">{</span><span class="n">network_type</span><span class="si">}</span><span class="s2"> network&quot;</span><span class="p">)</span>
-            
+
             <span class="n">fine_tune_lr</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fine_tune_learning_rate&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">fine_tune_lr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">fine_tune_lr</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;fine_tune_learning_rate must be positive if specified&quot;</span><span class="p">)</span>
@@ -496,7 +496,7 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC config validation passed: </span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span></div>
 
-    
+
 <div class="viewcode-block" id="SACAlgorithm.create_model">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.create_model">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">create_model</span><span class="p">(</span>
@@ -527,9 +527,9 @@
         <span class="c1"># デフォルト設定とマージして検証</span>
         <span class="n">config</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">get_default_config</span><span class="p">(),</span> <span class="o">**</span><span class="n">config</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">validate_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating SAC model with config: </span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># Stable-Baselines3 SAC用パラメータ抽出</span>
         <span class="n">sac_params</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;policy&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy&quot;</span><span class="p">,</span> <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">),</span>
@@ -552,7 +552,7 @@
             <span class="s2">&quot;tensorboard_log&quot;</span><span class="p">:</span> <span class="n">tensorboard_log</span><span class="p">,</span>
             <span class="s2">&quot;device&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;device&quot;</span><span class="p">,</span> <span class="n">DEFAULT_SAC_CONFIG</span><span class="p">[</span><span class="s2">&quot;device&quot;</span><span class="p">]),</span>
         <span class="p">}</span>
-        
+
         <span class="c1"># policy_kwargsがあれば追加（文字列定義の活性化関数を解決）</span>
         <span class="n">network_type</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;network_type&quot;</span><span class="p">,</span> <span class="s2">&quot;mlp&quot;</span><span class="p">)</span>
         <span class="n">policy_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_policy_kwargs</span><span class="p">(</span>
@@ -577,18 +577,18 @@
             <span class="n">sac_params</span><span class="p">[</span><span class="s2">&quot;policy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">TransformerPolicy</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">sac_params</span><span class="p">[</span><span class="s2">&quot;policy&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;policy&quot;</span><span class="p">,</span> <span class="s2">&quot;MlpPolicy&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># SACモデル作成</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">SAC</span><span class="p">(</span><span class="o">**</span><span class="n">sac_params</span><span class="p">)</span>
-        
+
         <span class="c1"># 転移学習の適用</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;transfer_learning_enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_apply_transfer_learning</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
-        
+
         <span class="c1"># モデル圧縮の適用</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compression_enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_apply_model_compression</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
-        
+
         <span class="c1"># 特徴量情報をログに出力</span>
         <span class="n">feature_set</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_set&quot;</span><span class="p">,</span> <span class="s2">&quot;curated&quot;</span><span class="p">)</span>
         <span class="n">expected_features</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;expected_features&quot;</span><span class="p">,</span> <span class="mi">88</span><span class="p">)</span>
@@ -622,14 +622,14 @@
                 <span class="sa">f</span><span class="s2">&quot;lr=</span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;learning_rate&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, buffer_size=</span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;buffer_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;batch_size=</span><span class="si">{</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;batch_size&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, ent_coef=</span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ent_coef&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;auto&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
             <span class="p">)</span>
-        
+
         <span class="c1"># 説明可能性アナライザーの初期化</span>
         <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;explainability_enabled&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_explainability_analyzer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
 
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_transfer_learning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        転移学習をモデルに適用。</span>
@@ -642,31 +642,31 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">pretrained_path</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Transfer learning enabled but no pretrained_model_path specified&quot;</span><span class="p">)</span>
             <span class="k">return</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># 事前学習済みモデルの読み込み</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loading pretrained model from: </span><span class="si">{</span><span class="n">pretrained_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">pretrained_model</span> <span class="o">=</span> <span class="n">SAC</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pretrained_path</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-            
+
             <span class="c1"># モデルの検証</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_validate_pretrained_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">pretrained_model</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
-            
+
             <span class="c1"># 層の凍結</span>
             <span class="n">freeze_layers</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;freeze_layers&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">freeze_layers</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_freeze_layers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
-            
+
             <span class="c1"># ファインチューニング学習率の設定</span>
             <span class="n">fine_tune_lr</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;fine_tune_learning_rate&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">fine_tune_lr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">_set_fine_tune_learning_rate</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">fine_tune_lr</span><span class="p">)</span>
-            
+
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Transfer learning applied successfully&quot;</span><span class="p">)</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply transfer learning: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_apply_model_compression</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        モデル圧縮をモデルに適用。</span>
@@ -679,27 +679,27 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">compression_techniques</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Model compression enabled but no compression_techniques specified&quot;</span><span class="p">)</span>
             <span class="k">return</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Applying model compression techniques: </span><span class="si">{</span><span class="n">compression_techniques</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># 圧縮パイプラインの設定</span>
             <span class="n">techniques_config</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="n">teacher_model</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># 蒸留用の教師モデル</span>
-            
+
             <span class="k">if</span> <span class="s2">&quot;quantization&quot;</span> <span class="ow">in</span> <span class="n">compression_techniques</span><span class="p">:</span>
                 <span class="n">techniques_config</span><span class="p">[</span><span class="s2">&quot;quantization&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;quantization&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;quantization_type&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;quantization_type&quot;</span><span class="p">,</span> <span class="s2">&quot;dynamic&quot;</span><span class="p">)</span>
                 <span class="p">}</span>
-            
+
             <span class="k">if</span> <span class="s2">&quot;pruning&quot;</span> <span class="ow">in</span> <span class="n">compression_techniques</span><span class="p">:</span>
                 <span class="n">techniques_config</span><span class="p">[</span><span class="s2">&quot;pruning&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;pruning&quot;</span><span class="p">,</span>
                     <span class="s2">&quot;pruning_type&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pruning_type&quot;</span><span class="p">,</span> <span class="s2">&quot;l1_unstructured&quot;</span><span class="p">),</span>
                     <span class="s2">&quot;amount&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pruning_amount&quot;</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">)</span>
                 <span class="p">}</span>
-            
+
             <span class="k">if</span> <span class="s2">&quot;distillation&quot;</span> <span class="ow">in</span> <span class="n">compression_techniques</span><span class="p">:</span>
                 <span class="c1"># 教師モデルが必要</span>
                 <span class="n">teacher_model_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;teacher_model_path&quot;</span><span class="p">)</span>
@@ -712,45 +712,45 @@
                     <span class="p">}</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Knowledge distillation requested but teacher_model_path not specified&quot;</span><span class="p">)</span>
-            
+
             <span class="k">if</span> <span class="ow">not</span> <span class="n">techniques_config</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No valid compression techniques configured&quot;</span><span class="p">)</span>
                 <span class="k">return</span>
-            
+
             <span class="c1"># 圧縮マネージャーの作成と適用</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">compression_manager</span> <span class="o">=</span> <span class="n">create_compression_pipeline</span><span class="p">(</span><span class="n">techniques_config</span><span class="p">)</span>
-            
+
             <span class="c1"># モデルのポリシーを取得して圧縮</span>
             <span class="n">policy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span>
-            
+
             <span class="c1"># 蒸留の場合は教師モデルを渡す</span>
             <span class="n">compress_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">if</span> <span class="n">teacher_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">compress_kwargs</span><span class="p">[</span><span class="s2">&quot;teacher_model&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">teacher_model</span>
-            
+
             <span class="n">compressed_policy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compression_manager</span><span class="o">.</span><span class="n">compress_model</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">techniques_config</span><span class="o">.</span><span class="n">keys</span><span class="p">()),</span> <span class="o">**</span><span class="n">compress_kwargs</span><span class="p">)</span>
-            
+
             <span class="c1"># 圧縮されたポリシーをモデルに設定</span>
             <span class="n">model</span><span class="o">.</span><span class="n">policy</span> <span class="o">=</span> <span class="n">compressed_policy</span>
-            
+
             <span class="c1"># 圧縮モデルの保存</span>
             <span class="n">compressed_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;compressed_model_path&quot;</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">compressed_path</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">compression_manager</span><span class="o">.</span><span class="n">save_compressed_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">compressed_path</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Compressed model saved to </span><span class="si">{</span><span class="n">compressed_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
             <span class="c1"># 圧縮レポートの取得</span>
             <span class="n">compression_report</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">compression_manager</span><span class="o">.</span><span class="n">get_compression_report</span><span class="p">()</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model compression completed: </span><span class="si">{</span><span class="n">compression_report</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to apply model compression: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">raise</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_validate_pretrained_model</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> 
-        <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> 
-        <span class="n">pretrained_model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> 
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span>
+        <span class="n">pretrained_model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span>
         <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
@@ -763,7 +763,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># ネットワークタイプの一致を確認</span>
         <span class="n">current_network_type</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;network_type&quot;</span><span class="p">,</span> <span class="s2">&quot;mlp&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># ポリシータイプの確認</span>
         <span class="k">if</span> <span class="n">current_network_type</span> <span class="o">==</span> <span class="s2">&quot;lstm&quot;</span><span class="p">:</span>
             <span class="n">expected_policy</span> <span class="o">=</span> <span class="n">LSTMPolicy</span>
@@ -771,18 +771,18 @@
             <span class="n">expected_policy</span> <span class="o">=</span> <span class="n">TransformerPolicy</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">expected_policy</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-        
+
         <span class="n">pretrained_policy_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">pretrained_model</span><span class="o">.</span><span class="n">policy</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
-        
+
         <span class="k">if</span> <span class="n">current_network_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lstm&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pretrained_model</span><span class="o">.</span><span class="n">policy</span><span class="p">,</span> <span class="n">expected_policy</span><span class="p">):</span>
                 <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                     <span class="sa">f</span><span class="s2">&quot;Network type mismatch: expected </span><span class="si">{</span><span class="n">expected_policy</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">pretrained_policy_type</span><span class="si">}</span><span class="s2"> in pretrained model&quot;</span>
                 <span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pretrained model validation passed: </span><span class="si">{</span><span class="n">pretrained_policy_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_freeze_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        指定された層を凍結。</span>
@@ -793,16 +793,16 @@
 <span class="sd">            config: 設定辞書</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">network_type</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;network_type&quot;</span><span class="p">,</span> <span class="s2">&quot;mlp&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;mlp&quot;</span><span class="p">:</span>
             <span class="c1"># MLPの場合：層数を指定</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_freeze_mlp_layers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">network_type</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;lstm&quot;</span><span class="p">,</span> <span class="s2">&quot;transformer&quot;</span><span class="p">]:</span>
             <span class="c1"># LSTM/Transformerの場合：割合を指定</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_freeze_advanced_layers</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">,</span> <span class="n">network_type</span><span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Froze </span><span class="si">{</span><span class="n">freeze_layers</span><span class="si">}</span><span class="s2"> layers for </span><span class="si">{</span><span class="n">network_type</span><span class="si">}</span><span class="s2"> network&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_freeze_mlp_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        MLPネットワークの層を凍結。</span>
@@ -812,15 +812,15 @@
 <span class="sd">            freeze_layers: 凍結する層数</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">policy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span>
-        
+
         <span class="c1"># Actorネットワークの層を凍結</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="s1">&#39;actor&#39;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_freeze_network_layers</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">actor</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">)</span>
-        
+
         <span class="c1"># Criticネットワークの層を凍結</span>
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="s1">&#39;critic&#39;</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_freeze_network_layers</span><span class="p">(</span><span class="n">policy</span><span class="o">.</span><span class="n">critic</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_freeze_network_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">network</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">freeze_layers</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        ネットワークの層を凍結。</span>
@@ -838,7 +838,7 @@
                     <span class="n">param</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Froze layer </span><span class="si">{</span><span class="n">layer_count</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">layer_count</span> <span class="o">+=</span> <span class="mi">1</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_freeze_advanced_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">freeze_ratio</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">network_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        LSTM/Transformerネットワークの層を割合で凍結。</span>
@@ -849,12 +849,12 @@
 <span class="sd">            network_type: ネットワークタイプ</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">policy</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">policy</span>
-        
+
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">policy</span><span class="p">,</span> <span class="s1">&#39;features_extractor&#39;</span><span class="p">):</span>
             <span class="k">return</span>
-        
+
         <span class="n">extractor</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">features_extractor</span>
-        
+
         <span class="k">if</span> <span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;lstm&quot;</span><span class="p">:</span>
             <span class="c1"># LSTM層の凍結</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">extractor</span><span class="p">,</span> <span class="s1">&#39;lstm&#39;</span><span class="p">):</span>
@@ -865,7 +865,7 @@
                         <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
                             <span class="n">param</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Froze LSTM layer </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">elif</span> <span class="n">network_type</span> <span class="o">==</span> <span class="s2">&quot;transformer&quot;</span><span class="p">:</span>
             <span class="c1"># Transformer層の凍結</span>
             <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">extractor</span><span class="p">,</span> <span class="s1">&#39;transformer_layers&#39;</span><span class="p">):</span>
@@ -876,7 +876,7 @@
                         <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
                             <span class="n">param</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Froze Transformer layer </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_set_fine_tune_learning_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        ファインチューニング用の学習率を設定。</span>
@@ -889,7 +889,7 @@
         <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="s1">&#39;policy_optimizer&#39;</span><span class="p">):</span>
             <span class="k">for</span> <span class="n">param_group</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">policy_optimizer</span><span class="o">.</span><span class="n">param_groups</span><span class="p">:</span>
                 <span class="n">param_group</span><span class="p">[</span><span class="s1">&#39;lr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">learning_rate</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Set fine-tuning learning rate to </span><span class="si">{</span><span class="n">learning_rate</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="SACAlgorithm.train">
@@ -923,21 +923,21 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Model must be initialized before training. Call create_model() first.&quot;</span><span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting SAC training for </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 訓練実行</span>
         <span class="n">model</span><span class="o">.</span><span class="n">learn</span><span class="p">(</span>
             <span class="n">total_timesteps</span><span class="o">=</span><span class="n">total_timesteps</span><span class="p">,</span>
             <span class="n">callback</span><span class="o">=</span><span class="n">callback</span><span class="p">,</span>
             <span class="o">**</span><span class="n">kwargs</span>
         <span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC training completed: </span><span class="si">{</span><span class="n">total_timesteps</span><span class="si">}</span><span class="s2"> timesteps&quot;</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">model</span></div>
 
-    
+
 <div class="viewcode-block" id="SACAlgorithm.save">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.save">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">BaseAlgorithm</span><span class="p">,</span> <span class="n">save_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
@@ -954,7 +954,7 @@
         <span class="n">model</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC model saved to </span><span class="si">{</span><span class="n">save_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="SACAlgorithm.load">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.load">[docs]</a>
     <span class="nd">@staticmethod</span>
@@ -976,7 +976,7 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SAC model loaded from </span><span class="si">{</span><span class="n">load_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">model</span></div>
 
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_explainability_analyzer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        説明可能性アナライザーを初期化。</span>
@@ -998,16 +998,16 @@
                 <span class="n">cache_ttl_seconds</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cache_ttl_seconds&quot;</span><span class="p">,</span> <span class="mi">3600</span><span class="p">),</span>
                 <span class="n">generate_reports</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;report_generation&quot;</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># 説明可能性アナライザーの作成</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="o">=</span> <span class="n">ExplainabilityAnalyzer</span><span class="p">(</span><span class="n">explainability_config</span><span class="p">)</span>
-            
+
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Explainability analyzer initialized for SAC algorithm&quot;</span><span class="p">)</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to initialize explainability analyzer: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="o">=</span> <span class="kc">None</span>
-    
+
 <div class="viewcode-block" id="SACAlgorithm.explain_decision">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.explain_decision">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">explain_decision</span><span class="p">(</span>
@@ -1030,7 +1030,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Explainability analyzer or model not initialized&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># 説明結果の生成</span>
             <span class="n">explanation_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="o">.</span><span class="n">explain_prediction</span><span class="p">(</span>
@@ -1038,15 +1038,15 @@
                 <span class="n">input_data</span><span class="o">=</span><span class="n">observation</span><span class="p">,</span>
                 <span class="n">prediction</span><span class="o">=</span><span class="n">action</span>
             <span class="p">)</span>
-            
+
             <span class="c1"># 辞書形式に変換して返す</span>
             <span class="k">return</span> <span class="n">explanation_result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to explain decision: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span></div>
 
-    
+
 <div class="viewcode-block" id="SACAlgorithm.generate_explanation_report">
 <a class="viewcode-back" href="../../../../../api/generated/ztb.training.algorithms.sac.html#ztb.training.algorithms.SACAlgorithm.generate_explanation_report">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">generate_explanation_report</span><span class="p">(</span>
@@ -1069,17 +1069,17 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Explainability analyzer or model not initialized&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span>
-        
+
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># 複数の観測データに対して説明を生成</span>
             <span class="n">explanations</span> <span class="o">=</span> <span class="p">[]</span>
-            
+
             <span class="c1"># observationsが単一の観測かバッチかを判定</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">obs_list</span> <span class="o">=</span> <span class="n">observations</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">obs_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">observations</span><span class="p">]</span>
-            
+
             <span class="c1"># 各観測に対して説明を生成</span>
             <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">obs</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">obs_list</span><span class="p">):</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="n">actions</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">if</span> <span class="n">actions</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
@@ -1089,13 +1089,13 @@
                     <span class="n">prediction</span><span class="o">=</span><span class="n">action</span>
                 <span class="p">)</span>
                 <span class="n">explanations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">explanation</span><span class="p">)</span>
-            
+
             <span class="c1"># レポートを生成</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="o">.</span><span class="n">generate_explanation_report</span><span class="p">(</span>
                 <span class="n">explanations</span><span class="o">=</span><span class="n">explanations</span><span class="p">,</span>
                 <span class="n">output_path</span><span class="o">=</span><span class="n">output_path</span>
             <span class="p">)</span>
-            
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to generate explanation report: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span></div>
@@ -1116,7 +1116,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -1127,7 +1127,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -55,14 +55,14 @@ function generateRequestId() { return `${Date.now()}-${Math.random().toString(36
 
 /**
  * Poll the fill state of an order.
- * 
+ *
  * Updates the following fields of the provided OrderSnapshot:
  * - filledAmount
  * - avgFillPrice
  * - status
  * - retries
  * - fills
- * 
+ *
  * @param pair The currency pair.
  * @param snap The order snapshot.
  * @param maxWaitMs The maximum wait time in milliseconds.
@@ -269,7 +269,7 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     }
 
     async function pollLoop(snapshot: { orderId: string; originalAmount: number; assumedFilled: number; createdAt: number; expectedPx: number; actionSide: 'BUY' | 'SELL' }, timeoutMs: number) {
-        let filledQty: number = 0; 
+        let filledQty: number = 0;
         let pollAttempts: number = 0;
         let status: 'PENDING' | 'FILLED' = 'PENDING';
         const startTs = Date.now();
@@ -400,14 +400,14 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
     const snapshot1: { requestId: string; orderId: string; originalAmount: number; assumedFilled: number; createdAt: number; expectedPx: number; actionSide: 'BUY' | 'SELL' } = { requestId, orderId: submitOrderId, originalAmount: p.amount, assumedFilled: 0, createdAt: Date.now(), expectedPx, actionSide };
     const nonce1 = getAndResetLastRequestNonceRetries();
     const poll1: any = await pollLoop(snapshot1, primaryTimeout);
-    let submitRetryCount = 0; 
-    let cancelRetryCount = 0; 
-    let pollRetryCount = poll1.pollAttempts; 
-    let filledQty = poll1.filledQty; 
-    let avgFillPrice = poll1.avgFillPrice ?? (filledQty > 0 ? p.limitPrice : 0); 
-    let nonceRetryCount = nonce1; 
-    let improvedPrice = p.limitPrice; 
-    let secondStats: any = null; 
+    let submitRetryCount = 0;
+    let cancelRetryCount = 0;
+    let pollRetryCount = poll1.pollAttempts;
+    let filledQty = poll1.filledQty;
+    let avgFillPrice = poll1.avgFillPrice ?? (filledQty > 0 ? p.limitPrice : 0);
+    let nonceRetryCount = nonce1;
+    let improvedPrice = p.limitPrice;
+    let secondStats: any = null;
     let repriceAttemptsTotal = poll1.repriceAttempts || 0;
     let filledCount = poll1.filledCount || (filledQty > 0 ? 1 : 0);
     if (poll1.status !== 'FILLED') {
@@ -444,7 +444,7 @@ export async function submitWithRetry(p: SubmitRetryParams): Promise<OrderLifecy
 // Cache today's date for performance; update if date changes
 let cachedToday = new Date().toISOString().slice(0, 10);
 let lastDateCheck = Date.now();
-/** 
+/**
  * Get today's date in 'YYYY-MM-DD' format, updating the cache if more than an hour has passed or the date has changed.
  * @returns {string} Today's date in 'YYYY-MM-DD' format.
  */
@@ -461,8 +461,8 @@ function getToday() {
     return cachedToday;
 }
 
-/** 
- * Incremental realized PnL for exit fills ((currently assumes long-only; extend for short/other strategies as needed)) 
+/**
+ * Incremental realized PnL for exit fills ((currently assumes long-only; extend for short/other strategies as needed))
  * @param {string} pair Currency pair
  * @param {number} fillPrice Fill price
  * @param {number} fillQty Fill quantity

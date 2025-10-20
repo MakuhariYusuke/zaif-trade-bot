@@ -11,9 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Normalized_ATR")
@@ -46,7 +47,7 @@ class NormalizedATR(BaseFeature):
             df["high"].values.astype(np.float64),
             df["low"].values.astype(np.float64),
             df["close"].values.astype(np.float64),
-            period
+            period,
         )
 
         # Normalize by closing price (as percentage)

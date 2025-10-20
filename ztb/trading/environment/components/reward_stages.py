@@ -6,9 +6,7 @@ This module contains reward calculation methods for different curriculum learnin
 
 from typing import Any, Dict, List, Optional, cast
 
-import numpy as np
-
-from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
 from ztb.trading.environment.components.reward_components import RewardComponents
 from ztb.trading.environment.components.reward_utils import RewardUtils
 
@@ -16,7 +14,11 @@ from ztb.trading.environment.components.reward_utils import RewardUtils
 class RewardStages:
     """Curriculum learning stage reward calculations."""
 
-    def __init__(self, reward_settings: Optional[Dict[str, Any]] = None, action_counts: Optional[List[int]] = None):
+    def __init__(
+        self,
+        reward_settings: Optional[Dict[str, Any]] = None,
+        action_counts: Optional[List[int]] = None,
+    ):
         """Initialize reward stages with settings and action tracking."""
         self.reward_settings = cast(Dict[str, Any], reward_settings or {})
         self._action_counts = action_counts or [0, 0, 0]  # [HOLD, BUY, SELL]
@@ -80,8 +82,12 @@ class RewardStages:
         total_actions = sum(self._action_counts)
 
         # Get penalty and tolerance from settings
-        tolerance = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty_tolerance", 0.05)
-        penalty = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty", 4.0)
+        tolerance = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty_tolerance", 0.05
+        )
+        penalty = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty", 4.0
+        )
         balance_penalty = 0.0
 
         if total_actions >= 10:
@@ -98,8 +104,14 @@ class RewardStages:
 
         # Calculate base reward
         base_reward = self.components._calculate_base_reward(
-            action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            action,
+            atr_normalised,
+            portfolio_return,
+            position,
+            effective_max_position,
+            current_price,
+            atr,
+            pnl,
         )
 
         final_reward = base_reward - balance_penalty
@@ -123,8 +135,12 @@ class RewardStages:
 
         # Extreme HOLD penalty: HOLD 5%, BUY 47.5%, SELL 47.5%
         target_ratios = [0.05, 0.475, 0.475]  # [HOLD, BUY, SELL]
-        tolerance = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty_tolerance", 0.1)
-        penalty = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty", 10.0)
+        tolerance = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty_tolerance", 0.1
+        )
+        penalty = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty", 10.0
+        )
         balance_penalty = 0.0
 
         if total_actions >= 10:
@@ -138,20 +154,37 @@ class RewardStages:
 
         # Calculate base reward
         base_reward = self.components._calculate_base_reward(
-            action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            action,
+            atr_normalised,
+            portfolio_return,
+            position,
+            effective_max_position,
+            current_price,
+            atr,
+            pnl,
         )
 
         # Strong HOLD penalty (but not as extreme as trading_focused)
-        hold_penalty_rate = RewardUtils.get_setting_float(self.reward_settings, "hold_penalty_rate", 0.05)
+        hold_penalty_rate = RewardUtils.get_setting_float(
+            self.reward_settings, "hold_penalty_rate", 0.05
+        )
         if action == ACTION_HOLD:
-            hold_penalty = hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            hold_penalty = (
+                hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            )
             base_reward -= hold_penalty
 
         # Moderate trading bonuses
-        trading_bonus_multiplier = RewardUtils.get_setting_float(self.reward_settings, "trading_bonus_multiplier", 5.0)
+        trading_bonus_multiplier = RewardUtils.get_setting_float(
+            self.reward_settings, "trading_bonus_multiplier", 5.0
+        )
         if action in [ACTION_BUY, ACTION_SELL]:
-            trading_bonus = RewardUtils.get_setting_float(self.reward_settings, "trading_bonus", 0.02) * trading_bonus_multiplier
+            trading_bonus = (
+                RewardUtils.get_setting_float(
+                    self.reward_settings, "trading_bonus", 0.02
+                )
+                * trading_bonus_multiplier
+            )
             base_reward += trading_bonus
 
         final_reward = base_reward - balance_penalty
@@ -175,8 +208,12 @@ class RewardStages:
 
         # Profit-optimized balance: HOLD 15%, BUY 42.5%, SELL 42.5% (slight edge to trading)
         target_ratios = [0.15, 0.425, 0.425]  # [HOLD, BUY, SELL]
-        tolerance = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty_tolerance", 0.05)
-        penalty = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty", 6.0)
+        tolerance = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty_tolerance", 0.05
+        )
+        penalty = RewardUtils.get_setting_float(
+            self.reward_settings, "balance_penalty", 6.0
+        )
         balance_penalty = 0.0
 
         if total_actions >= 10:
@@ -190,13 +227,23 @@ class RewardStages:
 
         # Calculate base reward
         base_reward = self.components._calculate_base_reward(
-            action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            action,
+            atr_normalised,
+            portfolio_return,
+            position,
+            effective_max_position,
+            current_price,
+            atr,
+            pnl,
         )
 
         # Profit/loss based reward adjustment
-        profit_multiplier = RewardUtils.get_setting_float(self.reward_settings, "profit_multiplier", 2.0)
-        loss_penalty_multiplier = RewardUtils.get_setting_float(self.reward_settings, "loss_penalty_multiplier", 1.5)
+        profit_multiplier = RewardUtils.get_setting_float(
+            self.reward_settings, "profit_multiplier", 2.0
+        )
+        loss_penalty_multiplier = RewardUtils.get_setting_float(
+            self.reward_settings, "loss_penalty_multiplier", 1.5
+        )
 
         if pnl > 0:
             # Boost profitable trades
@@ -208,15 +255,26 @@ class RewardStages:
             base_reward -= loss_penalty
 
         # Strong HOLD penalty (but not as extreme as trading_focused)
-        hold_penalty_rate = RewardUtils.get_setting_float(self.reward_settings, "hold_penalty_rate", 0.02)
+        hold_penalty_rate = RewardUtils.get_setting_float(
+            self.reward_settings, "hold_penalty_rate", 0.02
+        )
         if action == ACTION_HOLD:
-            hold_penalty = hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            hold_penalty = (
+                hold_penalty_rate * abs(position) / max(effective_max_position, 0.01)
+            )
             base_reward -= hold_penalty
 
         # Moderate trading bonuses
-        trading_bonus_multiplier = RewardUtils.get_setting_float(self.reward_settings, "trading_bonus_multiplier", 3.0)
+        trading_bonus_multiplier = RewardUtils.get_setting_float(
+            self.reward_settings, "trading_bonus_multiplier", 3.0
+        )
         if action in [ACTION_BUY, ACTION_SELL]:
-            trading_bonus = RewardUtils.get_setting_float(self.reward_settings, "trading_bonus", 0.01) * trading_bonus_multiplier
+            trading_bonus = (
+                RewardUtils.get_setting_float(
+                    self.reward_settings, "trading_bonus", 0.01
+                )
+                * trading_bonus_multiplier
+            )
             base_reward += trading_bonus
 
         final_reward = base_reward - balance_penalty
@@ -234,48 +292,47 @@ class RewardStages:
         pnl: float,
         reward_scaling: float,
     ) -> float:
-        """Stage: Ultra-profit reward that maximizes profitability with balanced trading."""
-        self._action_counts[action] += 1
-        total_actions = sum(self._action_counts)
+        """Stage: Ultra-profit reward that COMPLETELY FORCES trading - HOLD is banned."""
+        # COMPLETE HOLD BAN: Any HOLD action gets massive negative reward
+        if action == ACTION_HOLD:
+            return -100.0  # Massive penalty for HOLD
 
-        # Balanced target: HOLD 10%, BUY 45%, SELL 45% (allow necessary HOLD)
-        target_ratios = [0.10, 0.45, 0.45]  # [HOLD, BUY, SELL]
-        tolerance = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty_tolerance", 0.15)  # More lenient
-        penalty = RewardUtils.get_setting_float(self.reward_settings, "balance_penalty", 1.0)  # Lower penalty
-        balance_penalty = 0.0
-
-        if total_actions >= 10:
-            action_ratios = [count / total_actions for count in self._action_counts]
-
-            deviation = abs(action_ratios[action] - target_ratios[action])
-            if deviation > tolerance:
-                excess_deviation = deviation - tolerance
-                balance_penalty = penalty * excess_deviation
+        # Only allow BUY and SELL actions
+        if action not in [ACTION_BUY, ACTION_SELL]:
+            return -100.0  # Should never happen, but just in case
 
         # Calculate base reward
         base_reward = self.components._calculate_base_reward(
-            action, atr_normalised, portfolio_return, position,
-            effective_max_position, current_price, atr, pnl
+            action,
+            atr_normalised,
+            portfolio_return,
+            position,
+            effective_max_position,
+            current_price,
+            atr,
+            pnl,
         )
 
-        # Ultra profit focus: heavily weight PnL
-        ultra_profit_multiplier = RewardUtils.get_setting_float(self.reward_settings, "ultra_profit_multiplier", 5.0)
+        # Massive trading bonus for ANY trading action
+        trading_bonus = 10.0  # Even bigger bonus
+        base_reward += trading_bonus
+
+        # Position size bonus (reward larger positions)
+        position_size_bonus = abs(position) / max(effective_max_position, 0.01) * 1.0
+        base_reward += position_size_bonus
+
+        # Minimal PnL weighting - focus on trading frequency over perfect timing
+        ultra_profit_multiplier = RewardUtils.get_setting_float(
+            self.reward_settings, "ultra_profit_multiplier", 0.1
+        )  # Very low
         if pnl > 0:
             profit_bonus = pnl * ultra_profit_multiplier
             base_reward += profit_bonus
         elif pnl < 0:
-            loss_penalty = abs(pnl) * ultra_profit_multiplier * 0.8  # Slightly less penalty for losses
+            loss_penalty = (
+                abs(pnl) * ultra_profit_multiplier * 0.05
+            )  # Very light penalty
             base_reward -= loss_penalty
 
-        # Minimal HOLD penalty
-        if action == ACTION_HOLD:
-            hold_penalty = RewardUtils.get_setting_float(self.reward_settings, "ultra_hold_penalty", 0.005) * abs(position) / max(effective_max_position, 0.01)
-            base_reward -= hold_penalty
-
-        # Small trading bonus
-        if action in [ACTION_BUY, ACTION_SELL]:
-            trading_bonus = RewardUtils.get_setting_float(self.reward_settings, "ultra_trading_bonus", 0.005)
-            base_reward += trading_bonus
-
-        final_reward = base_reward - balance_penalty
-        return final_reward * reward_scaling
+        final_reward = base_reward * reward_scaling
+        return final_reward

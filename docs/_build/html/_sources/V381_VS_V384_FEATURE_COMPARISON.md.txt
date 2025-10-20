@@ -46,7 +46,7 @@ This document compares two training runs:
 - **v381**: `enable_feature_filtering: true` but no explicit `feature_filter_mode`
   - May have used default behavior (unclear if filtering was applied)
   - No `data_path` specified in config
-  
+
 - **v384**: Explicit whitelist mode with clear data path
   - `feature_filter_mode: "whitelist"` (explicit)
   - `data_path: "ml-dataset-enhanced.csv"` (explicit)

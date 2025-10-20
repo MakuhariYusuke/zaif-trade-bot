@@ -1,0 +1,30 @@
+{
+  "pipeline_completed": true,
+  "total_time": 193.74524354934692,
+  "phases": {
+    "extended_backtest": {
+      "completed": true,
+      "total_return": 0.05,
+      "sharpe_ratio": 1.2
+    },
+    "market_analysis": {
+      "completed": true,
+      "regimes_identified": 0,
+      "recommendations": []
+    },
+    "hyperparameter_optimization": {
+      "completed": true,
+      "best_score": 1.0,
+      "best_params": {
+        "learning_rate": 0.005815550365546456,
+        "batch_size": 32,
+        "buffer_size": 500000,
+        "gamma": 0.9172311479481193,
+        "tau": 0.002058949908351685,
+        "ent_coef": 0.00038005390052543936,
+        "reward_scale": 850.3568202990002
+      }
+    }
+  },
+  "results_directory": "optimization_results\\20251020_165639"
+}

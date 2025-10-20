@@ -2,7 +2,7 @@
 import json
 
 # Load config
-config = json.load(open('configs/training/ppo_mem_opt_v370.json'))
+config = json.load(open("configs/training/ppo_mem_opt_v370.json"))
 
 # Simulate wrapped_config creation
 ppo_config = {
@@ -16,7 +16,9 @@ ppo_config = {
 wrapped_config = {
     "ppo": ppo_config,
     # Preserve top-level settings
-    **{k: v for k, v in config.items() if k not in ppo_config and not k.startswith("_")}
+    **{
+        k: v for k, v in config.items() if k not in ppo_config and not k.startswith("_")
+    },
 }
 
 print("=== Original config ===")

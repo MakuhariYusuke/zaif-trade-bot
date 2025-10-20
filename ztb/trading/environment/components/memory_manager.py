@@ -102,7 +102,7 @@ class MemoryManager:
         if collected_count > 0:
             logger.debug(
                 "garbage_collection",
-                extra={"event": "garbage_collection", "collected": collected_count}
+                extra={"event": "garbage_collection", "collected": collected_count},
             )
 
     @property

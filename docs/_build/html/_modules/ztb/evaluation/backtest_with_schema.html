@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.evaluation.backtest_with_schema</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -151,18 +151,18 @@
     <span class="c1"># enable_correlation_reduction=Falseが設定される</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created with </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;observation_space&#39;</span><span class="p">)</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="mi">0</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 環境の特徴量リストを確認</span>
     <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;feature_names&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">env</span><span class="o">.</span><span class="n">feature_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment features (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span><span class="si">}</span><span class="s2">): </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">feature_names</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># データの利用可能な特徴量を確認</span>
     <span class="n">available_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
     <span class="n">required_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;feature_names&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">env</span><span class="o">.</span><span class="n">feature_names</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
     <span class="n">missing_features</span> <span class="o">=</span> <span class="n">required_features</span> <span class="o">-</span> <span class="n">available_features</span>
     <span class="k">if</span> <span class="n">missing_features</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Missing features in data: </span><span class="si">{</span><span class="n">missing_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="n">required_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">required_features</span><span class="p">)</span> <span class="k">if</span> <span class="n">required_features</span> <span class="k">else</span> <span class="p">(</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;observation_space&#39;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">env</span><span class="o">.</span><span class="n">observation_space</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data has </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns, environment needs </span><span class="si">{</span><span class="n">required_count</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
 
@@ -180,7 +180,7 @@
     <span class="n">all_pnls</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">all_returns</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">action_counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
-    
+
     <span class="c1"># Get initial portfolio value from environment</span>
     <span class="n">initial_portfolio_value</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">env</span><span class="p">,</span> <span class="s1">&#39;initial_portfolio_value&#39;</span><span class="p">,</span> <span class="mf">100000.0</span><span class="p">)</span>
 
@@ -201,7 +201,7 @@
 
             <span class="n">ep_reward</span> <span class="o">+=</span> <span class="n">reward</span>
             <span class="n">ep_pnl</span> <span class="o">+=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pnl&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-            
+
             <span class="c1"># Track final portfolio value</span>
             <span class="k">if</span> <span class="s1">&#39;portfolio_value&#39;</span> <span class="ow">in</span> <span class="n">info</span><span class="p">:</span>
                 <span class="n">final_portfolio</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="s1">&#39;portfolio_value&#39;</span><span class="p">]</span>
@@ -215,7 +215,7 @@
                 <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
 
             <span class="n">steps</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="c1"># Calculate return percentage</span>
         <span class="n">return_pct</span> <span class="o">=</span> <span class="p">((</span><span class="n">final_portfolio</span> <span class="o">-</span> <span class="n">initial_portfolio_value</span><span class="p">)</span> <span class="o">/</span> <span class="n">initial_portfolio_value</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
 
@@ -316,7 +316,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -327,7 +327,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

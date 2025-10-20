@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="reviewer-a-detailed-findings">
 <h1>🔍 Reviewer A Detailed Findings<a class="headerlink" href="#reviewer-a-detailed-findings" title="Link to this heading"></a></h1>
 <section id="profile">
@@ -220,11 +220,11 @@ Expand unit coverage with:</p>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Regression test for MaskablePPO in production-like code.&quot;&quot;&quot;</span>
     <span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
     <span class="n">obs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">feature_count</span><span class="p">))</span>
-    
+
     <span class="c1"># Should raise ValueError without env</span>
     <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="n">match</span><span class="o">=</span><span class="s2">&quot;MaskablePPO requires &#39;env&#39;&quot;</span><span class="p">):</span>
         <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
-    
+
     <span class="c1"># Should work with env</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">create_mock_env</span><span class="p">()</span>
     <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">)</span>
@@ -247,18 +247,18 @@ Let <code class="docutils literal notranslate"><span class="pre">close_position(
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Close position and update trade tracking.&quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="mf">0.0</span>
-        
+
         <span class="c1"># Calculate realized PnL</span>
         <span class="n">realized_trade_pnl</span> <span class="o">=</span> <span class="o">...</span>
-        
+
         <span class="c1"># Update trade tracking</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_trade_step</span> <span class="o">=</span> <span class="n">current_step</span>  <span class="c1"># ✅ Update here</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trades_count</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="c1"># Reset position</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">entry_price</span> <span class="o">=</span> <span class="mf">0.0</span>
-        
+
         <span class="k">return</span> <span class="n">realized_trade_pnl</span>
 </pre></div>
 </div>
@@ -281,11 +281,11 @@ Run an embedded <code class="docutils literal notranslate"><span class="pre">Hea
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">load_model</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
         <span class="c1"># Create lightweight env just for masks</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mask_env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">get_action</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">):</span>
         <span class="n">obs</span> <span class="o">=</span> <span class="n">features</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span>
             <span class="n">env</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mask_env</span><span class="p">,</span>  <span class="c1"># ✅ Provide environment</span>
             <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span>
         <span class="p">)</span>
@@ -297,7 +297,7 @@ Run an embedded <code class="docutils literal notranslate"><span class="pre">Hea
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Lightweight service that provides action masks without full env.&quot;&quot;&quot;</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
-        
+
     <span class="k">def</span><span class="w"> </span><span class="nf">get_action_masks</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">,</span> <span class="n">portfolio_value</span><span class="p">,</span> <span class="n">current_price</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Calculate legal actions based on current state.&quot;&quot;&quot;</span>
         <span class="c1"># Same logic as HeavyTradingEnv.get_legal_actions()</span>
@@ -342,7 +342,7 @@ Centralize bookkeeping in PositionManager and provide lightweight action mask se
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -353,7 +353,7 @@ Centralize bookkeeping in PositionManager and provide lightweight action mask se
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -7,5 +7,5 @@
 __version__ = "1.0.0"
 
 from .compression import *
-from .quantization import *
 from .inference import *
+from .quantization import *

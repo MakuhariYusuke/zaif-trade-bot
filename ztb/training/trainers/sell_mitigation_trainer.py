@@ -6,7 +6,6 @@ This trainer integrates multiple specialized techniques to address SELL action
 bias in trading strategies.
 """
 
-import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -15,15 +14,15 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList
 
+from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.callbacks_lib import SELLBiasMitigationCallback
+from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
+from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
+from ztb.training.config.trainer_params import SELLMitigationParams
+from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
 from ztb.training.models.custom_ppo import CustomPPO
 from ztb.training.utils.grad_probes import SELLGradientProbe, create_failsafe_dump
-from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG, PPOConfig
-from ztb.training.config.lagrange_defaults import LAGRANGE_DEFAULTS
-from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt as PPOTrainer
-from ztb.training.config.trainer_params import SELLMitigationParams
 from ztb.training.utils.weights import ActionWeightCalculator
-from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -60,7 +59,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
     ):
         """
         Initialize SELL bias mitigation trainer.
-        
+
         Args:
             params: SELLMitigationParams with training and mitigation configuration
         """
@@ -74,7 +73,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         self.enable_target_entropy = params.enable_target_entropy
         self.enable_stratified_sampling = params.enable_stratified_sampling
         self.allow_reverse = params.allow_reverse
-        
+
         # Store Lagrange parameters for CustomPPO creation
         self.lagrange_params = params.lagrange_params or {}
 
@@ -86,11 +85,17 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
 
         if params.enable_lagrange:
             # Lagrange is created by CustomPPO, just log here
-            r_target = self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"])
-            logger.info(f"Lagrange constraint will be enabled in CustomPPO (r_target={r_target:.1%})")
+            r_target = self.lagrange_params.get(
+                "r_target", LAGRANGE_DEFAULTS["r_target"]
+            )
+            logger.info(
+                f"Lagrange constraint will be enabled in CustomPPO (r_target={r_target:.1%})"
+            )
 
         if params.enable_probes:
-            probe_path = params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
+            probe_path = (
+                params.probe_csv_path or f"{params.checkpoint_dir}/sell_probe.csv"
+            )
             self.probe = SELLGradientProbe(
                 grad_norm_threshold=1e-6,
                 advantage_threshold=0.0,
@@ -98,7 +103,9 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 moving_window=50,
                 save_path=Path(probe_path),
             )
-            logger.info(f"Gradient probes enabled (failsafe after 200 unhealthy steps, CSV: {probe_path})")
+            logger.info(
+                f"Gradient probes enabled (failsafe after 200 unhealthy steps, CSV: {probe_path})"
+            )
 
         if params.enable_weights:
             self.weight_calc = ActionWeightCalculator(
@@ -110,15 +117,17 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                 kl_consecutive_max=3,
             )
             logger.info("Action weighting enabled (beta=3.0, ema_alpha=0.1)")
-        
+
         if params.enable_pan:
             logger.info("PAN (Per-Action Advantage Normalization) enabled")
-        
+
         if params.enable_target_entropy:
             logger.info("Target Entropy Controller enabled (target=0.769)")
-        
+
         if params.enable_stratified_sampling:
-            logger.info("Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)")
+            logger.info(
+                "Stratified Mini-batch Sampler enabled (9 buckets: 3 regimes × 3 actions)"
+            )
 
         # Initialize model attribute
         self.model: Optional[CustomPPO] = None
@@ -126,7 +135,7 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
     def _create_callback(self) -> BaseCallback:
         """
         Create composite training callback with SELL bias mitigation.
-        
+
         Returns:
             CallbackList: Combined callbacks for training monitoring
         """
@@ -136,8 +145,12 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         # Lagrange, PAN, and Entropy Controller are managed by CustomPPO
         lagrange = self.model.lagrange if self.model is not None else None
         pan_normalizer = self.model.pan_normalizer if self.model is not None else None
-        entropy_controller = self.model.entropy_controller if self.model is not None else None
-        stratified_sampler = self.model.stratified_sampler if self.model is not None else None
+        entropy_controller = (
+            self.model.entropy_controller if self.model is not None else None
+        )
+        stratified_sampler = (
+            self.model.stratified_sampler if self.model is not None else None
+        )
 
         mitigation_callback = SELLBiasMitigationCallback(
             lagrange=lagrange,
@@ -163,10 +176,10 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
     def train(self, session_id: str) -> MaskablePPO:
         """
         Train with SELL bias mitigation using CustomPPO.
-        
+
         Args:
             session_id: Unique identifier for this training session
-            
+
         Returns:
             MaskablePPO: Trained model
         """
@@ -179,7 +192,9 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info(f"Weights: {'✅' if self.enable_weights else '❌'}")
         logger.info(f"PAN: {'✅' if self.enable_pan else '❌'}")
         logger.info(f"Target Entropy: {'✅' if self.enable_target_entropy else '❌'}")
-        logger.info(f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}")
+        logger.info(
+            f"Stratified Sampling: {'✅' if self.enable_stratified_sampling else '❌'}"
+        )
         logger.info(f"Data: {self.data_path}")  # type: ignore[attr-defined]
 
         try:
@@ -239,18 +254,30 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
                     # Lagrange constraint parameters
                     enable_lagrange=self.enable_lagrange,
                     lagrange_target_action="SELL",
-                    lagrange_r_target=self.lagrange_params.get("r_target", LAGRANGE_DEFAULTS["r_target"]),
-                    lagrange_tolerance=self.lagrange_params.get("tolerance", LAGRANGE_DEFAULTS["tolerance"]),
-                    lagrange_eta=self.lagrange_params.get("eta", LAGRANGE_DEFAULTS["eta"]),
-                    lagrange_lambda_max=self.lagrange_params.get("lambda_max", LAGRANGE_DEFAULTS["lambda_max"]),
-                    lagrange_warmup_steps=int(self.lagrange_params.get("warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"])),
+                    lagrange_r_target=self.lagrange_params.get(
+                        "r_target", LAGRANGE_DEFAULTS["r_target"]
+                    ),
+                    lagrange_tolerance=self.lagrange_params.get(
+                        "tolerance", LAGRANGE_DEFAULTS["tolerance"]
+                    ),
+                    lagrange_eta=self.lagrange_params.get(
+                        "eta", LAGRANGE_DEFAULTS["eta"]
+                    ),
+                    lagrange_lambda_max=self.lagrange_params.get(
+                        "lambda_max", LAGRANGE_DEFAULTS["lambda_max"]
+                    ),
+                    lagrange_warmup_steps=int(
+                        self.lagrange_params.get(
+                            "warmup_steps", LAGRANGE_DEFAULTS["warmup_steps"]
+                        )
+                    ),
                     # PAN/Entropy/Stratified parameters
                     pan_epsilon=1e-8,
                     target_entropy_ratio=0.7,
                     lr_temperature=3e-4,
                     initial_temperature=0.01,
                 )
-                
+
                 logger.info("CustomPPO model created with integrated mitigations")
 
             # Neutralize policy bias
@@ -299,7 +326,11 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
     def _final_validation(self) -> None:
         """Perform final validation of SELL bias mitigation."""
         # Get Lagrange from model
-        if self.model is None or not hasattr(self.model, 'lagrange') or self.model.lagrange is None:
+        if (
+            self.model is None
+            or not hasattr(self.model, "lagrange")
+            or self.model.lagrange is None
+        ):
             logger.warning("Lagrange constraint not available for final validation")
             return
 
@@ -307,20 +338,26 @@ class SELLBiasMitigationPPOTrainer(PPOTrainer):
         logger.info("Final Lagrange Statistics:")
         logger.info(f"  SELL Rate (avg): {final_stats.get('r_sell_mean', 0):.1%}")
         logger.info(f"  Lambda (final): {final_stats.get('lambda_dual', 0):.6f}")
-        logger.info(f"  Constraint Active: {final_stats.get('constraint_active', False)}")
+        logger.info(
+            f"  Constraint Active: {final_stats.get('constraint_active', False)}"
+        )
 
         # Check if targets were met
-        sell_rate_ok = final_stats.get('r_sell_mean', 0) >= 0.15
-        lambda_bounded = abs(final_stats.get('lambda_dual', 0)) <= 1.0
+        sell_rate_ok = final_stats.get("r_sell_mean", 0) >= 0.15
+        lambda_bounded = abs(final_stats.get("lambda_dual", 0)) <= 1.0
 
         if sell_rate_ok and lambda_bounded:
             logger.info("✅ SELL bias mitigation targets achieved")
         else:
             logger.warning("⚠️  SELL bias mitigation targets not fully achieved")
             if not sell_rate_ok:
-                logger.warning(f"   - SELL rate below 15%: {final_stats.get('r_sell_mean', 0):.1%}")
+                logger.warning(
+                    f"   - SELL rate below 15%: {final_stats.get('r_sell_mean', 0):.1%}"
+                )
             if not lambda_bounded:
-                logger.warning(f"   - Lambda out of bounds: {final_stats.get('lambda_dual', 0):.6f}")
+                logger.warning(
+                    f"   - Lambda out of bounds: {final_stats.get('lambda_dual', 0):.6f}"
+                )
 
 
 def create_sell_mitigation_config(
@@ -378,7 +415,7 @@ def test_sell_mitigation_trainer() -> None:
     trainer = SELLBiasMitigationPPOTrainer(params)
 
     print("✅ SELL Bias Mitigation Trainer created successfully")
-    print(f"   Lagrange: Integrated into CustomPPO")
+    print("   Lagrange: Integrated into CustomPPO")
     print(f"   Probes: {'✅' if trainer.probe else '❌'}")
     print(f"   Weights: {'✅' if trainer.weight_calc else '❌'}")
 

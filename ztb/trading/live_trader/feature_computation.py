@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 class FeatureComputation:
     """Handles feature computation for model prediction."""
 
-    def __init__(self, live_trader: 'LiveTrader') -> None:
+    def __init__(self, live_trader: "LiveTrader") -> None:
         """Initialize feature computation with reference to live trader."""
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
@@ -29,32 +29,45 @@ class FeatureComputation:
                 logger = self.logger
                 logger.warning(f"Insufficient price history: {len(prices)} points")
                 # Pad with current price if needed
-                current_price = self.live_trader._last_valid_price if self.live_trader._last_valid_price > 0 else 5000000.0
+                current_price = (
+                    self.live_trader._last_valid_price
+                    if self.live_trader._last_valid_price > 0
+                    else 5000000.0
+                )
                 while len(prices) < 10:
                     prices.append(current_price)
 
             # Validate prices are reasonable
-            prices = [max(1000.0, min(10000000.0, p)) for p in prices]  # Clamp to reasonable range
+            prices = [
+                max(1000.0, min(10000000.0, p)) for p in prices
+            ]  # Clamp to reasonable range
 
             # Try to use full feature engine if schema is available
-            if (hasattr(self.live_trader, 'schema_available') and self.live_trader.schema_available and
-                hasattr(self.live_trader, 'expected_features') and self.live_trader.expected_features and
-                self.live_trader.features_available and self.live_trader.compute_features_batch is not None):
-
+            if (
+                hasattr(self.live_trader, "schema_available")
+                and self.live_trader.schema_available
+                and hasattr(self.live_trader, "expected_features")
+                and self.live_trader.expected_features
+                and self.live_trader.features_available
+                and self.live_trader.compute_features_batch is not None
+            ):
                 try:
                     # Create DataFrame for feature computation
-                    df = pd.DataFrame({
-                        "timestamp": pd.date_range(
-                            start=pd.Timestamp.now() - pd.Timedelta(minutes=len(prices)),
-                            periods=len(prices),
-                            freq="1min",
-                        ),
-                        "open": prices,
-                        "high": prices,
-                        "low": prices,
-                        "close": prices,
-                        "volume": [1000] * len(prices),  # Mock volume
-                    })
+                    df = pd.DataFrame(
+                        {
+                            "timestamp": pd.date_range(
+                                start=pd.Timestamp.now()
+                                - pd.Timedelta(minutes=len(prices)),
+                                periods=len(prices),
+                                freq="1min",
+                            ),
+                            "open": prices,
+                            "high": prices,
+                            "low": prices,
+                            "close": prices,
+                            "volume": [1000] * len(prices),  # Mock volume
+                        }
+                    )
 
                     # Compute all features using the feature engine
                     result = self.live_trader.compute_features_batch(df, verbose=False)
@@ -67,8 +80,19 @@ class FeatureComputation:
 
                     if hasattr(features_df, "columns") and len(features_df) > 0:
                         # Extract feature columns (exclude OHLCV)
-                        feature_cols = [col for col in features_df.columns
-                                      if col not in ["timestamp", "open", "high", "low", "close", "volume"]]
+                        feature_cols = [
+                            col
+                            for col in features_df.columns
+                            if col
+                            not in [
+                                "timestamp",
+                                "open",
+                                "high",
+                                "low",
+                                "close",
+                                "volume",
+                            ]
+                        ]
 
                         if feature_cols:
                             # Get the latest row features
@@ -87,18 +111,24 @@ class FeatureComputation:
                             expected_count = self.live_trader.expected_features
                             if len(latest_features) < expected_count:
                                 # Pad with zeros if needed
-                                latest_features.extend([0.0] * (expected_count - len(latest_features)))
+                                latest_features.extend(
+                                    [0.0] * (expected_count - len(latest_features))
+                                )
                             elif len(latest_features) > expected_count:
                                 # Truncate if too many
                                 latest_features = latest_features[:expected_count]
 
                             logger = self.logger
-                            logger.debug(f"Computed {len(latest_features)} features using full feature engine")
+                            logger.debug(
+                                f"Computed {len(latest_features)} features using full feature engine"
+                            )
                             return np.array(latest_features, dtype=np.float32)
 
                 except Exception as e:
                     logger = self.logger
-                    logger.warning(f"Failed to compute features with full engine, falling back to basic: {e}")
+                    logger.warning(
+                        f"Failed to compute features with full engine, falling back to basic: {e}"
+                    )
 
             # Fallback to basic feature computation
             features = []
@@ -135,7 +165,7 @@ class FeatureComputation:
                 features.append(0.0)
 
             # Pad to expected feature count
-            expected_features = getattr(self.live_trader, 'expected_features', 64) or 64
+            expected_features = getattr(self.live_trader, "expected_features", 64) or 64
             while len(features) < expected_features:
                 features.append(0.0)
 
@@ -152,5 +182,5 @@ class FeatureComputation:
             logger = self.logger
             logger.error(f"Error in compute_features: {e}")
             # Return zero features as safe fallback
-            expected_features = getattr(self.live_trader, 'expected_features', 64) or 64
+            expected_features = getattr(self.live_trader, "expected_features", 64) or 64
             return np.zeros(expected_features, dtype=np.float32)

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.utils.drift_detection</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Feature drift detection using PSI (Population Stability Index) and KS (Kolmogorov-Smirnov) test.</span>
@@ -165,33 +165,33 @@
     <span class="c1"># Remove NaN values</span>
     <span class="n">expected</span> <span class="o">=</span> <span class="n">expected</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">expected</span><span class="p">)]</span>
     <span class="n">actual</span> <span class="o">=</span> <span class="n">actual</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">actual</span><span class="p">)]</span>
-    
+
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-    
+
     <span class="c1"># Create bins based on expected distribution</span>
     <span class="n">breakpoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">percentile</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="n">bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
     <span class="n">breakpoints</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">breakpoints</span><span class="p">)</span>  <span class="c1"># Remove duplicates</span>
-    
+
     <span class="c1"># Handle case where all values are identical</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">breakpoints</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">2</span><span class="p">:</span>
         <span class="k">return</span> <span class="mf">0.0</span>  <span class="c1"># No variation, no drift</span>
-    
+
     <span class="c1"># Count frequencies in each bin</span>
     <span class="n">expected_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">breakpoints</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">actual_counts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">breakpoints</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-    
+
     <span class="c1"># Convert to percentages</span>
     <span class="n">expected_pct</span> <span class="o">=</span> <span class="n">expected_counts</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected</span><span class="p">)</span>
     <span class="n">actual_pct</span> <span class="o">=</span> <span class="n">actual_counts</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
-    
+
     <span class="c1"># Add epsilon to avoid division by zero</span>
     <span class="n">expected_pct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">expected_pct</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">expected_pct</span><span class="p">)</span>
     <span class="n">actual_pct</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">actual_pct</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">actual_pct</span><span class="p">)</span>
-    
+
     <span class="c1"># Calculate PSI</span>
     <span class="n">psi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">actual_pct</span> <span class="o">-</span> <span class="n">expected_pct</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">actual_pct</span> <span class="o">/</span> <span class="n">expected_pct</span><span class="p">))</span>
-    
+
     <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">psi</span><span class="p">)</span></div>
 
 
@@ -231,13 +231,13 @@
     <span class="c1"># Remove NaN values</span>
     <span class="n">expected</span> <span class="o">=</span> <span class="n">expected</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">expected</span><span class="p">)]</span>
     <span class="n">actual</span> <span class="o">=</span> <span class="n">actual</span><span class="p">[</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">actual</span><span class="p">)]</span>
-    
+
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">expected</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-    
+
     <span class="c1"># Run KS test</span>
     <span class="n">statistic</span><span class="p">,</span> <span class="n">p_value</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">ks_2samp</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">statistic</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">p_value</span><span class="p">))</span></div>
 
 
@@ -278,20 +278,20 @@
     <span class="c1"># Calculate PSI</span>
     <span class="n">psi</span> <span class="o">=</span> <span class="n">calculate_psi</span><span class="p">(</span><span class="n">train_values</span><span class="p">,</span> <span class="n">eval_values</span><span class="p">)</span>
     <span class="n">psi_drift</span> <span class="o">=</span> <span class="n">psi</span> <span class="o">&gt;=</span> <span class="n">psi_threshold</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">psi</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
-    
+
     <span class="c1"># Calculate KS</span>
     <span class="n">ks_stat</span><span class="p">,</span> <span class="n">ks_p</span> <span class="o">=</span> <span class="n">calculate_ks</span><span class="p">(</span><span class="n">train_values</span><span class="p">,</span> <span class="n">eval_values</span><span class="p">)</span>
     <span class="n">ks_drift</span> <span class="o">=</span> <span class="n">ks_p</span> <span class="o">&lt;</span> <span class="n">ks_p_threshold</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ks_p</span><span class="p">)</span> <span class="k">else</span> <span class="kc">False</span>
-    
+
     <span class="c1"># Overall drift flag</span>
     <span class="n">drift_detected</span> <span class="o">=</span> <span class="n">psi_drift</span> <span class="ow">or</span> <span class="n">ks_drift</span>
-    
+
     <span class="c1"># Basic statistics</span>
     <span class="n">train_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">train_values</span><span class="p">))</span>
     <span class="n">eval_mean</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">(</span><span class="n">eval_values</span><span class="p">))</span>
     <span class="n">train_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">train_values</span><span class="p">))</span>
     <span class="n">eval_std</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">eval_values</span><span class="p">))</span>
-    
+
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;feature_name&quot;</span><span class="p">:</span> <span class="n">feature_name</span><span class="p">,</span>
         <span class="s2">&quot;psi&quot;</span><span class="p">:</span> <span class="n">psi</span><span class="p">,</span>
@@ -329,14 +329,14 @@
 <span class="sd">        DataFrame with drift statistics for each feature</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
-    
+
     <span class="k">for</span> <span class="n">feature_name</span> <span class="ow">in</span> <span class="n">train_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">eval_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
             <span class="k">continue</span>
-        
+
         <span class="n">train_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">train_df</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
         <span class="n">eval_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">eval_df</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
-        
+
         <span class="n">result</span> <span class="o">=</span> <span class="n">detect_drift_single_feature</span><span class="p">(</span>
             <span class="n">train_values</span><span class="p">,</span>
             <span class="n">eval_values</span><span class="p">,</span>
@@ -345,7 +345,7 @@
             <span class="n">ks_p_threshold</span><span class="p">,</span>
         <span class="p">)</span>
         <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">results</span><span class="p">)</span></div>
 
 
@@ -410,18 +410,18 @@
 <span class="s2">            &lt;/thead&gt;</span>
 <span class="s2">            &lt;tbody&gt;</span>
 <span class="s2">    &quot;&quot;&quot;</span>
-    
+
     <span class="c1"># Add summary stats</span>
     <span class="n">total_features</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">drift_df</span><span class="p">)</span>
     <span class="n">drift_count</span> <span class="o">=</span> <span class="n">drift_df</span><span class="p">[</span><span class="s2">&quot;drift_detected&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
     <span class="n">drift_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">drift_count</span> <span class="o">/</span> <span class="n">total_features</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">total_features</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
-    
+
     <span class="n">html</span> <span class="o">=</span> <span class="n">html</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
         <span class="n">total_features</span><span class="o">=</span><span class="n">total_features</span><span class="p">,</span>
         <span class="n">drift_count</span><span class="o">=</span><span class="n">drift_count</span><span class="p">,</span>
         <span class="n">drift_pct</span><span class="o">=</span><span class="n">drift_pct</span><span class="p">,</span>
     <span class="p">)</span>
-    
+
     <span class="c1"># Add rows</span>
     <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">drift_df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
         <span class="n">row_class</span> <span class="o">=</span> <span class="s2">&quot;drift&quot;</span> <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;drift_detected&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;no-drift&quot;</span>
@@ -440,14 +440,14 @@
 <span class="s2">                    &lt;td&gt;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="s1">&#39;eval_std&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&lt;/td&gt;</span>
 <span class="s2">                &lt;/tr&gt;</span>
 <span class="s2">        &quot;&quot;&quot;</span>
-    
+
     <span class="n">html</span> <span class="o">+=</span> <span class="s2">&quot;&quot;&quot;</span>
 <span class="s2">            &lt;/tbody&gt;</span>
 <span class="s2">        &lt;/table&gt;</span>
 <span class="s2">    &lt;/body&gt;</span>
 <span class="s2">    &lt;/html&gt;</span>
 <span class="s2">    &quot;&quot;&quot;</span>
-    
+
     <span class="n">output_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">html</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span></div>
 
 </pre></div>
@@ -465,7 +465,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -476,7 +476,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

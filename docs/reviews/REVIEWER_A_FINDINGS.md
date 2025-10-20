@@ -108,7 +108,7 @@ Code still documents a fallback to `model.predict()` when masks are unavailable,
 **Current Code:**
 ```python
 # Get model prediction (using predict_with_masks for MaskablePPO support)
-# Note: live_trade doesn't have environment instance, so predict_with_masks 
+# Note: live_trade doesn't have environment instance, so predict_with_masks
 # will fall back to model.predict() for MaskablePPO without masks
 # TODO: Refactor to use proper environment for action masking
 obs = features.reshape(1, -1)
@@ -137,11 +137,11 @@ def test_predict_with_masks_live_trade_scenario():
     """Regression test for MaskablePPO in production-like code."""
     model = MaskablePPO(...)
     obs = np.random.random((1, feature_count))
-    
+
     # Should raise ValueError without env
     with pytest.raises(ValueError, match="MaskablePPO requires 'env'"):
         predict_with_masks(model, obs, env=None)
-    
+
     # Should work with env
     env = create_mock_env()
     action, _ = predict_with_masks(model, obs, env=env)
@@ -166,18 +166,18 @@ class PositionManager:
         """Close position and update trade tracking."""
         if self.position == 0:
             return 0.0
-        
+
         # Calculate realized PnL
         realized_trade_pnl = ...
-        
+
         # Update trade tracking
         self._last_trade_step = current_step  # ✅ Update here
         self.trades_count += 1
-        
+
         # Reset position
         self.position = 0.0
         self.entry_price = 0.0
-        
+
         return realized_trade_pnl
 ```
 
@@ -201,11 +201,11 @@ class LiveTrader:
         self.model = load_model(...)
         # Create lightweight env just for masks
         self.mask_env = HeavyTradingEnv(...)
-        
+
     def get_action(self, features):
         obs = features.reshape(1, -1)
         action, _ = predict_with_masks(
-            self.model, obs, 
+            self.model, obs,
             env=self.mask_env,  # ✅ Provide environment
             deterministic=True
         )
@@ -218,7 +218,7 @@ class ActionMaskService:
     """Lightweight service that provides action masks without full env."""
     def __init__(self, config):
         self.config = config
-        
+
     def get_action_masks(self, position, portfolio_value, current_price):
         """Calculate legal actions based on current state."""
         # Same logic as HeavyTradingEnv.get_legal_actions()
@@ -239,7 +239,7 @@ class ActionMaskService:
 
 **Bugs Found:** 1 critical (Bug #24)
 
-**Key Insight:** 
+**Key Insight:**
 State synchronization between Environment and PositionManager is a recurring source of bugs. Moving synchronization logic into PositionManager itself would eliminate this class of errors.
 
 **Top Priority Fix:**

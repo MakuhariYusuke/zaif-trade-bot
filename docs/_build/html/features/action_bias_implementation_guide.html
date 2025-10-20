@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Action Constants and Continuous Action Mapping" href="action_constants.html" />
-    <link rel="prev" title="ログレベル制御機能 統合サマリー" href="LOG_LEVEL_INTEGRATION_SUMMARY.html" /> 
+    <link rel="prev" title="ログレベル制御機能 統合サマリー" href="LOG_LEVEL_INTEGRATION_SUMMARY.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -140,7 +140,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="action-bias-fix-detailed-implementation-guide">
 <h1>Action Bias Fix - Detailed Implementation Guide<a class="headerlink" href="#action-bias-fix-detailed-implementation-guide" title="Link to this heading"></a></h1>
 <section id="overview">
@@ -197,11 +197,11 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_legal_actions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return binary mask of legal actions [HOLD, BUY, SELL].&quot;&quot;&quot;</span>
     <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int_</span><span class="p">)</span>
-    
+
     <span class="c1"># HOLD is always legal</span>
     <span class="c1"># BUY only legal if position &lt;= 0 (no long position or flat)</span>
     <span class="c1"># SELL only legal if position &gt;= 0 (have long position or flat)</span>
-    
+
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">mask</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># Can&#39;t BUY when holding long</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -209,7 +209,7 @@
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="c1"># When flat, both BUY and SELL are legal</span>
         <span class="k">pass</span>
-    
+
     <span class="k">return</span> <span class="n">mask</span>
 </pre></div>
 </div>
@@ -229,7 +229,7 @@
 
 <span class="k">class</span><span class="w"> </span><span class="nc">StrictMaskedPolicy</span><span class="p">(</span><span class="n">MaskableActorCriticPolicy</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Policy that strictly enforces action masks in forward and loss.&quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -245,10 +245,10 @@
         <span class="c1"># Get features</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
         <span class="n">latent_pi</span><span class="p">,</span> <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-        
+
         <span class="c1"># Get action logits</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">latent_pi</span><span class="p">)</span>
-        
+
         <span class="c1"># CRITICAL: Apply mask BEFORE softmax</span>
         <span class="k">if</span> <span class="n">action_masks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Set illegal actions to -inf</span>
@@ -257,22 +257,22 @@
                 <span class="n">logits</span><span class="p">,</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
             <span class="p">)</span>
-        
+
         <span class="c1"># Create distribution and sample</span>
         <span class="n">distribution</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">deterministic</span><span class="p">:</span>
             <span class="n">actions</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">actions</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
-        
+
         <span class="n">log_probs</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
-        
+
         <span class="c1"># Get value</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">latent_vf</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">actions</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">log_probs</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">evaluate_actions</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">obs</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -282,9 +282,9 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluate actions with mask consideration.&quot;&quot;&quot;</span>
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs</span><span class="p">)</span>
         <span class="n">latent_pi</span><span class="p">,</span> <span class="n">latent_vf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
-        
+
         <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">latent_pi</span><span class="p">)</span>
-        
+
         <span class="c1"># Apply mask</span>
         <span class="k">if</span> <span class="n">action_masks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
@@ -292,13 +292,13 @@
                 <span class="n">logits</span><span class="p">,</span>
                 <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">logits</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
             <span class="p">)</span>
-        
+
         <span class="n">distribution</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">logits</span><span class="o">=</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="n">log_probs</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">log_prob</span><span class="p">(</span><span class="n">actions</span><span class="p">)</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="n">distribution</span><span class="o">.</span><span class="n">entropy</span><span class="p">()</span>
         <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">value_net</span><span class="p">(</span><span class="n">latent_vf</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">values</span><span class="p">,</span> <span class="n">log_probs</span><span class="p">,</span> <span class="n">entropy</span>
 </pre></div>
 </div>
@@ -346,7 +346,7 @@
         <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">extract_features</span><span class="p">(</span><span class="n">obs_tensor</span><span class="p">)</span>
         <span class="n">latent_pi</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">mlp_extractor</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">policy</span><span class="o">.</span><span class="n">action_net</span><span class="p">(</span><span class="n">latent_pi</span><span class="p">)</span>
-        
+
         <span class="c1"># Apply mask</span>
         <span class="n">mask_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">action_masks</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
         <span class="n">logits_masked</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
@@ -354,19 +354,19 @@
             <span class="n">logits</span><span class="p">,</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;-inf&#39;</span><span class="p">))</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Apply temperature</span>
         <span class="n">logits_temp</span> <span class="o">=</span> <span class="n">logits_masked</span> <span class="o">/</span> <span class="n">temperature</span>
-        
+
         <span class="c1"># Softmax</span>
         <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">logits_temp</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        
+
         <span class="c1"># Select action</span>
         <span class="k">if</span> <span class="n">deterministic</span><span class="p">:</span>
             <span class="n">action</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">action</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">multinomial</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-        
+
         <span class="c1"># Return diagnostics</span>
         <span class="n">diagnostics</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;probs&quot;</span><span class="p">:</span> <span class="n">probs</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
@@ -374,7 +374,7 @@
             <span class="s2">&quot;logits_masked&quot;</span><span class="p">:</span> <span class="n">logits_masked</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
             <span class="s2">&quot;temperature&quot;</span><span class="p">:</span> <span class="n">temperature</span><span class="p">,</span>
         <span class="p">}</span>
-        
+
         <span class="k">return</span> <span class="n">action</span><span class="p">,</span> <span class="n">diagnostics</span>
 </pre></div>
 </div>
@@ -406,30 +406,30 @@
 
 <span class="k">class</span><span class="w"> </span><span class="nc">ActionFrequencyWeighter</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Compute inverse-frequency weights for actions.&quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_actions</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">min_weight</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_actions</span> <span class="o">=</span> <span class="n">n_actions</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">min_weight</span> <span class="o">=</span> <span class="n">min_weight</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">()</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Update action counts.&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="p">)]</span> <span class="o">+=</span> <span class="mi">1</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">get_weights</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actions</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get weights for actions in batch.&quot;&quot;&quot;</span>
         <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
         <span class="k">if</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">actions</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-        
+
         <span class="n">weights</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">action</span> <span class="ow">in</span> <span class="n">actions</span><span class="p">:</span>
             <span class="n">action_int</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
             <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">action_counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">action_int</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">total</span>
             <span class="n">weight</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min_weight</span><span class="p">,</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">freq</span> <span class="o">+</span> <span class="mf">1e-8</span><span class="p">))</span>
             <span class="n">weights</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">weights</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">actions</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -463,41 +463,41 @@
 
 <span class="k">class</span><span class="w"> </span><span class="nc">RegimeSampler</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample data balanced across market regimes.&quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">df</span> <span class="o">=</span> <span class="n">df</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">regime_indices</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_identify_regimes</span><span class="p">()</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_identify_regimes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Identify different market regimes.&quot;&quot;&quot;</span>
         <span class="n">regimes</span> <span class="o">=</span> <span class="p">{}</span>
-        
+
         <span class="c1"># Calculate returns</span>
         <span class="n">returns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">pct_change</span><span class="p">()</span>
-        
+
         <span class="c1"># Calculate volatility (rolling std)</span>
         <span class="n">volatility</span> <span class="o">=</span> <span class="n">returns</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
-        
+
         <span class="c1"># Trend: SMA crossover</span>
         <span class="n">sma_short</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
         <span class="n">sma_long</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;close&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
         <span class="n">trend</span> <span class="o">=</span> <span class="n">sma_short</span> <span class="o">&gt;</span> <span class="n">sma_long</span>
-        
+
         <span class="c1"># High/Low volatility threshold</span>
         <span class="n">vol_median</span> <span class="o">=</span> <span class="n">volatility</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
-        
+
         <span class="c1"># Categorize</span>
         <span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;uptrend_high_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[(</span><span class="n">trend</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="n">vol_median</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;uptrend_low_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[(</span><span class="n">trend</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">volatility</span> <span class="o">&lt;=</span> <span class="n">vol_median</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;downtrend_high_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[(</span><span class="o">~</span><span class="n">trend</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">volatility</span> <span class="o">&gt;</span> <span class="n">vol_median</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
         <span class="n">regimes</span><span class="p">[</span><span class="s1">&#39;downtrend_low_vol&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df</span><span class="p">[(</span><span class="o">~</span><span class="n">trend</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">volatility</span> <span class="o">&lt;=</span> <span class="n">vol_median</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-        
+
         <span class="k">return</span> <span class="n">regimes</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">sample_balanced</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample indices balanced across regimes.&quot;&quot;&quot;</span>
         <span class="n">samples_per_regime</span> <span class="o">=</span> <span class="n">n_samples</span> <span class="o">//</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">regime_indices</span><span class="p">)</span>
-        
+
         <span class="n">all_indices</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">regime_name</span><span class="p">,</span> <span class="n">indices</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">regime_indices</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -507,7 +507,7 @@
                     <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
                 <span class="p">)</span>
                 <span class="n">all_indices</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sampled</span><span class="p">)</span>
-        
+
         <span class="c1"># Shuffle</span>
         <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">all_indices</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">all_indices</span><span class="p">[:</span><span class="n">n_samples</span><span class="p">]</span>
@@ -657,7 +657,7 @@ python<span class="w"> </span>-m<span class="w"> </span>ztb.training.paper_trade
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -668,7 +668,7 @@ python<span class="w"> </span>-m<span class="w"> </span>ztb.training.paper_trade
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

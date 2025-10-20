@@ -3,26 +3,20 @@
 Trading Evaluator implementation.
 """
 
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from torch.utils.tensorboard import SummaryWriter
 
-from ztb.evaluation.evaluator.types import EvaluationResult, ModelConfigDict, SingleEpisodeResultDict
+from ztb.evaluation.evaluator.types import EvaluationResult, SingleEpisodeResultDict
 from ztb.metrics.metrics import (
     calculate_all_metrics,
-    seasonality_analysis,
     multi_market_backtest_analysis,
-    classify_market_regime,
-    perform_statistical_tests,
-    p_mean_method,
+    seasonality_analysis,
 )
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.trading.environment.utils.config import EnvironmentConfig
@@ -34,6 +28,7 @@ from ztb.utils.performance_utils import PerformanceMonitor
 # Optional imports for advanced analysis
 try:
     from scripts.analysis.walkforward_analysis import WalkforwardAnalyzer
+
     WALKFORWARD_AVAILABLE = True
 except ImportError:
     WALKFORWARD_AVAILABLE = False
@@ -132,7 +127,9 @@ class TradingEvaluator:
         try:
             # Use BaseAlgorithm.load to support any SB3 algorithm (PPO, SAC, etc.)
             model = BaseAlgorithm.load(str(self.model_path))
-            logger.info(f"Model loaded from {self.model_path} (type={type(model).__name__})")
+            logger.info(
+                f"Model loaded from {self.model_path} (type={type(model).__name__})"
+            )
             return model
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
@@ -156,7 +153,9 @@ class TradingEvaluator:
 
             results = []
             for episode in range(self.config["n_eval_episodes"]):
-                logger.info(f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}")
+                logger.info(
+                    f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}"
+                )
                 episode_result = self._evaluate_single_episode()
                 results.append(episode_result)
 
@@ -202,7 +201,9 @@ class TradingEvaluator:
                 break
 
             # Predict action using SB3 model (may return scalar, array, or dict depending on policy)
-            raw_action, _ = self.model.predict(obs, deterministic=self.config["deterministic"])
+            raw_action, _ = self.model.predict(
+                obs, deterministic=self.config["deterministic"]
+            )
             # Normalize action to a scalar/compatible form for env.step
             action = self._normalize_action(raw_action)
 
@@ -231,7 +232,11 @@ class TradingEvaluator:
                 try:
                     idx = getattr(self.env, "current_step", None)
                     if idx is not None and self.df is not None and idx < len(self.df):
-                        ts = self.df.iloc[idx].get("timestamp") if "timestamp" in self.df.columns else self.df.index[idx]
+                        ts = (
+                            self.df.iloc[idx].get("timestamp")
+                            if "timestamp" in self.df.columns
+                            else self.df.index[idx]
+                        )
                 except Exception:
                     ts = None
             timestamps.append(ts)
@@ -243,7 +248,11 @@ class TradingEvaluator:
                 try:
                     idx = getattr(self.env, "current_step", None)
                     if idx is not None and self.df is not None and idx < len(self.df):
-                        price = float(self.df.iloc[idx].get("close") if "close" in self.df.columns else self.df.iloc[idx].iat[0])
+                        price = float(
+                            self.df.iloc[idx].get("close")
+                            if "close" in self.df.columns
+                            else self.df.iloc[idx].iat[0]
+                        )
                 except Exception:
                     price = np.nan
             price_history.append(float(price) if price is not None else np.nan)
@@ -304,7 +313,9 @@ class TradingEvaluator:
         else:
             return 0  # Default action
 
-    def _aggregate_results(self, results: List[SingleEpisodeResultDict]) -> EvaluationResult:
+    def _aggregate_results(
+        self, results: List[SingleEpisodeResultDict]
+    ) -> EvaluationResult:
         """結果を集計"""
         # 基本的な集計処理
         all_rewards = [r for result in results for r in result["rewards"]]
@@ -316,10 +327,13 @@ class TradingEvaluator:
         # Use comprehensive metrics from metrics.py
         metrics = calculate_all_metrics(pnl_returns)
 
-        total_trades = len([a for result in results for a in result["actions"] if a != 0])  # Non-hold actions
+        total_trades = len(
+            [a for result in results for a in result["actions"] if a != 0]
+        )  # Non-hold actions
 
         # Flatten action history and compute streaks for BUY(1)/SELL(2)
         action_history = [a for result in results for a in result.get("actions", [])]
+
         def compute_streaks(actions_list, target):
             max_streak = 0
             streaks = []
@@ -337,9 +351,9 @@ class TradingEvaluator:
                 max_streak = max(max_streak, cur)
             avg_streak = float(np.mean(streaks)) if streaks else 0.0
             return {
-                'max': int(max_streak),
-                'avg': float(avg_streak),
-                'count': len(streaks)
+                "max": int(max_streak),
+                "avg": float(avg_streak),
+                "count": len(streaks),
             }
 
         buy_streaks = compute_streaks(action_history, 1)
@@ -350,7 +364,11 @@ class TradingEvaluator:
         if self.df is not None:
             for result in results:
                 # Assume each step corresponds to one timestamp
-                episode_timestamps = [self.df.index[i] for i in range(len(result["rewards"])) if i < len(self.df)]
+                episode_timestamps = [
+                    self.df.index[i]
+                    for i in range(len(result["rewards"]))
+                    if i < len(self.df)
+                ]
                 timestamps.extend(episode_timestamps)
 
         # Perform seasonality analysis if we have enough data
@@ -360,65 +378,92 @@ class TradingEvaluator:
 
         # Perform multi-market analysis if we have price data
         market_analysis_results = {}
-        if self.df is not None and hasattr(self.df, 'close') and len(self.df) > 20:
+        if self.df is not None and hasattr(self.df, "close") and len(self.df) > 20:
             try:
-                prices = self.df['close'].iloc[:len(pnl_returns)] if len(self.df) >= len(pnl_returns) else self.df['close']
-                market_analysis_results = multi_market_backtest_analysis(pnl_returns, prices)
+                prices = (
+                    self.df["close"].iloc[: len(pnl_returns)]
+                    if len(self.df) >= len(pnl_returns)
+                    else self.df["close"]
+                )
+                market_analysis_results = multi_market_backtest_analysis(
+                    pnl_returns, prices
+                )
             except Exception as e:
                 logger.warning(f"Could not perform market analysis: {e}")
 
         # Perform walk-forward analysis if available and we have enough data
         walkforward_results = {}
-        if WALKFORWARD_AVAILABLE and WalkforwardAnalyzer is not None and len(pnl_returns) >= 100:  # Need substantial data
+        if (
+            WALKFORWARD_AVAILABLE
+            and WalkforwardAnalyzer is not None
+            and len(pnl_returns) >= 100
+        ):  # Need substantial data
             try:
                 analyzer = WalkforwardAnalyzer()
                 # Create synthetic time series for walk-forward analysis
-                synthetic_returns = pd.Series(pnl_returns, 
-                    index=pd.date_range(start='2020-01-01', periods=len(pnl_returns), freq='D'))
+                synthetic_returns = pd.Series(
+                    pnl_returns,
+                    index=pd.date_range(
+                        start="2020-01-01", periods=len(pnl_returns), freq="D"
+                    ),
+                )
                 wf_result = analyzer.run_walkforward_analysis(synthetic_returns)
                 walkforward_results = {
-                    'available': True,
-                    'windows_count': len(wf_result.windows),
-                    'average_sharpe': np.mean(wf_result.rolling_sharpe) if wf_result.rolling_sharpe else 0.0,
-                    'sharpe_volatility': np.std(wf_result.rolling_sharpe) if wf_result.rolling_sharpe else 0.0,
+                    "available": True,
+                    "windows_count": len(wf_result.windows),
+                    "average_sharpe": np.mean(wf_result.rolling_sharpe)
+                    if wf_result.rolling_sharpe
+                    else 0.0,
+                    "sharpe_volatility": np.std(wf_result.rolling_sharpe)
+                    if wf_result.rolling_sharpe
+                    else 0.0,
                 }
             except Exception as e:
                 logger.warning(f"Could not perform walk-forward analysis: {e}")
-                walkforward_results = {'available': False, 'error': str(e)}
+                walkforward_results = {"available": False, "error": str(e)}
 
         # Perform stress test analysis if available
         stress_test_results = {}
-        if STRESS_TEST_AVAILABLE and StressTestAnalyzer is not None and len(pnl_returns) >= 50:
+        if (
+            STRESS_TEST_AVAILABLE
+            and StressTestAnalyzer is not None
+            and len(pnl_returns) >= 50
+        ):
             try:
                 analyzer = StressTestAnalyzer()
                 # Run basic stress tests on the returns
                 stress_result = analyzer.run_stress_test(pd.Series(pnl_returns))
                 stress_test_results = {
-                    'available': True,
-                    'scenarios_tested': len(stress_result.results) if hasattr(stress_result, 'results') else 0,
-                    'average_survival_rate': np.mean([r.survival_probability for r in stress_result.results]) 
-                        if hasattr(stress_result, 'results') and stress_result.results else 0.0,
+                    "available": True,
+                    "scenarios_tested": len(stress_result.results)
+                    if hasattr(stress_result, "results")
+                    else 0,
+                    "average_survival_rate": np.mean(
+                        [r.survival_probability for r in stress_result.results]
+                    )
+                    if hasattr(stress_result, "results") and stress_result.results
+                    else 0.0,
                 }
             except Exception as e:
                 logger.warning(f"Could not perform stress test analysis: {e}")
-                stress_test_results = {'available': False, 'error': str(e)}
+                stress_test_results = {"available": False, "error": str(e)}
 
         # Prepare trade pnls (attempt to collect per-trade pnl if available in results)
         trade_pnls = []
         for res in results:
             # If environment reported per-step 'pnls' we can aggregate contiguous non-zero pnls as trades
-            pnls = res.get('pnls', [])
+            pnls = res.get("pnls", [])
             # simple heuristic: non-zero pnls indicate trades
             trade_pnls.extend([p for p in pnls if p != 0])
 
         continuous_action_stats = {
-            'action_streaks': {
-                'max_buy_streak': buy_streaks['max'],
-                'avg_buy_streak': buy_streaks['avg'],
-                'buy_streak_count': buy_streaks['count'],
-                'max_sell_streak': sell_streaks['max'],
-                'avg_sell_streak': sell_streaks['avg'],
-                'sell_streak_count': sell_streaks['count'],
+            "action_streaks": {
+                "max_buy_streak": buy_streaks["max"],
+                "avg_buy_streak": buy_streaks["avg"],
+                "buy_streak_count": buy_streaks["count"],
+                "max_sell_streak": sell_streaks["max"],
+                "avg_sell_streak": sell_streaks["avg"],
+                "sell_streak_count": sell_streaks["count"],
             }
         }
 
@@ -447,9 +492,15 @@ class TradingEvaluator:
             "states": [s for result in results for s in result["states"]],
             # compatibility with analyze_backtest.py expectations
             "action_history": action_history,
-            "portfolio_history": [v for result in results for v in result.get('portfolio_history', [])],
-            "price_history": [v for result in results for v in result.get('price_history', [])],
-            "timestamps": [t for result in results for t in result.get('timestamps', [])],
+            "portfolio_history": [
+                v for result in results for v in result.get("portfolio_history", [])
+            ],
+            "price_history": [
+                v for result in results for v in result.get("price_history", [])
+            ],
+            "timestamps": [
+                t for result in results for t in result.get("timestamps", [])
+            ],
             "trade_pnls": trade_pnls,
             "continuous_action_stats": continuous_action_stats,
             "model_path": str(self.model_path),
@@ -467,7 +518,9 @@ class TradingEvaluator:
         # TODO: Implement visualization logic
         pass
 
-    def compare_models(self, model_paths: List[str], model_names: Optional[List[str]] = None) -> None:
+    def compare_models(
+        self, model_paths: List[str], model_names: Optional[List[str]] = None
+    ) -> None:
         """Compare multiple models."""
         logger.info(f"Comparing {len(model_paths)} models")
         # TODO: Implement model comparison logic

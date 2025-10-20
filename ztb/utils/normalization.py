@@ -128,7 +128,9 @@ class NormalizationStats:
 
         mean = scaler.mean_.copy()
         std = scaler.scale_.copy()
-        n_samples = int(scaler.n_samples_seen_) if hasattr(scaler, "n_samples_seen_") else 0
+        n_samples = (
+            int(scaler.n_samples_seen_) if hasattr(scaler, "n_samples_seen_") else 0
+        )
 
         metadata = {
             "normalization_type": "StandardScaler",
@@ -188,7 +190,9 @@ class NormalizationStats:
             if len(self.feature_names) == len(other.feature_names):
                 diffs = [
                     (i, a, b)
-                    for i, (a, b) in enumerate(zip(self.feature_names, other.feature_names))
+                    for i, (a, b) in enumerate(
+                        zip(self.feature_names, other.feature_names)
+                    )
                     if a != b
                 ]
                 if diffs:
@@ -334,11 +338,11 @@ class NormalizationStats:
 
         # Apply saved stats
         vec_env.obs_rms.mean = self.mean.copy()
-        vec_env.obs_rms.var = (self.std ** 2).copy()
+        vec_env.obs_rms.var = (self.std**2).copy()
         if hasattr(vec_env.obs_rms, "count"):
             vec_env.obs_rms.count = self.n_samples
 
-        print(f"Applied normalization stats to VecNormalize environment")
+        print("Applied normalization stats to VecNormalize environment")
 
     def to_scaler(self, strict: bool = True) -> Any:
         """
@@ -361,7 +365,7 @@ class NormalizationStats:
         scaler = StandardScaler()
         scaler.mean_ = self.mean.copy()
         scaler.scale_ = self.std.copy()
-        scaler.var_ = (self.std ** 2).copy()
+        scaler.var_ = (self.std**2).copy()
         scaler.n_features_in_ = len(self.feature_names)
         scaler.n_samples_seen_ = self.n_samples
 
@@ -406,7 +410,7 @@ def load_scaler(
         ValueError: If hash verification fails
     """
     scaler_path = model_dir / "scaler.npz"
-    
+
     if not scaler_path.exists():
         if strict:
             raise FileNotFoundError(

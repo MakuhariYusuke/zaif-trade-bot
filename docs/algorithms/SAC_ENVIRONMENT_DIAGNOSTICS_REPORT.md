@@ -1,7 +1,7 @@
 # SAC環境診断レポート
 
-**作成日**: 2025年10月11日  
-**対象**: SAC (Soft Actor-Critic) 訓練環境  
+**作成日**: 2025年10月11日
+**対象**: SAC (Soft Actor-Critic) 訓練環境
 **診断ツール**: `diagnose_sac_simple.py`
 
 ---
@@ -97,19 +97,19 @@ def calculate_reward_simple(
     self, pnl, portfolio_value, position, old_position, action
 ):
     # v3.0: actionパラメータ追加
-    
+
     # 1. PnLベースの報酬（既存）
     reward = (pnl / portfolio_value) * reward_scale
     reward = clip(reward, clip_min, clip_max)
-    
+
     # 2. 無活動ペナルティ（新規）
     if action == HOLD and position == 0 and old_position == 0:
         reward -= inactivity_penalty_rate  # デフォルト: -0.001
-    
+
     # 3. 機会費用ペナルティ（新規）
     if action == HOLD and position != 0:
         reward -= opportunity_cost_rate  # デフォルト: -0.0005
-    
+
     return reward
 ```
 

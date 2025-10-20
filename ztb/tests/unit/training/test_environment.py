@@ -2,16 +2,14 @@
 Unit tests for HeavyTradingEnv class.
 """
 
-import numpy as np
 import pandas as pd
 import pytest
 
-from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.tests.test_utils import (
-    get_sample_trading_data,
-    get_default_env_config,
-    create_test_env,
     assert_env_initialized_correctly,
+    create_test_env,
+    get_default_env_config,
+    get_sample_trading_data,
 )
 
 

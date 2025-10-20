@@ -4,14 +4,24 @@ Dynamic Hyperparameter Adaptation Integration
 """
 
 import logging
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
+
 import pandas as pd
 
-from .dynamic_hyperparameter_adapter import DynamicHyperparameterAdapter, HyperparameterConfig, HyperparameterType, AdaptationStrategy
-from .market_aware_hyperparameter_manager import MarketAwareHyperparameterManager, MarketAwareConfig
-from .online_learning.pipeline import OnlineLearningPipeline
+from .dynamic_hyperparameter_adapter import (
+    AdaptationStrategy,
+    DynamicHyperparameterAdapter,
+    HyperparameterConfig,
+    HyperparameterType,
+)
+from .market_aware_hyperparameter_manager import (
+    MarketAwareConfig,
+    MarketAwareHyperparameterManager,
+)
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
+from .online_learning.pipeline import OnlineLearningPipeline
+
 # from .monitoring.market_regime_detector import MarketRegimeDetector  # Optional
 
 
@@ -21,10 +31,12 @@ logger = logging.getLogger(__name__)
 class HyperparameterAdaptationSystem:
     """ハイパーパラメータ適応システム統合"""
 
-    def __init__(self,
-                 online_learning_pipeline: OnlineLearningPipeline,
-                 evaluation_manager: ContinuousEvaluationManager,
-                 market_regime_detector: Optional[Any] = None):
+    def __init__(
+        self,
+        online_learning_pipeline: OnlineLearningPipeline,
+        evaluation_manager: ContinuousEvaluationManager,
+        market_regime_detector: Optional[Any] = None,
+    ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
         self.market_detector = market_regime_detector
@@ -52,13 +64,13 @@ class HyperparameterAdaptationSystem:
             HyperparameterType.LEARNING_RATE,
             HyperparameterType.BATCH_SIZE,
             HyperparameterType.REGULARIZATION_STRENGTH,
-            HyperparameterType.DROPOUT_RATE
+            HyperparameterType.DROPOUT_RATE,
         ]
 
         config.enabled_strategies = [
             AdaptationStrategy.PERFORMANCE_BASED,
             AdaptationStrategy.VOLATILITY_BASED,
-            AdaptationStrategy.GRADIENT_BASED
+            AdaptationStrategy.GRADIENT_BASED,
         ]
 
         # リアルタイム適応向け設定
@@ -119,7 +131,7 @@ class HyperparameterAdaptationSystem:
             self.dynamic_adapter = DynamicHyperparameterAdapter(
                 self.online_learning,
                 self.evaluation_manager,
-                self.hyperparameter_config
+                self.hyperparameter_config,
             )
 
             # 市場対応マネージャーを初期化
@@ -127,7 +139,7 @@ class HyperparameterAdaptationSystem:
                 self.online_learning,
                 self.evaluation_manager,
                 self.market_detector,
-                self.market_aware_config
+                self.market_aware_config,
             )
 
             self.is_initialized = True
@@ -174,7 +186,9 @@ class HyperparameterAdaptationSystem:
         except Exception as e:
             logger.error(f"Error stopping adaptation system: {e}")
 
-    def adapt_hyperparameters(self, market_data: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
+    def adapt_hyperparameters(
+        self, market_data: Optional[pd.DataFrame] = None
+    ) -> Dict[str, Any]:
         """ハイパーパラメータを適応"""
         try:
             if not self.is_initialized or not self.market_aware_manager:
@@ -182,11 +196,13 @@ class HyperparameterAdaptationSystem:
                     "success": False,
                     "error": "System not initialized",
                     "adaptations": [],
-                    "performance_improvement": 0.0
+                    "performance_improvement": 0.0,
                 }
 
             # 市場対応適応を実行
-            result = self.market_aware_manager.adapt_hyperparameters_market_aware(market_data)
+            result = self.market_aware_manager.adapt_hyperparameters_market_aware(
+                market_data
+            )
 
             return {
                 "success": True,
@@ -196,7 +212,7 @@ class HyperparameterAdaptationSystem:
                         "old_value": adaptation.old_value,
                         "new_value": adaptation.new_value,
                         "strategy": adaptation.adaptation_strategy.value,
-                        "reason": adaptation.reason
+                        "reason": adaptation.reason,
                     }
                     for adaptation in result.adaptations
                 ],
@@ -204,7 +220,7 @@ class HyperparameterAdaptationSystem:
                 "confidence": result.adaptation_confidence,
                 "market_conditions": result.market_conditions,
                 "recommendations": result.recommendations,
-                "timestamp": result.timestamp.isoformat()
+                "timestamp": result.timestamp.isoformat(),
             }
 
         except Exception as e:
@@ -213,7 +229,7 @@ class HyperparameterAdaptationSystem:
                 "success": False,
                 "error": str(e),
                 "adaptations": [],
-                "performance_improvement": 0.0
+                "performance_improvement": 0.0,
             }
 
     def get_current_hyperparameters(self) -> Dict[str, float]:
@@ -238,17 +254,27 @@ class HyperparameterAdaptationSystem:
                 "adaptation_history": [],
                 "performance_predictions": {},
                 "adaptation_statistics": {},
-                "recommendations": []
+                "recommendations": [],
             }
 
             if self.dynamic_adapter:
-                status["current_hyperparameters"] = self.dynamic_adapter.get_current_hyperparameters()
-                status["adaptation_history"] = self.dynamic_adapter.get_adaptation_history(hours=24)
+                status[
+                    "current_hyperparameters"
+                ] = self.dynamic_adapter.get_current_hyperparameters()
+                status[
+                    "adaptation_history"
+                ] = self.dynamic_adapter.get_adaptation_history(hours=24)
 
             if self.market_aware_manager:
-                status["performance_predictions"] = self.market_aware_manager.get_performance_predictions()
-                status["adaptation_statistics"] = self.market_aware_manager.get_adaptation_statistics()
-                status["recommendations"] = self.market_aware_manager.get_adaptation_recommendations()
+                status[
+                    "performance_predictions"
+                ] = self.market_aware_manager.get_performance_predictions()
+                status[
+                    "adaptation_statistics"
+                ] = self.market_aware_manager.get_adaptation_statistics()
+                status[
+                    "recommendations"
+                ] = self.market_aware_manager.get_adaptation_recommendations()
 
             return status
 
@@ -260,15 +286,15 @@ class HyperparameterAdaptationSystem:
         """設定を更新"""
         try:
             # ハイパーパラメータ設定の更新
-            if 'hyperparameter_config' in config_updates:
-                hp_updates = config_updates['hyperparameter_config']
+            if "hyperparameter_config" in config_updates:
+                hp_updates = config_updates["hyperparameter_config"]
                 for key, value in hp_updates.items():
                     if hasattr(self.hyperparameter_config, key):
                         setattr(self.hyperparameter_config, key, value)
 
             # 市場対応設定の更新
-            if 'market_aware_config' in config_updates:
-                ma_updates = config_updates['market_aware_config']
+            if "market_aware_config" in config_updates:
+                ma_updates = config_updates["market_aware_config"]
                 for key, value in ma_updates.items():
                     if hasattr(self.market_aware_config, key):
                         setattr(self.market_aware_config, key, value)
@@ -295,29 +321,33 @@ class HyperparameterAdaptationSystem:
                 "parameter_stability": 0.0,
                 "market_adaptiveness": 0.0,
                 "risk_adjustment_score": 0.0,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
 
             if self.market_aware_manager:
                 stats = self.market_aware_manager.get_adaptation_statistics()
 
                 # 適応有効性を計算
-                total_adaptations = stats.get('total_adaptations', 0)
+                total_adaptations = stats.get("total_adaptations", 0)
                 if total_adaptations > 0:
-                    strategy_performances = stats.get('strategy_performance', {})
+                    strategy_performances = stats.get("strategy_performance", {})
                     if strategy_performances:
                         avg_performances = [
-                            perf_data.get('average_performance', 0.0)
+                            perf_data.get("average_performance", 0.0)
                             for perf_data in strategy_performances.values()
                         ]
-                        metrics["adaptation_effectiveness"] = float(np.mean(avg_performances))
+                        metrics["adaptation_effectiveness"] = float(
+                            np.mean(avg_performances)
+                        )
 
                 # パラメータ安定性を計算
-                param_counts = stats.get('parameter_adaptation_count', {})
+                param_counts = stats.get("parameter_adaptation_count", {})
                 if param_counts:
                     total_changes = sum(param_counts.values())
                     unique_params = len(param_counts)
-                    metrics["parameter_stability"] = float(unique_params / max(total_changes, 1))
+                    metrics["parameter_stability"] = float(
+                        unique_params / max(total_changes, 1)
+                    )
 
             return metrics
 
@@ -339,7 +369,9 @@ class HyperparameterAdaptationSystem:
                 self.market_aware_manager.market_conditions.clear()
                 for training_data in self.market_aware_manager.training_data.values():
                     training_data.clear()
-                for performances in self.market_aware_manager.strategy_performance.values():
+                for (
+                    performances
+                ) in self.market_aware_manager.strategy_performance.values():
                     performances.clear()
 
             logger.info("Adaptation history reset successfully")

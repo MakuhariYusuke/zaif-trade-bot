@@ -12,8 +12,8 @@ import os from 'os';
 
 /**
  * No-op initializer for market module.
- * @param api 
- * @returns 
+ * @param api
+ * @returns
  */
 function initMarket(api: any) {
   // The market module does not export 'init'; provide a local no-op initializer for mock scenarios.
@@ -22,8 +22,8 @@ function initMarket(api: any) {
 
 /**
  * No-op initializer for execution module.
- * @param api 
- * @returns 
+ * @param api
+ * @returns
  */
 function initExec(api: any) {
   // The execution module does not export 'init'; provide a local no-op initializer for mock scenarios.

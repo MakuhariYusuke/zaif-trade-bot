@@ -4,10 +4,9 @@ Type definitions for A/B Testing Framework
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Any, Callable, Iterator, Union
-from datetime import datetime, timedelta
-import numpy as np
+from typing import Any, Callable, Dict, List, Optional
 
 # ストリーミングデータ処理のための型定義
 SampleData = Dict[str, Any]  # 柔軟なサンプルデータ型
@@ -18,6 +17,7 @@ SampleDataType = Dict[str, Any]
 
 class StatisticalTest(Enum):
     """統計検定タイプ"""
+
     T_TEST = "t_test"
     MANN_WHITNEY = "mann_whitney"
     CHI_SQUARE = "chi_square"
@@ -25,26 +25,28 @@ class StatisticalTest(Enum):
 
 class ABTestStatus(Enum):
     """A/Bテストステータス"""
-    CREATED = "created"          # 作成済み
-    RUNNING = "running"          # 実行中
-    PAUSED = "paused"           # 一時停止
-    COMPLETED = "completed"     # 完了
-    CANCELLED = "cancelled"     # キャンセル
-    FAILED = "failed"          # 失敗
+
+    CREATED = "created"  # 作成済み
+    RUNNING = "running"  # 実行中
+    PAUSED = "paused"  # 一時停止
+    COMPLETED = "completed"  # 完了
+    CANCELLED = "cancelled"  # キャンセル
+    FAILED = "failed"  # 失敗
 
 
 class ABTestResult(Enum):
     """A/Bテスト結果"""
-    INCONCLUSIVE = "inconclusive"  # 結論不明
-    WINNER_A = "winner_a"         # Aが勝者
-    WINNER_B = "winner_b"         # Bが勝者
-    TIE = "tie"                  # 同等
 
+    INCONCLUSIVE = "inconclusive"  # 結論不明
+    WINNER_A = "winner_a"  # Aが勝者
+    WINNER_B = "winner_b"  # Bが勝者
+    TIE = "tie"  # 同等
 
 
 @dataclass
 class ABTestVariant:
     """A/Bテストのバリアント（AまたはB）"""
+
     variant_id: str
     model_path: str
     model_version: str
@@ -55,6 +57,7 @@ class ABTestVariant:
 @dataclass
 class StatisticalResult:
     """統計分析結果"""
+
     test_type: StatisticalTest
     p_value: float
     effect_size: float
@@ -71,16 +74,17 @@ class StatisticalResult:
 @dataclass
 class StreamingStatistics:
     """ストリーミング統計計算クラス（メモリ効率重視）"""
+
     variant_id: str
     count: int = 0
     mean: float = 0.0
     m2: float = 0.0  # For Welford's online algorithm
-    min_val: float = float('inf')
-    max_val: float = float('-inf')
+    min_val: float = float("inf")
+    max_val: float = float("-inf")
 
     def add_sample(self, sample: SampleDataType) -> None:
         """サンプルを追加して統計を更新（Welfordのオンラインアルゴリズム）"""
-        value = sample.get('value', sample.get('reward', 0.0))
+        value = sample.get("value", sample.get("reward", 0.0))
 
         self.count += 1
         delta = value - self.mean
@@ -106,11 +110,14 @@ class StreamingStatistics:
         self.count = 0
         self.mean = 0.0
         self.m2 = 0.0
-        self.min_val = float('inf')
-        self.max_val = float('-inf')
+        self.min_val = float("inf")
+        self.max_val = float("-inf")
+
+
 @dataclass
 class RiskAssessment:
     """リスク評価結果"""
+
     overall_risk: str  # "low", "medium", "high"
     sample_size_risk: str = "low"
     statistical_risk: str = "low"
@@ -118,9 +125,12 @@ class RiskAssessment:
     regression_risk: str = "low"
     risk_factors: List[str] = field(default_factory=list)
     recommended_actions: List[str] = field(default_factory=list)
+
+
 @dataclass
 class ABTestMetrics:
     """A/Bテストメトリクス（ストリーミング計算対応）"""
+
     variant_id: str
     sample_count: int = 0
     mean_reward: float = 0.0
@@ -132,6 +142,7 @@ class ABTestMetrics:
 @dataclass
 class ABTestConfiguration:
     """A/Bテスト設定"""
+
     test_id: str
     name: str
     description: str
@@ -169,6 +180,7 @@ class ABTestConfiguration:
 @dataclass
 class ABTestState:
     """A/Bテスト状態（実行時情報）"""
+
     test_id: str
     status: ABTestStatus
     start_time: Optional[datetime] = None
@@ -194,6 +206,7 @@ class ABTestState:
 @dataclass
 class ABTestResultSummary:
     """A/Bテスト結果サマリー"""
+
     test_id: str
     result: ABTestResult
     winner_variant_id: Optional[str]
@@ -207,6 +220,7 @@ class ABTestResultSummary:
 @dataclass
 class ABTestReport:
     """A/Bテストレポート"""
+
     test_id: str
     configuration: ABTestConfiguration
     state: ABTestState

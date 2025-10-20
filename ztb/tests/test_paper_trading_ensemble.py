@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Paper trading evaluation script for ensemble PPO models."""
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from ztb.utils.config import TypedConfig
+
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -38,7 +39,9 @@ def load_models(model_paths: List[Path]) -> List[PPO]:
     return models
 
 
-def compute_mean_action(models: List[PPO], observation: np.ndarray) -> Dict[str, np.ndarray]:
+def compute_mean_action(
+    models: List[PPO], observation: np.ndarray
+) -> Dict[str, np.ndarray]:
     obs_tensor = torch.as_tensor(observation[None, :], dtype=torch.float32)
     probs: List[np.ndarray] = []
     for model in models:
@@ -52,7 +55,9 @@ def compute_mean_action(models: List[PPO], observation: np.ndarray) -> Dict[str,
     return {"action": action, "probs": mean_probs}
 
 
-def run_episode(models: List[PPO], df: pd.DataFrame, args: argparse.Namespace) -> Dict[str, float]:
+def run_episode(
+    models: List[PPO], df: pd.DataFrame, args: argparse.Namespace
+) -> Dict[str, float]:
     env_config = {
         "reward_scaling": 1.0,
         "transaction_cost": 0.0,
@@ -109,9 +114,7 @@ def summarize(results: List[Dict[str, float]]) -> Dict[str, float]:
 
     sharpe = 0.0
     if len(returns) > 1 and np.std(returns) > 0:
-        sharpe = (
-            np.mean(returns) / np.std(returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
+        sharpe = np.mean(returns) / np.std(returns) * np.sqrt(TRADING_DAYS_PER_YEAR)
 
     win_rate = sum(1 for r in returns if r > 0) / len(returns) if returns else 0.0
     avg_return = float(np.mean(returns)) if returns else 0.0
@@ -119,7 +122,9 @@ def summarize(results: List[Dict[str, float]]) -> Dict[str, float]:
     return {
         "avg_reward": float(np.mean(rewards)) if rewards else 0.0,
         "avg_return": avg_return,
-        "total_return": float(np.prod([1 + r for r in returns]) - 1) if returns else 0.0,
+        "total_return": float(np.prod([1 + r for r in returns]) - 1)
+        if returns
+        else 0.0,
         "win_rate": win_rate,
         "sharpe_ratio": sharpe,
         "buy_actions": buys,
@@ -129,8 +134,10 @@ def summarize(results: List[Dict[str, float]]) -> Dict[str, float]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate ensemble PPO models via paper trading")
-    
+    parser = argparse.ArgumentParser(
+        description="Evaluate ensemble PPO models via paper trading"
+    )
+
     config = TypedConfig()
     parser.add_argument(
         "--model-paths",

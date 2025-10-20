@@ -24,25 +24,21 @@ Usage:
     # Run A/B tests with automatic model selection
 """
 
+from .analyzer import ABTestAnalyzer
+from .config import ABTestConfig
+from .executor import ABTestExecutor
+from .selector import ModelSelector, TrafficManager
 from .types import (
-    ABTestVariant,
     ABTestConfiguration,
-    ABTestState,
     ABTestMetrics,
     ABTestResult,
     ABTestResultSummary,
+    ABTestState,
+    ABTestVariant,
+    RiskAssessment,
     StatisticalResult,
     StreamingStatistics,
-    RiskAssessment
 )
-
-from .config import ABTestConfig
-
-from .analyzer import ABTestAnalyzer
-
-from .executor import ABTestExecutor
-
-from .selector import ModelSelector, TrafficManager
 
 __all__ = [
     # Types
@@ -55,15 +51,13 @@ __all__ = [
     "StatisticalResult",
     "StreamingStatistics",
     "RiskAssessment",
-
     # Configuration
     "ABTestConfig",
-
     # Core Components
     "ABTestAnalyzer",
     "ABTestExecutor",
     "ModelSelector",
-    "TrafficManager"
+    "TrafficManager",
 ]
 
 __version__ = "1.0.0"

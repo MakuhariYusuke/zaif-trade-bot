@@ -6,20 +6,23 @@ Continuous Evaluation and Monitoring System
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Union
-from datetime import datetime, timedelta
 from collections import defaultdict, deque
-import json
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
 
 from .config import MonitoringConfig
 from .types import (
-    MetricType, MetricValue, AlertLevel, AlertStatus, AlertCondition,
-    Alert, Notification, DashboardData, ReportData, TimeSeriesData,
-    PerformanceMetrics, RiskMetrics, SystemMetrics, MarketMetrics,
-    AdaptationMetrics
+    Alert,
+    AlertCondition,
+    AlertLevel,
+    AlertStatus,
+    DashboardData,
+    MetricType,
+    MetricValue,
+    ReportData,
+    TimeSeriesData,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,8 +46,7 @@ class MetricsCollector:
 
         self.is_collecting = True
         self.collection_thread = threading.Thread(
-            target=self._collection_worker,
-            daemon=True
+            target=self._collection_worker, daemon=True
         )
         self.collection_thread.start()
         logger.info("Metrics collection started")
@@ -120,7 +122,7 @@ class MetricsCollector:
             "max_drawdown": -150.25,
             "avg_trade_duration": 45.5,
             "total_trades": 1250,
-            "profit_factor": 1.45
+            "profit_factor": 1.45,
         }
 
     def _collect_risk_metrics(self) -> Dict[str, float]:
@@ -131,21 +133,21 @@ class MetricsCollector:
             "volatility": 0.15,
             "beta": 0.85,
             "correlation_coefficient": 0.65,
-            "stress_test_loss": -500.00
+            "stress_test_loss": -500.00,
         }
 
     def _collect_system_metrics(self) -> Dict[str, float]:
         """システムメトリクス収集"""
+
         import psutil
-        import os
 
         return {
             "cpu_usage_percent": psutil.cpu_percent(interval=1),
             "memory_usage_percent": psutil.virtual_memory().percent,
-            "disk_usage_percent": psutil.disk_usage('/').percent,
+            "disk_usage_percent": psutil.disk_usage("/").percent,
             "network_connections": len(psutil.net_connections()),
             "process_count": len(psutil.pids()),
-            "uptime_seconds": time.time() - psutil.boot_time()
+            "uptime_seconds": time.time() - psutil.boot_time(),
         }
 
     def _collect_market_metrics(self) -> Dict[str, float]:
@@ -156,7 +158,7 @@ class MetricsCollector:
             "liquidity_index": 0.75,
             "spread_average": 0.02,
             "volume_24h": 1000000.0,
-            "price_change_24h": 2.5
+            "price_change_24h": 2.5,
         }
 
     def _collect_adaptation_metrics(self) -> Dict[str, float]:
@@ -167,7 +169,7 @@ class MetricsCollector:
             "adaptation_frequency": 15.5,
             "learning_rate_current": 0.001,
             "memory_usage_mb": 512.5,
-            "checkpoint_count": 25
+            "checkpoint_count": 25,
         }
 
     def _collect_custom_metrics(self) -> None:
@@ -176,17 +178,18 @@ class MetricsCollector:
             try:
                 value = collector_func()
                 if isinstance(value, (int, float)):
-                    self._store_metric(name, float(value), MetricType.PERFORMANCE, datetime.now())
+                    self._store_metric(
+                        name, float(value), MetricType.PERFORMANCE, datetime.now()
+                    )
             except Exception as e:
                 logger.error(f"Custom metric collection error for {name}: {e}")
 
-    def _store_metric(self, name: str, value: float, metric_type: MetricType, timestamp: datetime) -> None:
+    def _store_metric(
+        self, name: str, value: float, metric_type: MetricType, timestamp: datetime
+    ) -> None:
         """メトリクス保存"""
         metric_value = MetricValue(
-            name=name,
-            value=value,
-            timestamp=timestamp,
-            metric_type=metric_type
+            name=name, value=value, timestamp=timestamp, metric_type=metric_type
         )
         self.metrics_buffer[name].append(metric_value)
 
@@ -199,13 +202,17 @@ class MetricsCollector:
             while buffer and buffer[0].timestamp < cutoff_time:
                 buffer.popleft()
 
-    def get_metric_history(self, metric_name: str, hours: int = 24) -> List[MetricValue]:
+    def get_metric_history(
+        self, metric_name: str, hours: int = 24
+    ) -> List[MetricValue]:
         """メトリクス履歴取得"""
         if metric_name not in self.metrics_buffer:
             return []
 
         cutoff_time = datetime.now() - timedelta(hours=hours)
-        return [m for m in self.metrics_buffer[metric_name] if m.timestamp >= cutoff_time]
+        return [
+            m for m in self.metrics_buffer[metric_name] if m.timestamp >= cutoff_time
+        ]
 
     def get_latest_metrics(self) -> Dict[str, MetricValue]:
         """最新メトリクス取得"""
@@ -263,15 +270,22 @@ class AlertManager:
                     triggered_at=datetime.now(),
                     resolved_at=None,
                     acknowledged_at=None,
-                    description=self._generate_alert_message(condition, metric_value.value),
-                    context={"metric_value": metric_value.value, "threshold": condition.threshold}
+                    description=self._generate_alert_message(
+                        condition, metric_value.value
+                    ),
+                    context={
+                        "metric_value": metric_value.value,
+                        "threshold": condition.threshold,
+                    },
                 )
 
                 self.active_alerts[alert.id] = alert
                 new_alerts.append(alert)
 
                 # クールダウン設定
-                self.cooldowns[alert_key] = datetime.now() + timedelta(seconds=self.config.alert_cooldown_seconds)
+                self.cooldowns[alert_key] = datetime.now() + timedelta(
+                    seconds=self.config.alert_cooldown_seconds
+                )
 
                 # 通知送信
                 self._send_notifications(alert)
@@ -334,7 +348,9 @@ class AlertManager:
     def get_alert_history(self, hours: int = 24) -> List[Alert]:
         """アラート履歴取得"""
         cutoff_time = datetime.now() - timedelta(hours=hours)
-        return [alert for alert in self.alert_history if alert.triggered_at >= cutoff_time]
+        return [
+            alert for alert in self.alert_history if alert.triggered_at >= cutoff_time
+        ]
 
     def add_notification_handler(self, channel: str, handler: Callable) -> None:
         """通知ハンドラー追加"""
@@ -347,8 +363,9 @@ class DashboardGenerator:
     def __init__(self, config: MonitoringConfig):
         self.config = config
 
-    def generate_dashboard_data(self, metrics_collector: MetricsCollector,
-                              alert_manager: AlertManager) -> DashboardData:
+    def generate_dashboard_data(
+        self, metrics_collector: MetricsCollector, alert_manager: AlertManager
+    ) -> DashboardData:
         """ダッシュボードデータ生成"""
         # 最新メトリクス取得
         latest_metrics = metrics_collector.get_latest_metrics()
@@ -361,7 +378,7 @@ class DashboardGenerator:
                 time_series_data[metric_name] = TimeSeriesData(
                     metric_name=metric_name,
                     timestamps=[m.timestamp for m in history],
-                    values=[m.value for m in history]
+                    values=[m.value for m in history],
                 )
 
         # アラートサマリー
@@ -369,7 +386,7 @@ class DashboardGenerator:
         alert_summary = {
             "total_active": len(active_alerts),
             "by_level": defaultdict(int),
-            "recent_alerts": []
+            "recent_alerts": [],
         }
 
         for alert in active_alerts:
@@ -382,7 +399,7 @@ class DashboardGenerator:
                 "id": alert.id,
                 "level": alert.level.value,
                 "description": alert.description,
-                "timestamp": alert.triggered_at.isoformat()
+                "timestamp": alert.triggered_at.isoformat(),
             }
             for alert in recent_alerts
         ]
@@ -396,10 +413,12 @@ class DashboardGenerator:
             time_series=time_series_data,
             alert_summary=alert_summary,
             performance_summary=performance_summary,
-            refresh_interval_seconds=self.config.dashboard_config.refresh_interval_seconds
+            refresh_interval_seconds=self.config.dashboard_config.refresh_interval_seconds,
         )
 
-    def _generate_performance_summary(self, latest_metrics: Dict[str, MetricValue]) -> Dict[str, Any]:
+    def _generate_performance_summary(
+        self, latest_metrics: Dict[str, MetricValue]
+    ) -> Dict[str, Any]:
         """パフォーマンスサマリー生成"""
         summary = {}
 
@@ -410,11 +429,19 @@ class DashboardGenerator:
 
         if "sharpe_ratio" in latest_metrics:
             sharpe = latest_metrics["sharpe_ratio"].value
-            summary["sharpe_status"] = "excellent" if sharpe > 2.0 else "good" if sharpe > 1.0 else "poor"
+            summary["sharpe_status"] = (
+                "excellent" if sharpe > 2.0 else "good" if sharpe > 1.0 else "poor"
+            )
 
         if "max_drawdown" in latest_metrics:
             drawdown = latest_metrics["max_drawdown"].value
-            summary["drawdown_status"] = "good" if drawdown > -0.1 else "warning" if drawdown > -0.2 else "critical"
+            summary["drawdown_status"] = (
+                "good"
+                if drawdown > -0.1
+                else "warning"
+                if drawdown > -0.2
+                else "critical"
+            )
 
         return summary
 
@@ -425,13 +452,19 @@ class ReportGenerator:
     def __init__(self, config: MonitoringConfig):
         self.config = config
 
-    def generate_report(self, metrics_collector: MetricsCollector,
-                       alert_manager: AlertManager, period_days: int = 7) -> ReportData:
+    def generate_report(
+        self,
+        metrics_collector: MetricsCollector,
+        alert_manager: AlertManager,
+        period_days: int = 7,
+    ) -> ReportData:
         """レポート生成"""
         # 期間内のメトリクス取得
         all_metrics = {}
         for metric_name in metrics_collector.metrics_buffer.keys():
-            history = metrics_collector.get_metric_history(metric_name, hours=period_days * 24)
+            history = metrics_collector.get_metric_history(
+                metric_name, hours=period_days * 24
+            )
             if history:
                 all_metrics[metric_name] = history
 
@@ -455,10 +488,12 @@ class ReportGenerator:
             trends=trends,
             alert_analysis=alert_analysis,
             performance_analysis=performance_analysis,
-            recommendations=self._generate_recommendations(trends, alert_analysis)
+            recommendations=self._generate_recommendations(trends, alert_analysis),
         )
 
-    def _calculate_statistics(self, metrics: Dict[str, List[MetricValue]]) -> Dict[str, Dict[str, float]]:
+    def _calculate_statistics(
+        self, metrics: Dict[str, List[MetricValue]]
+    ) -> Dict[str, Dict[str, float]]:
         """統計計算"""
         statistics = {}
 
@@ -473,7 +508,7 @@ class ReportGenerator:
                 "min": float(np.min(metric_values)),
                 "max": float(np.max(metric_values)),
                 "median": float(np.median(metric_values)),
-                "count": len(metric_values)
+                "count": len(metric_values),
             }
 
         return statistics
@@ -504,7 +539,9 @@ class ReportGenerator:
 
         return trends
 
-    def _analyze_alerts(self, alert_manager: AlertManager, period_days: int) -> Dict[str, Any]:
+    def _analyze_alerts(
+        self, alert_manager: AlertManager, period_days: int
+    ) -> Dict[str, Any]:
         """アラート分析"""
         alerts = alert_manager.get_alert_history(hours=period_days * 24)
 
@@ -512,39 +549,52 @@ class ReportGenerator:
             "total_alerts": len(alerts),
             "by_level": defaultdict(int, {level.value: 0 for level in AlertLevel}),
             "by_metric": defaultdict(int),
-            "most_frequent_alerts": []
+            "most_frequent_alerts": [],
         }
 
-    def _analyze_performance(self, metrics: Dict[str, List[MetricValue]]) -> Dict[str, Any]:
+    def _analyze_performance(
+        self, metrics: Dict[str, List[MetricValue]]
+    ) -> Dict[str, Any]:
         """パフォーマンス分析"""
         # 主要パフォーマンスメトリクスの分析
         analysis = {}
 
         if "win_rate" in metrics:
             win_rates = [v.value for v in metrics["win_rate"]]
-            analysis["win_rate_trend"] = "improving" if win_rates[-1] > win_rates[0] else "declining"
+            analysis["win_rate_trend"] = (
+                "improving" if win_rates[-1] > win_rates[0] else "declining"
+            )
 
         if "total_pnl" in metrics:
             pnl_values = [v.value for v in metrics["total_pnl"]]
-            analysis["pnl_trend"] = "profitable" if pnl_values[-1] > 0 else "unprofitable"
+            analysis["pnl_trend"] = (
+                "profitable" if pnl_values[-1] > 0 else "unprofitable"
+            )
 
         return analysis
 
-    def _generate_recommendations(self, trends: Dict[str, str],
-                                alert_analysis: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(
+        self, trends: Dict[str, str], alert_analysis: Dict[str, Any]
+    ) -> List[str]:
         """推奨事項生成"""
         recommendations = []
 
         # トレンドベースの推奨
         if trends.get("win_rate") == "decreasing":
-            recommendations.append("Consider reviewing trading strategy - win rate is declining")
+            recommendations.append(
+                "Consider reviewing trading strategy - win rate is declining"
+            )
 
         if trends.get("max_drawdown") == "increasing":
-            recommendations.append("Implement additional risk controls - drawdown is increasing")
+            recommendations.append(
+                "Implement additional risk controls - drawdown is increasing"
+            )
 
         # アラートベースの推奨
         if alert_analysis.get("total_alerts", 0) > 10:
-            recommendations.append("High alert frequency detected - review system configuration")
+            recommendations.append(
+                "High alert frequency detected - review system configuration"
+            )
 
         return recommendations
 
@@ -585,7 +635,7 @@ class PerformanceMonitor:
                 duration_seconds=60,
                 cooldown_seconds=300,
                 alert_level=AlertLevel.WARNING,
-                description="Win rate below acceptable threshold"
+                description="Win rate below acceptable threshold",
             ),
             AlertCondition(
                 metric_name="max_drawdown",
@@ -594,7 +644,7 @@ class PerformanceMonitor:
                 duration_seconds=60,
                 cooldown_seconds=300,
                 alert_level=AlertLevel.CRITICAL,
-                description="Maximum drawdown exceeded limit"
+                description="Maximum drawdown exceeded limit",
             ),
             AlertCondition(
                 metric_name="cpu_usage_percent",
@@ -603,7 +653,7 @@ class PerformanceMonitor:
                 duration_seconds=60,
                 cooldown_seconds=300,
                 alert_level=AlertLevel.WARNING,
-                description="High CPU usage detected"
+                description="High CPU usage detected",
             ),
             AlertCondition(
                 metric_name="memory_usage_percent",
@@ -612,8 +662,8 @@ class PerformanceMonitor:
                 duration_seconds=60,
                 cooldown_seconds=300,
                 alert_level=AlertLevel.CRITICAL,
-                description="High memory usage detected"
-            )
+                description="High memory usage detected",
+            ),
         ]
 
         self.config.alert_conditions.extend(default_conditions)
@@ -624,7 +674,9 @@ class PerformanceMonitor:
         self.alert_manager.add_notification_handler("log", self._log_notification)
 
         # コンソール通知（開発用）
-        self.alert_manager.add_notification_handler("console", self._console_notification)
+        self.alert_manager.add_notification_handler(
+            "console", self._console_notification
+        )
 
     def _log_notification(self, alert: Alert) -> None:
         """ログ通知"""
@@ -663,7 +715,9 @@ class PerformanceMonitor:
         """通知チャンネル追加"""
         self.alert_manager.add_notification_handler(channel, handler)
 
-    def get_metrics_history(self, metric_name: str, hours: int = 24) -> List[MetricValue]:
+    def get_metrics_history(
+        self, metric_name: str, hours: int = 24
+    ) -> List[MetricValue]:
         """メトリクス履歴取得"""
         return self.metrics_collector.get_metric_history(metric_name, hours)
 

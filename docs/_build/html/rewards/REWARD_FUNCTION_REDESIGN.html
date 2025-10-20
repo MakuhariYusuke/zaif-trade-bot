@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="id1">
 <h1>報酬関数の根本的問題点と再設計提案<a class="headerlink" href="#id1" title="Link to this heading"></a></h1>
 <section id="id2">
@@ -214,14 +214,14 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        正規化された報酬 [-1, 1]</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="c1"># 1. PnLを正規化（ポートフォリオ価値の割合）</span>
     <span class="c1"># 例: pnl=1000, portfolio_value=200000 → pnl_ratio=0.005 (0.5%)</span>
     <span class="n">pnl_ratio</span> <span class="o">=</span> <span class="n">pnl</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">portfolio_value</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    
+
     <span class="c1"># 2. 取引が発生したか確認</span>
     <span class="n">position_changed</span> <span class="o">=</span> <span class="p">(</span><span class="n">position</span> <span class="o">!=</span> <span class="n">old_position</span><span class="p">)</span>
-    
+
     <span class="c1"># 3. 取引コストを計算（取引時のみ）</span>
     <span class="k">if</span> <span class="n">position_changed</span><span class="p">:</span>
         <span class="c1"># 取引額 = |新ポジション - 旧ポジション| * 現在価格</span>
@@ -230,19 +230,19 @@
         <span class="n">cost_penalty</span> <span class="o">=</span> <span class="mf">0.0</span>  <span class="c1"># pnl に含まれているため追加ペナルティなし</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">cost_penalty</span> <span class="o">=</span> <span class="mf">0.0</span>
-    
+
     <span class="c1"># 4. ベース報酬 = PnL比率</span>
     <span class="n">base_reward</span> <span class="o">=</span> <span class="n">pnl_ratio</span>
-    
+
     <span class="c1"># 5. スケーリング: [-1, 1] の範囲に収める</span>
     <span class="c1"># 想定: 1ステップでの利益/損失は ±0.5% 程度</span>
     <span class="c1"># pnl_ratio を 10倍してクリッピング</span>
     <span class="n">reward_scale</span> <span class="o">=</span> <span class="mf">10.0</span>  <span class="c1"># 0.1% の利益 → 報酬 1.0</span>
     <span class="n">scaled_reward</span> <span class="o">=</span> <span class="n">base_reward</span> <span class="o">*</span> <span class="n">reward_scale</span>
-    
+
     <span class="c1"># 6. クリッピング: [-1, 1]</span>
     <span class="n">clipped_reward</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">scaled_reward</span><span class="p">))</span>
-    
+
     <span class="k">return</span> <span class="n">clipped_reward</span>
 </pre></div>
 </div>
@@ -267,15 +267,15 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># PnL比率を計算</span>
     <span class="n">pnl_ratio</span> <span class="o">=</span> <span class="n">pnl</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">portfolio_value</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    
+
     <span class="c1"># スケーリング: 0.1%の利益で報酬1.0</span>
     <span class="n">reward_scale</span> <span class="o">=</span> <span class="mf">1000.0</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="n">pnl_ratio</span> <span class="o">*</span> <span class="n">reward_scale</span>
-    
+
     <span class="c1"># クリッピング: [-10, 10]</span>
     <span class="c1"># より大きな範囲で、大きな利益/損失も反映</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="o">-</span><span class="mf">10.0</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">reward</span><span class="p">))</span>
-    
+
     <span class="k">return</span> <span class="n">reward</span>
 </pre></div>
 </div>
@@ -377,22 +377,22 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># Normalize PnL by portfolio value</span>
     <span class="n">pnl_ratio</span> <span class="o">=</span> <span class="n">pnl</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">portfolio_value</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-    
+
     <span class="c1"># Scale: 0.1% profit = reward 1.0</span>
     <span class="n">reward_scale</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="s2">&quot;reward_scale&quot;</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">)</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="n">pnl_ratio</span> <span class="o">*</span> <span class="n">reward_scale</span>
-    
+
     <span class="c1"># Clip to prevent extreme values</span>
     <span class="n">clip_min</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="s2">&quot;reward_clip_min&quot;</span><span class="p">,</span> <span class="o">-</span><span class="mf">10.0</span><span class="p">)</span>
     <span class="n">clip_max</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="s2">&quot;reward_clip_max&quot;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">)</span>
     <span class="n">reward</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">clip_min</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">clip_max</span><span class="p">,</span> <span class="n">reward</span><span class="p">))</span>
-    
+
     <span class="c1"># Optional: Small penalty for inactivity (very small)</span>
     <span class="c1"># This prevents pure HOLD strategy</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting_bool</span><span class="p">(</span><span class="s2">&quot;enable_inactivity_penalty&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">):</span>
         <span class="n">inactivity_penalty</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_setting_float</span><span class="p">(</span><span class="s2">&quot;inactivity_penalty&quot;</span><span class="p">,</span> <span class="mf">0.001</span><span class="p">)</span>
         <span class="n">reward</span> <span class="o">-=</span> <span class="n">inactivity_penalty</span>
-    
+
     <span class="k">return</span> <span class="n">reward</span>
 </pre></div>
 </div>
@@ -433,7 +433,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -444,7 +444,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

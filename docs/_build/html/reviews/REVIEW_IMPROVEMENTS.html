@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+    <link rel="search" title="Search" href="../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="review-improvements-architectural-enhancements">
 <h1>🔧 Review Improvements - Architectural Enhancements<a class="headerlink" href="#review-improvements-architectural-enhancements" title="Link to this heading"></a></h1>
 <section id="overview">
@@ -171,7 +171,7 @@ Added comprehensive validation to <code class="docutils literal notranslate"><sp
             <span class="sa">f</span><span class="s2">&quot;Invalid PnL calculation: </span><span class="si">{</span><span class="n">trade_pnl</span><span class="si">}</span><span class="s2">. Setting to 0.0 for safety.&quot;</span>
         <span class="p">)</span>
         <span class="n">trade_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
-    
+
     <span class="c1"># Sanity check: PnL shouldn&#39;t exceed 10x estimated portfolio value</span>
     <span class="c1"># Estimate portfolio as 1M JPY base + total accumulated PnL</span>
     <span class="n">estimated_portfolio</span> <span class="o">=</span> <span class="mf">1_000_000.0</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span>
@@ -181,7 +181,7 @@ Added comprehensive validation to <code class="docutils literal notranslate"><sp
             <span class="sa">f</span><span class="s2">&quot;(estimated portfolio: </span><span class="si">{</span><span class="n">estimated_portfolio</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> JPY). &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;This may indicate a calculation bug. Please verify.&quot;</span>
         <span class="p">)</span>
-    
+
     <span class="bp">self</span><span class="o">.</span><span class="n">total_pnl</span> <span class="o">+=</span> <span class="n">trade_pnl</span>
 </pre></div>
 </div>
@@ -211,13 +211,13 @@ Added comprehensive regression tests for PositionManager integration:</p>
 <p><strong>Test 7: Live Trader PnL Calculation</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_live_trader_pnl_calculation</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Regression test for Bug #25: Live trading PnL calculation.&quot;&quot;&quot;</span>
-    
+
     <span class="c1"># Open short at 100.0</span>
     <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
+
     <span class="c1"># Close short at 95.0 → Should profit</span>
     <span class="n">realized_pnl</span> <span class="o">=</span> <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
+
     <span class="c1"># ✅ Should profit: (100.0 - 95.0) * abs(position) &gt; 0</span>
     <span class="c1"># ❌ Bug #25: realized_pnl = 0.0 (FAIL)</span>
     <span class="k">assert</span> <span class="n">realized_pnl</span> <span class="o">&gt;</span> <span class="mi">0</span>
@@ -226,13 +226,13 @@ Added comprehensive regression tests for PositionManager integration:</p>
 <p><strong>Test 8: Live Trader Position Closure</strong></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_live_trader_position_closure</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Regression test for Bug #26: Live trading can&#39;t go flat.&quot;&quot;&quot;</span>
-    
+
     <span class="c1"># Open long at 100.0</span>
     <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">current_step</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
+
     <span class="c1"># Close long (SELL) at 105.0</span>
     <span class="n">pm</span><span class="o">.</span><span class="n">execute_action</span><span class="p">(</span><span class="n">action</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">current_step</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">min_holding_period</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    
+
     <span class="c1"># ✅ Should be flat after closing (position = 0.0)</span>
     <span class="c1"># ❌ Bug #26: position = -1.0 (immediately reversed to short)</span>
     <span class="k">assert</span> <span class="n">pm</span><span class="o">.</span><span class="n">position</span> <span class="o">==</span> <span class="mf">0.0</span>
@@ -404,7 +404,7 @@ Total: 8/8 passed
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -415,7 +415,7 @@ Total: 8/8 passed
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

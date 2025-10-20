@@ -57,7 +57,7 @@ self.action_history: deque[int] = deque(maxlen=256)
 self.reward_history.append(reward)
 ```
 
-**削減効果**: 
+**削減効果**:
 - メモリ使用量固定化（上限512/256要素）
 - pop(0)の O(n) → dequeの O(1) でCPU効率も向上
 - 長時間学習での肥大化防止
@@ -82,7 +82,7 @@ self.price_history: deque[float] = deque(maxlen=30)
 # 自動的に古い要素を削除
 ```
 
-**削減効果**: 
+**削減効果**:
 - 価格履歴のメモリ固定化（最大30要素）
 - 40% 削減 (50→30)
 
@@ -120,11 +120,11 @@ recent_prices = list(self.price_history)[-10:]
   - DataFrame: 複数コピー（×2-3倍）
   - reward_history: 無制限リスト（数万要素）
   - action_history: 無制限リスト（数万要素）
-  
+
 - live_trade.py:
   - price_history: 50要素リスト
   - 手動メモリ管理
-  
+
 合計推定メモリ: 200-500MB（長時間実行時）
 ```
 
@@ -134,11 +134,11 @@ recent_prices = list(self.price_history)[-10:]
   - DataFrame: 必要最小限のコピー
   - reward_history: deque(maxlen=512)
   - action_history: deque(maxlen=256)
-  
+
 - live_trade.py:
   - price_history: deque(maxlen=30)
   - 自動GC（100イテレーション毎）
-  
+
 合計推定メモリ: 100-250MB（長時間実行時）
 削減率: 40-50%
 ```

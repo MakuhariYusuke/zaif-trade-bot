@@ -97,7 +97,7 @@ def run_paper_trader_smoke_test(data_path: Path) -> bool:
 
         success = result.returncode == 0
         if not success:
-            print(f"Paper trader smoke test failed:")
+            print("Paper trader smoke test failed:")
             print(f"STDOUT: {result.stdout}")
             print(f"STDERR: {result.stderr}")
 
@@ -151,7 +151,7 @@ print("Smoke test passed")
 
             success = result.returncode == 0
             if not success:
-                print(f"PPO trainer smoke test failed:")
+                print("PPO trainer smoke test failed:")
                 print(f"STDOUT: {result.stdout}")
                 print(f"STDERR: {result.stderr}")
 
@@ -190,7 +190,7 @@ def run_venue_health_check_smoke_test() -> bool:
         # Health check may fail due to network, but should not crash
         success = result.returncode in [0, 1]  # 0=success, 1=failure but graceful
         if not success:
-            print(f"Venue health check smoke test failed:")
+            print("Venue health check smoke test failed:")
             print(f"STDOUT: {result.stdout}")
             print(f"STDERR: {result.stderr}")
 

@@ -346,9 +346,9 @@ def optimize_feature_pipeline(
     slow_features = ["KAMA", "ADX", "KalmanFilter"]
 
     for feature_name, config in features_config.items():
-        result: Optional[Union[pd.Series, pd.DataFrame]] = (
-            None  # 未バインド警告回避のため初期化
-        )
+        result: Optional[
+            Union[pd.Series, pd.DataFrame]
+        ] = None  # 未バインド警告回避のため初期化
 
         if feature_name in slow_features:
             # Use optimized versions

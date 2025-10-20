@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../_static/jquery.js?v=5d32c60e"></script>
       <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../_static/documentation_options.js?v=8d563738"></script>
@@ -20,17 +20,17 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Phase 3 実装レビュー &amp; 改善提案" href="PHASE3_REVIEW_AND_IMPROVEMENTS.html" />
-    <link rel="prev" title="Phase 3 最終レビュー &amp; 修正完了レポート" href="PHASE3_FINAL_REVIEW.html" /> 
+    <link rel="prev" title="Phase 3 最終レビュー &amp; 修正完了レポート" href="PHASE3_FINAL_REVIEW.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -148,7 +148,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="phase-3-environment-backtest-integration">
 <h1>Phase 3: Environment &amp; Backtest Integration - 実装指示書<a class="headerlink" href="#phase-3-environment-backtest-integration" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -268,11 +268,11 @@
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
     <span class="n">metadata</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_schema</span><span class="p">()</span>
     <span class="n">scaler</span> <span class="o">=</span> <span class="n">manager</span><span class="o">.</span><span class="n">load_scaler</span><span class="p">()</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating environment from schema: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Expected features: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Feature names: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">[:</span><span class="mi">5</span><span class="p">]</span><span class="si">}</span><span class="s2">... (showing first 5)&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># データに必要な特徴量があるか確認</span>
     <span class="n">missing_features</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">missing_features</span><span class="p">:</span>
@@ -281,10 +281,10 @@
             <span class="sa">f</span><span class="s2">&quot;Dataset has: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns</span><span class="se">\n</span><span class="s2">&quot;</span>
             <span class="sa">f</span><span class="s2">&quot;Model expects: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features&quot;</span>
         <span class="p">)</span>
-    
+
     <span class="c1"># 設定を構築</span>
     <span class="n">env_config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="p">{}</span>
-    
+
     <span class="c1"># スキーマ情報を設定に追加</span>
     <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
         <span class="s2">&quot;feature_names&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">feature_names</span><span class="p">,</span>
@@ -292,25 +292,25 @@
         <span class="s2">&quot;schema_hash&quot;</span><span class="p">:</span> <span class="n">metadata</span><span class="o">.</span><span class="n">schema_hash</span><span class="p">,</span>
         <span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">,</span>
     <span class="p">})</span>
-    
+
     <span class="c1"># スケーラー情報を追加</span>
     <span class="k">if</span> <span class="n">scaler</span><span class="p">:</span>
         <span class="n">env_config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
             <span class="s2">&quot;scaler_mean&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;mean&quot;</span><span class="p">],</span>
             <span class="s2">&quot;scaler_std&quot;</span><span class="p">:</span> <span class="n">scaler</span><span class="p">[</span><span class="s2">&quot;std&quot;</span><span class="p">],</span>
         <span class="p">})</span>
-    
+
     <span class="c1"># 訓練設定から環境パラメータを抽出（可能な範囲で）</span>
     <span class="n">training_config</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">training_config</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;reward_scaling&quot;</span><span class="p">,</span> <span class="s2">&quot;transaction_cost&quot;</span><span class="p">,</span> <span class="s2">&quot;max_position_size&quot;</span><span class="p">,</span> <span class="s2">&quot;risk_free_rate&quot;</span><span class="p">]:</span>
         <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">training_config</span> <span class="ow">and</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">env_config</span><span class="p">:</span>
             <span class="n">env_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">training_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
-    
+
     <span class="c1"># 環境作成</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">HeavyTradingEnv</span><span class="p">(</span><span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">env_config</span><span class="p">)</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Environment created with </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">num_features</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">env</span>
 
 
@@ -332,14 +332,14 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># モデル名を抽出</span>
     <span class="n">model_name</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
-    
+
     <span class="c1"># models/ディレクトリを特定</span>
     <span class="n">model_path_obj</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;models&quot;</span><span class="p">:</span>
         <span class="n">models_dir</span> <span class="o">=</span> <span class="n">model_path_obj</span><span class="o">.</span><span class="n">parent</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">models_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">create_env_from_schema</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">df</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -362,13 +362,13 @@
         <span class="s1">&#39;volume&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span>
         <span class="c1"># ... 68特徴量</span>
     <span class="p">})</span>
-    
+
     <span class="c1"># 環境作成</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_schema</span><span class="p">(</span>
         <span class="n">model_name</span><span class="o">=</span><span class="s2">&quot;ppo_reward_v384_curated_60&quot;</span><span class="p">,</span>
         <span class="n">df</span><span class="o">=</span><span class="n">df</span>
     <span class="p">)</span>
-    
+
     <span class="c1"># 検証</span>
     <span class="k">assert</span> <span class="n">env</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
     <span class="k">assert</span> <span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">68</span>  <span class="c1"># v384は68特徴量</span>
@@ -385,15 +385,15 @@
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">HeavyTradingEnv</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="c1"># 既存のコード...</span>
-        
+
         <span class="c1"># スキーマ情報の取得（オプショナル）</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">schema_hash</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;schema_hash&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">model_name</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_name&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;feature_names&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using schema-defined features: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feature_names</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># 既存のコード...</span>
 </pre></div>
 </div>
@@ -470,15 +470,15 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model: </span><span class="si">{</span><span class="n">model_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data: </span><span class="si">{</span><span class="n">data_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># データ読み込み</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">load_csv_data_optimized</span><span class="p">(</span><span class="n">data_path</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> rows with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2"> columns&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># スキーマベースで環境作成（自動的に特徴量数を調整）</span>
     <span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span><span class="n">model_path</span><span class="p">,</span> <span class="n">df</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created with </span><span class="si">{</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># モデル読み込み</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">sb3_contrib</span><span class="w"> </span><span class="kn">import</span> <span class="n">MaskablePPO</span>
@@ -487,12 +487,12 @@
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">raise</span>
-    
+
     <span class="c1"># バックテスト実行</span>
     <span class="n">all_rewards</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">all_pnls</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">action_counts</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;HOLD&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;BUY&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;SELL&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">}</span>
-    
+
     <span class="k">for</span> <span class="n">ep</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">episodes</span><span class="p">):</span>
         <span class="n">obs</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="n">done</span> <span class="o">=</span> <span class="kc">False</span>
@@ -500,17 +500,17 @@
         <span class="n">ep_reward</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="n">ep_pnl</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="n">steps</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
         <span class="k">while</span> <span class="ow">not</span> <span class="p">(</span><span class="n">done</span> <span class="ow">or</span> <span class="n">truncated</span><span class="p">)</span> <span class="ow">and</span> <span class="n">steps</span> <span class="o">&lt;</span> <span class="mi">1000</span><span class="p">:</span>
             <span class="n">action</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">predict_with_masks</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">obs</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">deterministic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">action</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="n">action</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
-            
+
             <span class="n">obs</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">truncated</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
-            
+
             <span class="n">ep_reward</span> <span class="o">+=</span> <span class="n">reward</span>
             <span class="n">ep_pnl</span> <span class="o">+=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pnl&#39;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
-            
+
             <span class="c1"># Count actions</span>
             <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;HOLD&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
@@ -518,20 +518,20 @@
                 <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;BUY&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">action_counts</span><span class="p">[</span><span class="s2">&quot;SELL&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
-            
+
             <span class="n">steps</span> <span class="o">+=</span> <span class="mi">1</span>
-        
+
         <span class="n">all_rewards</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep_reward</span><span class="p">)</span>
         <span class="n">all_pnls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ep_pnl</span><span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Episode </span><span class="si">{</span><span class="n">ep</span><span class="o">+</span><span class="mi">1</span><span class="si">:</span><span class="s2">2d</span><span class="si">}</span><span class="s2">: Reward=</span><span class="si">{</span><span class="n">ep_reward</span><span class="si">:</span><span class="s2">7.2f</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;PnL=</span><span class="si">{</span><span class="n">ep_pnl</span><span class="si">:</span><span class="s2">10,.0f</span><span class="si">}</span><span class="s2"> JPY, Steps=</span><span class="si">{</span><span class="n">steps</span><span class="si">:</span><span class="s2">4d</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-    
+
     <span class="c1"># 結果サマリー</span>
     <span class="n">total_actions</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">action_counts</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
-    
+
     <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
         <span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="n">data_path</span><span class="p">,</span>
@@ -544,7 +544,7 @@
             <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">action_counts</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">},</span>
     <span class="p">}</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Backtest Results&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
@@ -554,7 +554,7 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Action Distribution:&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">action</span><span class="p">,</span> <span class="n">stats</span> <span class="ow">in</span> <span class="n">results</span><span class="p">[</span><span class="s1">&#39;action_distribution&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;pct&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%)&quot;</span><span class="p">)</span>
-    
+
     <span class="k">return</span> <span class="n">results</span>
 
 
@@ -564,24 +564,24 @@
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--data&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;ml-dataset-enhanced.csv&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Data path (.csv)&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--episodes&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Number of episodes&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output JSON file&quot;</span><span class="p">)</span>
-    
+
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-    
+
     <span class="k">try</span><span class="p">:</span>
         <span class="n">results</span> <span class="o">=</span> <span class="n">run_backtest_with_schema</span><span class="p">(</span>
             <span class="n">model_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
             <span class="n">data_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
             <span class="n">episodes</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">episodes</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># 結果保存</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">:</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results saved to: </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="mi">0</span>
-        
+
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backtest failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="k">return</span> <span class="mi">1</span>
@@ -660,7 +660,7 @@ python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--m
 <span class="k">def</span><span class="w"> </span><span class="nf">migrate_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;単一モデルのスキーマを移行&quot;&quot;&quot;</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Migrating schema for: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># スキーマがすでに存在するか確認</span>
     <span class="n">manager</span> <span class="o">=</span> <span class="n">FeatureSchemaManager</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
@@ -672,18 +672,18 @@ python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--m
             <span class="k">return</span> <span class="kc">False</span>
     <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
         <span class="k">pass</span>  <span class="c1"># スキーマが存在しない（正常）</span>
-    
+
     <span class="c1"># レガシースキーマを移行</span>
     <span class="n">legacy_schema_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/features_schema.json&quot;</span><span class="p">)</span>
     <span class="n">legacy_scaler_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models/scaler.npz&quot;</span><span class="p">)</span>
-    
+
     <span class="k">if</span> <span class="ow">not</span> <span class="n">legacy_schema_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Legacy schema not found: </span><span class="si">{</span><span class="n">legacy_schema_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
-    
+
     <span class="c1"># 既知の設定を取得</span>
     <span class="n">config</span> <span class="o">=</span> <span class="n">KNOWN_MODELS</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;config&quot;</span><span class="p">,</span> <span class="p">{})</span>
-    
+
     <span class="c1"># 移行実行</span>
     <span class="n">migrate_legacy_schema</span><span class="p">(</span>
         <span class="n">model_name</span><span class="o">=</span><span class="n">model_name</span><span class="p">,</span>
@@ -691,7 +691,7 @@ python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--m
         <span class="n">legacy_scaler_path</span><span class="o">=</span><span class="n">legacy_scaler_path</span><span class="p">,</span>
         <span class="n">config</span><span class="o">=</span><span class="n">config</span>
     <span class="p">)</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Migration completed for </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">True</span>
 
@@ -701,31 +701,31 @@ python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--m
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Migrating all known models&quot;</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;=&quot;</span><span class="o">*</span><span class="mi">80</span><span class="p">)</span>
-    
+
     <span class="n">success_count</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">model_name</span> <span class="ow">in</span> <span class="n">KNOWN_MODELS</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">migrate_model</span><span class="p">(</span><span class="n">model_name</span><span class="p">,</span> <span class="n">force</span><span class="p">):</span>
             <span class="n">success_count</span> <span class="o">+=</span> <span class="mi">1</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Successfully migrated </span><span class="si">{</span><span class="n">success_count</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">KNOWN_MODELS</span><span class="p">)</span><span class="si">}</span><span class="s2"> models&quot;</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
-    
+
     <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;Migrate legacy schemas&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--model&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Specific model to migrate&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--all&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Migrate all known models&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--force&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Overwrite existing schemas&quot;</span><span class="p">)</span>
     <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--list&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;List all available schemas&quot;</span><span class="p">)</span>
-    
+
     <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
-    
+
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list</span><span class="p">:</span>
         <span class="c1"># 利用可能なスキーマをリスト</span>
         <span class="n">FeatureSchemaManager</span><span class="o">.</span><span class="n">print_schema_summary</span><span class="p">()</span>
         <span class="k">return</span> <span class="mi">0</span>
-    
+
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">all</span><span class="p">:</span>
         <span class="n">migrate_all_models</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">force</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
@@ -733,7 +733,7 @@ python<span class="w"> </span>backtest_with_schema.py<span class="w"> </span>--m
     <span class="k">else</span><span class="p">:</span>
         <span class="n">parser</span><span class="o">.</span><span class="n">print_help</span><span class="p">()</span>
         <span class="k">return</span> <span class="mi">1</span>
-    
+
     <span class="k">return</span> <span class="mi">0</span>
 
 
@@ -764,20 +764,20 @@ python<span class="w"> </span>scripts/migrate_legacy_schemas.py<span class="w"> 
 <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
     <span class="c1"># モデル読み込み</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">MaskablePPO</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
-    
+
     <span class="c1"># スキーマベースで環境作成（追加）</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ztb.trading.environment.schema_env_factory</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_env_from_model_path</span>
-    
+
     <span class="c1"># リアルタイムデータ取得</span>
     <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_latest_data</span><span class="p">()</span>
-    
+
     <span class="c1"># スキーマベースで環境作成</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">create_env_from_model_path</span><span class="p">(</span>
         <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
         <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">,</span>
         <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span>
     <span class="p">)</span>
-    
+
     <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Environment created with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">observation_space</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> features&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1004,7 +1004,7 @@ ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -1015,7 +1015,7 @@ ls<span class="w"> </span>-R<span class="w"> </span>models/schemas/ppo_test/
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

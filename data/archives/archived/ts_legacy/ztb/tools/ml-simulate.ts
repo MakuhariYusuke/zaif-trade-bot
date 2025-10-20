@@ -11,8 +11,8 @@ function parseArgs(){
   const pair = get('pair', 'btc_jpy')!;
   const paramsStr = get('params', '{}')!;
   let params: Record<string, any> = {};
-  try { 
-    params = JSON.parse(paramsStr); 
+  try {
+    params = JSON.parse(paramsStr);
   } catch (e) {
     logError(`[ERROR] Failed to parse params: ${paramsStr}`, e);
     params = {};

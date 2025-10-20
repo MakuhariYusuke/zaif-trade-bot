@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.entropy_temperature</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;Target Entropy for automatic exploration control.</span>
@@ -157,40 +157,40 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">n_actions</span> <span class="o">=</span> <span class="n">n_actions</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target_entropy_ratio</span> <span class="o">=</span> <span class="n">target_entropy_ratio</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
-        
+
         <span class="c1"># Target entropy: H* = κ · log(|A|)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">target_entropy</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">target_entropy_ratio</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">n_actions</span><span class="p">))</span>
-        
+
         <span class="c1"># Temperature parameter (log_alpha for numerical stability)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">log_alpha</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">initial_temperature</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Optimizer for temperature</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">alpha_optimizer</span> <span class="o">=</span> <span class="n">Adam</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">log_alpha</span><span class="p">],</span> <span class="n">lr</span><span class="o">=</span><span class="n">lr_temperature</span><span class="p">)</span>
 
         <span class="c1"># Initialize statistics container</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">:</span> <span class="n">HistoryDict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;entropy&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">[]}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">reset_statistics</span><span class="p">()</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;TargetEntropyController initialized: &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;H*=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;α_0=</span><span class="si">{</span><span class="n">initial_temperature</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-    
+
 <div class="viewcode-block" id="TargetEntropyController.reset_statistics">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.entropy_temperature.TargetEntropyController.reset_statistics">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reset_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Reset statistics tracking.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;entropy&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;loss&quot;</span><span class="p">:</span> <span class="p">[]}</span></div>
 
-    
+
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">alpha</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get current temperature (α = exp(log_alpha)).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_alpha</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
-    
+
 <div class="viewcode-block" id="TargetEntropyController.compute_entropy">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.entropy_temperature.TargetEntropyController.compute_entropy">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">compute_entropy</span><span class="p">(</span>
@@ -210,18 +210,18 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Convert to probabilities</span>
         <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">softmax</span><span class="p">(</span><span class="n">action_logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        
+
         <span class="c1"># Clip for numerical stability</span>
         <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mf">1e-8</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-        
+
         <span class="c1"># H(π) = -Σ p(a) log p(a)</span>
         <span class="n">log_probs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">probs</span><span class="p">)</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="o">-</span><span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">probs</span> <span class="o">*</span> <span class="n">log_probs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
-        
+
         <span class="c1"># Return mean entropy</span>
         <span class="k">return</span> <span class="n">entropy</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="TargetEntropyController.update">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.entropy_temperature.TargetEntropyController.update">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span>
@@ -244,15 +244,15 @@
             <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
             <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
         <span class="p">)</span>
-        
+
         <span class="n">alpha</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">log_alpha</span><span class="p">)</span>
         <span class="n">temp_loss</span> <span class="o">=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="p">(</span><span class="n">target_entropy_tensor</span> <span class="o">-</span> <span class="n">current_entropy</span><span class="p">)</span>
-        
+
         <span class="c1"># Update temperature</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">alpha_optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
         <span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">backward</span><span class="p">([</span><span class="n">temp_loss</span><span class="p">])</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">alpha_optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
-        
+
         <span class="c1"># Track statistics</span>
         <span class="n">current_alpha</span> <span class="o">=</span> <span class="n">alpha</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
         <span class="n">loss_value</span> <span class="o">=</span> <span class="n">temp_loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
@@ -261,15 +261,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">current_alpha</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;entropy&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entropy_value</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">loss_value</span><span class="p">)</span>
-        
+
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
             <span class="sa">f</span><span class="s2">&quot;Entropy: </span><span class="si">{</span><span class="n">entropy_value</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> (target: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">target_entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">), &quot;</span>
             <span class="sa">f</span><span class="s2">&quot;α: </span><span class="si">{</span><span class="n">current_alpha</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, loss: </span><span class="si">{</span><span class="n">loss_value</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="p">)</span>
-        
+
         <span class="k">return</span> <span class="n">loss_value</span><span class="p">,</span> <span class="n">current_alpha</span></div>
 
-    
+
 <div class="viewcode-block" id="TargetEntropyController.get_statistics">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.entropy_temperature.TargetEntropyController.get_statistics">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
@@ -285,7 +285,7 @@
                 <span class="s2">&quot;target_entropy&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_entropy</span><span class="p">,</span>
                 <span class="s2">&quot;num_updates&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
             <span class="p">}</span>
-        
+
         <span class="k">return</span> <span class="p">{</span>
             <span class="s2">&quot;current_alpha&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">,</span>
             <span class="s2">&quot;target_entropy&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_entropy</span><span class="p">,</span>
@@ -295,7 +295,7 @@
             <span class="s2">&quot;alpha_std&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;alpha&quot;</span><span class="p">])),</span>
         <span class="p">}</span></div>
 
-    
+
 <div class="viewcode-block" id="TargetEntropyController.should_update">
 <a class="viewcode-back" href="../../../api/generated/ztb.training.html#ztb.training.entropy_temperature.TargetEntropyController.should_update">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">should_update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">update_frequency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
@@ -319,7 +319,7 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">test_target_entropy_controller</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Test Target Entropy Controller functionality.&quot;&quot;&quot;</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Testing Target Entropy Controller...&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Initialize controller</span>
     <span class="n">controller</span> <span class="o">=</span> <span class="n">TargetEntropyController</span><span class="p">(</span>
         <span class="n">n_actions</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
@@ -327,49 +327,49 @@
         <span class="n">initial_temperature</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
         <span class="n">lr_temperature</span><span class="o">=</span><span class="mf">1e-3</span>
     <span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Target Entropy: </span><span class="si">{</span><span class="n">controller</span><span class="o">.</span><span class="n">target_entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Initial Alpha: </span><span class="si">{</span><span class="n">controller</span><span class="o">.</span><span class="n">alpha</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Simulate training with varying entropy</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Simulating Training ===&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Scenario 1: Low entropy (collapsed exploration)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Scenario 1: Low Entropy (Exploration Collapsed)&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
         <span class="c1"># Very peaked distribution (low entropy)</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span>  <span class="c1"># Strongly prefer action 0</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">compute_entropy</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entropy</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: H=</span><span class="si">{</span><span class="n">entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, α=</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, loss=</span><span class="si">{</span><span class="n">loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  → Alpha should increase to boost exploration&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Scenario 2: High entropy (too random)</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Scenario 2: High Entropy (Too Random)&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
         <span class="c1"># Uniform distribution (high entropy)</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span>  <span class="c1"># Uniform</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">compute_entropy</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entropy</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: H=</span><span class="si">{</span><span class="n">entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, α=</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, loss=</span><span class="si">{</span><span class="n">loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  → Alpha should decrease to reduce randomness&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Scenario 3: Ideal entropy</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Scenario 3: Ideal Entropy (Near Target)&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
         <span class="c1"># Moderate distribution (near target)</span>
         <span class="n">logits</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">]]</span> <span class="o">*</span> <span class="mi">10</span><span class="p">)</span>
         <span class="n">entropy</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">compute_entropy</span><span class="p">(</span><span class="n">logits</span><span class="p">)</span>
-        
+
         <span class="n">loss</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">entropy</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Step </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: H=</span><span class="si">{</span><span class="n">entropy</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">, α=</span><span class="si">{</span><span class="n">alpha</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">, loss=</span><span class="si">{</span><span class="n">loss</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  → Alpha should stabilize&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># Final statistics</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== Final Statistics ===&quot;</span><span class="p">)</span>
     <span class="n">stats</span> <span class="o">=</span> <span class="n">controller</span><span class="o">.</span><span class="n">get_statistics</span><span class="p">()</span>
@@ -378,7 +378,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">✅ Target Entropy Controller test passed!&quot;</span><span class="p">)</span></div>
 
 
@@ -400,7 +400,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -411,7 +411,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

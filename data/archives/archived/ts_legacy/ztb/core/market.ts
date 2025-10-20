@@ -80,7 +80,7 @@ export interface RealizedPnLResult { realized: number; trades: number; }
  * - Time: O(n), where n is the number of trades in `history`.
  * - Space: O(b), where b is the number of unmatched buys stored (worst-case O(n)).
  *
- * @param {Array<{ trade_type: string; price: number; amount: number }>} history 
+ * @param {Array<{ trade_type: string; price: number; amount: number }>} history
  *   - Chronological list of trade records to process. Each record
  *   must include `trade_type` (buy indicated by `'bid'`), `price` (per-unit
  *   price), and `amount` (quantity).

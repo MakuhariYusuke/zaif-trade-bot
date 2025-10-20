@@ -1,7 +1,7 @@
 # 第9回レビュー対応完了報告
 
-**日付:** 2025年10月8日  
-**対応者:** GitHub Copilot  
+**日付:** 2025年10月8日
+**対応者:** GitHub Copilot
 **レビュー実施者:** Codex + Copilot - デュアルレビュー
 
 ---
@@ -45,9 +45,9 @@ def test_setup_logging_default_parameters(self, mock_basic_config):
 # AFTER (RotatingFileHandler検証)
 def test_setup_logging_with_file_rotation(self):
     setup_logging(log_file="test.log", max_bytes=1024, backup_count=3)
-    
+
     # RotatingFileHandlerが正しく作成されることを確認
-    file_handler = [h for h in root_logger.handlers 
+    file_handler = [h for h in root_logger.handlers
                     if isinstance(h, logging.handlers.RotatingFileHandler)][0]
     assert file_handler.maxBytes == 1024
     assert file_handler.backupCount == 3
@@ -81,13 +81,13 @@ def test_setup_logging_with_file_rotation(self):
 ```python
 def test_bug_33_sell_warmup_blocks_short_opening(self):
     """SELL warmupは SHORT開設（flat->short）のみブロック"""
-    
+
 def test_bug_33_sell_warmup_allows_long_close(self):
     """SELL warmupは ロング決済を許可"""
-    
+
 def test_bug_41_buy_always_allowed_for_short_close(self):
     """BUYは ショート決済時は常に許可（確率フィルタなし）"""
-    
+
 def test_bug_41_buy_probability_filter_for_new_positions(self):
     """BUY確率フィルタは 新規ポジション開設時のみ適用"""
 ```
@@ -328,8 +328,8 @@ python scripts/update_training_configs.py \
 
 ---
 
-**修正完了日時:** 2025年10月8日  
-**次のマイルストーン:** 第10回外部レビュー実施  
+**修正完了日時:** 2025年10月8日
+**次のマイルストーン:** 第10回外部レビュー実施
 **本番デプロイ状態:** ✅ **READY**（ブロッカーなし）
 
 ---

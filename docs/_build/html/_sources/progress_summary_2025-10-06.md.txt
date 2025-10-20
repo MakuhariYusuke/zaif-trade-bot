@@ -2,9 +2,9 @@
 
 ## 🎯 Current Status
 
-**Phase**: Deep diagnostic infrastructure established  
-**Commits**: 3 major commits (60b70e6, 696e390, 13ff988)  
-**Tests Added**: 13 (7 forced actions + 6 observation uniqueness)  
+**Phase**: Deep diagnostic infrastructure established
+**Commits**: 3 major commits (60b70e6, 696e390, 13ff988)
+**Tests Added**: 13 (7 forced actions + 6 observation uniqueness)
 **Critical Findings**: Observation update is CORRECT, PnL accounting mostly correct
 
 ---
@@ -16,19 +16,19 @@
   - Batch-level logging: logits, probs, masks, entropy, KL
   - Matplotlib visualization support
   - Temperature and deterministic decoding analysis
-  
+
 ### 2. Unit Tests (13 tests, 13/13 passing or xfail as expected)
 - ✅ `tests/unit/environment/test_forced_actions.py` (7/7 PASS)
   - BUY→SELL sequences work correctly
   - Position changes: BUY=+1.0, SELL=-1.0 (supports shorting)
   - Action masks correctly computed
-  
+
 - ✅ `tests/unit/environment/test_observation_uniqueness.py` (6/6 PASS)
   - 0% duplicate rate across 50 steps
   - No reference reuse (different object IDs)
   - Healthy Δ norm: mean=371.8, std=221.8
   - No NaN/Inf values
-  
+
 - ✅ `tests/unit/environment/test_pnl_invariants.py` (4/6 XPASS, 2/6 XFAIL)
   - Static prices work correctly
   - Round trips work correctly
@@ -52,7 +52,7 @@
 ## 🔍 Critical Discoveries
 
 ### ✅ VERIFIED: Observation Update is Correct
-**Initial Suspicion**: Observations frozen/fixed across steps  
+**Initial Suspicion**: Observations frozen/fixed across steps
 **Evidence Against**:
 - 100% unique observations (50/50 steps)
 - Different object IDs each step (no reference reuse)
@@ -78,25 +78,25 @@
 
 ### 🚨 UNRESOLVED: Paper Trading Identical Probabilities
 
-**Observation**: `[HOLD: 44.2%, BUY: 29.2%, SELL: 26.6%]` constant across all 60 steps  
-**NOT Caused By**: Observation freezing (verified)  
+**Observation**: `[HOLD: 44.2%, BUY: 29.2%, SELL: 26.6%]` constant across all 60 steps
+**NOT Caused By**: Observation freezing (verified)
 **Likely Causes**:
 
 1. **Feature Calculation Failure** (MOST LIKELY)
    - Real data (`btc_jpy_real_dataset.csv`) missing columns
    - Features default to constants/zeros
    - → Model receives constant input → constant output
-   
+
 2. **Insufficient Data Length**
    - Only 20 steps per episode
    - Technical indicators need 50+ warmup
    - First N observations are identical/null
-   
+
 3. **Schema Mismatch**
    - Training schema ≠ evaluation schema
    - Column order/dtypes different
    - Normalization statistics not loaded
-   
+
 4. **Model Overfitting**
    - Model learned constant output
    - Not using observations effectively
@@ -303,8 +303,8 @@ If success gates not met, investigate in this order:
 
 ---
 
-**Repository**: https://github.com/MakuhariYusuke/zaif-trade-bot  
-**Branch**: main  
-**Latest Commit**: 96591de  
-**Test Status**: 13/13 passing (with expected xfails)  
+**Repository**: https://github.com/MakuhariYusuke/zaif-trade-bot
+**Branch**: main
+**Latest Commit**: 96591de
+**Test Status**: 13/13 passing (with expected xfails)
 **Ready for**: Feature schema validation implementation (Phase 2)

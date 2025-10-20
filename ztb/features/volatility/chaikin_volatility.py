@@ -11,9 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Chaikin_Volatility")

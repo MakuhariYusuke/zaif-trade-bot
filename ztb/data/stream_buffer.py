@@ -178,9 +178,7 @@ class StreamBuffer:
             raise ValueError("compress_min_rows must be non-negative")
 
         if compression and compression not in {"zlib", "zstd", "lz4", "gzip"}:
-            raise ValueError(
-                f"compression must be one of {{'zlib','zstd','lz4','gzip'}}"
-            )
+            raise ValueError("compression must be one of {'zlib','zstd','lz4','gzip'}")
         if compression == "zstd" and not HAS_ZSTD:
             raise RuntimeError(
                 "zstd compression requested but python-zstandard not installed"

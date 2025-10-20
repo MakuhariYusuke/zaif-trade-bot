@@ -39,7 +39,7 @@
 
 **問題**:
 ```
-ValueError: Unexpected observation shape (68,) for Box environment, 
+ValueError: Unexpected observation shape (68,) for Box environment,
 please use (110,) or (n_env, 110) for the observation shape.
 ```
 
@@ -187,7 +187,7 @@ env = AdaptiveBacktestEnv(
 
 ---
 
-**作成日**: 2025-10-10  
-**ステータス**: 検証作業継続中  
-**TensorBoard**: http://localhost:6006 （起動中）  
+**作成日**: 2025-10-10
+**ステータス**: 検証作業継続中
+**TensorBoard**: http://localhost:6006 （起動中）
 **紙上取引**: 実行中（3分間）

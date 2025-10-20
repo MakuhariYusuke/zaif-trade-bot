@@ -37,7 +37,7 @@ interface Sample { ok: boolean; latency: number; ts: number }
  * } else {
  *   // short-circuit
  * }
- * 
+ *
  */
 export class CircuitBreaker {
   private state: CircuitState = 'CLOSED';

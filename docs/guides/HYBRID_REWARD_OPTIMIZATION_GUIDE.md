@@ -59,7 +59,7 @@ ppo = {
     "max_grad_norm": 5.05,          # +21.89pt改善
     "n_steps": 1024,                # +11pt改善
     "vf_coef": 0.1,                 # +1pt改善
-    
+
     # 中信頼度パラメータ
     "gamma": 0.8475,                # +1-2pt改善
     "n_epochs": 16,                 # <1pt改善

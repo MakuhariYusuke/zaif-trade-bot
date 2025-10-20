@@ -1,7 +1,7 @@
 # v382_revised_aggressive トレーニング分析レポート
 
-**実行日**: 2025年10月10日  
-**設定**: `ppo_reward_v382_revised_aggressive.json`  
+**実行日**: 2025年10月10日
+**設定**: `ppo_reward_v382_revised_aggressive.json`
 **目的**: v381_revisedで発見された問題（KL divergence、Clip過剰、学習不安定性）を修正
 
 ---
@@ -43,7 +43,7 @@ Iteration 98 (最終):
 | train/                    |                                      |
 |    approx_kl              | 0.08670529                           |  ❌ target_kl=0.05の1.7倍
 |    clip_fraction          | 0.723                                |  ✅ 適切な範囲
-|    clip_range             | 0.2                                  |  
+|    clip_range             | 0.2                                  |
 |    explained_variance     | 0.022518575                          |  ❌ 2.2%しかない
 |    learning_rate          | 0.002                                |
 |    n_updates              | 486                                  |

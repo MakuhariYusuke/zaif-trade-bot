@@ -8,7 +8,7 @@ import sys
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast, Generator
+from typing import Any, Dict, Generator, List, Optional, TypedDict, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,11 +32,13 @@ from ztb.training.policies.policy_utils import predict_with_masks
 
 class ModelConfigDict(TypedDict, total=False):
     """Model configuration dictionary."""
+
     pass  # For now, keep as Dict[str, Any] equivalent
 
 
 class SingleEpisodeResultDict(TypedDict):
     """Single episode evaluation result."""
+
     rewards: List[float]
     positions: List[float]
     pnls: List[float]
@@ -46,10 +48,11 @@ class SingleEpisodeResultDict(TypedDict):
 
 class EvaluationResult(TypedDict, total=False):
     """Type definition for comprehensive evaluation results.
-    
+
     Contains all metrics and statistics from model evaluation including
     risk metrics, trading performance, and data quality assessments.
     """
+
     # Core performance metrics
     total_return: float
     sharpe_ratio: float
@@ -58,29 +61,29 @@ class EvaluationResult(TypedDict, total=False):
     max_drawdown: float
     win_rate: float
     total_trades: int
-    
+
     # Risk and volatility metrics
     volatility: float
     value_at_risk: float
     expected_shortfall: float
-    
+
     # Data quality assessment
     data_quality_score: float  # Composite score based on NaN rate, correlation, etc.
-    
+
     # Metadata
     evaluation_timestamp: str
     feature_count: int
     model_config: ModelConfigDict
-    
+
     # Detailed statistics
     reward_stats: Dict[str, Any]
     pnl_stats: Dict[str, Any]
     trading_stats: Dict[str, Any]
     episode_stats: Dict[str, Any]  # Episode-level aggregated statistics
-    
+
     # Action distribution analysis
     action_distribution: Dict[str, int]
-    
+
     # Performance stability metrics
     consistency_score: float
     robustness_score: float
@@ -206,7 +209,9 @@ class TradingEvaluator:
         all_positions = []
         all_pnls = []
         all_actions = []
-        all_states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
+        all_states: Optional[List[Any]] = (
+            [] if self.config.get("save_states", False) else None
+        )
 
         for episode in range(self.config["n_eval_episodes"]):
             print(f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}")
@@ -324,7 +329,9 @@ class TradingEvaluator:
         positions = []
         pnls = []
         actions = []
-        states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
+        states: Optional[List[Any]] = (
+            [] if self.config.get("save_states", False) else None
+        )
 
         step_count = 0
         while not done and step_count < self.config["max_steps_per_episode"]:
@@ -333,7 +340,9 @@ class TradingEvaluator:
             action_value, _ = predict_with_masks(
                 self.model, obs, self.env, deterministic=self.config["deterministic"]
             )
-            action = action_value.item() if hasattr(action_value, 'item') else action_value
+            action = (
+                action_value.item() if hasattr(action_value, "item") else action_value
+            )
 
             # 環境ステップ
             next_obs, reward, done, _, info = self.env.step(action)
@@ -385,7 +394,9 @@ class TradingEvaluator:
                 for action in episode_actions:
                     yield action
 
-        all_episode_actions = list(get_all_actions()) if not memory_optimized else list(get_all_actions())
+        all_episode_actions = (
+            list(get_all_actions()) if not memory_optimized else list(get_all_actions())
+        )
 
         episode_lengths = [len(r) for r in all_rewards]
 
@@ -686,10 +697,14 @@ class TradingEvaluator:
             reward_stats = stats.get("reward_stats", {})
             if reward_stats:
                 self.writer.add_scalar(
-                    "Evaluation/Mean_Reward", reward_stats.get("mean_total_reward", 0), 0
+                    "Evaluation/Mean_Reward",
+                    reward_stats.get("mean_total_reward", 0),
+                    0,
                 )
                 self.writer.add_scalar(
-                    "Evaluation/Mean_Step_Reward", reward_stats.get("mean_step_reward", 0), 0
+                    "Evaluation/Mean_Step_Reward",
+                    reward_stats.get("mean_step_reward", 0),
+                    0,
                 )
 
             # PnL統計
@@ -698,7 +713,9 @@ class TradingEvaluator:
                 self.writer.add_scalar(
                     "Evaluation/Mean_PnL", pnl_stats.get("mean_total_pnl", 0), 0
                 )
-                self.writer.add_scalar("Evaluation/PnL_Std", pnl_stats.get("std_total_pnl", 0), 0)
+                self.writer.add_scalar(
+                    "Evaluation/PnL_Std", pnl_stats.get("std_total_pnl", 0), 0
+                )
                 self.writer.add_scalar(
                     "Evaluation/Sharpe_Ratio", pnl_stats.get("sharpe_ratio", 0), 0
                 )
@@ -729,10 +746,10 @@ class TradingEvaluator:
                     0,
                 )
                 self.writer.add_scalar(
-                "Evaluation/Position_Change_Variance",
-                trading_stats["position_change_variance"],
-                0,
-            )
+                    "Evaluation/Position_Change_Variance",
+                    trading_stats["position_change_variance"],
+                    0,
+                )
                 self.writer.add_scalar(
                     "Evaluation/Hold_Ratio", trading_stats.get("hold_ratio", 0), 0
                 )
@@ -743,7 +760,9 @@ class TradingEvaluator:
                     "Evaluation/Sell_Ratio", trading_stats.get("sell_ratio", 0), 0
                 )
                 self.writer.add_scalar(
-                    "Evaluation/Profit_Per_Trade", trading_stats.get("profit_per_trade", 0), 0
+                    "Evaluation/Profit_Per_Trade",
+                    trading_stats.get("profit_per_trade", 0),
+                    0,
                 )
 
             # エピソード統計
@@ -1191,32 +1210,39 @@ class TradingEvaluator:
         """Clean up resources to prevent memory leaks."""
         try:
             # Close environment
-            if hasattr(self, 'env') and getattr(self, 'env', None) is not None:
+            if hasattr(self, "env") and getattr(self, "env", None) is not None:
                 self.env.close()
                 print("TradingEvaluator environment closed")
 
             # Close TensorBoard writer
-            if hasattr(self, 'writer') and getattr(self, 'writer', None) is not None:
+            if hasattr(self, "writer") and getattr(self, "writer", None) is not None:
                 self.writer.close()
                 print("TensorBoard writer closed")
-            
+
             # Clear model reference and break potential circular references
-            if hasattr(self, 'model') and getattr(self, 'model', None) is not None:
+            if hasattr(self, "model") and getattr(self, "model", None) is not None:
                 # Clear model references to environment
-                if hasattr(self.model, 'env') and getattr(self.model, 'env', None) is not None:
-                    setattr(self.model, 'env', None)
-                if hasattr(self.model, '_last_obs') and getattr(self.model, '_last_obs', None) is not None:
-                    setattr(self.model, '_last_obs', None)
+                if (
+                    hasattr(self.model, "env")
+                    and getattr(self.model, "env", None) is not None
+                ):
+                    setattr(self.model, "env", None)
+                if (
+                    hasattr(self.model, "_last_obs")
+                    and getattr(self.model, "_last_obs", None) is not None
+                ):
+                    setattr(self.model, "_last_obs", None)
                 self.model = None
                 print("TradingEvaluator model references cleared")
-            
+
             # Clear data references
-            if hasattr(self, 'df'):
+            if hasattr(self, "df"):
                 self.df = None
-                
+
         except Exception as e:
             print(f"Error during TradingEvaluator cleanup: {e}")
             import traceback
+
             print(f"Cleanup traceback: {traceback.format_exc()}")
 
     def __del__(self) -> None:

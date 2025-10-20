@@ -74,14 +74,22 @@ class MetricsCalculator:
         excess_returns = (
             returns - risk_free_rate / TRADING_DAYS_PER_YEAR
         )  # Daily risk-free rate
-        if excess_returns.std() == 0:
+
+        std_dev = excess_returns.std()
+        if std_dev == 0 or np.isnan(std_dev) or std_dev < 1e-10:
+            # Handle near-zero or zero volatility - return 0 for no risk-adjusted return
             return 0.0
 
-        sharpe = (
-            excess_returns.mean()
-            / excess_returns.std()
-            * np.sqrt(TRADING_DAYS_PER_YEAR)
-        )
+        mean_return = excess_returns.mean()
+        if np.isnan(mean_return):
+            return 0.0
+
+        sharpe = mean_return / std_dev * np.sqrt(TRADING_DAYS_PER_YEAR)
+
+        # Cap extreme values to prevent numerical issues
+        if not np.isfinite(sharpe):
+            return 0.0
+
         return float(sharpe)
 
     @staticmethod
@@ -232,9 +240,13 @@ class MetricsCalculator:
         )
         volatility = returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR)  # Annualized
 
-        total_trades, win_rate, avg_win, avg_loss, profit_factor = (
-            cls.calculate_trade_metrics(orders)
-        )
+        (
+            total_trades,
+            win_rate,
+            avg_win,
+            avg_loss,
+            profit_factor,
+        ) = cls.calculate_trade_metrics(orders)
         turnover = cls.estimate_turnover(orders, initial_capital)
         estimated_slippage = cls.estimate_slippage_bps(orders, slippage_bps)
 

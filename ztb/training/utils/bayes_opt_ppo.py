@@ -7,24 +7,24 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any, cast, Dict
+from typing import Any, Dict, cast
 
 from skopt import gp_minimize
 from skopt.space import Integer, Real
 from skopt.utils import use_named_args
 
 from ztb.training.config.ppo_config import get_ppo_config
+from ztb.training.utils.training_utils import setup_project_path
+from ztb.utils.config import ZTBConfig
 from ztb.utils.file_utils import safe_json_dump
 from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import ensure_dir
-from ztb.training.utils.training_utils import setup_project_path
-from ztb.utils.config import ZTBConfig
 
 # Ensure project root is on sys.path
 setup_project_path()
 
-from ztb.training.core.ppo_trainer import PPOTrainer  # noqa: E402  # type: ignore[attr-defined]
 from ztb.features.curated_features import FeatureSet  # noqa: E402
+from ztb.training.core.ppo_trainer import PPOTrainer  # noqa: E402  # type: ignore[attr-defined]
 
 LOGGER = get_logger(__name__)
 
@@ -52,31 +52,35 @@ def objective_function(
     }
     try:
         # Get base config from common configuration
-        base_config = get_ppo_config({
-            "total_timesteps": 25000,  # Short training for optimization
-            "ent_coef": 0.5,  # Override for optimization
-            "tensorboard_log": "logs/bayes_opt",
-            "model_dir": ZTBConfig().get_model_path("bayes_opt"),
-            "checkpoint_dir": "checkpoints/bayes_opt",
-            "log_dir": "logs/bayes_opt",
-            "offline_mode": True,
-            "feature_set": "full",
-            "timeframe": "1m",
-            "reward_scaling": 1.0,
-            "transaction_cost": 0.0,
-            "max_position_size": 1.0,
-            "seed": 42,
-        })
+        base_config = get_ppo_config(
+            {
+                "total_timesteps": 25000,  # Short training for optimization
+                "ent_coef": 0.5,  # Override for optimization
+                "tensorboard_log": "logs/bayes_opt",
+                "model_dir": ZTBConfig().get_model_path("bayes_opt"),
+                "checkpoint_dir": "checkpoints/bayes_opt",
+                "log_dir": "logs/bayes_opt",
+                "offline_mode": True,
+                "feature_set": "full",
+                "timeframe": "1m",
+                "reward_scaling": 1.0,
+                "transaction_cost": 0.0,
+                "max_position_size": 1.0,
+                "seed": 42,
+            }
+        )
 
         # Override with optimized parameters
         config_dict = cast(Dict[str, Any], base_config)
         config_dict.update(params)
-        config_dict.update({
-            "algorithm": "PPO",
-            "data_path": "data/ml-dataset-enhanced-balanced.csv",
-            "feature_set": FeatureSet.FULL,
-            "timeframe": "M1",
-        })
+        config_dict.update(
+            {
+                "algorithm": "PPO",
+                "data_path": "data/ml-dataset-enhanced-balanced.csv",
+                "feature_set": FeatureSet.FULL,
+                "timeframe": "M1",
+            }
+        )
         config = config_dict
 
         trainer = PPOTrainer(
@@ -158,7 +162,7 @@ def main() -> int:
 
     safe_json_dump(results, args.output_dir / "bayes_opt_results.json", indent=2)
 
-    LOGGER.info(f"Optimization completed!")
+    LOGGER.info("Optimization completed!")
     LOGGER.info(f"Best parameters: {best_params}")
     LOGGER.info(f"Best score: {results['best_score']}")
 

@@ -65,14 +65,18 @@ ExperimentMetrics = Dict[str, MetricsValue]
 class Notifiable(Protocol):
     """通知可能インターフェース"""
 
-    def notify(self, message: str, level: str = "info") -> None: ...
+    def notify(self, message: str, level: str = "info") -> None:
+        ...
 
 
 class Checkpointable(Protocol):
     """チェックポイント可能インターフェース"""
 
-    def save_checkpoint(self, path: str) -> None: ...
-    def load_checkpoint(self, path: str) -> None: ...
+    def save_checkpoint(self, path: str) -> None:
+        ...
+
+    def load_checkpoint(self, path: str) -> None:
+        ...
 
 
 @dataclass

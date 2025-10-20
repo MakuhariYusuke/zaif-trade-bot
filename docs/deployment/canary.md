@@ -203,7 +203,7 @@ async def test():
         'expected_action': 'pause'
     }):
         print('Fault injected')
-        
+
 asyncio.run(test())
 "
 ```python

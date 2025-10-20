@@ -2,7 +2,7 @@
 
 ## 🎉 完了したこと
 
-**日時**: 2025年10月11日  
+**日時**: 2025年10月11日
 **目標**: unified_trainer.pyを更新して、全ての訓練がAlgorithmFactoryを経由するようにし、肥大化したコードを切り分ける
 
 ---
@@ -21,12 +21,12 @@ unified_trainer.py: 876行
 ```
 unified_trainer.py: 876行（変更最小限）
   ↓ 全メソッドをConfigBuilderに委譲
-  
+
 config_builder.py: 326行（新規）
   - 設定構築ロジックを集約
   - PPO, SAC両対応
   - 再利用可能
-  
+
 algorithm_trainer.py: 更新
   - PPOでAlgorithmFactory使用
   - 他のアルゴリズムは暫定的に既存維持
@@ -263,7 +263,7 @@ class SACAlgorithm(BaseRLAlgorithm):
     def create_model(env, config):
         from stable_baselines3 import SAC
         return SAC("MlpPolicy", env, **config)
-    
+
     def train(model, timesteps):
         model.learn(total_timesteps=timesteps)
         return model
@@ -331,6 +331,6 @@ PPOAlgorithmTrainer (legacy) → PPOAlgorithm (new) への完全移行
 
 ---
 
-**作成日**: 2025年10月11日  
-**ステータス**: リファクタリング完了 ✅  
+**作成日**: 2025年10月11日
+**ステータス**: リファクタリング完了 ✅
 **次のPhase**: 既存スクリプトでの動作確認

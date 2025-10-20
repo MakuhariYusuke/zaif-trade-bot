@@ -61,7 +61,9 @@ class IchimokuTimeTheory(BaseFeature):
             trend_duration.iloc[i] = duration_count
 
         # 2. Cross frequency (rolling count of crosses in last N periods)
-        cross_changes = np.abs(np.diff(tk_cross, prepend=tk_cross[0])) / 2  # 1 when cross occurs, 0 otherwise
+        cross_changes = (
+            np.abs(np.diff(tk_cross, prepend=tk_cross[0])) / 2
+        )  # 1 when cross occurs, 0 otherwise
         cross_frequency = pd.Series(cross_changes).rolling(50).sum()
 
         # 3. Time since last cross
@@ -75,23 +77,29 @@ class IchimokuTimeTheory(BaseFeature):
                 time_since_cross.iloc[i] = i - last_cross_idx
 
         # 4. Trend stability score (consistency of direction)
-        trend_stability = trend_duration / (time_since_cross + 1)  # Avoid division by zero
+        trend_stability = trend_duration / (
+            time_since_cross + 1
+        )  # Avoid division by zero
 
         # 5. Composite time theory score
         # Normalize components to 0-1 scale
         duration_norm = np.clip(trend_duration / 50, 0, 1)  # Max 50 periods
-        frequency_norm = np.clip(cross_frequency / 10, 0, 1)  # Max 10 crosses in 50 periods
+        frequency_norm = np.clip(
+            cross_frequency / 10, 0, 1
+        )  # Max 10 crosses in 50 periods
         stability_norm = np.clip(trend_stability, 0, 1)
 
         # Weight the components (duration 40%, stability 40%, frequency 20%)
         time_theory_score = (
-            0.4 * duration_norm +
-            0.4 * stability_norm +
-            0.2 * (1 - frequency_norm)  # Lower frequency = more stable
+            0.4 * duration_norm
+            + 0.4 * stability_norm
+            + 0.2 * (1 - frequency_norm)  # Lower frequency = more stable
         )
 
         # Adjust based on current trend direction
         time_theory_score = time_theory_score * tk_cross
 
-        result_df = pd.DataFrame({"ichimoku_time_theory": time_theory_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_time_theory": time_theory_score}, index=df.index
+        )
         return result_df

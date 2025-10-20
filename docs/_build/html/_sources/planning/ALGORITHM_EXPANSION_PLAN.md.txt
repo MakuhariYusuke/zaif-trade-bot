@@ -153,7 +153,7 @@ Week 3: 比較評価
   "model_name": "sac_v395_baseline",
   "algorithm": "sac",
   "total_timesteps": 100000,
-  
+
   "sac_hyperparameters": {
     "learning_rate": 0.0003,
     "buffer_size": 50000,
@@ -167,7 +167,7 @@ Week 3: 比較評価
     "target_entropy": "auto",
     "use_sde": false
   },
-  
+
   "environment": {
     "initial_balance": 200000,
     "transaction_cost": 0.0005,

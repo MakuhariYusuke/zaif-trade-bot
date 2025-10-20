@@ -4,8 +4,9 @@ Configuration management for A/B Testing Framework
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import StatisticalTest, ABTestConfiguration, ABTestVariant
+from typing import Dict
+
+from .types import ABTestConfiguration, ABTestVariant, StatisticalTest
 
 
 @dataclass
@@ -87,7 +88,9 @@ class ABTestConfig:
     default_test_duration_hours: int = 24
 
     # パフォーマンス設定
-    performance: ABTestPerformanceConfig = field(default_factory=ABTestPerformanceConfig)
+    performance: ABTestPerformanceConfig = field(
+        default_factory=ABTestPerformanceConfig
+    )
 
     # リスク管理設定
     risk: ABTestRiskConfig = field(default_factory=ABTestRiskConfig)
@@ -97,11 +100,13 @@ class ABTestConfig:
 
     # 通知設定
     notifications_enabled: bool = True
-    alert_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        "high_regression_rate": 0.1,
-        "low_confidence": 0.8,
-        "insufficient_samples": 0.5
-    })
+    alert_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "high_regression_rate": 0.1,
+            "low_confidence": 0.8,
+            "insufficient_samples": 0.5,
+        }
+    )
 
     # ログ設定
     log_level: str = "INFO"
@@ -128,7 +133,7 @@ class ABTestConfig:
         test_name: str,
         variant_a: ABTestVariant,
         variant_b: ABTestVariant,
-        target_metric: str = "rmse"
+        target_metric: str = "rmse",
     ) -> ABTestConfiguration:
         """デフォルトのテスト設定を作成（処理時間短縮・メモリ効率最適化）"""
         return ABTestConfiguration(
@@ -149,11 +154,11 @@ class ABTestConfig:
             max_regression_threshold=0.05,
             batch_size=500,  # メモリ効率のため中程度のバッチサイズ
             enable_compression=True,
-            enable_parallel_processing=True
+            enable_parallel_processing=True,
         )
 
     @classmethod
-    def create_performance_optimized_config(cls) -> 'ABTestConfig':
+    def create_performance_optimized_config(cls) -> "ABTestConfig":
         """パフォーマンス最適化された設定を作成"""
         config = cls()
 
@@ -173,7 +178,7 @@ class ABTestConfig:
         return config
 
     @classmethod
-    def create_memory_conservative_config(cls) -> 'ABTestConfig':
+    def create_memory_conservative_config(cls) -> "ABTestConfig":
         """メモリ節約型の設定を作成"""
         config = cls()
 
@@ -195,10 +200,11 @@ class ABTestConfig:
 
         return config
 
-    def get_optimized_config_for_environment(self) -> 'ABTestConfig':
+    def get_optimized_config_for_environment(self) -> "ABTestConfig":
         """環境に応じた最適化設定を取得"""
         try:
             import psutil
+
             memory_gb = psutil.virtual_memory().total / (1024**3)
 
             if memory_gb < 4:  # 4GB未満

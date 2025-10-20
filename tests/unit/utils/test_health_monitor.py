@@ -6,8 +6,6 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-import psutil
-
 from ztb.utils.config import ZTBConfig
 from ztb.utils.health_monitor import (
     HealthChecker,
@@ -40,7 +38,7 @@ class TestHealthMonitor(unittest.TestCase):
             message="Test passed",
             details={"key": "value"},
             timestamp=1234567890.0,
-            duration=1.5
+            duration=1.5,
         )
 
         self.assertEqual(result.name, "test_check")
@@ -50,10 +48,10 @@ class TestHealthMonitor(unittest.TestCase):
         self.assertEqual(result.timestamp, 1234567890.0)
         self.assertEqual(result.duration, 1.5)
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
-    @patch('psutil.net_connections')
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
+    @patch("psutil.net_connections")
     def test_collect_system_metrics(self, mock_net, mock_disk, mock_memory, mock_cpu):
         """Test system metrics collection."""
         # Mock system calls
@@ -81,6 +79,7 @@ class TestHealthMonitor(unittest.TestCase):
 
     def test_register_and_run_check(self):
         """Test registering and running health checks."""
+
         def mock_check():
             return HealthCheckResult(
                 name="mock_check",
@@ -88,7 +87,7 @@ class TestHealthMonitor(unittest.TestCase):
                 message="Mock check passed",
                 details={},
                 timestamp=time.time(),
-                duration=0.1
+                duration=0.1,
             )
 
         self.health_checker.register_check("mock_check", mock_check)
@@ -100,6 +99,7 @@ class TestHealthMonitor(unittest.TestCase):
 
     def test_run_check_with_exception(self):
         """Test health check that raises an exception."""
+
         def failing_check():
             raise ValueError("Test error")
 
@@ -120,6 +120,7 @@ class TestHealthMonitor(unittest.TestCase):
 
     def test_overall_health_calculation(self):
         """Test overall health status calculation."""
+
         # Register some checks
         def healthy_check():
             return HealthCheckResult(
@@ -128,7 +129,7 @@ class TestHealthMonitor(unittest.TestCase):
                 message="OK",
                 details={},
                 timestamp=time.time(),
-                duration=0.1
+                duration=0.1,
             )
 
         def degraded_check():
@@ -138,7 +139,7 @@ class TestHealthMonitor(unittest.TestCase):
                 message="Warning",
                 details={},
                 timestamp=time.time(),
-                duration=0.1
+                duration=0.1,
             )
 
         def unhealthy_check():
@@ -148,7 +149,7 @@ class TestHealthMonitor(unittest.TestCase):
                 message="Error",
                 details={},
                 timestamp=time.time(),
-                duration=0.1
+                duration=0.1,
             )
 
         self.health_checker.register_check("healthy", healthy_check)
@@ -178,15 +179,15 @@ class TestHealthMonitor(unittest.TestCase):
             "system_health",
             "memory_health",
             "database_connectivity",
-            "external_api_health"
+            "external_api_health",
         ]
 
         for check_name in expected_checks:
             self.assertIn(check_name, self.health_checker.checks)
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
     def test_system_health_check(self, mock_disk, mock_memory, mock_cpu):
         """Test system health check."""
         # Mock normal system state
@@ -200,9 +201,9 @@ class TestHealthMonitor(unittest.TestCase):
         self.assertEqual(result.status, HealthStatus.HEALTHY)
         self.assertIn("operating normally", result.message)
 
-    @patch('psutil.cpu_percent')
-    @patch('psutil.virtual_memory')
-    @patch('psutil.disk_usage')
+    @patch("psutil.cpu_percent")
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
     def test_system_health_check_high_usage(self, mock_disk, mock_memory, mock_cpu):
         """Test system health check with high resource usage."""
         # Mock high usage
@@ -263,5 +264,5 @@ class TestHealthMonitor(unittest.TestCase):
         self.assertIn("memory_health", summary["checks"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

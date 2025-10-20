@@ -8,10 +8,17 @@ from typing import Dict, List
 # Type alias for configuration
 ConfigType = Dict[str, str | float]
 
-from ztb.training.utils.training_utils import setup_project_path, create_ppo_model, load_training_data, save_model_with_path, print_training_results, print_training_start
 from ztb.trading.env_config import get_trading_env_config
 from ztb.trading.environment import HeavyTradingEnv
 from ztb.training.callbacks.callbacks import SimpleTrainingCallback
+from ztb.training.utils.training_utils import (
+    create_ppo_model,
+    load_training_data,
+    print_training_results,
+    print_training_start,
+    save_model_with_path,
+    setup_project_path,
+)
 
 
 def train_simple_reward(
@@ -30,10 +37,12 @@ def train_simple_reward(
 
     # Create environment with simple reward
     env_config = dict(get_trading_env_config())
-    env_config.update({
-        "reward_scaling": reward_scaling,
-        "curriculum_stage": "simple_portfolio",  # Use simple reward
-    })
+    env_config.update(
+        {
+            "reward_scaling": reward_scaling,
+            "curriculum_stage": "simple_portfolio",  # Use simple reward
+        }
+    )
 
     env = HeavyTradingEnv(
         df=df,

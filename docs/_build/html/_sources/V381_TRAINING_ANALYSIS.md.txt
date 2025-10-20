@@ -1,7 +1,7 @@
 # v381 Hybrid Optimized 30k トレーニング結果分析
 
-**実行日時**: 2025年10月10日 14:51-14:53  
-**セッションID**: ppo_reward_v381_hybrid_optimized_30k  
+**実行日時**: 2025年10月10日 14:51-14:53
+**セッションID**: ppo_reward_v381_hybrid_optimized_30k
 **設定ファイル**: `configs/training/ppo_reward_v381_hybrid_optimized_30k.json`
 
 ---
@@ -160,7 +160,7 @@ entropy_loss: -1.1
 ```json
 "total_timesteps": 30000 → 100000
 ```
-**理由**: 
+**理由**:
 - 30kステップでは収束不足
 - Explained Varianceの改善に時間が必要
 

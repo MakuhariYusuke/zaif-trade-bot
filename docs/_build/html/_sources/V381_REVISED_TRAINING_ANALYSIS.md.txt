@@ -1,7 +1,7 @@
 # v381 Revised Profit-Focused トレーニング結果分析
 
-**実行日時**: 2025年10月10日 15:11-15:13  
-**セッションID**: ppo_reward_v381_revised_profit_focused  
+**実行日時**: 2025年10月10日 15:11-15:13
+**セッションID**: ppo_reward_v381_revised_profit_focused
 **設定ファイル**: `configs/training/ppo_reward_v381_revised_profit_focused.json`
 
 ---
@@ -61,7 +61,7 @@ SELL:  76 / 256 = 29.7% ✅
 | 47 | **44.5%** ✅ | 25.8% | **29.7%** ✅ | **最良HOLD/SELL** |
 | 49（最終） | 51.2% | 24.6% | 24.2% | やや後退 |
 
-**重要な発見**: 
+**重要な発見**:
 - ✅ Iteration 17で**目標に最も近い分布**を達成
 - ✅ Iteration 47で**HOLD 44.5%**を達成
 - ⚠️ 最終的にHOLDが若干増加（学習の振動）
@@ -81,7 +81,7 @@ SELL:  76 / 256 = 29.7% ✅
 | 44 | -525 | +32 | **最良** ✅ |
 | 49 | -541 | -16 | 最終 |
 
-**総合評価**: 
+**総合評価**:
 - ✅ **-594 → -525**: +69pt改善（11.6%向上）
 - ⚠️ 最終的に-541で安定
 
@@ -131,7 +131,7 @@ clip_fraction: 0.996～1.0（ほぼ100%）
 | 47 | 5.84 | 微増 |
 | 49 | 7.08 | 悪化 ⚠️ |
 
-**評価**: 
+**評価**:
 - ⚠️ 価値関数の学習が不安定
 - 💡 vf_coef=0.5に更に増加を検討
 
@@ -199,7 +199,7 @@ clip_fraction: 0.996～1.0（ほぼ100%）
 "target_kl": 0.01 → 0.05 or 0.1 or null（無効化）
 ```
 
-**理由**: 
+**理由**:
 - 現在7.2倍超過
 - 0.01は厳しすぎる
 - Early stopping削減で学習効率向上
@@ -238,7 +238,7 @@ clip_fraction: 0.996～1.0（ほぼ100%）
 "vf_coef": 0.3 → 0.5
 ```
 
-**理由**: 
+**理由**:
 - 価値損失が高い（7.08）
 - Explained Varianceの安定化
 
@@ -260,14 +260,14 @@ v381_revisedの知見を活かしたv382の改善版を作成すべきです：
 ```json
 {
   "session_id": "ppo_reward_v382_revised_aggressive",
-  
+
   "ppo": {
     "learning_rate": 0.002,
     "target_kl": 0.05,
     "vf_coef": 0.5,
     "clip_range": 0.2
   },
-  
+
   "environment": {
     "reward_settings": {
       "hold_penalty_weight": 0.055,
@@ -279,7 +279,7 @@ v381_revisedの知見を活かしたv382の改善版を作成すべきです：
       "successful_trade_bonus": 1.5
     }
   },
-  
+
   "training": {
     "total_timesteps": 100000
   }

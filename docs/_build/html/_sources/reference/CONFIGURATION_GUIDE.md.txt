@@ -9,7 +9,7 @@ Bug #52の修正に伴い、全てのトレーナーで一貫した設定管理�
 設定パラメータは以下の優先順位で適用されます:
 
 1. **コマンドライン引数** (最優先)
-2. **設定ファイル (トップレベル)** 
+2. **設定ファイル (トップレベル)**
 3. **設定ファイル (セクション別)**
 4. **デフォルト値** (最低優先)
 
@@ -23,14 +23,14 @@ Bug #52の修正に伴い、全てのトレーナーで一貫した設定管理�
   "session_id": "my_training_session",
   "data_path": "ml-dataset-enhanced-balanced.csv",
   "checkpoint_dir": "checkpoints/my_session",
-  
+
   "comment_memory": "===== MEMORY OPTIMIZATION =====",
   "comment_memory_1": "These parameters were added as part of Bug #52 fix",
   "memory_optimization": {
     "data_rows_limit": 500,
     "max_features": 40
   },
-  
+
   "comment_ppo": "===== PPO HYPERPARAMETERS =====",
   "ppo": {
     "total_timesteps": 30000,
@@ -49,7 +49,7 @@ Bug #52の修正に伴い、全てのトレーナーで一貫した設定管理�
     "sde_sample_freq": -1,
     "verbose": 1
   },
-  
+
   "comment_env": "===== ENVIRONMENT PARAMETERS =====",
   "environment": {
     "max_position_size": 1.0,
@@ -57,7 +57,7 @@ Bug #52の修正に伴い、全てのトレーナーで一貫した設定管理�
     "transaction_cost": 0.001,
     "reward_scaling": 1.0
   },
-  
+
   "comment_backward": "===== BACKWARD COMPATIBILITY =====",
   "comment_backward_1": "These top-level settings are maintained for backward compatibility",
   "data_rows_limit": 500,
@@ -78,7 +78,7 @@ Bug #52の修正に伴い、全てのトレーナーで一貫した設定管理�
   "algorithm": "ppo",
   "session_id": "my_training_session",
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "data_rows_limit": 500,
   "max_features": 40,
   "total_timesteps": 30000,

@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.tests.test_sac_explainability_integration</h1><div class="highlight"><pre>
 <span></span><span class="ch">#!/usr/bin/env python3</span>
 <span class="sd">&quot;&quot;&quot;</span>
@@ -143,29 +143,29 @@
     <span class="k">try</span><span class="p">:</span>
         <span class="n">sac</span><span class="o">.</span><span class="n">_initialize_explainability_analyzer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Explainability analyzer initialized: </span><span class="si">{</span><span class="n">sac</span><span class="o">.</span><span class="n">explainability_analyzer</span><span class="w"> </span><span class="ow">is</span><span class="w"> </span><span class="ow">not</span><span class="w"> </span><span class="kc">None</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">if</span> <span class="n">sac</span><span class="o">.</span><span class="n">explainability_analyzer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✗ Explainability analyzer initialization failed&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">False</span>
-            
+
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Explainability analyzer initialization failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
 
     <span class="c1"># 実際の環境を使用せずにAPIテスト</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Skipping model creation test (requires actual Gymnasium environment)&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 決定説明のテスト（モックデータ使用）</span>
     <span class="n">mock_observation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">80</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Mock observation created with shape: </span><span class="si">{</span><span class="n">mock_observation</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># 説明可能性アナライザーがない場合のテスト</span>
     <span class="n">explanation</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">explain_decision</span><span class="p">(</span><span class="n">mock_observation</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">explanation</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Decision explanation correctly returns None (no model)&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;? Decision explanation returned result without model (unexpected)&quot;</span><span class="p">)</span>
-    
+
     <span class="c1"># レポート生成のテスト（モックデータ使用）</span>
     <span class="n">mock_observations</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">80</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
     <span class="n">report_path</span> <span class="o">=</span> <span class="n">sac</span><span class="o">.</span><span class="n">generate_explanation_report</span><span class="p">(</span><span class="n">mock_observations</span><span class="p">)</span>
@@ -173,7 +173,7 @@
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Explanation report correctly returns None (no model)&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;? Explanation report returned result without model (unexpected)&quot;</span><span class="p">)</span>
-    
+
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;🎉 All SAC explainability integration tests passed!&quot;</span><span class="p">)</span>
     <span class="k">return</span> <span class="kc">True</span></div>
 
@@ -196,7 +196,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -207,7 +207,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

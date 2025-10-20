@@ -2,8 +2,8 @@
 
 ## 📊 検証完了サマリー
 
-**実施日**: 2025年10月10日  
-**検証者**: Admin  
+**実施日**: 2025年10月10日
+**検証者**: Admin
 **検証環境**: Windows, Python 3.13.0, 仮想環境 (.venv)
 
 ---
@@ -102,7 +102,7 @@ Phase 2 improvement: -303.024 - (-275.310) = 27.714 (高信頼度 ✅)
 
 **⚠️ 判定**: **再現性不足** - 追加検証が必要
 
-**暫定推奨**: 
+**暫定推奨**:
 - より安定した `5.05` を採用 (実行2のスコアがわずかに良好)
 - または、両者の中間値 `6.3` を試行
 - デフォルト `0.5` からの改善は確認できるが、最適値の特定には100k×2シード実行を推奨
@@ -161,7 +161,7 @@ Phase 2 improvement: -303.024 - (-275.310) = 27.714 (高信頼度 ✅)
    ```cmd
    # 100k × seed 42
    python -m ztb.training.binary_search.max_grad_norm_optimized --mode binary --max_iterations 2 --timesteps 100000 --seed 42 --search_range 5.0,5.05,6.3,7.5,7.525
-   
+
    # 100k × seed 123 (再現性確認)
    python -m ztb.training.binary_search.max_grad_norm_optimized --mode binary --max_iterations 2 --timesteps 100000 --seed 123 --search_range 5.0,5.05,6.3,7.5,7.525
    ```
@@ -211,5 +211,5 @@ Phase 2 improvement: -303.024 - (-275.310) = 27.714 (高信頼度 ✅)
 
 ---
 
-**作成日**: 2025年10月10日  
+**作成日**: 2025年10月10日
 **最終更新**: 2025年10月10日

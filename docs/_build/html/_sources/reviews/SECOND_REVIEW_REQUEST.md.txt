@@ -51,7 +51,7 @@ if steps_since_last_trade < min_holding_period:
 ```python
 # EnsemblePredictor.__init__ に mask_provider 追加
 def __init__(
-    self, 
+    self,
     model_configs: List[ModelConfig],
     mask_provider: Optional[Callable[[NDArray[np.float32]], NDArray[np.bool_]]] = None
 ):
@@ -63,8 +63,8 @@ if isinstance(model, MaskablePPO):
     if self.mask_provider is not None:
         action_masks = self.mask_provider(observation)
         action, state = model.predict(
-            observation, 
-            action_masks=action_masks, 
+            observation,
+            action_masks=action_masks,
             deterministic=deterministic
         )
     else:
@@ -114,7 +114,7 @@ def predict_with_masks(
     if isinstance(model, MaskablePPO):
         if env is None:
             raise ValueError("MaskablePPO requires 'env' parameter")
-        
+
         action_masks = env.get_action_masks()
         action, state = model.predict(
             observation,
@@ -123,7 +123,7 @@ def predict_with_masks(
         )
     else:
         action, state = model.predict(observation, deterministic=deterministic)
-    
+
     return action, state
 ```
 
@@ -334,7 +334,7 @@ print(f"Memory increase: {mem_leak:.2f} MB")
 
 ---
 
-**ご指摘ありがとうございました!**  
+**ご指摘ありがとうございました!**
 別の視点からの指摘により、重要なバグを発見・修正できました。
 
 特に`min_holding_period`によるクローズ禁止は、リスク管理上極めて危険な問題でした。今回の修正により:

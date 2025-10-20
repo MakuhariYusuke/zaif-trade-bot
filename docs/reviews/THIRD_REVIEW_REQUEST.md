@@ -1,7 +1,7 @@
 # 第三者レビュー対応バグ修正レポート
 
-**日付:** 2025年10月8日  
-**修正者:** AIコーディングエージェント  
+**日付:** 2025年10月8日
+**修正者:** AIコーディングエージェント
 **レビュー元:** 第三者視点の詳細レビュー
 
 ---
@@ -16,8 +16,8 @@
 
 ### 1. 🔴 Critical: EnsemblePredictorがMaskablePPOマスクを強制しない
 
-**ファイル:** `ztb/training/ensemble.py`  
-**深刻度:** Critical  
+**ファイル:** `ztb/training/ensemble.py`
+**深刻度:** Critical
 **問題:** mask_provider未指定時に警告のみで続行し、action_masksが欠落する致命的バグ
 
 **修正内容:**
@@ -66,8 +66,8 @@ def __init__(
 
 ### 2. 🟠 High: min_holding_periodがallow_reverse経由で回避される
 
-**ファイル:** `ztb/trading/environment/components/position_manager.py`  
-**深刻度:** High  
+**ファイル:** `ztb/trading/environment/components/position_manager.py`
+**深刻度:** High
 **問題:** min_holding_period中でもallow_reverse=Trueだとポジション反転が発生
 
 **修正内容:**
@@ -82,13 +82,13 @@ def execute_action(self, action: int, current_step: int, min_holding_period: int
         self._last_trade_step >= 0
         and current_step - self._last_trade_step < min_holding_period
     )
-    
+
     if action == 1:  # BUY
         if self.position < 0:
             self.close_position()
             self._last_trade_step = current_step  # クローズ時も更新
             self._consecutive_trade_steps += 1
-            
+
             # min_holding_period内はallow_reverseを無視
             if self.config.allow_reverse and not within_min_holding:
                 self.open_position(1, current_step)
@@ -110,8 +110,8 @@ self.position_manager.execute_action(action, self.current_step, min_holding_peri
 
 ### 3. 🟡 Performance: Trainerがクローズ済み環境参照を保持
 
-**ファイル:** `ztb/training/ppo_trainer.py`  
-**深刻度:** Performance (メモリリーク)  
+**ファイル:** `ztb/training/ppo_trainer.py`
+**深刻度:** Performance (メモリリーク)
 **問題:** 成功時・失敗時とも self.env/self.model の参照を保持し続ける
 
 **修正内容:**
@@ -151,26 +151,26 @@ finally:
     # Always cleanup resources - critical for memory management
     import gc
     logger.info("Cleaning up training resources...")
-    
+
     try:
         # Clear model-environment references
         if self.model is not None:
             self.model.set_env(None)
             logger.debug("Model environment reference cleared")
-            
+
         # Close environment
         if self.env is not None:
             self.env.close()
             logger.debug("Environment closed")
-            
+
         # Clear instance references to allow garbage collection
         self.env = None  # type: ignore
         self.model = None  # type: ignore
         logger.debug("Instance references cleared")
-        
+
     except Exception as cleanup_error:
         logger.warning(f"Error during resource cleanup: {cleanup_error}")
-    
+
     # Force garbage collection
     gc.collect()
     logger.info("✅ Resource cleanup completed")
@@ -182,8 +182,8 @@ finally:
 
 ### 4. 💡 Medium: predict_with_masksテストの実効性強化
 
-**ファイル:** `test_bugfixes.py`  
-**深刻度:** Medium (テスト品質)  
+**ファイル:** `test_bugfixes.py`
+**深刻度:** Medium (テスト品質)
 **問題:** DummyMaskablePPOの生成失敗をexceptで飲み込み、実際にテストされない
 
 **修正内容:**
@@ -199,18 +199,18 @@ except Exception as e:
 # 修正後: 適切なクラス継承でモック作成
 try:
     from sb3_contrib import MaskablePPO
-    
+
     # Create a proper mock that inherits from MaskablePPO
     class DummyMaskablePPO(MaskablePPO):
         def __init__(self):
             # Skip parent __init__ to avoid dependencies
             pass
-        
+
         def predict(self, obs, action_masks=None, deterministic=False):
             return (np.array([0]), None)
-    
+
     dummy_maskable = DummyMaskablePPO()
-    
+
     # Should raise ValueError without env
     try:
         action, _ = predict_with_masks(dummy_maskable, obs, env=None)
@@ -384,6 +384,6 @@ if self.config.allow_reverse and not within_min_holding:
 
 ---
 
-**修正完了日:** 2025年10月8日  
-**テスト結果:** 4/4 PASS ✅  
+**修正完了日:** 2025年10月8日
+**テスト結果:** 4/4 PASS ✅
 **レビュー状態:** 完了 ✅

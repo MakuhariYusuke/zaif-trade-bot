@@ -47,18 +47,18 @@ python run_training.py --config configs/training/ppo_100k_optimized.json --force
 {
   "algorithm": "ppo",
   "total_timesteps": 100000,
-  
+
   "learning_rate": 0.009375625,
   "gamma": 0.895,
   "n_steps": 1408,
   "ent_coef": 0.02575,
-  
+
   "enable_sell_mitigation": true,
   "enable_lagrange": true,
   "lagrange_r_target": 0.175,
   "lagrange_tolerance": 0.0775,
   "lagrange_eta": 0.02575,
-  
+
   "checkpoint_dir": "checkpoints/ppo_100k_optimized",
   "model_dir": "models"
 }

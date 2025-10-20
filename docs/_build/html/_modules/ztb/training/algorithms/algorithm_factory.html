@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.training.algorithms.algorithm_factory</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">アルゴリズムのファクトリークラス。</span>
@@ -121,9 +121,9 @@
 <span class="sd">    Registry Patternを使用して、アルゴリズムを動的に登録・生成する。</span>
 <span class="sd">    新しいアルゴリズムを追加する場合は、register()で登録するだけでよい。</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="n">_algorithms</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Type</span><span class="p">[</span><span class="n">BaseRLAlgorithm</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.register">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.register">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -146,11 +146,11 @@
             <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">algorithm_class</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> must be a subclass of BaseRLAlgorithm&quot;</span>
             <span class="p">)</span>
-        
+
         <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="p">[</span><span class="n">algorithm_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span> <span class="o">=</span> <span class="n">algorithm_class</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✅ Registered algorithm: </span><span class="si">{</span><span class="n">algorithm_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.create">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.create">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -173,18 +173,18 @@
 <span class="sd">            &gt;&gt;&gt; model = algorithm.create_model(env, config)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">algorithm_name</span> <span class="o">=</span> <span class="n">algorithm_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
-        
+
         <span class="k">if</span> <span class="n">algorithm_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="p">:</span>
             <span class="n">available</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;Unknown algorithm: &#39;</span><span class="si">{</span><span class="n">algorithm_name</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
                 <span class="sa">f</span><span class="s2">&quot;Available algorithms: [</span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">]&quot;</span>
             <span class="p">)</span>
-        
+
         <span class="n">algorithm_class</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="p">[</span><span class="n">algorithm_name</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">algorithm_class</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.list_algorithms">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.list_algorithms">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -201,7 +201,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span></div>
 
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.is_registered">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.is_registered">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -223,7 +223,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">algorithm_name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_algorithms</span></div>
 
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.unregister">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.unregister">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -248,7 +248,7 @@
             <span class="k">return</span> <span class="kc">True</span>
         <span class="k">return</span> <span class="kc">False</span></div>
 
-    
+
 <div class="viewcode-block" id="AlgorithmFactory.get_info">
 <a class="viewcode-back" href="../../../../api/generated/ztb.training.algorithms.html#ztb.training.algorithms.algorithm_factory.AlgorithmFactory.get_info">[docs]</a>
     <span class="nd">@classmethod</span>
@@ -291,7 +291,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -302,7 +302,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

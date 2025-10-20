@@ -10,7 +10,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=8d563738"></script>
@@ -18,17 +18,17 @@
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -90,7 +90,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <section class="tex2jax_ignore mathjax_ignore" id="training-module-architecture-refactoring">
 <h1>Training Module Architecture Refactoring<a class="headerlink" href="#training-module-architecture-refactoring" title="Link to this heading"></a></h1>
 <section id="id1">
@@ -267,14 +267,14 @@
     <span class="k">def</span><span class="w"> </span><span class="nf">train</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
         <span class="c1"># 進捗バーを開始</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_progress_bar</span><span class="p">(</span><span class="n">total_steps</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Training&quot;</span><span class="p">)</span>
-        
+
         <span class="c1"># エントロピースケジュールを設定</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">configure_entropy_schedule</span><span class="p">(</span>
             <span class="n">schedule_type</span><span class="o">=</span><span class="s2">&quot;cosine_decay&quot;</span><span class="p">,</span>
             <span class="n">initial_ent_coef</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
             <span class="n">final_ent_coef</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># トレーニングループ...</span>
 </pre></div>
 </div>
@@ -371,7 +371,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -382,7 +382,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

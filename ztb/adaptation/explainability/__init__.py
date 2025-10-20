@@ -11,7 +11,7 @@ Features:
 
 from .analyzer import ExplainabilityAnalyzer
 from .config import ExplainabilityConfig
-from .types import ExplanationResult, FeatureImportance, DecisionExplanation
+from .types import DecisionExplanation, ExplanationResult, FeatureImportance
 
 __all__ = [
     "ExplainabilityAnalyzer",

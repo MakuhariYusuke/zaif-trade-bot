@@ -2,16 +2,16 @@
   "session_id": "ppo_high_entropy_v372",
   "algorithm": "ppo",
   "description": "Experiment 4: 超高エントロピー (ent_coef=0.1) - 探索最大化",
-  
+
   "comment_experiment": "Experiment 4: Maximum exploration via high entropy coefficient",
   "comment_strategy": "10x entropy (0.01→0.1) + v371 reward settings",
   "comment_target": "HOLD <45%, High exploration, Diverse actions",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -44,7 +44,7 @@
       "action_diversity_bonus": 0.01
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -53,7 +53,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -66,15 +66,15 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_changes": "Key changes from v371:",
   "changes": [
     "ent_coef: 0.05 → 0.1 (2x, 10x from baseline 0.01)",
     "Other settings: Identical to v371"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "<45%",
     "buy_sell_rate_target": ">55%",

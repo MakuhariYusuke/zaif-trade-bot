@@ -1,7 +1,7 @@
 # 第8回 外部AIレビュー依頼
 
-**日付:** 2025年10月8日  
-**レビュー対象:** Zaif Trade Bot - Bitcoin自動取引システム  
+**日付:** 2025年10月8日
+**レビュー対象:** Zaif Trade Bot - Bitcoin自動取引システム
 **レビュー戦略:** デュアルレビュー（2名の独立AI専門家による並行レビュー）
 
 ---
@@ -80,7 +80,7 @@ def get_action_mask(self) -> np.ndarray:
     """Returns: [hold_valid, buy_valid, sell_valid]
                 Indices: ACTION_HOLD=0, ACTION_BUY=1, ACTION_SELL=2"""
     mask = np.array([True, True, True], dtype=bool)  # [HOLD, BUY, SELL]
-    
+
 def _get_forced_close_mask(self) -> np.ndarray:
     if self.current_position > 0:
         # Long: only SELL allowed → [False, False, True]
@@ -88,13 +88,13 @@ def _get_forced_close_mask(self) -> np.ndarray:
     elif self.current_position < 0:
         # Short: only BUY allowed → [False, True, False]
         return np.array([False, True, False], dtype=bool)
-        
+
 def _block_closing_actions(self, mask):
     if self.current_position > 0:
         mask[2] = False  # Block SELL (index 2)
     elif self.current_position < 0:
         mask[1] = False  # Block BUY (index 1)
-        
+
 def _apply_position_constraints(self, mask):
     if self.current_position > 0:
         mask[1] = False  # Long: block BUY (index 1)
@@ -113,7 +113,7 @@ def _apply_position_constraints(self, mask):
 # ロングポジション + 強制決済
 mask = [False, False, True]  # HOLDとBUYブロック、SELLのみ許可
 
-# ショートポジション + 強制決済  
+# ショートポジション + 強制決済
 mask = [False, True, False]  # HOLDとSELLブロック、BUYのみ許可
 
 # ロングポジション + min_holding_period未満
@@ -131,7 +131,7 @@ mask = [True, False, False]  # SELLブロック、HOLDとBUYのみ許可
 
 if action == ACTION_SELL:
     sell_warmup_trades = self.config.get("sell_warmup_trades", 2)
-    
+
     # Check if this SELL would OPEN a short position (flat → short)
     if self.position == 0 and self.trades_count < sell_warmup_trades:
         # Only suppress SELL when opening new short during warmup
@@ -139,7 +139,7 @@ if action == ACTION_SELL:
             f"Suppressing SHORT opening in warmup period (trade #{self.trades_count + 1}/{sell_warmup_trades})"
         )
         return False
-    
+
     # After warmup OR when closing long: allow SELL
     return True
 ```
@@ -191,8 +191,8 @@ assert should_trade == True  # ショート開設は許可
 if self._is_maskable_ppo:
     action_mask = self.mask_provider.get_action_mask()
     action, _ = self.model.predict(
-        obs, 
-        deterministic=True, 
+        obs,
+        deterministic=True,
         action_masks=action_mask.reshape(1, -1)
     )
 ```
@@ -344,8 +344,8 @@ if self._is_maskable_ppo:
 
 ---
 
-**レビュー期限:** なし（徹底的に実施してください）  
-**想定所要時間:** 2-3時間  
+**レビュー期限:** なし（徹底的に実施してください）
+**想定所要時間:** 2-3時間
 **レビュアー:** 2名（独立並行レビュー）
 
 ---

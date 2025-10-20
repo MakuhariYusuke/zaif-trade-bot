@@ -9,7 +9,7 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
 
-  
+
       <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../../_static/documentation_options.js?v=8d563738"></script>
@@ -17,17 +17,17 @@
       <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../../search.html" /> 
+    <link rel="search" title="Search" href="../../../../search.html" />
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
 
-          
-          
+
+
           <a href="../../../../index.html" class="icon icon-home">
             Zaif Trade Bot
           </a>
@@ -87,7 +87,7 @@
 </div>
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
-             
+
   <h1>Source code for ztb.optimization.methods.grid_search</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">Grid Search: 全組み合わせを網羅的に探索</span>
@@ -139,7 +139,7 @@
 <span class="sd">        ... )</span>
 <span class="sd">        &gt;&gt;&gt; result = optimizer.optimize()</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">parameter_spaces</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ParameterSpace</span><span class="p">],</span>
@@ -161,18 +161,18 @@
             <span class="n">objective_function</span><span class="o">=</span><span class="n">objective_function</span><span class="p">,</span>
             <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Ensure n_trials is int for type safety</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_trials</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
         <span class="c1"># グリッド解像度の設定</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grid_resolution</span> <span class="o">=</span> <span class="n">grid_resolution</span> <span class="ow">or</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_build_grid</span><span class="p">()</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_build_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;パラメータグリッドを構築&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="p">{}</span>
-        
+
         <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_space</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_spaces</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_resolution</span><span class="p">:</span>
                 <span class="c1"># ユーザー指定のグリッド値を使用</span>
@@ -180,44 +180,44 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># デフォルトのグリッド値を生成</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_default_grid</span><span class="p">(</span><span class="n">param_space</span><span class="p">)</span>
-        
+
         <span class="c1"># 総試行回数を計算</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">n_trials</span> <span class="o">=</span> <span class="mi">1</span>
         <span class="k">for</span> <span class="n">values</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">n_trials</span> <span class="o">*=</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
-        
+
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Grid Search: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">n_trials</span><span class="si">}</span><span class="s2"> 通りの組み合わせを探索&quot;</span><span class="p">)</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_generate_default_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">param_space</span><span class="p">:</span> <span class="n">ParameterSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;デフォルトのグリッド値を生成&quot;&quot;&quot;</span>
         <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-        
+
         <span class="k">if</span> <span class="n">param_space</span><span class="o">.</span><span class="n">param_type</span> <span class="o">==</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CATEGORICAL</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">param_space</span><span class="o">.</span><span class="n">choices</span> <span class="ow">or</span> <span class="p">[]</span>
-        
+
         <span class="k">elif</span> <span class="n">param_space</span><span class="o">.</span><span class="n">param_type</span> <span class="o">==</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">INTEGER</span><span class="p">:</span>
             <span class="c1"># 整数: 最大5ステップ</span>
             <span class="k">if</span> <span class="n">param_space</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">param_space</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">[]</span>
             <span class="n">n_steps</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">high</span> <span class="o">-</span> <span class="n">param_space</span><span class="o">.</span><span class="n">low</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
             <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_space</span><span class="o">.</span><span class="n">high</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">)]</span>
-        
+
         <span class="k">elif</span> <span class="n">param_space</span><span class="o">.</span><span class="n">param_type</span> <span class="o">==</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">CONTINUOUS</span><span class="p">:</span>
             <span class="c1"># 連続値: 5ステップ</span>
             <span class="k">if</span> <span class="n">param_space</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">param_space</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">[]</span>
             <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">low</span><span class="p">,</span> <span class="n">param_space</span><span class="o">.</span><span class="n">high</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-        
+
         <span class="k">elif</span> <span class="n">param_space</span><span class="o">.</span><span class="n">param_type</span> <span class="o">==</span> <span class="n">ParameterType</span><span class="o">.</span><span class="n">LOG_UNIFORM</span><span class="p">:</span>
             <span class="c1"># 対数スケール: 5ステップ</span>
             <span class="k">if</span> <span class="n">param_space</span><span class="o">.</span><span class="n">low</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">param_space</span><span class="o">.</span><span class="n">high</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="k">return</span> <span class="p">[]</span>
-            <span class="n">log_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">low</span><span class="p">),</span> 
+            <span class="n">log_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">low</span><span class="p">),</span>
                                      <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">param_space</span><span class="o">.</span><span class="n">high</span><span class="p">),</span> <span class="mi">5</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="n">x</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">log_values</span><span class="p">]</span>
-        
+
         <span class="k">return</span> <span class="p">[]</span>
-    
+
 <div class="viewcode-block" id="GridSearchOptimizer.optimize">
 <a class="viewcode-back" href="../../../../api/generated/ztb.optimization.methods.html#ztb.optimization.methods.grid_search.GridSearchOptimizer.optimize">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OptimizationResult</span><span class="p">:</span>
@@ -226,28 +226,28 @@
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;  Grid Search 最適化開始&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">()</span>
-        
+
         <span class="c1"># グリッドの表示</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;探索グリッド:&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="n">param_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">values</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        
+
         <span class="c1"># 全組み合わせを生成</span>
         <span class="n">param_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
         <span class="n">param_values</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">param_names</span><span class="p">]</span>
         <span class="n">combinations</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">param_values</span><span class="p">))</span>
-        
+
         <span class="c1"># 各組み合わせで試行</span>
         <span class="k">for</span> <span class="n">trial_id</span><span class="p">,</span> <span class="n">combination</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">combinations</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
             <span class="n">parameters</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">param_names</span><span class="p">,</span> <span class="n">combination</span><span class="p">))</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_run_trial</span><span class="p">(</span><span class="n">trial_id</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)</span>
-        
+
         <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_result</span><span class="p">()</span>
         <span class="n">result</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
-        
+
         <span class="k">return</span> <span class="n">result</span></div>
 </div>
 
@@ -266,7 +266,7 @@
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
     <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
     provided by <a href="https://readthedocs.org">Read the Docs</a>.
-   
+
 
 </footer>
         </div>
@@ -277,7 +277,7 @@
       jQuery(function () {
           SphinxRtdTheme.Navigation.enable(true);
       });
-  </script> 
+  </script>
 
 </body>
 </html>

@@ -13,14 +13,14 @@
   "clip_range": 0.2,
   "gae_lambda": 0.95,
   "seed": 42,
-  
+
   "environment": {
     "transaction_cost": 0.001,
     "max_position_size": 1.0,
     "curriculum_stage": "full",
     "allow_reverse": false
   },
-  
+
   "mitigation": {
     "enable_lagrange": true,
     "enable_probes": true,
@@ -29,14 +29,14 @@
     "enable_target_entropy": true,
     "enable_stratified_sampling": true
   },
-  
+
   "validation": {
     "target_sell_rate_min": 0.12,
     "target_sell_rate_optimal": 0.15,
     "grad_norm_threshold": 1e-6,
     "moving_window": 5000
   },
-  
+
   "output": {
     "checkpoint_dir": "./checkpoints/smoke_test_10k",
     "tensorboard_log": "./logs/smoke_test_10k",
