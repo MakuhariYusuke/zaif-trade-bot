@@ -15,18 +15,18 @@ warnings.warn(
     "Importing from ztb.training.callbacks is deprecated. "
     "Use imports from ztb.training.callbacks_lib instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Re-export all classes from the legacy module for full backward compatibility
 from ztb.training.callbacks.callbacks_legacy import (  # noqa: F401
     BaseTrainingCallback,
+    CheckpointGCCallback,
+    CompositeTrainingCallback,
+    EntropyScheduleCallback,
+    ProgressTrainingCallback,
     SimpleTrainingCallback,
     TradingTrainingCallback,
-    ProgressTrainingCallback,
-    EntropyScheduleCallback,
-    CompositeTrainingCallback,
-    CheckpointGCCallback,
 )
 
 __all__ = [

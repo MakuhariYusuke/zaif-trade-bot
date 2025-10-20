@@ -2,18 +2,18 @@
   "session_id": "ppo_reward_v381_hybrid_optimized_30k",
   "algorithm": "ppo",
   "description": "Hybrid Optimized 30k Test: Quick validation version of v381 for rapid testing",
-  
+
   "comment_purpose": "v381の30kステップクイックテスト版 - 動作確認と初期評価用",
   "comment_parent_config": "ppo_reward_v381_hybrid_optimized.json",
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.007503,
     "n_steps": 1024,
@@ -37,7 +37,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -59,7 +59,7 @@
       "hold_opportunity_cost": 0.01
     }
   },
-  
+
   "training": {
     "total_timesteps": 30000,
     "checkpoint_interval": 2000,
@@ -69,7 +69,7 @@
     "reward_scaling": 0.1,
     "progress_bar": false
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -83,7 +83,7 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "lagrange": {
     "r_target": 0.175,
     "tolerance": 0.042625,
@@ -91,8 +91,8 @@
     "lambda_max": 3.875,
     "warmup_steps": 3874
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_usage": "python run_training.py --config configs/training/ppo_reward_v381_hybrid_optimized_30k.json"
 }

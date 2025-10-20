@@ -63,7 +63,7 @@ from stable_baselines3.common.vec_env import VecEnv
 
 class BaseRLAlgorithm(ABC):
     """強化学習アルゴリズムの基底クラス"""
-    
+
     @abstractmethod
     def create_model(
         self,
@@ -73,17 +73,17 @@ class BaseRLAlgorithm(ABC):
     ) -> BaseAlgorithm:
         """
         モデルを作成する。
-        
+
         Args:
             env: 訓練環境
             config: アルゴリズム設定
             tensorboard_log: TensorBoardログディレクトリ
-            
+
         Returns:
             作成されたモデル
         """
         pass
-    
+
     @abstractmethod
     def train(
         self,
@@ -94,28 +94,28 @@ class BaseRLAlgorithm(ABC):
     ) -> BaseAlgorithm:
         """
         モデルを訓練する。
-        
+
         Args:
             model: 訓練するモデル
             total_timesteps: 総ステップ数
             callback: コールバック関数
             **kwargs: その他のパラメータ
-            
+
         Returns:
             訓練済みモデル
         """
         pass
-    
+
     @abstractmethod
     def get_default_config(self) -> Dict[str, Any]:
         """
         デフォルト設定を取得する。
-        
+
         Returns:
             デフォルト設定の辞書
         """
         pass
-    
+
     @property
     @abstractmethod
     def algorithm_name(self) -> str:
@@ -141,32 +141,32 @@ from .base_algorithm import BaseRLAlgorithm
 
 class AlgorithmFactory:
     """アルゴリズムのファクトリー"""
-    
+
     _algorithms: Dict[str, type] = {}
-    
+
     @classmethod
     def register(cls, algorithm_name: str, algorithm_class: type):
         """
         アルゴリズムを登録する。
-        
+
         Args:
             algorithm_name: アルゴリズム名（例: "ppo"）
             algorithm_class: アルゴリズムクラス
         """
         cls._algorithms[algorithm_name] = algorithm_class
-    
+
     @classmethod
     def create(cls, algorithm_name: str, **kwargs) -> BaseRLAlgorithm:
         """
         アルゴリズムのインスタンスを作成する。
-        
+
         Args:
             algorithm_name: アルゴリズム名
             **kwargs: アルゴリズムのコンストラクタ引数
-            
+
         Returns:
             アルゴリズムインスタンス
-            
+
         Raises:
             ValueError: 未登録のアルゴリズム名
         """
@@ -176,10 +176,10 @@ class AlgorithmFactory:
                 f"Unknown algorithm: {algorithm_name}. "
                 f"Available algorithms: {available}"
             )
-        
+
         algorithm_class = cls._algorithms[algorithm_name]
         return algorithm_class(**kwargs)
-    
+
     @classmethod
     def list_algorithms(cls) -> list[str]:
         """利用可能なアルゴリズムのリストを取得"""
@@ -218,14 +218,14 @@ from .custom_ppo import CustomPPO    # 既存のCustomPPO
 
 class PPOAlgorithm(BaseRLAlgorithm):
     """PPOアルゴリズムの実装"""
-    
+
     def __init__(self):
         self._trainer = None
-    
+
     @property
     def algorithm_name(self) -> str:
         return "ppo"
-    
+
     def create_model(
         self,
         env: VecEnv,
@@ -240,7 +240,7 @@ class PPOAlgorithm(BaseRLAlgorithm):
             tensorboard_log=tensorboard_log
         )
         return self._trainer.model
-    
+
     def train(
         self,
         model: BaseAlgorithm,
@@ -251,13 +251,13 @@ class PPOAlgorithm(BaseRLAlgorithm):
         """PPOモデルを訓練"""
         if self._trainer is None:
             raise RuntimeError("Model not created. Call create_model() first.")
-        
+
         return self._trainer.train(
             total_timesteps=total_timesteps,
             callback=callback,
             **kwargs
         )
-    
+
     def get_default_config(self) -> Dict[str, Any]:
         """PPOのデフォルト設定"""
         return {
@@ -283,7 +283,7 @@ from ztb.training.core.ppo_trainer import PPOTrainer
 class UnifiedTrainer:
     def __init__(self, config: dict):
         self.ppo_trainer = PPOTrainer(...)
-    
+
     def train(self):
         self.ppo_trainer.train(...)
 ```
@@ -296,7 +296,7 @@ class UnifiedTrainer:
     def __init__(self, config: dict):
         algorithm_name = config.get("algorithm", "ppo")  # デフォルトPPO
         self.algorithm = AlgorithmFactory.create(algorithm_name)
-    
+
     def train(self):
         model = self.algorithm.create_model(...)
         self.algorithm.train(model, ...)

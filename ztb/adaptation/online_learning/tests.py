@@ -3,32 +3,35 @@ Unit tests for Online Learning Pipeline
 インクリメンタル学習とストリーミングデータ処理のテスト
 """
 
+import time
 import unittest
+from datetime import datetime, timedelta
+from unittest.mock import patch
+
 import numpy as np
 import torch
 import torch.nn as nn
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
-import time
 
-from ztb.adaptation.online_learning.pipeline import (
-    OnlineLearningPipeline, DriftDetector, ResourceMonitor
-)
 from ztb.adaptation.online_learning.config import OnlineLearningConfig
-from ztb.adaptation.online_learning.types import (
-    DataBatch, LearningMode, UpdateStrategy, MemoryStrategy
+from ztb.adaptation.online_learning.pipeline import (
+    DriftDetector,
+    OnlineLearningPipeline,
+    ResourceMonitor,
 )
+from ztb.adaptation.online_learning.types import DataBatch, MemoryStrategy
 
 
 class SimpleTestModel(nn.Module):
     """テスト用シンプルモデル"""
 
-    def __init__(self, input_size: int = 10, hidden_size: int = 32, output_size: int = 1):
+    def __init__(
+        self, input_size: int = 10, hidden_size: int = 32, output_size: int = 1
+    ):
         super().__init__()
         self.network = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
+            nn.Linear(hidden_size, output_size),
         )
 
     def forward(self, x):
@@ -46,7 +49,10 @@ class TestOnlineLearningPipeline(unittest.TestCase):
         self.pipeline = OnlineLearningPipeline(self.config, self.model)
 
     def tearDown(self):
-        if hasattr(self.pipeline, 'streaming_thread') and self.pipeline.streaming_thread:
+        if (
+            hasattr(self.pipeline, "streaming_thread")
+            and self.pipeline.streaming_thread
+        ):
             self.pipeline.stop_streaming()
 
     def test_initialization(self):
@@ -64,7 +70,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="test_batch_1"
+            batch_id="test_batch_1",
         )
 
         # モデル更新
@@ -73,7 +79,9 @@ class TestOnlineLearningPipeline(unittest.TestCase):
         # 結果検証
         self.assertTrue(result.success)
         self.assertGreater(result.processing_time_ms, 0)
-        self.assertEqual(result.parameter_updates, sum(p.numel() for p in self.model.parameters()))
+        self.assertEqual(
+            result.parameter_updates, sum(p.numel() for p in self.model.parameters())
+        )
 
         # 学習状態更新確認
         self.assertEqual(self.pipeline.learning_state.total_samples_processed, 1)
@@ -91,7 +99,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
                 targets=np.random.randn(16, 1).astype(np.float32),
                 weights=None,
                 timestamps=[datetime.now()] * 16,
-                batch_id=f"batch_{i}"
+                batch_id=f"batch_{i}",
             )
             self.pipeline.update_model(batch)
 
@@ -110,7 +118,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
                 targets=np.random.randn(16, 1).astype(np.float32),
                 weights=None,
                 timestamps=[datetime.now()] * 16,
-                batch_id=f"batch_{i}"
+                batch_id=f"batch_{i}",
             )
             self.pipeline.update_model(batch)
 
@@ -129,7 +137,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=np.ones(16),
             timestamps=[past_time] * 16,
-            batch_id="old_batch"
+            batch_id="old_batch",
         )
         self.pipeline.memory_buffer.append(batch)
 
@@ -147,7 +155,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="checkpoint_test"
+            batch_id="checkpoint_test",
         )
         self.pipeline.update_model(batch)
 
@@ -183,7 +191,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
                 targets=np.random.randn(16, 1).astype(np.float32),
                 weights=None,
                 timestamps=[datetime.now()] * 16,
-                batch_id=f"perf_batch_{i}"
+                batch_id=f"perf_batch_{i}",
             )
             self.pipeline.update_model(batch)
 
@@ -207,13 +215,15 @@ class TestOnlineLearningPipeline(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32) * 10,
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="clip_test"
+            batch_id="clip_test",
         )
 
         result = self.pipeline.update_model(batch)
 
         # 勾配ノルムがクリッピングされていることを確認
-        self.assertLessEqual(result.gradient_norm, self.pipeline.config.gradient_clipping + 0.1)
+        self.assertLessEqual(
+            result.gradient_norm, self.pipeline.config.gradient_clipping + 0.1
+        )
 
     def test_streaming_processing(self):
         """ストリーミング処理テスト"""
@@ -228,7 +238,7 @@ class TestOnlineLearningPipeline(unittest.TestCase):
                     targets=np.random.randn(4, 1).astype(np.float32),
                     weights=None,
                     timestamps=[datetime.now()] * 4,
-                    batch_id=f"stream_batch_{i}"
+                    batch_id=f"stream_batch_{i}",
                 )
                 time.sleep(0.01)  # 短い遅延
 
@@ -258,7 +268,7 @@ class TestDriftDetector(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="init_batch"
+            batch_id="init_batch",
         )
 
         # 初期データではドリフト検知されない
@@ -274,7 +284,7 @@ class TestDriftDetector(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="init_batch"
+            batch_id="init_batch",
         )
         self.detector.detect_drift(initial_batch)
 
@@ -284,7 +294,7 @@ class TestDriftDetector(unittest.TestCase):
             targets=np.random.randn(16, 1).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="drift_batch"
+            batch_id="drift_batch",
         )
 
         drift_detected, drift_type = self.detector.detect_drift(drift_batch)
@@ -304,19 +314,21 @@ class TestDriftDetector(unittest.TestCase):
             targets=np.ones((16, 1)).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="init_batch"
+            batch_id="init_batch",
         )
         detector.detect_drift(initial_batch)
 
         # ほぼ同じデータ（ドリフト検知されないはず）
         np.random.seed(43)  # 異なるシードだが似たデータ
-        similar_features = np.ones((16, 10)).astype(np.float32) + 0.001  # 非常に小さな変化
+        similar_features = (
+            np.ones((16, 10)).astype(np.float32) + 0.001
+        )  # 非常に小さな変化
         similar_batch = DataBatch(
             features=similar_features,
             targets=np.ones((16, 1)).astype(np.float32),
             weights=None,
             timestamps=[datetime.now()] * 16,
-            batch_id="similar_batch"
+            batch_id="similar_batch",
         )
 
         drift_detected, drift_type = detector.detect_drift(similar_batch)
@@ -348,8 +360,8 @@ class TestResourceMonitor(unittest.TestCase):
         # メモリ使用量確認
         self.assertGreater(metrics.memory_usage_mb, 0.0)
 
-    @patch('torch.cuda.is_available', return_value=True)
-    @patch('torch.cuda.memory_allocated', return_value=1024*1024*1024)  # 1GB
+    @patch("torch.cuda.is_available", return_value=True)
+    @patch("torch.cuda.memory_allocated", return_value=1024 * 1024 * 1024)  # 1GB
     def test_gpu_metrics(self, mock_memory, mock_cuda_available):
         """GPUメトリクステスト"""
         metrics = self.monitor.get_metrics()
@@ -359,7 +371,7 @@ class TestResourceMonitor(unittest.TestCase):
         if metrics.gpu_memory_mb is not None:
             self.assertGreater(metrics.gpu_memory_mb, 0.0)
 
-    @patch('torch.cuda.is_available', return_value=False)
+    @patch("torch.cuda.is_available", return_value=False)
     def test_no_gpu_metrics(self, mock_cuda_available):
         """GPUなし環境テスト"""
         metrics = self.monitor.get_metrics()
@@ -379,22 +391,22 @@ class TestOnlineLearningSACTrainer(unittest.TestCase):
         self.online_config.max_memory_samples = 100
 
         self.sac_config = {
-            'learning_rate': 0.001,
-            'batch_size': 64,
-            'gamma': 0.99,
-            'tau': 0.005,
-            'alpha': 0.2
+            "learning_rate": 0.001,
+            "batch_size": 64,
+            "gamma": 0.99,
+            "tau": 0.005,
+            "alpha": 0.2,
         }
 
         self.env_config = {
-            'observation_space': {'shape': (10,)},
-            'action_space': {'n': 3}
+            "observation_space": {"shape": (10,)},
+            "action_space": {"n": 3},
         }
 
         self.trainer = OnlineLearningSACTrainer(
             online_config=self.online_config,
             sac_config=self.sac_config,
-            env_config=self.env_config
+            env_config=self.env_config,
         )
 
     def tearDown(self):
@@ -412,5 +424,5 @@ class TestOnlineLearningSACTrainer(unittest.TestCase):
         self.assertIsNone(self.trainer.data_stream)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

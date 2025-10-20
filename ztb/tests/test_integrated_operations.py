@@ -4,20 +4,19 @@
 Integrated Operations Management System Test
 """
 
-import sys
-import os
-import time
 import logging
-from datetime import datetime
+import os
+import sys
+import time
 
 # プロジェクトルートをパスに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
-from ztb.adaptation.monitoring.config import MonitoringConfig
-from ztb.adaptation.safety.config import SafetyConfig
-from ztb.adaptation.online_learning.config import OnlineLearningConfig
 from ztb.adaptation.monitoring.config import MonitoringConfig, ScalabilityConfig
+from ztb.adaptation.online_learning.config import OnlineLearningConfig
 from ztb.adaptation.operations.config import OperationsConfig
+from ztb.adaptation.safety.config import SafetyConfig
+
 
 # SACConfigの代わりに直接設定を作成
 class MockSACConfig:
@@ -27,13 +26,14 @@ class MockSACConfig:
         self.online_learning = OnlineLearningConfig()
         self.operations = OperationsConfig()
         self.scalability = ScalabilityConfig()
-from ztb.adaptation.operations.manager import IntegratedOperationsManager
+
+
 from ztb.adaptation.operations.config import IntegratedOperationsConfig
+from ztb.adaptation.operations.manager import IntegratedOperationsManager
 
 # ログ設定
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def test_integrated_operations():
             scalability_enabled=True,
             online_learning_enabled=False,  # テストでは無効
             health_check_interval_seconds=5,  # テスト用に短く
-            component_sync_interval_seconds=10
+            component_sync_interval_seconds=10,
         )
 
         # 統合マネージャーの初期化
@@ -109,7 +109,9 @@ def test_configuration_validation():
 
         # 無効な設定（負の値）
         try:
-            invalid_config = IntegratedOperationsConfig(health_check_interval_seconds=-1)
+            invalid_config = IntegratedOperationsConfig(
+                health_check_interval_seconds=-1
+            )
             logger.error("Should have failed with negative interval")
             return False
         except ValueError:

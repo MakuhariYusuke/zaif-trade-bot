@@ -13,15 +13,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from ztb.utils.config import ZTBConfig
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.project_setup import setup_project_path
-from ztb.utils.config import ZTBConfig
 
 # Setup project path
 setup_project_path(Path(__file__))
 
-from ztb.training.config.ppo_config import get_ppo_config
 from ztb.training.archive.ppo_trainer_old import PPOTrainer  # noqa: E402
+from ztb.training.config.ppo_config import get_ppo_config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,24 +33,26 @@ def simulate_policy_updates(
     try:
         # Get base PPO config and override clip_range
         config: Dict[str, Any] = dict(get_ppo_config({"clip_range": clip_range}))
-        config.update({
-            "algorithm": "ppo",
-            "data_path": "data/ml-dataset-enhanced-balanced.csv",
-            "total_timesteps": 10000,  # Short training for visualization
-            "batch_size": 256,  # Override for visualization
-            "ent_coef": 0.5,  # Override for visualization
-            "tensorboard_log": f"logs/clip_viz_{clip_range}",
-            "model_dir": f"{ZTBConfig().get_model_dir()}/clip_viz_{clip_range}",
-            "checkpoint_dir": f"checkpoints/clip_viz_{clip_range}",
-            "log_dir": f"logs/clip_viz_{clip_range}",
-            "offline_mode": True,
-            "feature_set": "full",
-            "timeframe": "1m",
-            "reward_scaling": 1.0,
-            "transaction_cost": 0.0,
-            "max_position_size": 1.0,
-            "seed": 42,
-        })
+        config.update(
+            {
+                "algorithm": "ppo",
+                "data_path": "data/ml-dataset-enhanced-balanced.csv",
+                "total_timesteps": 10000,  # Short training for visualization
+                "batch_size": 256,  # Override for visualization
+                "ent_coef": 0.5,  # Override for visualization
+                "tensorboard_log": f"logs/clip_viz_{clip_range}",
+                "model_dir": f"{ZTBConfig().get_model_dir()}/clip_viz_{clip_range}",
+                "checkpoint_dir": f"checkpoints/clip_viz_{clip_range}",
+                "log_dir": f"logs/clip_viz_{clip_range}",
+                "offline_mode": True,
+                "feature_set": "full",
+                "timeframe": "1m",
+                "reward_scaling": 1.0,
+                "transaction_cost": 0.0,
+                "max_position_size": 1.0,
+                "seed": 42,
+            }
+        )
 
         from ztb.utils.config import get_config_value
 

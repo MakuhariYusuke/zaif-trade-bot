@@ -3,22 +3,24 @@ Unit tests for A/B Testing Framework
 処理時間短縮・メモリ効率を考慮したテスト実装
 """
 
-import unittest
-import numpy as np
-import time
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
 import gc
-import weakref
+import time
+import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+
+import numpy as np
 
 from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
 from ztb.adaptation.ab_test.config import ABTestConfig, ABTestPerformanceConfig
 from ztb.adaptation.ab_test.selector import ModelSelector, TrafficManager
 from ztb.adaptation.ab_test.types import (
-    StatisticalResult, ABTestMetrics, StatisticalTest,
-    ABTestConfiguration, ABTestVariant, ABTestState, ABTestStatus,
-    ABTestResultSummary, ABTestResult
+    ABTestConfiguration,
+    ABTestResult,
+    ABTestResultSummary,
+    ABTestVariant,
+    StatisticalResult,
+    StatisticalTest,
 )
 
 
@@ -35,7 +37,7 @@ class TestABTestAnalyzer(unittest.TestCase):
     def tearDown(self):
         """テスト後のクリーンアップ"""
         # メモリリーク防止のため明示的にクリーンアップ
-        if hasattr(self.analyzer, 'executor'):
+        if hasattr(self.analyzer, "executor"):
             self.analyzer.executor.shutdown(wait=False)
         gc.collect()
 
@@ -112,6 +114,7 @@ class TestABTestAnalyzer(unittest.TestCase):
 
         # メモリ使用量を監視しながら分析（簡易的な方法）
         import sys
+
         memory_before = sys.getsizeof(data_a) + sys.getsizeof(data_b)
 
         result = self.analyzer.analyze_parallel(data_a, data_b)
@@ -175,7 +178,9 @@ class TestABTestAnalyzer(unittest.TestCase):
 
         # 結果が同等であることを確認
         self.assertAlmostEqual(result_single.p_value, result_multi.p_value, places=3)
-        self.assertAlmostEqual(result_single.effect_size, result_multi.effect_size, places=3)
+        self.assertAlmostEqual(
+            result_single.effect_size, result_multi.effect_size, places=3
+        )
 
         # クリーンアップ
         analyzer_single.executor.shutdown(wait=False)
@@ -217,9 +222,7 @@ class TestABTestConfiguration(unittest.TestCase):
     def test_performance_config(self):
         """パフォーマンス設定テスト"""
         perf_config = ABTestPerformanceConfig(
-            max_memory_mb=2048,
-            max_workers=8,
-            batch_size=2000
+            max_memory_mb=2048, max_workers=8, batch_size=2000
         )
 
         self.assertEqual(perf_config.max_memory_mb, 2048)
@@ -247,14 +250,14 @@ class TestModelSelector(unittest.TestCase):
             variant_id="variant_a",
             model_path="/path/to/model_a",
             model_version="1.0",
-            description="Model A"
+            description="Model A",
         )
 
         variant_b = ABTestVariant(
             variant_id="variant_b",
             model_path="/path/to/model_b",
             model_version="1.0",
-            description="Model B"
+            description="Model B",
         )
 
         test_config = ABTestConfiguration(
@@ -262,7 +265,7 @@ class TestModelSelector(unittest.TestCase):
             name="Test A/B",
             description="Basic test",
             variant_a=variant_a,
-            variant_b=variant_b
+            variant_b=variant_b,
         )
 
         # 統計結果作成
@@ -276,7 +279,7 @@ class TestModelSelector(unittest.TestCase):
             mean_a=0.05,
             mean_b=0.07,
             std_a=0.02,
-            std_b=0.025
+            std_b=0.025,
         )
 
         result_summary = ABTestResultSummary(
@@ -286,14 +289,14 @@ class TestModelSelector(unittest.TestCase):
             confidence_level=0.95,
             statistical_result=stat_result,
             risk_assessment={"overall_risk": "low"},
-            recommendations=["Deploy variant B"]
+            recommendations=["Deploy variant B"],
         )
 
         # テスト状態（モック）- 簡略化のため最小限のデータ
         class MockTestState:
             def __init__(self):
-                self.metrics_a = type('MockMetrics', (), {'sample_count': 1000})()
-                self.metrics_b = type('MockMetrics', (), {'sample_count': 1000})()
+                self.metrics_a = type("MockMetrics", (), {"sample_count": 1000})()
+                self.metrics_b = type("MockMetrics", (), {"sample_count": 1000})()
                 self.regression_detected = False
 
         test_state = MockTestState()
@@ -309,14 +312,14 @@ class TestModelSelector(unittest.TestCase):
             variant_id="variant_a",
             model_path="/path/to/model_a",
             model_version="1.0",
-            description="Model A"
+            description="Model A",
         )
 
         variant_b = ABTestVariant(
             variant_id="variant_b",
             model_path="/path/to/model_b",
             model_version="1.0",
-            description="Model B"
+            description="Model B",
         )
 
         test_config = ABTestConfiguration(
@@ -324,7 +327,7 @@ class TestModelSelector(unittest.TestCase):
             name="Test A/B",
             description="No winner test",
             variant_a=variant_a,
-            variant_b=variant_b
+            variant_b=variant_b,
         )
 
         stat_result = StatisticalResult(
@@ -337,7 +340,7 @@ class TestModelSelector(unittest.TestCase):
             mean_a=0.05,
             mean_b=0.051,
             std_a=0.02,
-            std_b=0.02
+            std_b=0.02,
         )
 
         result_summary = ABTestResultSummary(
@@ -347,13 +350,13 @@ class TestModelSelector(unittest.TestCase):
             confidence_level=0.95,
             statistical_result=stat_result,
             risk_assessment={"overall_risk": "low"},
-            recommendations=["Continue testing"]
+            recommendations=["Continue testing"],
         )
 
         class MockTestState:
             def __init__(self):
-                self.metrics_a = type('MockMetrics', (), {'sample_count': 1000})()
-                self.metrics_b = type('MockMetrics', (), {'sample_count': 1000})()
+                self.metrics_a = type("MockMetrics", (), {"sample_count": 1000})()
+                self.metrics_b = type("MockMetrics", (), {"sample_count": 1000})()
                 self.regression_detected = False
 
         test_state = MockTestState()
@@ -374,7 +377,7 @@ class TestModelSelector(unittest.TestCase):
             mean_a=0.05,
             mean_b=0.07,
             std_a=0.02,
-            std_b=0.025
+            std_b=0.025,
         )
 
         result_summary = ABTestResultSummary(
@@ -384,7 +387,7 @@ class TestModelSelector(unittest.TestCase):
             confidence_level=0.95,
             statistical_result=stat_result,
             risk_assessment={"overall_risk": "low"},
-            recommendations=[]
+            recommendations=[],
         )
 
         confidence = self.selector._calculate_confidence_level(result_summary)
@@ -397,11 +400,13 @@ class TestModelSelector(unittest.TestCase):
             variant_id="variant_a",
             model_path="/path/to/model_a",
             model_version="1.0",
-            description="Model A"
+            description="Model A",
         )
 
         # ロールバックトリガー設定
-        self.selector._setup_rollback_triggers(test_id, variant, {"overall_risk": "high"})
+        self.selector._setup_rollback_triggers(
+            test_id, variant, {"overall_risk": "high"}
+        )
 
         # トリガー存在確認
         self.assertIn(test_id, self.selector.rollback_triggers)
@@ -409,9 +414,11 @@ class TestModelSelector(unittest.TestCase):
         # ロールバック条件チェック（正常）
         metrics = {"performance": 0.05}  # 正常範囲
         timestamp = datetime.now()
-        rollback_triggered = self.selector.check_rollback_conditions(test_id, metrics, timestamp)
+        rollback_triggered = self.selector.check_rollback_conditions(
+            test_id, metrics, timestamp
+        )
         self.assertFalse(rollback_triggered)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

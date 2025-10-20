@@ -2,11 +2,11 @@
   "session_id": "ppo_reward_v380_aggressive",
   "algorithm": "ppo",
   "description": "Reward Improvement v3: Aggressive anti-HOLD - 10x HOLD penalty, 5x profit multiplier, 6x trading bonus, opportunity cost penalty",
-  
+
   "comment_experiment": "v380: Aggressive reward function - maximize trading activity with strong HOLD disincentives",
   "comment_strategy": "Extreme scale adjustments to force active trading - use only if v378/v379 still show excessive HOLD bias",
   "comment_target": "Reduce HOLD rate to 30-40% - high risk, high reward approach",
-  
+
   "comment_reward_improvements": [
     "✅ hold_penalty_weight: 0.005 → 0.05 (10x increase - very aggressive)",
     "✅ consecutive_hold_penalty: 0.002 → 0.03 (15x increase)",
@@ -18,23 +18,23 @@
     "✅ successful_trade_bonus: 1.0 (2x v378 bonus)",
     "✅ NEW: hold_opportunity_cost: 0.02 (additional penalty for missed opportunities)"
   ],
-  
+
   "comment_warnings": [
     "⚠️ High risk configuration - may lead to overtrading",
     "⚠️ Use only if v378/v379 show insufficient trading activity",
     "⚠️ Monitor for excessive transaction costs eating into profits",
     "⚠️ May require higher entropy coefficient to maintain exploration"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -56,7 +56,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -75,7 +75,7 @@
       "hold_opportunity_cost": 0.02
     }
   },
-  
+
   "training": {
     "total_timesteps": 30000,
     "checkpoint_interval": 2000,
@@ -84,7 +84,7 @@
     "n_eval_episodes": 10,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -98,9 +98,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_comparison": "Comparison across all reward versions:",
   "comparison": {
     "v377_baseline": {
@@ -133,7 +133,7 @@
       "note": "Use as last resort if v378/v379 insufficient"
     }
   },
-  
+
   "comment_usage_recommendation": [
     "Step 1: Try v378 first (balanced scale adjustment)",
     "Step 2: If HOLD still >55%, try v379 (market-adaptive)",

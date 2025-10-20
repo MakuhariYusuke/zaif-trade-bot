@@ -6,27 +6,26 @@ Adaptive Feature Selection Manager
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple, Set
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.feature_selection import mutual_info_regression, f_regression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.feature_selection import mutual_info_regression
 from sklearn.preprocessing import StandardScaler
-from scipy import stats
-from scipy.spatial.distance import jensenshannon
 
-from .online_learning.pipeline import OnlineLearningPipeline
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
-
+from .online_learning.pipeline import OnlineLearningPipeline
 
 logger = logging.getLogger(__name__)
 
 
 class FeatureSelectionMethod(Enum):
     """特徴量選択手法"""
+
     CORRELATION_BASED = "correlation_based"  # 相関ベース
     IMPORTANCE_BASED = "importance_based"  # 重要度ベース
     MUTUAL_INFO = "mutual_info"  # 相互情報量
@@ -37,6 +36,7 @@ class FeatureSelectionMethod(Enum):
 
 class MarketCondition(Enum):
     """市場条件"""
+
     TRENDING = "trending"  # トレンド相場
     RANGING = "ranging"  # レンジ相場
     VOLATILE = "volatile"  # 高ボラティリティ
@@ -50,11 +50,13 @@ class AdaptiveFeatureConfig:
     """適応型特徴量選択設定"""
 
     # 選択手法設定
-    enabled_methods: List[FeatureSelectionMethod] = field(default_factory=lambda: [
-        FeatureSelectionMethod.IMPORTANCE_BASED,
-        FeatureSelectionMethod.CORRELATION_BASED,
-        FeatureSelectionMethod.MARKET_CONDITION_BASED
-    ])
+    enabled_methods: List[FeatureSelectionMethod] = field(
+        default_factory=lambda: [
+            FeatureSelectionMethod.IMPORTANCE_BASED,
+            FeatureSelectionMethod.CORRELATION_BASED,
+            FeatureSelectionMethod.MARKET_CONDITION_BASED,
+        ]
+    )
 
     # 特徴量数設定
     min_features: int = 20  # 最小特徴量数
@@ -85,11 +87,13 @@ class AdaptiveFeatureConfig:
 
     # 重み付け設定
     feature_weights: Dict[str, float] = field(default_factory=dict)  # 特徴量別重み
-    method_weights: Dict[FeatureSelectionMethod, float] = field(default_factory=lambda: {
-        FeatureSelectionMethod.IMPORTANCE_BASED: 0.4,
-        FeatureSelectionMethod.CORRELATION_BASED: 0.3,
-        FeatureSelectionMethod.MARKET_CONDITION_BASED: 0.3
-    })
+    method_weights: Dict[FeatureSelectionMethod, float] = field(
+        default_factory=lambda: {
+            FeatureSelectionMethod.IMPORTANCE_BASED: 0.4,
+            FeatureSelectionMethod.CORRELATION_BASED: 0.3,
+            FeatureSelectionMethod.MARKET_CONDITION_BASED: 0.3,
+        }
+    )
 
 
 @dataclass
@@ -122,10 +126,12 @@ class FeatureSelectionResult:
 class AdaptiveFeatureSelector:
     """適応型特徴量選択マネージャー"""
 
-    def __init__(self,
-                 online_learning_pipeline: OnlineLearningPipeline,
-                 evaluation_manager: ContinuousEvaluationManager,
-                 config: Optional[AdaptiveFeatureConfig] = None):
+    def __init__(
+        self,
+        online_learning_pipeline: OnlineLearningPipeline,
+        evaluation_manager: ContinuousEvaluationManager,
+        config: Optional[AdaptiveFeatureConfig] = None,
+    ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
         self.config = config or AdaptiveFeatureConfig()
@@ -152,7 +158,9 @@ class AdaptiveFeatureSelector:
         self.last_adaptation_time: Optional[datetime] = None
 
         # コールバック
-        self.feature_selection_callbacks: List[Callable[[FeatureSelectionResult], None]] = []
+        self.feature_selection_callbacks: List[
+            Callable[[FeatureSelectionResult], None]
+        ] = []
 
         # スレッド管理
         self.adaptation_thread: Optional[threading.Thread] = None
@@ -176,7 +184,9 @@ class AdaptiveFeatureSelector:
             # 重要度モデルを初期化
             self._initialize_importance_models()
 
-            logger.info(f"Initialized with {len(self.all_features)} features, selected {len(self.selected_features)}")
+            logger.info(
+                f"Initialized with {len(self.all_features)} features, selected {len(self.selected_features)}"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize selector: {e}")
@@ -190,8 +200,7 @@ class AdaptiveFeatureSelector:
 
             self.is_active = True
             self.adaptation_thread = threading.Thread(
-                target=self._adaptation_worker,
-                daemon=True
+                target=self._adaptation_worker, daemon=True
             )
             self.adaptation_thread.start()
 
@@ -209,7 +218,9 @@ class AdaptiveFeatureSelector:
             self.adaptation_thread.join(timeout=5.0)
         logger.info("Adaptive feature selection stopped")
 
-    def adapt_features(self, market_data: pd.DataFrame, target: pd.Series) -> FeatureSelectionResult:
+    def adapt_features(
+        self, market_data: pd.DataFrame, target: pd.Series
+    ) -> FeatureSelectionResult:
         """特徴量を適応"""
         try:
             current_time = datetime.now()
@@ -221,13 +232,17 @@ class AdaptiveFeatureSelector:
             selection_results = {}
             for method in self.config.enabled_methods:
                 try:
-                    result = self._select_features_with_method(method, market_data, target, market_condition)
+                    result = self._select_features_with_method(
+                        method, market_data, target, market_condition
+                    )
                     selection_results[method] = result
                 except Exception as e:
                     logger.error(f"Error in {method.value} selection: {e}")
 
             # 結果を統合
-            final_selection = self._combine_selections(selection_results, market_condition, current_time)
+            final_selection = self._combine_selections(
+                selection_results, market_condition, current_time
+            )
 
             # 選択結果を更新
             self.selected_features = final_selection.selected_features
@@ -242,7 +257,9 @@ class AdaptiveFeatureSelector:
             # コールバックを実行
             self._trigger_selection_callbacks(final_selection)
 
-            logger.info(f"Adapted features: selected {len(final_selection.selected_features)} features for {market_condition.value}")
+            logger.info(
+                f"Adapted features: selected {len(final_selection.selected_features)} features for {market_condition.value}"
+            )
             return final_selection
 
         except Exception as e:
@@ -254,7 +271,7 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=self.current_market_condition,
                 timestamp=datetime.now(),
-                reason="Fallback due to adaptation error"
+                reason="Fallback due to adaptation error",
             )
 
     def _evaluate_market_condition(self, market_data: pd.DataFrame) -> MarketCondition:
@@ -264,8 +281,8 @@ class AdaptiveFeatureSelector:
                 return MarketCondition.CALM
 
             # 価格データを取得
-            if 'close' in market_data.columns:
-                prices = market_data['close'].values
+            if "close" in market_data.columns:
+                prices = market_data["close"].values
             else:
                 # 最初の数値列を使用
                 numeric_cols = market_data.select_dtypes(include=[np.number]).columns
@@ -282,7 +299,9 @@ class AdaptiveFeatureSelector:
                 # 簡易的なトレンド強度計算
                 sma_short = pd.Series(prices).rolling(5).mean()
                 sma_long = pd.Series(prices).rolling(20).mean()
-                trend_strength = abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
+                trend_strength = (
+                    abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
+                )
             else:
                 trend_strength = 0.0
 
@@ -304,11 +323,13 @@ class AdaptiveFeatureSelector:
             logger.error(f"Failed to evaluate market condition: {e}")
             return MarketCondition.CALM
 
-    def _select_features_with_method(self,
-                                   method: FeatureSelectionMethod,
-                                   data: pd.DataFrame,
-                                   target: pd.Series,
-                                   market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _select_features_with_method(
+        self,
+        method: FeatureSelectionMethod,
+        data: pd.DataFrame,
+        target: pd.Series,
+        market_condition: MarketCondition,
+    ) -> FeatureSelectionResult:
         """指定された手法で特徴量を選択"""
         try:
             if method == FeatureSelectionMethod.IMPORTANCE_BASED:
@@ -318,7 +339,9 @@ class AdaptiveFeatureSelector:
             elif method == FeatureSelectionMethod.MUTUAL_INFO:
                 return self._mutual_info_selection(data, target, market_condition)
             elif method == FeatureSelectionMethod.MARKET_CONDITION_BASED:
-                return self._market_condition_based_selection(data, target, market_condition)
+                return self._market_condition_based_selection(
+                    data, target, market_condition
+                )
             else:
                 return self._default_selection(data, target, market_condition)
 
@@ -326,10 +349,9 @@ class AdaptiveFeatureSelector:
             logger.error(f"Error in {method.value} selection: {e}")
             return self._default_selection(data, target, market_condition)
 
-    def _importance_based_selection(self,
-                                  data: pd.DataFrame,
-                                  target: pd.Series,
-                                  market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _importance_based_selection(
+        self, data: pd.DataFrame, target: pd.Series, market_condition: MarketCondition
+    ) -> FeatureSelectionResult:
         """重要度ベースの特徴量選択"""
         try:
             # モデルベースの特徴量重要度を計算
@@ -343,11 +365,11 @@ class AdaptiveFeatureSelector:
             y = target.values
 
             # スケーリング
-            if 'importance_scaler' not in self.scalers:
-                self.scalers['importance_scaler'] = StandardScaler()
-                X_scaled = self.scalers['importance_scaler'].fit_transform(X)
+            if "importance_scaler" not in self.scalers:
+                self.scalers["importance_scaler"] = StandardScaler()
+                X_scaled = self.scalers["importance_scaler"].fit_transform(X)
             else:
-                X_scaled = self.scalers['importance_scaler'].transform(X)
+                X_scaled = self.scalers["importance_scaler"].transform(X)
 
             # モデルを訓練
             model.fit(X_scaled, y)
@@ -361,7 +383,9 @@ class AdaptiveFeatureSelector:
             feature_importance_pairs.sort(key=lambda x: x[1], reverse=True)
 
             # 上位特徴量を選択
-            num_features = min(self.config.target_features, len(feature_importance_pairs))
+            num_features = min(
+                self.config.target_features, len(feature_importance_pairs)
+            )
             selected_pairs = feature_importance_pairs[:num_features]
 
             selected_features = [name for name, _ in selected_pairs]
@@ -373,23 +397,22 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason="Importance-based selection using Random Forest"
+                reason="Importance-based selection using Random Forest",
             )
 
         except Exception as e:
             logger.error(f"Importance-based selection failed: {e}")
             return self._default_selection(data, target, market_condition)
 
-    def _correlation_based_selection(self,
-                                   data: pd.DataFrame,
-                                   target: pd.Series,
-                                   market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _correlation_based_selection(
+        self, data: pd.DataFrame, target: pd.Series, market_condition: MarketCondition
+    ) -> FeatureSelectionResult:
         """相関ベースの特徴量選択"""
         try:
             # ターゲットとの相関係数を計算
             correlations = {}
             for col in data.columns:
-                if data[col].dtype in ['int64', 'float64']:
+                if data[col].dtype in ["int64", "float64"]:
                     try:
                         corr = abs(data[col].corr(target))
                         if not np.isnan(corr):
@@ -398,10 +421,14 @@ class AdaptiveFeatureSelector:
                         continue
 
             # 相関の高い特徴量を選択
-            sorted_features = sorted(correlations.items(), key=lambda x: x[1], reverse=True)
+            sorted_features = sorted(
+                correlations.items(), key=lambda x: x[1], reverse=True
+            )
 
             # 相関が閾値以下の特徴量を除外
-            filtered_features = [(name, corr) for name, corr in sorted_features if corr >= 0.1]
+            filtered_features = [
+                (name, corr) for name, corr in sorted_features if corr >= 0.1
+            ]
 
             # 特徴量間の相関をチェック（多重共線性を避ける）
             selected_features = []
@@ -429,17 +456,16 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.CORRELATION_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason="Correlation-based selection with multicollinearity check"
+                reason="Correlation-based selection with multicollinearity check",
             )
 
         except Exception as e:
             logger.error(f"Correlation-based selection failed: {e}")
             return self._default_selection(data, target, market_condition)
 
-    def _mutual_info_selection(self,
-                             data: pd.DataFrame,
-                             target: pd.Series,
-                             market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _mutual_info_selection(
+        self, data: pd.DataFrame, target: pd.Series, market_condition: MarketCondition
+    ) -> FeatureSelectionResult:
         """相互情報量ベースの特徴量選択"""
         try:
             # 数値特徴量のみを使用
@@ -470,17 +496,16 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.MUTUAL_INFO,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason="Mutual information-based selection"
+                reason="Mutual information-based selection",
             )
 
         except Exception as e:
             logger.error(f"Mutual info selection failed: {e}")
             return self._default_selection(data, target, market_condition)
 
-    def _market_condition_based_selection(self,
-                                        data: pd.DataFrame,
-                                        target: pd.Series,
-                                        market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _market_condition_based_selection(
+        self, data: pd.DataFrame, target: pd.Series, market_condition: MarketCondition
+    ) -> FeatureSelectionResult:
         """市場条件ベースの特徴量選択"""
         try:
             # 市場条件に応じた特徴量重み付け
@@ -492,23 +517,36 @@ class AdaptiveFeatureSelector:
                 base_score = 1.0
 
                 # 特徴量タイプに応じた重み付け
-                if any(keyword in feature_name.lower() for keyword in ['trend', 'adx', 'slope']):
+                if any(
+                    keyword in feature_name.lower()
+                    for keyword in ["trend", "adx", "slope"]
+                ):
                     # トレンド系指標
-                    base_score *= condition_weights.get('trend', 1.0)
-                elif any(keyword in feature_name.lower() for keyword in ['rsi', 'stoch', 'williams']):
+                    base_score *= condition_weights.get("trend", 1.0)
+                elif any(
+                    keyword in feature_name.lower()
+                    for keyword in ["rsi", "stoch", "williams"]
+                ):
                     # オシレーター系指標
-                    base_score *= condition_weights.get('oscillator', 1.0)
-                elif any(keyword in feature_name.lower() for keyword in ['bb', 'band', 'atr', 'volatility']):
+                    base_score *= condition_weights.get("oscillator", 1.0)
+                elif any(
+                    keyword in feature_name.lower()
+                    for keyword in ["bb", "band", "atr", "volatility"]
+                ):
                     # ボラティリティ系指標
-                    base_score *= condition_weights.get('volatility', 1.0)
-                elif any(keyword in feature_name.lower() for keyword in ['volume', 'flow']):
+                    base_score *= condition_weights.get("volatility", 1.0)
+                elif any(
+                    keyword in feature_name.lower() for keyword in ["volume", "flow"]
+                ):
                     # 出来高系指標
-                    base_score *= condition_weights.get('volume', 1.0)
+                    base_score *= condition_weights.get("volume", 1.0)
 
                 feature_scores[feature_name] = base_score
 
             # スコアでソート
-            sorted_features = sorted(feature_scores.items(), key=lambda x: x[1], reverse=True)
+            sorted_features = sorted(
+                feature_scores.items(), key=lambda x: x[1], reverse=True
+            )
 
             # 上位特徴量を選択
             num_features = min(self.config.target_features, len(sorted_features))
@@ -523,63 +561,69 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.MARKET_CONDITION_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason=f"Market condition-based selection for {market_condition.value}"
+                reason=f"Market condition-based selection for {market_condition.value}",
             )
 
         except Exception as e:
             logger.error(f"Market condition-based selection failed: {e}")
             return self._default_selection(data, target, market_condition)
 
-    def _get_market_condition_weights(self, market_condition: MarketCondition) -> Dict[str, float]:
+    def _get_market_condition_weights(
+        self, market_condition: MarketCondition
+    ) -> Dict[str, float]:
         """市場条件に応じた重みを取得"""
         try:
             if market_condition == MarketCondition.TRENDING:
                 return {
-                    'trend': 1.5,      # トレンド指標を重視
-                    'oscillator': 0.8, # オシレーターを軽視
-                    'volatility': 1.0,
-                    'volume': 1.2
-                }
+                    "trend": 1.5,
+                    "oscillator": 0.8,
+                    "volatility": 1.0,
+                    "volume": 1.2,
+                }  # トレンド指標を重視  # オシレーターを軽視
             elif market_condition == MarketCondition.RANGING:
                 return {
-                    'trend': 0.7,      # トレンド指標を軽視
-                    'oscillator': 1.4, # オシレーターを重視
-                    'volatility': 0.9,
-                    'volume': 1.0
-                }
+                    "trend": 0.7,
+                    "oscillator": 1.4,
+                    "volatility": 0.9,
+                    "volume": 1.0,
+                }  # トレンド指標を軽視  # オシレーターを重視
             elif market_condition == MarketCondition.VOLATILE:
                 return {
-                    'trend': 1.0,
-                    'oscillator': 1.0,
-                    'volatility': 1.6, # ボラティリティ指標を重視
-                    'volume': 1.3
-                }
+                    "trend": 1.0,
+                    "oscillator": 1.0,
+                    "volatility": 1.6,
+                    "volume": 1.3,
+                }  # ボラティリティ指標を重視
             elif market_condition == MarketCondition.CALM:
                 return {
-                    'trend': 1.1,
-                    'oscillator': 1.1,
-                    'volatility': 0.6, # ボラティリティ指標を軽視
-                    'volume': 0.8
-                }
+                    "trend": 1.1,
+                    "oscillator": 1.1,
+                    "volatility": 0.6,
+                    "volume": 0.8,
+                }  # ボラティリティ指標を軽視
             else:  # NEWS_DRIVEN or TECHNICAL
                 return {
-                    'trend': 1.0,
-                    'oscillator': 1.0,
-                    'volatility': 1.2,
-                    'volume': 1.4  # 出来高を重視
-                }
+                    "trend": 1.0,
+                    "oscillator": 1.0,
+                    "volatility": 1.2,
+                    "volume": 1.4,
+                }  # 出来高を重視
 
         except Exception:
-            return {'trend': 1.0, 'oscillator': 1.0, 'volatility': 1.0, 'volume': 1.0}
+            return {"trend": 1.0, "oscillator": 1.0, "volatility": 1.0, "volume": 1.0}
 
-    def _combine_selections(self,
-                          selection_results: Dict[FeatureSelectionMethod, FeatureSelectionResult],
-                          market_condition: MarketCondition,
-                          timestamp: datetime) -> FeatureSelectionResult:
+    def _combine_selections(
+        self,
+        selection_results: Dict[FeatureSelectionMethod, FeatureSelectionResult],
+        market_condition: MarketCondition,
+        timestamp: datetime,
+    ) -> FeatureSelectionResult:
         """複数の選択結果を統合"""
         try:
             if not selection_results:
-                return self._default_selection(pd.DataFrame(), pd.Series(), market_condition)
+                return self._default_selection(
+                    pd.DataFrame(), pd.Series(), market_condition
+                )
 
             # 全特徴量のスコアを集計
             all_features = set()
@@ -597,7 +641,9 @@ class AdaptiveFeatureSelector:
                     feature_total_scores[feature_name] += weight * method_weight
 
             # スコアでソート
-            sorted_features = sorted(feature_total_scores.items(), key=lambda x: x[1], reverse=True)
+            sorted_features = sorted(
+                feature_total_scores.items(), key=lambda x: x[1], reverse=True
+            )
 
             # 上位特徴量を選択
             num_features = min(self.config.target_features, len(sorted_features))
@@ -609,7 +655,10 @@ class AdaptiveFeatureSelector:
             # 正規化された重みを計算
             total_weight = sum(feature_weights.values())
             if total_weight > 0:
-                feature_weights = {name: weight / total_weight for name, weight in feature_weights.items()}
+                feature_weights = {
+                    name: weight / total_weight
+                    for name, weight in feature_weights.items()
+                }
 
             return FeatureSelectionResult(
                 selected_features=selected_features,
@@ -617,27 +666,34 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,  # 統合結果
                 market_condition=market_condition,
                 timestamp=timestamp,
-                reason=f"Combined selection from {len(selection_results)} methods"
+                reason=f"Combined selection from {len(selection_results)} methods",
             )
 
         except Exception as e:
             logger.error(f"Failed to combine selections: {e}")
-            return self._default_selection(pd.DataFrame(), pd.Series(), market_condition)
+            return self._default_selection(
+                pd.DataFrame(), pd.Series(), market_condition
+            )
 
-    def _default_selection(self,
-                          data: pd.DataFrame,
-                          target: pd.Series,
-                          market_condition: MarketCondition) -> FeatureSelectionResult:
+    def _default_selection(
+        self, data: pd.DataFrame, target: pd.Series, market_condition: MarketCondition
+    ) -> FeatureSelectionResult:
         """デフォルトの特徴量選択"""
         try:
             # 利用可能な特徴量からランダムに選択
-            available_features = list(data.columns) if not data.empty else self.all_features[:self.config.target_features]
+            available_features = (
+                list(data.columns)
+                if not data.empty
+                else self.all_features[: self.config.target_features]
+            )
 
             num_features = min(self.config.target_features, len(available_features))
             selected_features = available_features[:num_features]
 
             # 等しい重み付け
-            feature_weights = {name: 1.0 / len(selected_features) for name in selected_features}
+            feature_weights = {
+                name: 1.0 / len(selected_features) for name in selected_features
+            }
 
             return FeatureSelectionResult(
                 selected_features=selected_features,
@@ -645,40 +701,61 @@ class AdaptiveFeatureSelector:
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason="Default selection (fallback)"
+                reason="Default selection (fallback)",
             )
 
         except Exception as e:
             logger.error(f"Default selection failed: {e}")
             return FeatureSelectionResult(
-                selected_features=self.selected_features[:10] if self.selected_features else [],
-                feature_weights={name: 1.0 for name in (self.selected_features[:10] if self.selected_features else [])},
+                selected_features=self.selected_features[:10]
+                if self.selected_features
+                else [],
+                feature_weights={
+                    name: 1.0
+                    for name in (
+                        self.selected_features[:10] if self.selected_features else []
+                    )
+                },
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=market_condition,
                 timestamp=datetime.now(),
-                reason="Emergency fallback selection"
+                reason="Emergency fallback selection",
             )
 
     def _perform_initial_selection(self) -> FeatureSelectionResult:
         """初期特徴量選択を実行"""
         try:
             # ダミーデータで初期選択
-            dummy_data = pd.DataFrame({
-                f'feature_{i}': np.random.randn(100) for i in range(min(50, len(self.all_features)))
-            })
+            dummy_data = pd.DataFrame(
+                {
+                    f"feature_{i}": np.random.randn(100)
+                    for i in range(min(50, len(self.all_features)))
+                }
+            )
             dummy_target = pd.Series(np.random.randn(100))
 
-            return self._default_selection(dummy_data, dummy_target, MarketCondition.CALM)
+            return self._default_selection(
+                dummy_data, dummy_target, MarketCondition.CALM
+            )
 
         except Exception as e:
             logger.error(f"Initial selection failed: {e}")
             return FeatureSelectionResult(
-                selected_features=self.all_features[:self.config.target_features] if self.all_features else [],
-                feature_weights={name: 1.0 for name in (self.all_features[:self.config.target_features] if self.all_features else [])},
+                selected_features=self.all_features[: self.config.target_features]
+                if self.all_features
+                else [],
+                feature_weights={
+                    name: 1.0
+                    for name in (
+                        self.all_features[: self.config.target_features]
+                        if self.all_features
+                        else []
+                    )
+                },
                 selection_method=FeatureSelectionMethod.IMPORTANCE_BASED,
                 market_condition=MarketCondition.CALM,
                 timestamp=datetime.now(),
-                reason="Initial selection"
+                reason="Initial selection",
             )
 
     def _initialize_importance_models(self) -> None:
@@ -687,9 +764,7 @@ class AdaptiveFeatureSelector:
             for method in self.config.enabled_methods:
                 if method == FeatureSelectionMethod.IMPORTANCE_BASED:
                     self.importance_models[method] = RandomForestRegressor(
-                        n_estimators=100,
-                        random_state=42,
-                        n_jobs=-1
+                        n_estimators=100, random_state=42, n_jobs=-1
                     )
                 elif method == FeatureSelectionMethod.MUTUAL_INFO:
                     # 相互情報量はモデル不要
@@ -705,7 +780,7 @@ class AdaptiveFeatureSelector:
         try:
             # オンライン学習パイプラインから特徴量を取得
             # （実際の実装では適切なメソッドを呼び出す）
-            return [f'feature_{i}' for i in range(156)]  # ダミー特徴量
+            return [f"feature_{i}" for i in range(156)]  # ダミー特徴量
 
         except Exception as e:
             logger.error(f"Failed to get available features: {e}")
@@ -718,9 +793,11 @@ class AdaptiveFeatureSelector:
                 current_time = datetime.now()
 
                 # 適応間隔をチェック
-                if (self.last_adaptation_time is None or
-                    (current_time - self.last_adaptation_time).total_seconds() >= self.config.adaptation_interval_minutes * 60):
-
+                if (
+                    self.last_adaptation_time is None
+                    or (current_time - self.last_adaptation_time).total_seconds()
+                    >= self.config.adaptation_interval_minutes * 60
+                ):
                     # 最新データを取得
                     market_data, target = self._get_latest_data()
 
@@ -746,7 +823,9 @@ class AdaptiveFeatureSelector:
             logger.error(f"Failed to get latest data: {e}")
             return None, None
 
-    def add_selection_callback(self, callback: Callable[[FeatureSelectionResult], None]) -> None:
+    def add_selection_callback(
+        self, callback: Callable[[FeatureSelectionResult], None]
+    ) -> None:
         """特徴量選択コールバックを追加"""
         self.feature_selection_callbacks.append(callback)
 
@@ -763,8 +842,7 @@ class AdaptiveFeatureSelector:
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_selections = [
-                s for s in self.selection_history
-                if s.timestamp > cutoff_time
+                s for s in self.selection_history if s.timestamp > cutoff_time
             ]
 
             return [
@@ -775,7 +853,7 @@ class AdaptiveFeatureSelector:
                     "num_features": len(s.selected_features),
                     "performance_score": s.performance_score,
                     "stability_score": s.stability_score,
-                    "reason": s.reason
+                    "reason": s.reason,
                 }
                 for s in recent_selections
             ]
@@ -784,7 +862,9 @@ class AdaptiveFeatureSelector:
             logger.error(f"Failed to get selection history: {e}")
             return []
 
-    def get_feature_importance_stats(self, feature_name: str, hours: int = 24) -> Dict[str, Any]:
+    def get_feature_importance_stats(
+        self, feature_name: str, hours: int = 24
+    ) -> Dict[str, Any]:
         """特徴量重要度統計を取得"""
         try:
             if feature_name not in self.feature_importance_history:
@@ -792,7 +872,8 @@ class AdaptiveFeatureSelector:
 
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_importance = [
-                imp for imp in self.feature_importance_history[feature_name]
+                imp
+                for imp in self.feature_importance_history[feature_name]
                 if imp.timestamp > cutoff_time
             ]
 
@@ -809,7 +890,7 @@ class AdaptiveFeatureSelector:
                 "std_importance": float(np.std(scores)),
                 "min_importance": float(np.min(scores)),
                 "max_importance": float(np.max(scores)),
-                "latest_importance": scores[-1] if scores else 0.0
+                "latest_importance": scores[-1] if scores else 0.0,
             }
 
         except Exception as e:

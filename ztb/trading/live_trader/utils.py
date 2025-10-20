@@ -35,7 +35,9 @@ def _setup_live_logger() -> logging.Logger:
 
     log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(exist_ok=True)
-    log_file = log_dir / f"live_trading_{datetime.now().strftime('%Y%m%d_%H-%M-%S_%f')}.log"
+    log_file = (
+        log_dir / f"live_trading_{datetime.now().strftime('%Y%m%d_%H-%M-%S_%f')}.log"
+    )
     logger.info(f"log_file: {log_file}")
 
     file_handler = logging.FileHandler(str(log_file))

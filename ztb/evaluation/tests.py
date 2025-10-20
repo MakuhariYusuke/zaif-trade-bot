@@ -73,7 +73,9 @@ def validate_evaluation_success_rate(
     trend = (
         "improving"
         if recent_success_rate > older_success_rate
-        else "declining" if recent_success_rate < older_success_rate else "stable"
+        else "declining"
+        if recent_success_rate < older_success_rate
+        else "stable"
     )
 
     return {
@@ -148,7 +150,9 @@ def test_feature_computation_stability(
         "status": (
             "success"
             if consistent and success_rate >= 0.9
-            else "warning" if success_rate >= 0.7 else "failure"
+            else "warning"
+            if success_rate >= 0.7
+            else "failure"
         ),
         "success_rate": success_rate,
         "consistent": consistent,

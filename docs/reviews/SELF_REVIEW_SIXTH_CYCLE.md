@@ -1,7 +1,7 @@
 # 自己レビュー: 第6回修正 + Bug #27完全修正
 
-**日付:** 2025年10月8日  
-**レビュアー:** AI自己レビュー  
+**日付:** 2025年10月8日
+**レビュアー:** AI自己レビュー
 **対象:** Bugs #27-31の修正 + ActionMaskProvider実装
 
 ---
@@ -40,7 +40,7 @@ def execute_action(self, action: int, ...) -> float:
         gross_pnl = (close_price - self.entry_price) * self.position * size
         exit_fee = close_price * abs(size) * self.transaction_cost
         trade_pnl = gross_pnl - exit_fee
-        
+
         # ここで問題: entry_feeを再度引いている
         # しかし、entry_feeは既にopen_position()時に報酬に反映済み
         entry_cost = self.entry_price * abs(size) * self.transaction_cost
@@ -61,7 +61,7 @@ def execute_action(self, action: int, ...) -> float:
         # 決済処理
         gross_pnl = (close_price - self.entry_price) * self.position * size
         exit_fee = close_price * abs(size) * self.transaction_cost
-        
+
         # エントリー手数料は既にオープン時に計上済みなので、
         # 決済時はexit_feeのみを引く
         trade_pnl = gross_pnl - exit_fee
@@ -84,7 +84,7 @@ def execute_action(self, action: int, ...) -> float:
 **問題詳細:**
 ```python
 self.max_position_size = config_dict.get(
-    "max_position_size", 
+    "max_position_size",
     config_dict.get("min_trade_amount", 0.001)  # ← デフォルト: 0.001 BTC
 )
 ```
@@ -254,8 +254,8 @@ if self.position != 0:
 **問題詳細:**
 ```python
 action, _ = self.model.predict(  # type: ignore
-    obs, 
-    deterministic=True, 
+    obs,
+    deterministic=True,
     action_masks=action_mask.reshape(1, -1)
 )
 ```
@@ -271,8 +271,8 @@ if isinstance(self.model, MaskablePPO):
     from sb3_contrib import MaskablePPO as MaskablePPOType
     model_maskable: MaskablePPOType = self.model
     action, _ = model_maskable.predict(
-        obs, 
-        deterministic=True, 
+        obs,
+        deterministic=True,
         action_masks=action_mask.reshape(1, -1)
     )
 else:
@@ -301,7 +301,7 @@ def test_full_position_lifecycle_with_fees():
     # 1. オープン: trade_pnl = -entry_fee
     # 2. HOLD x N回: trade_pnl = 0
     # 3. クローズ: trade_pnl = gross_pnl - exit_fee (NOT - entry_fee again)
-    
+
     # 期待される累積報酬:
     # open: -5000
     # close: +10000 (gross) - 5000 (exit fee) = +5000
@@ -419,5 +419,5 @@ def test_sell_warmup_trades_initialization():
 
 ---
 
-**レビュアー署名:** AI Self-Review System  
+**レビュアー署名:** AI Self-Review System
 **レビュー完了日:** 2025年10月8日

@@ -16,13 +16,13 @@ Critical Requirements:
 """
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple, cast, Union, Dict
-
-from ztb.trading.constants import ACTION_HOLD
+from typing import Any, Dict, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
+
+from ztb.trading.constants import ACTION_HOLD
 
 
 @dataclass
@@ -33,17 +33,17 @@ class InferenceConfig:
     tiebreaker_tau: float = 0.05  # Margin threshold for tiebreaker
     enable_tiebreaker: bool = True  # Enable tiebreaker logic
     deterministic: bool = True  # Use argmax (True) or sample (False)
-    
+
     # Robustness guards
     min_temperature: float = 0.5  # Minimum safe temperature
     max_temperature: float = 1.5  # Maximum safe temperature
     logits_clip_value: float = 20.0  # Clip logits to [-clip, +clip]
     fallback_action: int = 0  # Fallback action when all actions illegal (HOLD)
-    
+
     # Advantage-aware tiebreaker
     enable_advantage_tiebreaker: bool = True  # Use advantage sign for tiebreaker
     advantage_epsilon: float = 1e-6  # Threshold for advantage comparison
-    
+
     # Cost-aware decode gate
     enable_cost_gate: bool = True  # Enable cost-based filtering
     cost_gate_lambda: float = 1.2  # Cost multiplier (λ): require ΔA ≥ λ * cost
@@ -101,6 +101,7 @@ def decode_action(
     # Guard: Validate temperature range
     if not (config.min_temperature <= config.temperature <= config.max_temperature):
         import warnings
+
         warnings.warn(
             f"Temperature {config.temperature} outside safe range "
             f"[{config.min_temperature}, {config.max_temperature}]. "
@@ -135,6 +136,7 @@ def decode_action(
     mask_sums = mask_np.sum(axis=1)
     if not np.all(mask_sums > 0):
         import warnings
+
         all_illegal_mask = mask_sums == 0
         warnings.warn(
             f"{all_illegal_mask.sum()} observations have no legal actions. "
@@ -154,19 +156,18 @@ def decode_action(
     max_logits = np.max(scaled_logits, axis=1, keepdims=True)
     exp_logits = np.exp(scaled_logits - max_logits)
     sum_exp = exp_logits.sum(axis=1, keepdims=True)
-    
+
     # Guard: Detect NaN/Inf in softmax and retry with higher temperature
     if np.any(~np.isfinite(sum_exp)) or np.any(sum_exp == 0):
         import warnings
-        warnings.warn(
-            "NaN or Inf detected in softmax. Retrying with temperature=1.0."
-        )
+
+        warnings.warn("NaN or Inf detected in softmax. Retrying with temperature=1.0.")
         # Retry with temperature = 1.0
         scaled_logits = masked_logits / 1.0
         max_logits = np.max(scaled_logits, axis=1, keepdims=True)
         exp_logits = np.exp(scaled_logits - max_logits)
         sum_exp = exp_logits.sum(axis=1, keepdims=True)
-        
+
         # If still broken, fall back to uniform distribution over legal actions
         if np.any(~np.isfinite(sum_exp)) or np.any(sum_exp == 0):
             warnings.warn(
@@ -186,11 +187,11 @@ def decode_action(
             advantages_np = advantages.detach().cpu().numpy()
         else:
             advantages_np = np.array(advantages)
-        
+
         # Handle single observation case
         if advantages_np.ndim == 1:
             advantages_np = advantages_np[np.newaxis, :]
-    
+
     # Step 4 & 5 & 6: Action selection with advantage-aware tiebreaker and cost gate
     actions = np.zeros(batch_size, dtype=np.int32)
     tiebreaker_activated = np.zeros(batch_size, dtype=bool)
@@ -213,11 +214,11 @@ def decode_action(
 
         top1_action = top2_actions[i, 0]
         top2_action = top2_actions[i, 1]
-        
+
         # Initialize selected action with top1 (default)
         selected_action = top1_action
         tiebreaker_reason: Optional[str] = None
-        
+
         # Advantage-aware tiebreaker (Priority 1: strongest signal)
         if (
             config.enable_advantage_tiebreaker
@@ -227,13 +228,16 @@ def decode_action(
         ):
             adv_top1 = advantages_np[i, top1_action]
             adv_top2 = advantages_np[i, top2_action]
-            
+
             # If top2 has positive advantage and top1 has non-positive advantage
-            if adv_top2 > config.advantage_epsilon and adv_top1 <= config.advantage_epsilon:
+            if (
+                adv_top2 > config.advantage_epsilon
+                and adv_top1 <= config.advantage_epsilon
+            ):
                 selected_action = top2_action
                 tiebreaker_activated[i] = True
                 tiebreaker_reason = "advantage_sign"
-        
+
         # Probability-margin tiebreaker (Priority 2: if advantage-tiebreaker did not trigger)
         if (
             not tiebreaker_activated[i]
@@ -247,11 +251,11 @@ def decode_action(
             selected_action = top2_action
             tiebreaker_activated[i] = True
             tiebreaker_reason = "prob_margin"
-        
+
         # Stochastic sampling (if not deterministic)
         if not config.deterministic and not tiebreaker_activated[i]:
             selected_action = np.random.choice(n_actions, p=probs)
-        
+
         # Cost-aware gate (Priority 3: filter out unprofitable actions)
         if (
             config.enable_cost_gate
@@ -263,15 +267,19 @@ def decode_action(
             # Estimate cost of position change
             total_cost = config.transaction_cost + config.slippage
             estimated_costs[i] = total_cost
-            
+
             # Calculate advantage delta
             adv_selected = advantages_np[i, selected_action]
-            adv_current = advantages_np[i, current_position] if current_position < len(advantages_np[i]) else 0.0
+            adv_current = (
+                advantages_np[i, current_position]
+                if current_position < len(advantages_np[i])
+                else 0.0
+            )
             advantage_delta = adv_selected - adv_current
-            
+
             # Apply cost gate: require delta_A >= lambda * cost
             cost_threshold = config.cost_gate_lambda * total_cost
-            
+
             if advantage_delta < cost_threshold:
                 # Cost gate triggered: fall back to HOLD
                 selected_action = 0  # HOLD
@@ -279,7 +287,7 @@ def decode_action(
                 # Cancel tiebreaker if cost gate overrides
                 tiebreaker_activated[i] = False
                 tiebreaker_reason = None
-        
+
         actions[i] = selected_action
         tiebreaker_reasons[i] = tiebreaker_reason
 
@@ -337,9 +345,7 @@ def compute_legal_sell_rate(
     sell_actions = np.sum(actions == SELL_ACTION)
 
     # Legal SELL rate: among steps where SELL was legal, how often was it chosen?
-    legal_sell_rate = (
-        sell_actions / legal_sell_steps if legal_sell_steps > 0 else 0.0
-    )
+    legal_sell_rate = sell_actions / legal_sell_steps if legal_sell_steps > 0 else 0.0
     overall_sell_rate = sell_actions / total_steps if total_steps > 0 else 0.0
 
     return {

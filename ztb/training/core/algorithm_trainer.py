@@ -11,14 +11,14 @@ REFACTORED (2025-10-11):
 
 from typing import Any, Dict
 
+# Legacy PPO trainer (deprecated, use AlgorithmFactory instead)
+# from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
+from ztb.training.algorithms import AlgorithmFactory  # 🆕 New architecture
 from ztb.training.core.config_manager import ConfigManager
 from ztb.training.trainers.base_ml_trainer import BaseMLAlgorithmTrainer
 from ztb.training.trainers.curriculum_trainer import CurriculumAlgorithmTrainer
 from ztb.training.trainers.ensemble_trainer import EnsembleAlgorithmTrainer
 from ztb.training.trainers.iterative_trainer import IterativeAlgorithmTrainer
-# Legacy PPO trainer (deprecated, use AlgorithmFactory instead)
-# from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
-from ztb.training.algorithms import AlgorithmFactory  # 🆕 New architecture
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -27,13 +27,15 @@ logger = get_logger(__name__)
 class AlgorithmTrainer:
     """
     Factory and interface for algorithm-specific trainers.
-    
+
     ARCHITECTURE (2025-10-11):
     - PPO: Uses new AlgorithmFactory (pluggable architecture)
     - Others: Legacy trainers (to be migrated to AlgorithmFactory)
     """
 
-    def __init__(self, config_manager: ConfigManager, progress_bar_enabled: bool = False):
+    def __init__(
+        self, config_manager: ConfigManager, progress_bar_enabled: bool = False
+    ):
         """
         Initialize algorithm trainer.
 
@@ -47,7 +49,7 @@ class AlgorithmTrainer:
 
         # 🆕 New architecture: Use AlgorithmFactory for PPO
         # No need to pre-initialize PPO trainer, will be created on-demand
-        
+
         # Legacy trainers (to be migrated)
         self.base_ml_trainer = BaseMLAlgorithmTrainer(config_manager)
         self.iterative_trainer = IterativeAlgorithmTrainer(config_manager)
@@ -81,35 +83,47 @@ class AlgorithmTrainer:
             return self.curriculum_trainer.train(unified_config)
         else:
             raise ValueError(f"Unknown algorithm: {algorithm}")
-    
-    def _train_with_algorithm_factory(self, algorithm: str, unified_config: Dict[str, Any]) -> Any:
+
+    def _train_with_algorithm_factory(
+        self, algorithm: str, unified_config: Dict[str, Any]
+    ) -> Any:
         """
         Train using AlgorithmFactory (new architecture).
-        
+
         Args:
             algorithm: Algorithm name ("ppo", "sac", etc.)
             unified_config: Unified configuration
-            
+
         Returns:
             Training result
         """
         # Create algorithm instance
         algo = AlgorithmFactory.create(algorithm)
         self.logger.info(f"✅ Created algorithm: {algo}")
-        
+
         # Select appropriate trainer based on algorithm
         if algorithm == "ppo":
             # Use legacy PPOAlgorithmTrainer
             from ztb.training.trainers.ppo_trainer import PPOAlgorithmTrainer
-            legacy_trainer = PPOAlgorithmTrainer(self.config_manager, self.progress_bar_enabled)
+
+            legacy_trainer = PPOAlgorithmTrainer(
+                self.config_manager, self.progress_bar_enabled
+            )
             result = legacy_trainer.train(unified_config)
         elif algorithm == "sac":
             # 🆕 Use new SACAlgorithmTrainer
             from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
-            sac_trainer = SACAlgorithmTrainer(self.config_manager, self.progress_bar_enabled)
+
+            sac_trainer = SACAlgorithmTrainer(
+                self.config_manager, self.progress_bar_enabled
+            )
             result = sac_trainer.train(unified_config)
         else:
-            raise ValueError(f"AlgorithmFactory supports {algorithm}, but no trainer implemented yet")
-        
-        self.logger.info(f"🎉 {algorithm.upper()} training completed via AlgorithmFactory")
+            raise ValueError(
+                f"AlgorithmFactory supports {algorithm}, but no trainer implemented yet"
+            )
+
+        self.logger.info(
+            f"🎉 {algorithm.upper()} training completed via AlgorithmFactory"
+        )
         return result

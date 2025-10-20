@@ -313,7 +313,7 @@ if __name__ == "__main__":
         print(f"  {col}: {signal_count} signals")
 
     # Basic statistics
-    print(f"\nBasic feature statistics:")
+    print("\nBasic feature statistics:")
     key_features = [
         "donchian_width",
         "donchian_price_position",

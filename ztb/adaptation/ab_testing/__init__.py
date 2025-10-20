@@ -9,9 +9,9 @@ Features:
 - Multi-armed bandit: 最適モデル選択の自動化
 """
 
-from .framework import ABTestingFramework
 from .config import ABTestingConfig
-from .types import TestVariant, TestResult
+from .framework import ABTestingFramework
+from .types import TestResult, TestVariant
 
 __all__ = [
     "ABTestingFramework",

@@ -6,30 +6,31 @@ Tests a trained model (PPO/SAC) using historical BTC/JPY data.
 """
 
 import argparse
-import json
 import logging
 import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
+from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
-from ztb.trading.constants import(
-    SAC_CONTINUOUS_THRESHOLD, 
-    SAC_CONTINUOUS_THRESHOLD_NEG, 
-    ACTION_HOLD, 
-    ACTION_BUY, 
-    ACTION_SELL,
-)
 
+from ztb.config.manager import ConfigManager
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR  # = 252
+from ztb.trading.constants import (  # 年間取引日数
+    ACTION_BUY,
+    ACTION_HOLD,
+    ACTION_SELL,
+    SAC_CONTINUOUS_THRESHOLD,
+    SAC_CONTINUOUS_THRESHOLD_NEG,
+)
 from ztb.utils.file_utils import safe_json_dump
+from ztb.utils.path_utils import get_file_dir, resolve_path
 from ztb.utils.performance_utils import timed
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = get_file_dir(__file__)
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.environment.environment import HeavyTradingEnv
@@ -70,7 +71,9 @@ def calculate_metrics(
 
     # Sharpe ratio (simplified)
     if returns:
-        sharpe_ratio = np.mean(returns) / (np.std(returns) + 1e-6) * np.sqrt(252)
+        sharpe_ratio = (
+            np.mean(returns) / (np.std(returns) + 1e-6) * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
     else:
         sharpe_ratio = 0.0
 
@@ -151,16 +154,21 @@ def run_backtest(
 
     # Create environment
     if config_path:
-        with open(config_path, 'r') as f:
-            config_data = json.load(f)
-        # Extract environment config
-        env_config = config_data.get("environment", {})
-        # Add reward_settings to env_config so reward_calculator can access them
-        if "reward_settings" in config_data.get("environment", {}):
-            env_config.update(config_data["environment"]["reward_settings"])
+        # Load configuration using new ConfigManager
+        config_manager = ConfigManager.get_instance()
+        global_config = config_manager.load_config(config_path)
+
+        # Extract environment config from global config
+        env_config = (
+            global_config.training.environment.model_dump()
+            if global_config.training and global_config.training.environment
+            else {}
+        )
         env_config["transaction_cost"] = transaction_cost
         # Use curriculum_stage from config if available, otherwise use parameter
-        env_config["curriculum_stage"] = env_config.get("curriculum_stage", curriculum_stage)
+        env_config["curriculum_stage"] = env_config.get(
+            "curriculum_stage", curriculum_stage
+        )
     else:
         env_config = {
             "transaction_cost": transaction_cost,
@@ -202,10 +210,12 @@ def run_backtest(
         # Get action with proper masking for MaskablePPO
         if model_type == "MaskablePPO":
             action_masks = env.get_action_masks()
-            action, _ = model.predict(obs, action_masks=action_masks, deterministic=False)
+            action, _ = model.predict(
+                obs, action_masks=action_masks, deterministic=False
+            )
         else:
             action, _ = model.predict(obs, deterministic=False)
-        
+
         # Convert continuous action to discrete for SAC models
         if model_type == "SAC":
             # SAC uses continuous actions, convert to discrete
@@ -219,7 +229,7 @@ def run_backtest(
             action = discrete_action
         else:
             action = cast(int, action.item() if hasattr(action, "item") else action)
-        
+
         actions_taken.append(action)
 
         obs, _, terminated, truncated, _ = env.step(action)
@@ -237,7 +247,7 @@ def run_backtest(
             entry_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
             entry_time = env.current_step
             logger.info(f"Opened position at step {step}: {current_position}")
-        
+
         # 2. Closing position to flat
         elif abs(last_position) > 0 and abs(current_position) == 0:
             exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
@@ -254,9 +264,11 @@ def run_backtest(
             }
             trades.append(trade)
             logger.info(f"Closed position at step {step}: pnl={pnl}")
-        
+
         # 3. Position reversal (Long→Short or Short→Long)
-        elif (last_position > 0 and current_position < 0) or (last_position < 0 and current_position > 0):
+        elif (last_position > 0 and current_position < 0) or (
+            last_position < 0 and current_position > 0
+        ):
             # Close previous position
             exit_price = env.df.iloc[min(env.current_step, len(env.df) - 1)]["close"]
             pnl = (
@@ -271,8 +283,10 @@ def run_backtest(
                 "position": last_position,
             }
             trades.append(trade)
-            logger.info(f"Reversed position at step {step}: {last_position}→{current_position}, pnl={pnl}")
-            
+            logger.info(
+                f"Reversed position at step {step}: {last_position}→{current_position}, pnl={pnl}"
+            )
+
             # Open new reversed position
             entry_price = exit_price
             entry_time = env.current_step
@@ -373,7 +387,7 @@ def main() -> None:
 
     # Save results if requested
     if args.output:
-        safe_json_dump(results, Path(args.output), indent=2, default=str)
+        safe_json_dump(results, resolve_path(args.output), indent=2, default=str)
         print(f"\nResults saved to {args.output}")
 
 

@@ -2,10 +2,10 @@
 
 ## 📋 プロジェクト概要
 
-**プロジェクト名:** zaif-trade-bot  
-**言語:** Python 3.11+  
-**フレームワーク:** Stable-Baselines3 (MaskablePPO), Gymnasium  
-**目的:** 仮想通貨(BTC/JPY)取引のための強化学習エージェント  
+**プロジェクト名:** zaif-trade-bot
+**言語:** Python 3.11+
+**フレームワーク:** Stable-Baselines3 (MaskablePPO), Gymnasium
+**目的:** 仮想通貨(BTC/JPY)取引のための強化学習エージェント
 **現在の状況:** バグ修正完了、テストPASS、外部レビュー対応済み
 
 ---
@@ -455,7 +455,7 @@ python -m memory_profiler run_training.py --config configs/training/ppo_memory_o
 
 ## 🛠️ 環境情報
 
-**Python:** 3.11+  
+**Python:** 3.11+
 **主要ライブラリ:**
 - stable-baselines3 (MaskablePPO)
 - sb3-contrib
@@ -509,10 +509,10 @@ python -m memory_profiler run_training.py --config configs/training/ppo_memory_o
 
 ---
 
-**レビュー担当者:** [エージェント名]  
-**依頼日:** 2025年10月8日  
-**期限:** なし(できる範囲で)  
-**優先度:** 高  
+**レビュー担当者:** [エージェント名]
+**依頼日:** 2025年10月8日
+**期限:** なし(できる範囲で)
+**優先度:** 高
 **期待成果:** 第三者視点での最終品質確認
 
 よろしくお願いします! 🙏

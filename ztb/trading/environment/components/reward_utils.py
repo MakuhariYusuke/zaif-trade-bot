@@ -11,7 +11,9 @@ class RewardUtils:
     """Utility functions for reward calculation settings and common operations."""
 
     @staticmethod
-    def get_setting_int(settings: Optional[Dict[str, Any]], key: str, default: int) -> int:
+    def get_setting_int(
+        settings: Optional[Dict[str, Any]], key: str, default: int
+    ) -> int:
         """Get integer reward setting with fallback."""
         if settings and key in settings:
             value = settings[key]
@@ -20,7 +22,9 @@ class RewardUtils:
         return default
 
     @staticmethod
-    def get_setting_float(settings: Optional[Dict[str, Any]], key: str, default: float) -> float:
+    def get_setting_float(
+        settings: Optional[Dict[str, Any]], key: str, default: float
+    ) -> float:
         """Get float reward setting with fallback."""
         if settings and key in settings:
             value = settings[key]
@@ -29,7 +33,9 @@ class RewardUtils:
         return default
 
     @staticmethod
-    def get_setting_bool(settings: Optional[Dict[str, Any]], key: str, default: bool) -> bool:
+    def get_setting_bool(
+        settings: Optional[Dict[str, Any]], key: str, default: bool
+    ) -> bool:
         """Get boolean reward setting with fallback."""
         if settings and key in settings:
             value = settings[key]
@@ -42,7 +48,9 @@ class RewardUtils:
         return default
 
     @staticmethod
-    def safe_divide(numerator: float, denominator: float, default: float = 0.0) -> float:
+    def safe_divide(
+        numerator: float, denominator: float, default: float = 0.0
+    ) -> float:
         """Safely divide two numbers, returning default if denominator is zero."""
         return numerator / denominator if denominator != 0 else default
 

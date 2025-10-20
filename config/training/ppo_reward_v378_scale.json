@@ -2,11 +2,11 @@
   "session_id": "ppo_reward_v378_scale",
   "algorithm": "ppo",
   "description": "Reward Improvement v1: Scale-adjusted rewards - 4x HOLD penalty, 3x profit multiplier, 3x trading bonus, exponential consecutive HOLD penalty",
-  
+
   "comment_experiment": "v378: Reward function improvement - basic scale adjustment to reduce HOLD bias",
   "comment_strategy": "Increase HOLD penalty, amplify profit rewards, strengthen trading bonuses, add exponential consecutive HOLD penalty",
   "comment_target": "Reduce HOLD rate from 60-65% to 45-55% with balanced risk",
-  
+
   "comment_reward_improvements": [
     "✅ hold_penalty_weight: 0.005 → 0.02 (4x increase)",
     "✅ consecutive_hold_penalty: 0.002 → 0.01 (5x increase)",
@@ -17,16 +17,16 @@
     "✅ action_diversity_bonus: 0.01 → 0.05 (5x increase)",
     "✅ NEW: successful_trade_bonus: 0.5 (bonus for profitable trades)"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -48,7 +48,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -66,7 +66,7 @@
       "successful_trade_bonus": 0.5
     }
   },
-  
+
   "training": {
     "total_timesteps": 30000,
     "checkpoint_interval": 2000,
@@ -75,7 +75,7 @@
     "n_eval_episodes": 10,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -89,9 +89,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_comparison": "Comparison with baseline:",
   "comparison": {
     "v377_baseline": {

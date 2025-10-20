@@ -11,16 +11,14 @@ Example:
     >>> ppo.train(model, total_timesteps=100000)
 """
 
-from typing import Any, Dict, Optional, Callable
-from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
+from sb3_contrib import MaskablePPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
-from sb3_contrib import MaskablePPO
 
 from ztb.training.algorithms.base_algorithm import BaseRLAlgorithm
 from ztb.training.core.ppo_trainer import PPOTrainerAutoHalt
-from ztb.training.models.custom_ppo import CustomPPO
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -29,19 +27,19 @@ logger = get_logger(__name__)
 class PPOAlgorithm(BaseRLAlgorithm):
     """
     PPO (Proximal Policy Optimization) アルゴリズムの実装。
-    
+
     既存のPPOTrainerをラップし、BaseRLAlgorithmインターフェースを提供する。
     これにより、他のアルゴリズム（SAC, TD3等）と統一的に扱える。
-    
+
     Attributes:
         _trainer: 既存のPPOTrainerインスタンス
         _model: 作成されたPPOモデル
     """
-    
+
     def __init__(self, use_auto_halt: bool = False):
         """
         初期化。
-        
+
         Args:
             use_auto_halt: PPOTrainerAutoHaltを使用するか（デフォルト: False）
         """
@@ -49,12 +47,12 @@ class PPOAlgorithm(BaseRLAlgorithm):
         self._trainer: Optional[PPOTrainerAutoHalt] = None
         self._model: Optional[MaskablePPO] = None
         self._config: Optional[Dict[str, Any]] = None
-    
+
     @property
     def algorithm_name(self) -> str:
         """アルゴリズム名: "ppo" """
         return "ppo"
-    
+
     def create_model(
         self,
         env: VecEnv,
@@ -63,17 +61,17 @@ class PPOAlgorithm(BaseRLAlgorithm):
     ) -> BaseAlgorithm:
         """
         PPOモデルを作成。
-        
+
         既存のPPOTrainerまたはPPOTrainerAutoHaltを使用してモデルを作成する。
-        
+
         Args:
             env: 訓練環境（VecEnv）
             config: PPO設定（ppo_hyperparameters等を含む）
             tensorboard_log: TensorBoardログディレクトリ
-            
+
         Returns:
             作成されたPPOモデル
-            
+
         Example:
             >>> ppo = PPOAlgorithm()
             >>> model = ppo.create_model(
@@ -88,36 +86,38 @@ class PPOAlgorithm(BaseRLAlgorithm):
             ... )
         """
         logger.info(f"Creating PPO model (use_auto_halt={self._use_auto_halt})")
-        
+
         self._config = config
-        
+
         # Use PPOTrainerAutoHalt for all cases
         self._trainer = None  # Will be initialized when needed
-        
-        logger.info(f"✅ PPO model created successfully")
+
+        logger.info("✅ PPO model created successfully")
         # Create a placeholder model for now - actual model creation is handled by trainer
-        self._model = MaskablePPO("MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_log)
+        self._model = MaskablePPO(
+            "MlpPolicy", env, verbose=1, tensorboard_log=tensorboard_log
+        )
         return self._model
-    
+
     def train(
         self,
         model: BaseAlgorithm,
         total_timesteps: int,
         callback: Optional[Callable[..., Any]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> BaseAlgorithm:
         """
         PPOモデルを訓練。
-        
+
         Args:
             model: 訓練するPPOモデル
             total_timesteps: 総ステップ数
             callback: コールバック関数
             **kwargs: その他のパラメータ
-            
+
         Returns:
             訓練済みモデル
-            
+
         Example:
             >>> ppo = PPOAlgorithm()
             >>> model = ppo.create_model(env, config)
@@ -128,24 +128,22 @@ class PPOAlgorithm(BaseRLAlgorithm):
             ... )
         """
         logger.info(f"Training PPO model for {total_timesteps} timesteps")
-        
+
         if self._trainer is None:
-            raise RuntimeError(
-                "Trainer not initialized. Call create_model() first."
-            )
-        
+            raise RuntimeError("Trainer not initialized. Call create_model() first.")
+
         # 既存のPPOTrainer.train()を呼び出す
         # unified_trainer.py の既存ロジックを使用
-        logger.info(f"✅ PPO training completed")
+        logger.info("✅ PPO training completed")
         return model
-    
+
     def get_default_config(self) -> Dict[str, Any]:
         """
         PPOのデフォルト設定を取得。
-        
+
         Returns:
             デフォルト設定の辞書
-            
+
         Note:
             SACAlgorithmと統一したインターフェース。
             ハイパーパラメータのみを返す（ppo_hyperparametersキーは含まない）。
@@ -168,20 +166,20 @@ class PPOAlgorithm(BaseRLAlgorithm):
             "target_kl": None,
             "verbose": 1,
         }
-    
+
     def validate_config(self, config: Dict[str, Any]) -> bool:
         """
         PPO設定の妥当性を検証。
-        
+
         Args:
             config: 検証する設定（PPOハイパーパラメータのみ、またはppo_hyperparametersを含む完全な設定）
-            
+
         Returns:
             設定が妥当ならTrue
-            
+
         Raises:
             ValueError: 必須パラメータが不足している場合
-            
+
         Note:
             SACAlgorithmと同様のインターフェースに統一。
         """
@@ -191,27 +189,31 @@ class PPOAlgorithm(BaseRLAlgorithm):
         else:
             # 直接PPOパラメータが渡された場合
             ppo_params = config
-        
+
         # 必須パラメータの確認
         required_params = ["learning_rate", "n_steps", "batch_size"]
-        
+
         for param in required_params:
             if param not in ppo_params:
                 raise ValueError(f"Missing required PPO parameter: {param}")
-        
+
         # 値の範囲チェック
         if ppo_params["learning_rate"] <= 0:
-            raise ValueError(f"learning_rate must be positive, got {ppo_params['learning_rate']}")
-        
+            raise ValueError(
+                f"learning_rate must be positive, got {ppo_params['learning_rate']}"
+            )
+
         if ppo_params["n_steps"] <= 0:
             raise ValueError(f"n_steps must be positive, got {ppo_params['n_steps']}")
-        
+
         if ppo_params["batch_size"] <= 0:
-            raise ValueError(f"batch_size must be positive, got {ppo_params['batch_size']}")
-        
+            raise ValueError(
+                f"batch_size must be positive, got {ppo_params['batch_size']}"
+            )
+
         logger.debug(f"✅ PPO config validation passed: {ppo_params}")
         return True
-    
+
     def __repr__(self) -> str:
         """PPOアルゴリズムの文字列表現"""
         trainer_type = "AutoHalt" if self._use_auto_halt else "Standard"

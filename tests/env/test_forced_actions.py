@@ -2,9 +2,7 @@
 Test forced actions in HeavyTradingEnv to detect bugs in position management, PnL calculation, and fees.
 """
 
-import numpy as np
 import pandas as pd
-import pytest
 
 from ztb.trading import HeavyTradingEnv
 
@@ -37,7 +35,13 @@ class TestForcedActions:
         # Expected sequence: H(0), B(1), H(0), S(2), H(0)
         actions = [0, 1, 0, 2, 0]
         expected_positions = [0, 1, 1, -1, -1]  # After each action
-        expected_entry_prices = [0.0, 100.5, 100.5, 100.5, 100.5]  # Entry price after action
+        expected_entry_prices = [
+            0.0,
+            100.5,
+            100.5,
+            100.5,
+            100.5,
+        ]  # Entry price after action
         expected_pnls = [0.0, 0.0, 0.0, 0.0, 0.0]  # No price change, so PnL=0
         expected_fees = [0.0, 0.0, 0.0, 0.0, 0.0]  # Zero cost
 
@@ -45,13 +49,19 @@ class TestForcedActions:
             obs, reward, done, truncated, info = env.step(action)
 
             # Validate position
-            assert info["position"] == expected_positions[i], f"Step {i}: Expected position {expected_positions[i]}, got {info['position']}"
+            assert (
+                info["position"] == expected_positions[i]
+            ), f"Step {i}: Expected position {expected_positions[i]}, got {info['position']}"
 
             # Validate entry price
-            assert abs(env.entry_price - expected_entry_prices[i]) < 1e-6, f"Step {i}: Expected entry_price {expected_entry_prices[i]}, got {env.entry_price}"
+            assert (
+                abs(env.entry_price - expected_entry_prices[i]) < 1e-6
+            ), f"Step {i}: Expected entry_price {expected_entry_prices[i]}, got {env.entry_price}"
 
             # Validate PnL
-            assert abs(info["pnl"] - expected_pnls[i]) < 1e-6, f"Step {i}: Expected PnL {expected_pnls[i]}, got {info['pnl']}"
+            assert (
+                abs(info["pnl"] - expected_pnls[i]) < 1e-6
+            ), f"Step {i}: Expected PnL {expected_pnls[i]}, got {info['pnl']}"
 
             # Validate fees (tracked separately if needed)
             # For now, assume fees are deducted from PnL
@@ -84,13 +94,19 @@ class TestForcedActions:
         # Sequence: BUY at 100.0, HOLD at 101.0, SELL at 102.0
         actions = [1, 0, 2]
         expected_positions = [1, 1, -1]
-        expected_pnls = [0.0, 1.0, 0.0]  # BUY: 0, HOLD: +1, SELL: close long (+2) but open short (-102), net 0 for this step
+        expected_pnls = [
+            0.0,
+            1.0,
+            0.0,
+        ]  # BUY: 0, HOLD: +1, SELL: close long (+2) but open short (-102), net 0 for this step
         # Actually, need to calculate properly
 
         for i, action in enumerate(actions):
             obs, reward, done, truncated, info = env.step(action)
 
-            print(f"Step {i}: Action {action}, Position {info['position']}, PnL {info['pnl']}, Entry {env.entry_price}")
+            print(
+                f"Step {i}: Action {action}, Position {info['position']}, PnL {info['pnl']}, Entry {env.entry_price}"
+            )
 
             # Basic validation - no crashes
             assert "position" in info
@@ -127,10 +143,14 @@ class TestForcedActions:
         obs, reward, done, truncated, info_sell = env2.step(0)  # HOLD
 
         # Positions should be symmetric
-        assert info_buy["position"] == -info_sell["position"], f"BUY position {info_buy['position']} vs SELL position {info_sell['position']}"
+        assert (
+            info_buy["position"] == -info_sell["position"]
+        ), f"BUY position {info_buy['position']} vs SELL position {info_sell['position']}"
 
         # PnL should be symmetric (zero in this case)
-        assert abs(info_buy["pnl"] - info_sell["pnl"]) < 1e-6, f"BUY PnL {info_buy['pnl']} vs SELL PnL {info_sell['pnl']}"
+        assert (
+            abs(info_buy["pnl"] - info_sell["pnl"]) < 1e-6
+        ), f"BUY PnL {info_buy['pnl']} vs SELL PnL {info_sell['pnl']}"
 
     def test_illegal_action_masking(self):
         """非法アクションのマスキングを検証"""

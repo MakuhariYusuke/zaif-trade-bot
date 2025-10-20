@@ -4,23 +4,22 @@ Explainability Module Test
 説明可能性モジュールのテスト
 """
 
-import sys
+import logging
 import os
-import numpy as np
+import sys
+
 import torch
 import torch.nn as nn
-import logging
 
 # プロジェクトルートをパスに追加
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 
 from ztb.adaptation.explainability.analyzer import ExplainabilityAnalyzer
 from ztb.adaptation.explainability.config import ExplainabilityConfig
 
 # ログ設定
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class SimpleTradingModel(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
+            nn.Linear(hidden_size, output_size),
         )
         self._version = "1.0.0"
 
@@ -50,9 +49,7 @@ def test_explainability_analyzer():
     try:
         # 設定の初期化
         config = ExplainabilityConfig(
-            enabled=True,
-            generate_natural_language=True,
-            max_features_to_explain=5
+            enabled=True, generate_natural_language=True, max_features_to_explain=5
         )
 
         # アナライザーの初期化
@@ -78,7 +75,7 @@ def test_explainability_analyzer():
             model=model,
             input_data=test_data,
             prediction=predicted_class,
-            background_data=background_data
+            background_data=background_data,
         )
 
         # 結果の検証
@@ -87,11 +84,17 @@ def test_explainability_analyzer():
         assert len(explanation.feature_importance) > 0
         assert explanation.processing_time_seconds > 0
 
-        logger.info(f"Explanation generated successfully in {explanation.processing_time_seconds:.3f}s")
-        logger.info(f"Top features: {[fi.feature_name for fi in explanation.feature_importance[:3]]}")
+        logger.info(
+            f"Explanation generated successfully in {explanation.processing_time_seconds:.3f}s"
+        )
+        logger.info(
+            f"Top features: {[fi.feature_name for fi in explanation.feature_importance[:3]]}"
+        )
 
         if explanation.decision_explanation:
-            logger.info(f"Decision explanation: {explanation.decision_explanation.natural_language_explanation}")
+            logger.info(
+                f"Decision explanation: {explanation.decision_explanation.natural_language_explanation}"
+            )
 
         # キャッシュ機能のテスト
         logger.info("Testing caching functionality...")
@@ -111,6 +114,7 @@ def test_explainability_analyzer():
     except Exception as e:
         logger.error(f"Test failed with error: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -127,9 +131,7 @@ def test_configuration():
 
         # カスタム設定
         custom_config = ExplainabilityConfig(
-            enabled=False,
-            max_features_to_explain=5,
-            generate_natural_language=False
+            enabled=False, max_features_to_explain=5, generate_natural_language=False
         )
         assert custom_config.enabled == False
         assert custom_config.max_features_to_explain == 5

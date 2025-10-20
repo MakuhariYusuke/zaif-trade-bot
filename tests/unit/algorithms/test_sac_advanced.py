@@ -2,8 +2,9 @@
 Unit tests for SAC algorithm with advanced network architectures.
 """
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 from ztb.training.algorithms.sac.sac_algorithm import SACAlgorithm
 from ztb.training.models.advanced_networks import LSTMPolicy, TransformerPolicy
@@ -99,7 +100,10 @@ class TestSACAlgorithmAdvanced:
 
         # Reset and test non-divisible dimensions
         config["transformer_n_heads"] = 7  # 128 not divisible by 7
-        with pytest.raises(ValueError, match="transformer_d_model must be divisible by transformer_n_heads"):
+        with pytest.raises(
+            ValueError,
+            match="transformer_d_model must be divisible by transformer_n_heads",
+        ):
             algorithm.validate_config(config)
 
     def test_validate_config_sequence_length(self):
@@ -120,7 +124,7 @@ class TestSACAlgorithmAdvanced:
         with pytest.raises(ValueError, match="sequence_length must be positive"):
             algorithm.validate_config(config_transformer)
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_lstm_policy(self, mock_sac):
         """Test model creation with LSTM policy."""
         algorithm = SACAlgorithm()
@@ -139,7 +143,7 @@ class TestSACAlgorithmAdvanced:
         call_args = mock_sac.call_args
         assert call_args[1]["policy"] == LSTMPolicy
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_transformer_policy(self, mock_sac):
         """Test model creation with Transformer policy."""
         algorithm = SACAlgorithm()
@@ -158,7 +162,7 @@ class TestSACAlgorithmAdvanced:
         call_args = mock_sac.call_args
         assert call_args[1]["policy"] == TransformerPolicy
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_mlp_policy(self, mock_sac):
         """Test model creation with MLP policy (default)."""
         algorithm = SACAlgorithm()

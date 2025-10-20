@@ -6,16 +6,17 @@ for training callbacks to reduce code duplication across training scripts.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
-
 from stable_baselines3.common.callbacks import BaseCallback
+
 from ztb.trading.environment.constants import continuous_to_discrete_action
 
 if TYPE_CHECKING:
-    from ztb.training.core.base_trainer import BaseTrainer
     from rich.progress import Progress, TaskID
+
+    from ztb.training.core.base_trainer import BaseTrainer
 
 
 class BaseTrainingCallback(BaseCallback, ABC):
@@ -71,7 +72,7 @@ class SimpleTrainingCallback(BaseTrainingCallback):
 
     def _on_rollout_end(self) -> None:
         """Handle rollout end by logging episode info."""
-        if not hasattr(self, 'locals') or 'rewards' not in self.locals:
+        if not hasattr(self, "locals") or "rewards" not in self.locals:
             return
 
         # Log episode info
@@ -106,7 +107,7 @@ class TradingTrainingCallback(BaseTrainingCallback):
 
     def _on_rollout_end(self) -> None:
         """Handle rollout end with trading-specific metrics."""
-        if not hasattr(self, 'locals') or 'rewards' not in self.locals:
+        if not hasattr(self, "locals") or "rewards" not in self.locals:
             return
 
         # Basic episode tracking
@@ -121,8 +122,8 @@ class TradingTrainingCallback(BaseTrainingCallback):
         # Trading-specific metrics
         # Note: These would need to be extracted from the environment info
         # This is a placeholder for actual implementation
-        portfolio_value = getattr(self, '_last_portfolio_value', 10000.0)
-        position_size = getattr(self, '_last_position_size', 0.0)
+        portfolio_value = getattr(self, "_last_portfolio_value", 10000.0)
+        position_size = getattr(self, "_last_position_size", 0.0)
 
         self.portfolio_values.append(portfolio_value)
         self.position_sizes.append(position_size)
@@ -131,7 +132,7 @@ class TradingTrainingCallback(BaseTrainingCallback):
         # Action counting with trading semantics
         action_count: dict[str, int] = {}
         for action in actions:
-            if hasattr(action, '__iter__') and len(action) > 0:
+            if hasattr(action, "__iter__") and len(action) > 0:
                 action_val = action[0] if isinstance(action, (list, tuple)) else action
             else:
                 action_val = action
@@ -151,17 +152,19 @@ class TradingTrainingCallback(BaseTrainingCallback):
     def get_trading_stats(self) -> Dict[str, Any]:
         """Get trading-specific statistics."""
         base_stats = self.get_episode_stats()
-        base_stats.update({
-            "position_sizes": self.position_sizes.copy(),
-            "trade_counts": self.trade_counts.copy(),
-        })
+        base_stats.update(
+            {
+                "position_sizes": self.position_sizes.copy(),
+                "trade_counts": self.trade_counts.copy(),
+            }
+        )
         return base_stats
 
 
 class ProgressTrainingCallback(BaseCallback):
     """
     Training callback with integrated progress tracking.
-    
+
     This callback integrates with BaseTrainer to update training progress
     and optionally display a progress bar using the rich library.
     """
@@ -189,25 +192,25 @@ class ProgressTrainingCallback(BaseCallback):
 
             console = Console()
             self.progress = Progress(console=console)
-            
+
             # Get total timesteps from trainer config if available
             total_timesteps = 100000  # Default
             if hasattr(self.trainer, "config"):
                 total_timesteps = self.trainer.config.get("total_timesteps", 100000)
-            
+
             self.task_id = self.progress.add_task(
-                "[green]Training...",
-                total=total_timesteps,
-                completed=0
+                "[green]Training...", total=total_timesteps, completed=0
             )
             self.progress.start()
         except ImportError:
             from ztb.utils.logging_utils import get_logger
+
             logger = get_logger(__name__)
             logger.warning("Rich not available, progress bar disabled")
             self.enable_progress_bar = False
         except Exception as e:
             from ztb.utils.logging_utils import get_logger
+
             logger = get_logger(__name__)
             logger.warning(f"Failed to start progress bar: {e}")
             self.enable_progress_bar = False
@@ -239,7 +242,7 @@ class ProgressTrainingCallback(BaseCallback):
 class EntropyScheduleCallback(BaseCallback):
     """
     Callback for applying entropy coefficient scheduling during training.
-    
+
     This callback supports various entropy schedules like cosine decay
     to gradually reduce exploration as training progresses.
     """
@@ -255,15 +258,18 @@ class EntropyScheduleCallback(BaseCallback):
         super().__init__(verbose)
         self.schedule_type = schedule_type
         self.initial_ent_coef = initial_ent_coef
-        self.final_ent_coef = final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        self.final_ent_coef = (
+            final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        )
         self.total_timesteps = total_timesteps
 
     def _on_step(self) -> bool:
         """Update entropy coefficient based on schedule."""
         if self.schedule_type == "cosine_decay":
-            from ztb.training.policies.policy_utils import apply_cosine_decay_entropy
             from sb3_contrib import MaskablePPO
-            
+
+            from ztb.training.policies.policy_utils import apply_cosine_decay_entropy
+
             if isinstance(self.model, MaskablePPO):
                 apply_cosine_decay_entropy(
                     self.model,
@@ -272,14 +278,14 @@ class EntropyScheduleCallback(BaseCallback):
                     self.initial_ent_coef,
                     self.final_ent_coef,
                 )
-        
+
         return True
 
 
 class CompositeTrainingCallback(BaseCallback):
     """
     Composite callback that combines multiple callbacks.
-    
+
     This callback allows combining progress tracking, entropy scheduling,
     gradient probe guard, and trainer updates in a single callback instance.
     """
@@ -304,46 +310,53 @@ class CompositeTrainingCallback(BaseCallback):
         self.enable_entropy_schedule = enable_entropy_schedule
         self.enable_grad_probe_guard = enable_grad_probe_guard
         self.enable_tensorboard_metrics = enable_tensorboard_metrics
-        
+
         # Progress tracking
         self.progress: Optional["Progress"] = None
         self.task_id: Optional["TaskID"] = None
-        
+
         # Entropy scheduling
         self.schedule_type = entropy_schedule_type
         self.initial_ent_coef = initial_ent_coef
-        self.final_ent_coef = final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        self.final_ent_coef = (
+            final_ent_coef if final_ent_coef is not None else initial_ent_coef
+        )
         self.total_timesteps = 100000  # Will be updated in _on_training_start
-        
+
         # Gradient probe guard
         self.grad_probe_guard: Optional[Any] = None
         if self.enable_grad_probe_guard:
             try:
-                from ztb.training.utils.grad_probe_guard import GradProbeGuard, GradProbeConfig
-                
+                from ztb.training.utils.grad_probe_guard import (
+                    GradProbeConfig,
+                    GradProbeGuard,
+                )
+
                 # Create config from dict if provided
                 if grad_probe_config:
                     config = GradProbeConfig(**grad_probe_config)
                 else:
                     config = GradProbeConfig()
-                
+
                 # Get checkpoint_dir and session_id from trainer
                 checkpoint_dir = getattr(trainer, "checkpoint_dir", "checkpoints")
                 session_id = getattr(trainer, "session_id", None)
-                
+
                 self.grad_probe_guard = GradProbeGuard(
                     config=config,
                     checkpoint_dir=checkpoint_dir,
                     session_id=session_id,
                     verbose=verbose,
                 )
-                
+
                 from ztb.utils.logging_utils import get_logger
+
                 logger = get_logger(__name__)
                 logger.info("GradProbeGuard enabled")
-                
+
             except ImportError as e:
                 from ztb.utils.logging_utils import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(f"GradProbeGuard disabled: {e}")
                 self.enable_grad_probe_guard = False
@@ -354,7 +367,9 @@ class CompositeTrainingCallback(BaseCallback):
             1: "buy",
             2: "sell",
         }
-        self.action_labels = default_action_labels if action_labels is None else action_labels
+        self.action_labels = (
+            default_action_labels if action_labels is None else action_labels
+        )
 
     def _log_tensorboard_metrics(self) -> None:
         """Record rollout statistics and action distribution to TensorBoard."""
@@ -426,7 +441,7 @@ class CompositeTrainingCallback(BaseCallback):
         # Get total timesteps from trainer config
         if hasattr(self.trainer, "config"):
             self.total_timesteps = self.trainer.config.get("total_timesteps", 100000)
-        
+
         # Initialize progress bar
         if self.enable_progress_bar:
             try:
@@ -436,17 +451,16 @@ class CompositeTrainingCallback(BaseCallback):
                 console = Console()
                 self.progress = Progress(console=console)
                 self.task_id = self.progress.add_task(
-                    "[green]Training...",
-                    total=self.total_timesteps,
-                    completed=0
+                    "[green]Training...", total=self.total_timesteps, completed=0
                 )
                 self.progress.start()
             except (ImportError, Exception) as e:
                 from ztb.utils.logging_utils import get_logger
+
                 logger = get_logger(__name__)
                 logger.warning(f"Progress bar disabled: {e}")
                 self.enable_progress_bar = False
-        
+
         # Initialize grad probe guard
         if self.enable_grad_probe_guard and self.grad_probe_guard:
             self.grad_probe_guard.init_callback()
@@ -470,9 +484,10 @@ class CompositeTrainingCallback(BaseCallback):
 
         # Update entropy coefficient
         if self.enable_entropy_schedule and self.schedule_type == "cosine_decay":
-            from ztb.training.policies.policy_utils import apply_cosine_decay_entropy
             from sb3_contrib import MaskablePPO
-            
+
+            from ztb.training.policies.policy_utils import apply_cosine_decay_entropy
+
             if isinstance(self.model, MaskablePPO):
                 apply_cosine_decay_entropy(
                     self.model,
@@ -481,15 +496,16 @@ class CompositeTrainingCallback(BaseCallback):
                     self.initial_ent_coef,
                     self.final_ent_coef,
                 )
-        
+
         # Check gradient probes
         if self.enable_grad_probe_guard and self.grad_probe_guard:
             self.grad_probe_guard.num_timesteps = self.num_timesteps
             self.grad_probe_guard.locals = self.locals
-            
+
             # Call grad probe guard's _on_step
             if not self.grad_probe_guard._on_step():
                 from ztb.utils.logging_utils import get_logger
+
                 logger = get_logger(__name__)
                 logger.error("🛑 Training halted by GradProbeGuard")
                 return False  # Halt training
@@ -517,13 +533,13 @@ class CompositeTrainingCallback(BaseCallback):
 class CheckpointGCCallback(BaseCallback):
     """
     Callback to run checkpoint garbage collection after each checkpoint save.
-    
+
     Integrates with CheckpointGarbageCollector from scripts/gc_artifacts.py
     to automatically clean up old checkpoints during 1M long-run training.
-    
+
     Usage:
         from ztb.training.callbacks import CheckpointGCCallback
-        
+
         gc_callback = CheckpointGCCallback(
             checkpoint_dir="checkpoints/ensemble_C_1M",
             keep_last=4,
@@ -531,7 +547,7 @@ class CheckpointGCCallback(BaseCallback):
             ttl_days=14,
             check_interval=25000,  # Run GC every 25k steps
         )
-        
+
         model.learn(total_timesteps=1_000_000, callback=gc_callback)
     """
 
@@ -564,8 +580,8 @@ class CheckpointGCCallback(BaseCallback):
         """Execute checkpoint garbage collection."""
         try:
             # Import here to avoid circular dependency
-            from pathlib import Path
             import sys
+            from pathlib import Path
 
             # Add scripts directory to path
             scripts_dir = Path(__file__).parent.parent.parent / "scripts"

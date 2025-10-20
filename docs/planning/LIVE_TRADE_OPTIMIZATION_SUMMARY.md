@@ -66,11 +66,11 @@ def _periodic_cleanup(self) -> None:
         # Trim price history to max size
         if len(self.price_history) > self._price_history_max_size:
             self.price_history = self.price_history[-self._price_history_max_size:]
-        
+
         # Force garbage collection
         import gc
         gc.collect()
-        
+
         self._cleanup_counter = 0
 ```
 
@@ -128,17 +128,17 @@ def _execute_trade(self, side: str, amount: float) -> bool:
 async def get_account_balance(self, currency: Optional[str] = None) -> Dict[str, float]:
     """
     既存のCoincheckAdapterを活用した残高取得
-    
+
     Args:
         currency: Optional currency filter (e.g., 'BTC', 'JPY')
-        
+
     Returns:
         Dict mapping currency to available balance
     """
     if not self.coincheck_adapter:
         logger.warning("Coincheck adapter not available")
         return {}
-    
+
     try:
         balances = await self.coincheck_adapter.get_balance(currency=currency)
         result = {balance.currency: balance.free for balance in balances}

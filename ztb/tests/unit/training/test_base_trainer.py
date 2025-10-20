@@ -7,10 +7,8 @@ and related protocols and utilities.
 
 from unittest.mock import Mock, patch
 
-import pytest
-
-from ztb.training.core.base_trainer import BaseTrainer
 from ztb.training.config.trainer_params import TrainerParams
+from ztb.training.core.base_trainer import BaseTrainer
 
 
 class TestBaseTrainer:
@@ -19,12 +17,12 @@ class TestBaseTrainer:
     def test_trainer_params_initialization(self):
         """Test TrainerParams initialization with valid config."""
         from ztb.training.config.ppo_config import PPOConfig
-        
+
         config = PPOConfig()
         params = TrainerParams(
             data_path="/path/to/data.csv",
             config=config,
-            checkpoint_dir="/path/to/checkpoints"
+            checkpoint_dir="/path/to/checkpoints",
         )
 
         assert params.data_path == "/path/to/data.csv"
@@ -35,12 +33,12 @@ class TestBaseTrainer:
     def test_trainer_params_defaults(self):
         """Test TrainerParams with default values."""
         from ztb.training.config.ppo_config import PPOConfig
-        
+
         config = PPOConfig()
         params = TrainerParams(
             data_path="/path/to/data.csv",
             config=config,
-            checkpoint_dir="/path/to/checkpoints"
+            checkpoint_dir="/path/to/checkpoints",
         )
 
         assert params.data_path == "/path/to/data.csv"
@@ -48,12 +46,12 @@ class TestBaseTrainer:
         assert params.checkpoint_dir == "/path/to/checkpoints"
         assert params.checkpoint_interval == 10000
 
-    @patch('ztb.training.base_trainer.EvalGates')
-    @patch('ztb.training.base_trainer.get_logger')
+    @patch("ztb.training.base_trainer.EvalGates")
+    @patch("ztb.training.base_trainer.get_logger")
     def test_base_trainer_initialization(self, mock_logger, mock_eval_gates):
         """Test BaseTrainer initialization."""
         from ztb.training.config.ppo_config import PPOConfig
-        
+
         # Create a concrete implementation for testing
         class ConcreteTrainer(BaseTrainer):
             def train(self, session_id: str):
@@ -61,7 +59,7 @@ class TestBaseTrainer:
 
             def get_reward_stats(self):
                 return {"mean_reward": 1.0}
-                
+
             def _create_callback(self):
                 return Mock()
 
@@ -69,18 +67,19 @@ class TestBaseTrainer:
         params = TrainerParams(
             data_path="/path/to/data.csv",
             config=config,
-            checkpoint_dir="/path/to/checkpoints"
+            checkpoint_dir="/path/to/checkpoints",
         )
-        
+
         trainer = ConcreteTrainer(params)
 
         assert trainer.data_path == "/path/to/data.csv"
         assert trainer.checkpoint_dir.name == "checkpoints"
         assert trainer.checkpoint_interval == 10000
 
-    @patch('ztb.training.base_trainer.EvalGates')
+    @patch("ztb.training.base_trainer.EvalGates")
     def test_evaluation_gate_checking(self, mock_eval_gates):
         """Test evaluation gate checking functionality."""
+
         class ConcreteTrainer(BaseTrainer):
             def train(self, session_id: str):
                 return Mock()
@@ -93,17 +92,22 @@ class TestBaseTrainer:
 
         # Mock eval gates
         mock_gates_instance = Mock()
-        mock_gates_instance.check_gates.return_value = Mock(passed=True, status="success")
+        mock_gates_instance.check_gates.return_value = Mock(
+            passed=True, status="success"
+        )
         mock_eval_gates.return_value = mock_gates_instance
 
         # Test gate checking
         result = trainer._check_evaluation_gates(1000, {"mean_reward": 2.0})
 
         assert result.passed is True
-        mock_gates_instance.check_gates.assert_called_once_with(1000, {"mean_reward": 2.0})
+        mock_gates_instance.check_gates.assert_called_once_with(
+            1000, {"mean_reward": 2.0}
+        )
 
     def test_reward_stats_tracking(self):
         """Test reward statistics tracking."""
+
         class ConcreteTrainer(BaseTrainer):
             def train(self, session_id: str):
                 return Mock()
@@ -129,6 +133,7 @@ class TestBaseTrainer:
 
     def test_checkpoint_management(self):
         """Test checkpoint saving and loading."""
+
         class ConcreteTrainer(BaseTrainer):
             def train(self, session_id: str):
                 return Mock()
@@ -140,7 +145,7 @@ class TestBaseTrainer:
         trainer = ConcreteTrainer(config)
 
         # Mock checkpoint manager
-        with patch.object(trainer, 'checkpoint_manager') as mock_cm:
+        with patch.object(trainer, "checkpoint_manager") as mock_cm:
             mock_model = Mock()
             trainer._save_checkpoint(mock_model, 5000, "test_session")
 
@@ -150,6 +155,7 @@ class TestBaseTrainer:
 
     def test_progress_tracking(self):
         """Test training progress tracking."""
+
         class ConcreteTrainer(BaseTrainer):
             def train(self, session_id: str):
                 return Mock()
@@ -174,6 +180,7 @@ class TestTrainerProtocol:
 
     def test_protocol_compliance(self):
         """Test that classes can implement TrainerProtocol."""
+
         class MockTrainer:
             def train(self, session_id: str):
                 return "trained_model"
@@ -184,8 +191,8 @@ class TestTrainerProtocol:
         trainer = MockTrainer()
 
         # Test protocol methods exist
-        assert hasattr(trainer, 'train')
-        assert hasattr(trainer, 'get_reward_stats')
+        assert hasattr(trainer, "train")
+        assert hasattr(trainer, "get_reward_stats")
 
         # Test method signatures
         result = trainer.train("test_session")

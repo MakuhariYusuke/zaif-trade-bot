@@ -1,6 +1,6 @@
 # Bug #47, #48, #49 総合修正サマリー
 
-**修正日時**: 2025-10-08  
+**修正日時**: 2025-10-08
 **対象バージョン**: v3.6.4
 
 ---
@@ -13,7 +13,7 @@
 
 ### **Bug #48: reward_settings伝播バグ**
 - **概要**: `reward_settings`が環境に渡されていなかった
-- **修正**: 
+- **修正**:
   - `ztb/training/sell_mitigation_ppo_trainer.py`
   - `ztb/training/trainers/sell_mitigation_trainer.py`
   - 両ファイルの`env_config`に`"reward_settings": self.config.get("reward_settings", {})`を追加
@@ -21,7 +21,7 @@
 ### **Bug #49: profit_bonus_multipliers順序エラー** ⚠️ **最重要**
 - **概要**: 配列順序を誤認し、SELLではなくHOLDを強化していた
 - **影響**: v3.6.1〜v3.6.3の全検証でSELL強化が無効
-- **修正**: 
+- **修正**:
   - 配列順序を`[1.0, 1.0, 3.0]` → `[1.0, 3.0, 1.0]`に変更
   - マジックナンバーインデックスを定数化
 
@@ -129,6 +129,6 @@ python run_training.py --config configs/training/ppo_balanced_mem_optimized.json
 
 ---
 
-**修正バージョン**: v3.6.4  
-**ステータス**: ✅ 全修正完了 → 検証準備完了  
+**修正バージョン**: v3.6.4
+**ステータス**: ✅ 全修正完了 → 検証準備完了
 **重要度**: CRITICAL - 過去3回の検証が全て無効だったため

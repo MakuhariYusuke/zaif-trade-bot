@@ -11,15 +11,11 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from ztb.utils.config_loader import ConfigLoader
 
-from ztb.risk.circuit_breakers import (
-    KillSwitchActivatedError,
-    get_global_kill_switch,
-)
+from ztb.risk.circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 from ztb.risk.position_sizing import PositionSizer
 from ztb.trading.backtest.adapters import StrategyAdapter, create_adapter
 from ztb.utils.cli_common import (
@@ -28,6 +24,7 @@ from ztb.utils.cli_common import (
     CommonArgs,
     create_standard_parser,
 )
+from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.path_utils import ensure_dir
 

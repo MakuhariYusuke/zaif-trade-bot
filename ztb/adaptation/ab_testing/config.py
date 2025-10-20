@@ -3,8 +3,9 @@ Configuration management for A/B Testing Framework
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import TrafficSplitType, StatisticalTest, RollbackCondition
+from typing import Any, Dict, List
+
+from .types import RollbackCondition, StatisticalTest, TrafficSplitType
 
 
 @dataclass
@@ -15,10 +16,12 @@ class ABTestingConfig:
     test_duration_hours: int = 24
     min_sample_size: int = 1000
     confidence_level: float = 0.95
-    statistical_tests: List[StatisticalTest] = field(default_factory=lambda: [
-        StatisticalTest.T_TEST,
-        StatisticalTest.CONFIDENCE_INTERVAL
-    ])
+    statistical_tests: List[StatisticalTest] = field(
+        default_factory=lambda: [
+            StatisticalTest.T_TEST,
+            StatisticalTest.CONFIDENCE_INTERVAL,
+        ]
+    )
 
     # トラフィック分割設定
     traffic_split_type: TrafficSplitType = TrafficSplitType.PROBABILISTIC
@@ -35,11 +38,13 @@ class ABTestingConfig:
 
     # モニタリング設定
     metrics_update_interval: int = 300  # 秒
-    alert_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        "win_rate_drop": 0.05,
-        "pnl_drop": 0.1,
-        "drawdown_increase": 0.02
-    })
+    alert_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "win_rate_drop": 0.05,
+            "pnl_drop": 0.1,
+            "drawdown_increase": 0.02,
+        }
+    )
 
     # 安全設定
     max_traffic_percentage: float = 0.5  # 新バリアントの最大割合
@@ -69,14 +74,14 @@ class ABTestingConfig:
                     metric_name="win_rate",
                     threshold=0.05,
                     comparison="less_than",
-                    consecutive_periods=3
+                    consecutive_periods=3,
                 ),
                 RollbackCondition(
                     metric_name="total_pnl",
                     threshold=0.1,
                     comparison="absolute_change",
-                    consecutive_periods=2
-                )
+                    consecutive_periods=2,
+                ),
             ]
 
 

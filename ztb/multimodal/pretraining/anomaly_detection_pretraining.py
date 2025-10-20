@@ -11,11 +11,12 @@ using reconstruction-based and prediction-based approaches.
 - ハイブリッドアプローチの統合
 """
 
+from typing import Dict, List, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Tuple, Optional
-from ..core.encoders import PriceEncoder
+
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
 
@@ -25,11 +26,13 @@ class ReconstructionAnomalyDetector(nn.Module):
     オートエンコーダーによる再構成ベース異常検知
     """
 
-    def __init__(self,
-                 input_dim: int = 156,
-                 hidden_dims: List[int] = [256, 128, 64],
-                 latent_dim: int = 32,
-                 seq_len: int = 100) -> None:
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dims: List[int] = [256, 128, 64],
+        latent_dim: int = 32,
+        seq_len: int = 100,
+    ) -> None:
         """
         Initialize Reconstruction Anomaly Detector
 
@@ -48,18 +51,13 @@ class ReconstructionAnomalyDetector(nn.Module):
         encoder_layers = []
         prev_dim = input_dim
         for hidden_dim in hidden_dims:
-            encoder_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.BatchNorm1d(hidden_dim)
-            ])
+            encoder_layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim)]
+            )
             prev_dim = hidden_dim
 
         # Latent layer
-        encoder_layers.extend([
-            nn.Linear(prev_dim, latent_dim),
-            nn.ReLU()
-        ])
+        encoder_layers.extend([nn.Linear(prev_dim, latent_dim), nn.ReLU()])
 
         self.encoder = nn.Sequential(*encoder_layers)
 
@@ -67,11 +65,9 @@ class ReconstructionAnomalyDetector(nn.Module):
         decoder_layers = []
         prev_dim = latent_dim
         for hidden_dim in reversed(hidden_dims):
-            decoder_layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.BatchNorm1d(hidden_dim)
-            ])
+            decoder_layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.BatchNorm1d(hidden_dim)]
+            )
             prev_dim = hidden_dim
 
         # Output layer
@@ -137,7 +133,9 @@ class ReconstructionAnomalyDetector(nn.Module):
         reconstructed = self.decode(z)
         return reconstructed
 
-    def compute_reconstruction_loss(self, x: torch.Tensor, reconstructed: torch.Tensor) -> torch.Tensor:
+    def compute_reconstruction_loss(
+        self, x: torch.Tensor, reconstructed: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute reconstruction loss (MSE)
 
@@ -163,8 +161,10 @@ class ReconstructionAnomalyDetector(nn.Module):
         with torch.no_grad():
             reconstructed = self.forward(x)
             # Compute MSE for each sample
-            mse_per_sample = F.mse_loss(reconstructed, x, reduction='none')
-            mse_per_sample = mse_per_sample.mean(dim=(1, 2))  # Average over seq_len and features
+            mse_per_sample = F.mse_loss(reconstructed, x, reduction="none")
+            mse_per_sample = mse_per_sample.mean(
+                dim=(1, 2)
+            )  # Average over seq_len and features
             return mse_per_sample
 
 
@@ -174,11 +174,13 @@ class PredictionAnomalyDetector(nn.Module):
     LSTMによる予測ベース異常検知
     """
 
-    def __init__(self,
-                 input_dim: int = 156,
-                 hidden_dim: int = 128,
-                 num_layers: int = 2,
-                 prediction_horizon: int = 1) -> None:
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dim: int = 128,
+        num_layers: int = 2,
+        prediction_horizon: int = 1,
+    ) -> None:
         """
         Initialize Prediction Anomaly Detector
 
@@ -197,15 +199,18 @@ class PredictionAnomalyDetector(nn.Module):
 
         # LSTM encoder
         self.encoder = nn.LSTM(
-            input_dim, hidden_dim, num_layers,
-            batch_first=True, dropout=0.1 if num_layers > 1 else 0
+            input_dim,
+            hidden_dim,
+            num_layers,
+            batch_first=True,
+            dropout=0.1 if num_layers > 1 else 0,
         )
 
         # Prediction head
         self.predictor = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, input_dim)
+            nn.Linear(hidden_dim, input_dim),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -228,9 +233,9 @@ class PredictionAnomalyDetector(nn.Module):
         prediction = self.predictor(last_hidden)  # (batch_size, input_dim)
         return prediction
 
-    def compute_prediction_loss(self,
-                               x: torch.Tensor,
-                               target: torch.Tensor) -> torch.Tensor:
+    def compute_prediction_loss(
+        self, x: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute prediction loss
 
@@ -244,7 +249,9 @@ class PredictionAnomalyDetector(nn.Module):
         prediction = self.forward(x)
         return F.mse_loss(prediction, target)
 
-    def compute_anomaly_score(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def compute_anomaly_score(
+        self, x: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute anomaly score based on prediction error
 
@@ -257,7 +264,7 @@ class PredictionAnomalyDetector(nn.Module):
         """
         with torch.no_grad():
             prediction = self.forward(x)
-            mse_per_sample = F.mse_loss(prediction, target, reduction='none')
+            mse_per_sample = F.mse_loss(prediction, target, reduction="none")
             mse_per_sample = mse_per_sample.mean(dim=1)  # Average over features
             return mse_per_sample
 
@@ -268,14 +275,16 @@ class HybridAnomalyDetector(nn.Module):
     再構成と予測を組み合わせたハイブリッド異常検知
     """
 
-    def __init__(self,
-                 input_dim: int = 156,
-                 hidden_dims: List[int] = [256, 128, 64],
-                 latent_dim: int = 32,
-                 lstm_hidden_dim: int = 128,
-                 lstm_num_layers: int = 2,
-                 seq_len: int = 100,
-                 alpha: float = 0.5) -> None:
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dims: List[int] = [256, 128, 64],
+        latent_dim: int = 32,
+        lstm_hidden_dim: int = 128,
+        lstm_num_layers: int = 2,
+        seq_len: int = 100,
+        alpha: float = 0.5,
+    ) -> None:
         """
         Initialize Hybrid Anomaly Detector
 
@@ -297,14 +306,12 @@ class HybridAnomalyDetector(nn.Module):
             input_dim=input_dim,
             hidden_dims=hidden_dims,
             latent_dim=latent_dim,
-            seq_len=seq_len
+            seq_len=seq_len,
         )
 
         # Prediction-based detector
         self.prediction_detector = PredictionAnomalyDetector(
-            input_dim=input_dim,
-            hidden_dim=lstm_hidden_dim,
-            num_layers=lstm_num_layers
+            input_dim=input_dim, hidden_dim=lstm_hidden_dim, num_layers=lstm_num_layers
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -338,7 +345,9 @@ class HybridAnomalyDetector(nn.Module):
         reconstructed, prediction = self.forward(x)
 
         # Reconstruction loss
-        recon_loss = self.reconstruction_detector.compute_reconstruction_loss(x, reconstructed)
+        recon_loss = self.reconstruction_detector.compute_reconstruction_loss(
+            x, reconstructed
+        )
 
         # Prediction loss (predict last time step)
         target = x[:, -1, :]  # Last time step
@@ -368,7 +377,9 @@ class HybridAnomalyDetector(nn.Module):
             # Prediction anomaly score
             target = x[:, -1, :]
             pred_input = x[:, :-1, :]
-            pred_score = self.prediction_detector.compute_anomaly_score(pred_input, target)
+            pred_score = self.prediction_detector.compute_anomaly_score(
+                pred_input, target
+            )
 
             # Combine scores
             hybrid_score = self.alpha * pred_score + (1 - self.alpha) * recon_score
@@ -381,11 +392,13 @@ class AnomalyDetectionPretrainer:
     異常検知モデルの事前学習トレーナー
     """
 
-    def __init__(self,
-                 model: nn.Module,
-                 optimizer: torch.optim.Optimizer,
-                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-                 memory_manager: Optional[MemoryManager] = None):
+    def __init__(
+        self,
+        model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        memory_manager: Optional[MemoryManager] = None,
+    ):
         """
         Initialize pre-trainer
 
@@ -398,7 +411,9 @@ class AnomalyDetectionPretrainer:
         self.model = model.to(device)
         self.optimizer = optimizer
         self.device = device
-        self.memory_manager = memory_manager or MemoryManager(memory_logging_enabled=False)
+        self.memory_manager = memory_manager or MemoryManager(
+            memory_logging_enabled=False
+        )
         self.step_counter = 0
 
     def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
@@ -427,11 +442,11 @@ class AnomalyDetectionPretrainer:
         if self.step_counter % 100 == 0 and torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        return {
-            'loss': loss.item()
-        }
+        return {"loss": loss.item()}
 
-    def validate(self, val_data: torch.Tensor, batch_size: int = 32) -> Dict[str, float]:
+    def validate(
+        self, val_data: torch.Tensor, batch_size: int = 32
+    ) -> Dict[str, float]:
         """
         Validation on dataset
 
@@ -448,16 +463,16 @@ class AnomalyDetectionPretrainer:
 
         with torch.no_grad():
             for i in range(0, len(val_data), batch_size):
-                batch = val_data[i:i+batch_size].to(self.device)
+                batch = val_data[i : i + batch_size].to(self.device)
                 loss = self.model.compute_loss(batch)
                 total_loss += loss.item()
                 num_batches += 1
 
-        return {
-            'val_loss': total_loss / num_batches
-        }
+        return {"val_loss": total_loss / num_batches}
 
-    def compute_anomaly_scores(self, data: torch.Tensor, batch_size: int = 32) -> torch.Tensor:
+    def compute_anomaly_scores(
+        self, data: torch.Tensor, batch_size: int = 32
+    ) -> torch.Tensor:
         """
         Compute anomaly scores for dataset
 
@@ -473,7 +488,7 @@ class AnomalyDetectionPretrainer:
 
         with torch.no_grad():
             for i in range(0, len(data), batch_size):
-                batch = data[i:i+batch_size].to(self.device)
+                batch = data[i : i + batch_size].to(self.device)
                 scores = self.model.compute_anomaly_score(batch)
                 all_scores.append(scores.cpu())
 
@@ -481,13 +496,16 @@ class AnomalyDetectionPretrainer:
 
     def save_checkpoint(self, path: str) -> None:
         """Save model checkpoint"""
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+            },
+            path,
+        )
 
     def load_checkpoint(self, path: str) -> None:
         """Load model checkpoint"""
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

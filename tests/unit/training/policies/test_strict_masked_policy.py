@@ -10,9 +10,13 @@ from gymnasium import spaces
 
 try:
     import torch
+
     from ztb.training.policies.strict_masked_policy import StrictMaskedPolicy
 except ImportError:
-    pytest.skip("torch or ztb.training.policies.strict_masked_policy module not available", allow_module_level=True)
+    pytest.skip(
+        "torch or ztb.training.policies.strict_masked_policy module not available",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture
@@ -56,7 +60,7 @@ class TestStrictMaskedPolicyInit:
         features = policy.extract_features(sample_obs, policy.features_extractor)
         latent_pi, _ = policy.mlp_extractor(features)
         logits = policy.action_net(latent_pi)
-        
+
         assert logits.shape == (1, 3), "Logits should have shape [batch_size, 3]"
 
 
@@ -66,13 +70,13 @@ class TestStrictMaskedPolicyForward:
     def test_forward_without_mask(self, policy):
         """マスクなしでforwardが動作することを確認"""
         obs = torch.randn(4, 10)  # batch_size=4
-        
+
         actions, values, log_probs = policy.forward(obs, deterministic=False)
-        
+
         assert actions.shape == (4,), "Actions should have shape [batch_size]"
         assert values.shape == (4, 1), "Values should have shape [batch_size, 1]"
         assert log_probs.shape == (4,), "Log probs should have shape [batch_size]"
-        
+
         # All actions should be valid (0, 1, or 2)
         assert torch.all((actions >= 0) & (actions < 3))
 
@@ -80,11 +84,11 @@ class TestStrictMaskedPolicyForward:
         """全アクション合法のマスクでforwardが動作することを確認"""
         obs = torch.randn(4, 10)
         action_masks = torch.ones(4, 3)  # All actions legal
-        
+
         actions, values, log_probs = policy.forward(
             obs, deterministic=False, action_masks=action_masks
         )
-        
+
         assert actions.shape == (4,)
         assert values.shape == (4, 1)
         assert log_probs.shape == (4,)
@@ -93,78 +97,91 @@ class TestStrictMaskedPolicyForward:
         """部分的なマスク（一部アクション非法）でforwardが動作することを確認"""
         obs = torch.randn(4, 10)
         # HOLD のみ合法（BUY, SELL は非法）
-        action_masks = torch.tensor([
-            [1, 0, 0],  # Only HOLD legal
-            [1, 0, 0],
-            [1, 0, 0],
-            [1, 0, 0],
-        ], dtype=torch.float32)
-        
+        action_masks = torch.tensor(
+            [
+                [1, 0, 0],  # Only HOLD legal
+                [1, 0, 0],
+                [1, 0, 0],
+                [1, 0, 0],
+            ],
+            dtype=torch.float32,
+        )
+
         actions, values, log_probs = policy.forward(
             obs, deterministic=True, action_masks=action_masks
         )
-        
+
         # All actions should be HOLD (action=0) because it's the only legal action
-        assert torch.all(actions == 0), "All actions should be HOLD when only HOLD is legal"
+        assert torch.all(
+            actions == 0
+        ), "All actions should be HOLD when only HOLD is legal"
 
     def test_forward_illegal_actions_get_zero_probability(self, policy):
         """違法アクションの確率がゼロになることを確認"""
         obs = torch.randn(8, 10)
         # HOLD と BUY のみ合法（SELL は非法）
-        action_masks = torch.tensor([
-            [1, 1, 0],  # HOLD, BUY legal; SELL illegal
-        ] * 8, dtype=torch.float32)
-        
+        action_masks = torch.tensor(
+            [
+                [1, 1, 0],  # HOLD, BUY legal; SELL illegal
+            ]
+            * 8,
+            dtype=torch.float32,
+        )
+
         # Get logits directly to check masking
         features = policy.extract_features(obs, policy.features_extractor)
         latent_pi, _ = policy.mlp_extractor(features)
         logits_raw = policy.action_net(latent_pi)
-        
+
         # Apply mask as in forward()
         logits_masked = torch.where(
             action_masks.bool(),
             logits_raw,
             torch.tensor(-1e9, dtype=logits_raw.dtype),
         )
-        
+
         # SELL (action=2) should have logits=-1e9
         assert torch.allclose(
             logits_masked[:, 2],
             torch.tensor(-1e9, dtype=logits_masked.dtype),
-            rtol=1e-4
+            rtol=1e-4,
         ), "Illegal action (SELL) should have logits=-1e9"
-        
+
         # Probabilities after softmax
         probs = torch.softmax(logits_masked, dim=-1)
-        
+
         # SELL probability should be effectively zero
-        assert torch.all(probs[:, 2] < 1e-8), "Illegal action (SELL) should have near-zero probability"
-        
+        assert torch.all(
+            probs[:, 2] < 1e-8
+        ), "Illegal action (SELL) should have near-zero probability"
+
         # HOLD and BUY probabilities should sum to ~1
         assert torch.allclose(
-            probs[:, 0] + probs[:, 1],
-            torch.ones(8),
-            atol=1e-6
+            probs[:, 0] + probs[:, 1], torch.ones(8), atol=1e-6
         ), "Legal actions probabilities should sum to 1"
 
     def test_forward_deterministic_vs_stochastic(self, policy):
         """決定論的vs確率的サンプリングの違いを確認"""
         obs = torch.randn(1, 10)
         action_masks = torch.ones(1, 3)
-        
+
         # Deterministic: should always select the same action
         actions_det = []
         for _ in range(5):
-            action, _, _ = policy.forward(obs, deterministic=True, action_masks=action_masks)
+            action, _, _ = policy.forward(
+                obs, deterministic=True, action_masks=action_masks
+            )
             actions_det.append(action.item())
-        
+
         # All deterministic actions should be identical
         assert len(set(actions_det)) == 1, "Deterministic actions should be identical"
-        
+
         # Stochastic: may select different actions (depending on entropy)
         # We just verify it runs without errors
         for _ in range(5):
-            action, _, _ = policy.forward(obs, deterministic=False, action_masks=action_masks)
+            action, _, _ = policy.forward(
+                obs, deterministic=False, action_masks=action_masks
+            )
             assert 0 <= action.item() < 3
 
 
@@ -175,9 +192,9 @@ class TestStrictMaskedPolicyEvaluateActions:
         """マスクなしでevaluate_actionsが動作することを確認"""
         obs = torch.randn(4, 10)
         actions = torch.tensor([0, 1, 2, 0], dtype=torch.long)
-        
+
         values, log_probs, entropy = policy.evaluate_actions(obs, actions)
-        
+
         assert values.shape == (4, 1)
         assert log_probs.shape == (4,)
         assert entropy.shape == (4,)
@@ -186,15 +203,18 @@ class TestStrictMaskedPolicyEvaluateActions:
         """マスク付きでevaluate_actionsが動作することを確認"""
         obs = torch.randn(4, 10)
         actions = torch.tensor([0, 1, 0, 1], dtype=torch.long)
-        action_masks = torch.tensor([
-            [1, 1, 0],  # HOLD, BUY legal
-            [1, 1, 0],
-            [1, 0, 1],  # HOLD, SELL legal
-            [1, 1, 0],
-        ], dtype=torch.float32)
-        
+        action_masks = torch.tensor(
+            [
+                [1, 1, 0],  # HOLD, BUY legal
+                [1, 1, 0],
+                [1, 0, 1],  # HOLD, SELL legal
+                [1, 1, 0],
+            ],
+            dtype=torch.float32,
+        )
+
         values, log_probs, entropy = policy.evaluate_actions(obs, actions, action_masks)
-        
+
         assert values.shape == (4, 1)
         assert log_probs.shape == (4,)
         assert entropy.shape == (4,)
@@ -202,7 +222,7 @@ class TestStrictMaskedPolicyEvaluateActions:
     def test_evaluate_actions_illegal_action_low_log_prob(self, policy):
         """
         違法アクションのlog_probが非常に低い（負の大きな値）ことを確認
-        
+
         違法アクションが損失計算に寄与しないことを間接的に検証。
         logits=-1e9 → prob≈0 → log_prob≈-inf となり、損失への影響が最小化される。
         """
@@ -210,39 +230,51 @@ class TestStrictMaskedPolicyEvaluateActions:
         # 違法アクション（SELL）を強制的に選択
         actions = torch.tensor([2, 2, 2, 2], dtype=torch.long)
         # SELL を非法に設定
-        action_masks = torch.tensor([
-            [1, 1, 0],  # SELL illegal
-        ] * 4, dtype=torch.float32)
-        
+        action_masks = torch.tensor(
+            [
+                [1, 1, 0],  # SELL illegal
+            ]
+            * 4,
+            dtype=torch.float32,
+        )
+
         values, log_probs, entropy = policy.evaluate_actions(obs, actions, action_masks)
-        
+
         # Log probabilities for illegal actions should be very negative
         # (log of near-zero probability)
-        assert torch.all(log_probs < -10), (
-            f"Log probs for illegal actions should be very negative, got {log_probs}"
-        )
+        assert torch.all(
+            log_probs < -10
+        ), f"Log probs for illegal actions should be very negative, got {log_probs}"
 
     def test_evaluate_actions_entropy_with_mask(self, policy):
         """マスク適用後のエントロピーが正しいことを確認"""
         obs = torch.randn(4, 10)
         actions = torch.tensor([0, 0, 0, 0], dtype=torch.long)
-        
+
         # Only HOLD legal → entropy should be very low (near zero)
-        action_masks_only_hold = torch.tensor([
-            [1, 0, 0],
-        ] * 4, dtype=torch.float32)
-        
-        _, _, entropy_low = policy.evaluate_actions(obs, actions, action_masks_only_hold)
-        
+        action_masks_only_hold = torch.tensor(
+            [
+                [1, 0, 0],
+            ]
+            * 4,
+            dtype=torch.float32,
+        )
+
+        _, _, entropy_low = policy.evaluate_actions(
+            obs, actions, action_masks_only_hold
+        )
+
         # All legal → entropy should be higher
         action_masks_all_legal = torch.ones(4, 3, dtype=torch.float32)
-        
-        _, _, entropy_high = policy.evaluate_actions(obs, actions, action_masks_all_legal)
-        
-        # Entropy with only one legal action should be lower than with all legal
-        assert torch.all(entropy_low < entropy_high), (
-            "Entropy with restricted actions should be lower than with all actions legal"
+
+        _, _, entropy_high = policy.evaluate_actions(
+            obs, actions, action_masks_all_legal
         )
+
+        # Entropy with only one legal action should be lower than with all legal
+        assert torch.all(
+            entropy_low < entropy_high
+        ), "Entropy with restricted actions should be lower than with all actions legal"
 
 
 class TestStrictMaskedPolicyPredictValues:
@@ -251,9 +283,9 @@ class TestStrictMaskedPolicyPredictValues:
     def test_predict_values(self, policy):
         """predict_valuesが正しく動作することを確認"""
         obs = torch.randn(4, 10)
-        
+
         values = policy.predict_values(obs)
-        
+
         assert values.shape == (4, 1), "Values should have shape [batch_size, 1]"
 
     def test_predict_values_consistency(self, policy):
@@ -262,14 +294,14 @@ class TestStrictMaskedPolicyPredictValues:
         """
         obs = torch.randn(4, 10)
         actions = torch.tensor([0, 1, 2, 0], dtype=torch.long)
-        
+
         values_from_predict = policy.predict_values(obs)
         values_from_evaluate, _, _ = policy.evaluate_actions(obs, actions)
-        
+
         # Values should be identical (within numerical precision)
-        assert torch.allclose(values_from_predict, values_from_evaluate, atol=1e-6), (
-            "Values from predict_values and evaluate_actions should match"
-        )
+        assert torch.allclose(
+            values_from_predict, values_from_evaluate, atol=1e-6
+        ), "Values from predict_values and evaluate_actions should match"
 
 
 class TestStrictMaskedPolicyIntegration:
@@ -278,29 +310,29 @@ class TestStrictMaskedPolicyIntegration:
     def test_training_step_simulation(self, policy):
         """
         学習ステップのシミュレーション
-        
+
         1. 観測を取得
         2. アクションをサンプリング
         3. アクションを評価（損失計算）
         """
         batch_size = 32
         obs = torch.randn(batch_size, 10)
-        
+
         # Variable action masks (simulating different states)
         action_masks = torch.randint(0, 2, (batch_size, 3), dtype=torch.float32)
         # Ensure at least HOLD is always legal
         action_masks[:, 0] = 1
-        
+
         # Step 1: Sample actions
         actions, values_forward, log_probs_forward = policy.forward(
             obs, deterministic=False, action_masks=action_masks
         )
-        
+
         # Step 2: Evaluate actions (for loss calculation)
         values_eval, log_probs_eval, entropy = policy.evaluate_actions(
             obs, actions, action_masks
         )
-        
+
         # Sanity checks
         assert actions.shape == (batch_size,)
         assert values_forward.shape == (batch_size, 1)
@@ -308,34 +340,42 @@ class TestStrictMaskedPolicyIntegration:
         assert values_eval.shape == (batch_size, 1)
         assert log_probs_eval.shape == (batch_size,)
         assert entropy.shape == (batch_size,)
-        
+
         # Values should be similar (same observation, same network)
         assert torch.allclose(values_forward, values_eval, atol=1e-5)
 
     def test_no_illegal_actions_sampled(self, policy):
         """
         マスク適用後、違法アクションがサンプリングされないことを確認
-        
+
         大量のサンプルを生成して統計的に検証。
         """
         n_samples = 1000
         obs = torch.randn(n_samples, 10)
-        
+
         # SELL (action=2) を全サンプルで非法に設定
-        action_masks = torch.tensor([
-            [1, 1, 0],  # HOLD, BUY legal; SELL illegal
-        ] * n_samples, dtype=torch.float32)
-        
-        actions, _, _ = policy.forward(obs, deterministic=False, action_masks=action_masks)
-        
-        # SELL (action=2) が一度もサンプリングされないことを確認
-        assert torch.all(actions != 2), (
-            f"Illegal action (SELL=2) was sampled: {actions[actions == 2].shape[0]} times"
+        action_masks = torch.tensor(
+            [
+                [1, 1, 0],  # HOLD, BUY legal; SELL illegal
+            ]
+            * n_samples,
+            dtype=torch.float32,
         )
-        
+
+        actions, _, _ = policy.forward(
+            obs, deterministic=False, action_masks=action_masks
+        )
+
+        # SELL (action=2) が一度もサンプリングされないことを確認
+        assert torch.all(
+            actions != 2
+        ), f"Illegal action (SELL=2) was sampled: {actions[actions == 2].shape[0]} times"
+
         # HOLD と BUY のみがサンプリングされるべき
         unique_actions = torch.unique(actions)
-        assert torch.all(unique_actions < 2), f"Only HOLD(0) and BUY(1) should be sampled, got {unique_actions}"
+        assert torch.all(
+            unique_actions < 2
+        ), f"Only HOLD(0) and BUY(1) should be sampled, got {unique_actions}"
 
 
 class TestStrictMaskedPolicyEdgeCases:
@@ -345,12 +385,18 @@ class TestStrictMaskedPolicyEdgeCases:
         """合法アクションが1つだけの場合（決定論的）"""
         obs = torch.randn(4, 10)
         # Only HOLD (action=0) is legal
-        action_masks = torch.tensor([
-            [1, 0, 0],
-        ] * 4, dtype=torch.float32)
-        
-        actions, _, _ = policy.forward(obs, deterministic=True, action_masks=action_masks)
-        
+        action_masks = torch.tensor(
+            [
+                [1, 0, 0],
+            ]
+            * 4,
+            dtype=torch.float32,
+        )
+
+        actions, _, _ = policy.forward(
+            obs, deterministic=True, action_masks=action_masks
+        )
+
         # All actions must be HOLD
         assert torch.all(actions == 0)
 
@@ -358,12 +404,18 @@ class TestStrictMaskedPolicyEdgeCases:
         """合法アクションが1つだけの場合（確率的）"""
         obs = torch.randn(100, 10)
         # Only BUY (action=1) is legal
-        action_masks = torch.tensor([
-            [0, 1, 0],
-        ] * 100, dtype=torch.float32)
-        
-        actions, _, _ = policy.forward(obs, deterministic=False, action_masks=action_masks)
-        
+        action_masks = torch.tensor(
+            [
+                [0, 1, 0],
+            ]
+            * 100,
+            dtype=torch.float32,
+        )
+
+        actions, _, _ = policy.forward(
+            obs, deterministic=False, action_masks=action_masks
+        )
+
         # All actions must be BUY (even in stochastic mode)
         assert torch.all(actions == 1)
 
@@ -371,9 +423,11 @@ class TestStrictMaskedPolicyEdgeCases:
         """バッチサイズ=1の場合"""
         obs = torch.randn(1, 10)
         action_masks = torch.tensor([[1, 1, 0]], dtype=torch.float32)
-        
-        actions, values, log_probs = policy.forward(obs, deterministic=False, action_masks=action_masks)
-        
+
+        actions, values, log_probs = policy.forward(
+            obs, deterministic=False, action_masks=action_masks
+        )
+
         assert actions.shape == (1,)
         assert values.shape == (1, 1)
         assert log_probs.shape == (1,)
@@ -383,9 +437,11 @@ class TestStrictMaskedPolicyEdgeCases:
         batch_size = 256
         obs = torch.randn(batch_size, 10)
         action_masks = torch.ones(batch_size, 3, dtype=torch.float32)
-        
-        actions, values, log_probs = policy.forward(obs, deterministic=False, action_masks=action_masks)
-        
+
+        actions, values, log_probs = policy.forward(
+            obs, deterministic=False, action_masks=action_masks
+        )
+
         assert actions.shape == (batch_size,)
         assert values.shape == (batch_size, 1)
         assert log_probs.shape == (batch_size,)

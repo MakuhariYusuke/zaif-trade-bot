@@ -9,9 +9,9 @@ Features:
 - Memory management: GPU/CPUメモリ最適化
 """
 
-from .pipeline import OnlineLearningPipeline, DriftDetector, ResourceMonitor
 from .config import OnlineLearningConfig
-from .types import LearningState, UpdateResult, DataBatch
+from .pipeline import DriftDetector, OnlineLearningPipeline, ResourceMonitor
+from .types import DataBatch, LearningState, UpdateResult
 
 __all__ = [
     "OnlineLearningPipeline",

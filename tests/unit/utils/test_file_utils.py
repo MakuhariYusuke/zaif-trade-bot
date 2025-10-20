@@ -3,9 +3,6 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import mock_open, patch
-
-import pytest
 
 from ztb.utils.file_utils import safe_json_dump, safe_json_load
 
@@ -17,7 +14,7 @@ class TestSafeJsonLoad:
         """Test loading valid JSON file."""
         test_data = {"key": "value", "number": 42, "list": [1, 2, 3]}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(test_data, f)
             temp_file = f.name
 
@@ -29,7 +26,7 @@ class TestSafeJsonLoad:
 
     def test_safe_json_load_invalid_json(self):
         """Test loading invalid JSON file returns default."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("invalid json content")
             temp_file = f.name
 
@@ -51,6 +48,7 @@ class TestSafeJsonLoad:
 
     def test_safe_json_load_with_custom_default_factory(self):
         """Test loading with custom default factory function."""
+
         def default_factory():
             return {"custom": "default"}
 
@@ -60,7 +58,7 @@ class TestSafeJsonLoad:
     def test_safe_json_load_file_with_extra_data(self):
         """Test loading JSON file with extra data after valid JSON."""
         test_data = {"key": "value"}
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write('{"key": "value"}\nextra data')
             temp_file = f.name
 
@@ -72,7 +70,7 @@ class TestSafeJsonLoad:
 
     def test_safe_json_load_empty_file(self):
         """Test loading empty file returns default."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
 
         try:
@@ -88,13 +86,13 @@ class TestSafeJsonDump:
     def test_safe_json_dump_basic(self):
         """Test basic JSON dump functionality."""
         test_data = {"key": "value", "number": 42}
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
 
         try:
             safe_json_dump(test_data, Path(temp_file))
             # Verify file was written correctly
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == test_data
         finally:
@@ -117,19 +115,19 @@ class TestSafeJsonDump:
             assert nested_file.exists()
 
             # Verify content
-            with open(nested_file, 'r') as f:
+            with open(nested_file, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == test_data
 
     def test_safe_json_dump_with_indent(self):
         """Test JSON dump with custom formatting."""
         test_data = {"key": "value"}
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             temp_file = f.name
 
         try:
             safe_json_dump(test_data, Path(temp_file), indent=2)
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 content = f.read()
             # Should be pretty-printed
             assert "\n" in content
@@ -142,13 +140,13 @@ class TestSafeJsonDump:
         initial_data = {"old": "data"}
         new_data = {"new": "data"}
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(initial_data, f)
             temp_file = f.name
 
         try:
             safe_json_dump(new_data, Path(temp_file))
-            with open(temp_file, 'r') as f:
+            with open(temp_file, "r") as f:
                 loaded_data = json.load(f)
             assert loaded_data == new_data
         finally:

@@ -1,6 +1,6 @@
 # 100kテスト & コード品質改善 - 統合ガイド
 
-**日付**: 2025年10月7日  
+**日付**: 2025年10月7日
 **目的**: 1M学習前の100kテスト実施 + 型安全性・保守性向上
 
 ---
@@ -9,9 +9,9 @@
 
 ### 1. **QUICKSTART_100K_TEST.md** - 100kテスト実行ガイド
 
-**用途**: 1M学習前の動作確認・パラメータ調整  
-**所要時間**: 15-30分（並列実行時）  
-**成果物**: 
+**用途**: 1M学習前の動作確認・パラメータ調整
+**所要時間**: 15-30分（並列実行時）
+**成果物**:
 - 3モデルの学習結果（10チェックポイント/モデル）
 - TensorBoardログ
 - パラメータ調整の知見
@@ -26,8 +26,8 @@ python -m ztb.training.unified_trainer --config configs\train\ensemble_A_100k_te
 
 ### 2. **CODE_QUALITY_IMPROVEMENT_PLAN.md** - コード品質改善計画
 
-**用途**: 型安全性向上、保守性強化、不整合解消  
-**対象**: zaif-trade-bot全体（特にztb/training/）  
+**用途**: 型安全性向上、保守性強化、不整合解消
+**対象**: zaif-trade-bot全体（特にztb/training/）
 **期間**: 1-2週間
 
 **5つのPhase**:
@@ -175,7 +175,7 @@ QUICKSTART_100K_TEST.md を参照し、以下を実施してください:
 
 3. TensorBoard起動・監視:
    tensorboard --logdir logs --port 6006
-   
+
 4. 重要指標確認:
    - train/pan_total_samples > 0 か?
    - train/legal_sell_rate ≥ 0.05 か?
@@ -200,23 +200,23 @@ CODE_QUALITY_IMPROVEMENT_PLAN.md の Phase 1 を実施してください:
 
 1. 現状分析:
    mypy --strict ztb/training/ > mypy_strict_report.txt
-   
+
 2. 型ヒント追加:
    - ztb/training/ppo_trainer.py
    - ztb/training/unified_trainer.py
    - ztb/training/custom_ppo.py
-   
+
 3. type: ignore 削減:
    - 具体的なエラーコード指定
    - コメントで理由説明
-   
+
 4. Protocol導入:
    - ztb/training/protocols.py 作成
    - Trainer, Environment, Callback のProtocol定義
 
 5. 検証:
    mypy --strict ztb/training/
-   
+
 目標: mypy エラー50%削減
 ```
 
@@ -231,16 +231,16 @@ CODE_QUALITY_IMPROVEMENT_PLAN.md の Phase 2 を実施してください:
 
 1. 不整合検出:
    python scripts/check_config_consistency.py
-   
+
 2. パラメータ命名統一:
    - スネークケースに統一
    - 省略形を避ける
    - 階層をトップレベルに統一
-   
+
 3. デフォルト値統一:
    - ztb/config/constants.py 作成
    - 全ファイルで同じ定数参照
-   
+
 4. スキーマ定義:
    - ztb/config/schemas.py 作成
    - TypedDict で設定スキーマ定義
@@ -248,7 +248,7 @@ CODE_QUALITY_IMPROVEMENT_PLAN.md の Phase 2 を実施してください:
 
 5. バリデーション:
    python scripts/validate_all_configs.py
-   
+
 目標: 全設定ファイルでバリデーション全パス
 ```
 
@@ -272,14 +272,14 @@ CODE_QUALITY_IMPROVEMENT_PLAN.md の Phase 3 を実施してください:
    - PPOTrainer
    - SELLBiasMitigationPPOTrainer
    - PPOTrainerAutoHalt
-   
+
 3. Callbackインターフェース統一:
    - on_step() シグネチャ統一
    - 戻り値の型統一
-   
+
 4. テスト追加:
    - tests/training/test_trainer_interface.py
-   
+
 目標: 全トレーナーで統一インターフェース採用
 ```
 
@@ -339,7 +339,7 @@ CODE_QUALITY_IMPROVEMENT_PLAN.md の Phase 3 を実施してください:
 
 ---
 
-**次のアクション**: 
+**次のアクション**:
 
 1. **今すぐ**: 100kテスト開始（モデルB推奨）
 2. **並行作業**: 他のCopilotにコード品質改善を依頼

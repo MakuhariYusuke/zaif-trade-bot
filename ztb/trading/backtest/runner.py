@@ -6,24 +6,24 @@ Executes trading strategy backtests with comprehensive metrics and reporting.
 """
 
 import argparse
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
-import numpy as np
 import pandas as pd
 
 from ztb.utils.observability import generate_correlation_id, setup_observability
 from ztb.utils.path_utils import ensure_dir
 from ztb.utils.run_metadata import RunMetadata
 
+# Import adapters
+from .adapters import RLPolicyAdapter
+
 # Import risk management components (optional)
 try:
-    from ..risk.circuit_breakers import (  # type: ignore[import-not-found]
-        get_global_kill_switch,
-    )
+    from ..risk.circuit_breakers import get_global_kill_switch  # type: ignore[import-not-found]
     from ..risk.position_sizing import PositionSizer  # type: ignore[import-not-found]
+
     RISK_AVAILABLE = True
 except ImportError:
     RISK_AVAILABLE = False
@@ -36,6 +36,7 @@ from .report import ReportGenerator
 # Import adaptation system
 try:
     from ...adaptation import HyperparameterAdaptationSystem
+
     ADAPTATION_AVAILABLE = True
 except ImportError:
     ADAPTATION_AVAILABLE = False
@@ -85,16 +86,13 @@ class BacktestEngine:
         if self.enable_adaptation and HyperparameterAdaptationSystem:
             try:
                 # Create mock online learning and evaluation components for backtest
-                from ...adaptation.online_learning.pipeline import OnlineLearningPipeline
-                from ...adaptation.monitoring.evaluation_manager import ContinuousEvaluationManager
 
                 # Mock components for backtest environment
                 mock_online_learning = MockOnlineLearningPipeline()
                 mock_evaluation_manager = MockEvaluationManager()
 
                 self.adaptation_system = HyperparameterAdaptationSystem(
-                    mock_online_learning,
-                    mock_evaluation_manager
+                    mock_online_learning, mock_evaluation_manager
                 )
 
                 # Apply custom configuration if provided
@@ -114,39 +112,56 @@ class BacktestEngine:
                 self.adaptation_system = None
                 self.enable_adaptation = False
 
-    def load_data(self, _dataset_path: str) -> pd.DataFrame:
-        """Load market data from cache or file."""
-        # TODO: Implement actual data loading from repository cache
-        # For now, generate synthetic data
-        np.random.seed(42)  # Deterministic for testing
+    def load_data(self, dataset_path: str) -> pd.DataFrame:
+        """Load market data from CSV file."""
+        try:
+            # Load data from CSV file
+            data_path = Path(dataset_path)
+            if not data_path.exists():
+                # Try relative to project root
+                data_path = Path(__file__).parent.parent.parent.parent / dataset_path
+                if not data_path.exists():
+                    raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
 
-        # Generate 1 year of daily BTC data (synthetic)
-        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
-        n_points = len(dates)
+            print(f"Loading data from: {data_path}")
+            data = pd.read_csv(data_path)
 
-        # Generate realistic BTC price series
-        base_price = 30000
-        returns = np.random.normal(0.001, 0.03, n_points)  # Mean 0.1%, vol 3%
-        prices = base_price * np.exp(np.cumsum(returns))
+            # Ensure timestamp column exists and is datetime
+            if "timestamp" not in data.columns:
+                # Try common timestamp column names
+                timestamp_cols = ["date", "datetime", "time"]
+                timestamp_col = None
+                for col in timestamp_cols:
+                    if col in data.columns:
+                        timestamp_col = col
+                        break
+                if timestamp_col:
+                    data = data.rename(columns={timestamp_col: "timestamp"})
+                else:
+                    raise ValueError("No timestamp column found in dataset")
 
-        # Generate OHLCV
-        high_mult = 1 + np.random.uniform(0, 0.02, n_points)
-        low_mult = 1 - np.random.uniform(0, 0.02, n_points)
-        volume = np.random.uniform(100, 1000, n_points)
+            # Convert timestamp to datetime if needed
+            if not pd.api.types.is_datetime64_any_dtype(data["timestamp"]):
+                data["timestamp"] = pd.to_datetime(data["timestamp"])
 
-        data = pd.DataFrame(
-            {
-                "timestamp": dates,
-                "open": prices * (1 + np.random.normal(0, 0.005, n_points)),
-                "high": prices * high_mult,
-                "low": prices * low_mult,
-                "close": prices,
-                "volume": volume,
-            }
-        )
+            # Filter to 2023 data only for debugging
+            data = data[data["timestamp"].dt.year == 2023].copy()
 
-        data.set_index("timestamp", inplace=True)
-        return data
+            print(f"Loaded {len(data)} data points for 2023")
+
+            # Ensure required OHLCV columns exist
+            required_cols = ["open", "high", "low", "close", "volume"]
+            missing_cols = [col for col in required_cols if col not in data.columns]
+            if missing_cols:
+                raise ValueError(f"Missing required columns: {missing_cols}")
+
+            # Set timestamp as index
+            data.set_index("timestamp", inplace=True)
+            return data
+
+        except Exception as e:
+            print(f"Error loading data: {e}")
+            raise
 
     def run_backtest(
         self, strategy: StrategyAdapter, data: pd.DataFrame
@@ -164,31 +179,47 @@ class BacktestEngine:
 
             # Hyperparameter adaptation step
             adaptation_result = None
-            if self.enable_adaptation and self.adaptation_system and i > 10:  # Need some history
+            if (
+                self.enable_adaptation and self.adaptation_system and i > 10
+            ):  # Need some history
                 try:
                     # Pass market data to adaptation system
-                    market_data = current_data.tail(50)  # Last 50 periods for adaptation
-                    adaptation_result = self.adaptation_system.adapt_hyperparameters(market_data)
+                    market_data = current_data.tail(
+                        50
+                    )  # Last 50 periods for adaptation
+                    adaptation_result = self.adaptation_system.adapt_hyperparameters(
+                        market_data
+                    )
 
                     # Update strategy parameters if available
-                    if hasattr(strategy, 'update_hyperparameters'):
-                        current_params = self.adaptation_system.get_current_hyperparameters()
+                    if hasattr(strategy, "update_hyperparameters"):
+                        current_params = (
+                            self.adaptation_system.get_current_hyperparameters()
+                        )
                         strategy.update_hyperparameters(current_params)
 
                     # Log adaptation if parameters changed
-                    if adaptation_result and adaptation_result['adaptations']:
-                        print(f"[{timestamp}] Adapted {len(adaptation_result['adaptations'])} hyperparameters. "
-                              f"Performance improvement: {adaptation_result['performance_improvement']:.4f}")
+                    if adaptation_result and adaptation_result["adaptations"]:
+                        print(
+                            f"[{timestamp}] Adapted {len(adaptation_result['adaptations'])} hyperparameters. "
+                            f"Performance improvement: {adaptation_result['performance_improvement']:.4f}"
+                        )
 
                         # Store adaptation result
                         if adaptation_history is not None:
-                            adaptation_history.append({
-                                'timestamp': timestamp,
-                                'adaptations': adaptation_result['adaptations'],
-                                'performance_improvement': adaptation_result['performance_improvement'],
-                                'confidence': adaptation_result['confidence'],
-                                'market_conditions': adaptation_result.get('market_conditions', {})
-                            })
+                            adaptation_history.append(
+                                {
+                                    "timestamp": timestamp,
+                                    "adaptations": adaptation_result["adaptations"],
+                                    "performance_improvement": adaptation_result[
+                                        "performance_improvement"
+                                    ],
+                                    "confidence": adaptation_result["confidence"],
+                                    "market_conditions": adaptation_result.get(
+                                        "market_conditions", {}
+                                    ),
+                                }
+                            )
 
                 except Exception as e:
                     print(f"Warning: Adaptation failed at {timestamp}: {e}")
@@ -200,6 +231,10 @@ class BacktestEngine:
 
             # Generate signal
             signal = strategy.generate_signal(current_data, position)
+
+            # Memory management: clear feature cache periodically to prevent memory leaks
+            if hasattr(strategy, "clear_feature_cache") and i % 100 == 0 and i > 0:
+                strategy.clear_feature_cache()
 
             # Execute trade if signal
             if signal["action"] in ["buy", "sell"]:
@@ -221,29 +256,43 @@ class BacktestEngine:
                         shares = size.quantity
                         sizing_reason = size.sizing_reason
                     else:
-                        shares = capital / price
+                        # Fallback: use available capital, but prevent division by zero
+                        if price > 0:
+                            shares = capital / price
+                        else:
+                            shares = 0
                         sizing_reason = "Fallback: full capital"
                 else:
-                    # Original logic: all-in
-                    shares = capital / price
+                    # Original logic: all-in, but prevent division by zero
+                    if price > 0:
+                        shares = capital / price
+                    else:
+                        shares = 0
                     sizing_reason = "All-in position sizing"
+
+                # Apply commission
+                commission = shares * price * (self.commission_bps / 10000)
+                effective_price = price + (commission / shares if shares > 0 else 0)
 
                 if signal["action"] == "buy" and position <= 0:
                     # Buy to long
-                    order = {
-                        "timestamp": timestamp,
-                        "action": "buy",
-                        "price": price,
-                        "shares": shares,
-                        "notional": shares * price,
-                        "position_before": position,
-                        "position_after": 1,
-                        "sizing_reason": sizing_reason,
-                        "pnl": 0.0,  # Will be calculated on close
-                    }
-                    position = 1
-                    capital = 0  # All in (simplified)
-                    orders.append(order)
+                    if shares > 0 and capital >= effective_price * shares:
+                        order = {
+                            "timestamp": timestamp,
+                            "action": "buy",
+                            "price": effective_price,
+                            "shares": shares,
+                            "notional": shares * effective_price,
+                            "position_before": position,
+                            "position_after": 1,
+                            "sizing_reason": sizing_reason,
+                            "pnl": 0.0,  # Will be calculated on close
+                        }
+                        position = 1
+                        capital -= shares * effective_price  # Deduct from capital
+                        orders.append(order)
+                    else:
+                        print(f"Insufficient capital for buy order at {timestamp}")
 
                 elif signal["action"] == "sell" and position >= 0:
                     # Sell to short or close long
@@ -253,30 +302,62 @@ class BacktestEngine:
                             (o for o in reversed(orders) if o["action"] == "buy"), None
                         )
                         if entry_order:
-                            pnl = (price - entry_order["price"]) * entry_order["shares"]
-                            capital = pnl + entry_order["notional"]
+                            pnl = (
+                                effective_price - entry_order["price"]
+                            ) * entry_order["shares"] - commission
+                            capital += (
+                                entry_order["notional"] + pnl
+                            )  # Restore capital + pnl
 
-                    order = {
-                        "timestamp": timestamp,
-                        "action": "sell",
-                        "price": price,
-                        "shares": shares if "shares" in locals() else 0,
-                        "notional": abs(capital) if capital != 0 else 0,
-                        "position_before": position,
-                        "position_after": -1 if position == 0 else 0,
-                        "sizing_reason": sizing_reason,
-                        "pnl": pnl if "pnl" in locals() else 0.0,
-                    }
-                    position = -1 if position == 0 else 0
-                    orders.append(order)
+                    if shares > 0:
+                        order = {
+                            "timestamp": timestamp,
+                            "action": "sell",
+                            "price": effective_price,
+                            "shares": shares,
+                            "notional": shares * effective_price,
+                            "position_before": position,
+                            "position_after": -1 if position == 0 else 0,
+                            "sizing_reason": sizing_reason,
+                            "pnl": pnl if "pnl" in locals() else 0.0,
+                        }
+                        position = -1 if position == 0 else 0
+                        capital += (
+                            shares * effective_price - commission
+                        )  # Add proceeds minus commission
+                        orders.append(order)
 
             # Record equity
-            current_equity = (
-                capital
-                if position == 0
-                else capital
-                + (position * row["close"] * (shares if "shares" in locals() else 0))
-            )
+            if position == 0:
+                current_equity = capital
+            elif position == 1:
+                # Long position: capital + (current_price * shares)
+                entry_order = next(
+                    (o for o in reversed(orders) if o["action"] == "buy"), None
+                )
+                if entry_order:
+                    current_equity = capital + (row["close"] * entry_order["shares"])
+                else:
+                    current_equity = capital  # Fallback if no entry order found
+            elif position == -1:
+                # Short position: capital + (entry_price * shares) - (current_price * shares)
+                entry_order = next(
+                    (o for o in reversed(orders) if o["action"] == "sell"), None
+                )
+                if entry_order:
+                    current_equity = (
+                        capital
+                        + (entry_order["price"] * entry_order["shares"])
+                        - (row["close"] * entry_order["shares"])
+                    )
+                else:
+                    current_equity = capital  # Fallback if no entry order found
+            else:
+                current_equity = capital  # Fallback for unexpected position
+
+            # Ensure equity doesn't go negative (bankruptcy protection)
+            current_equity = max(current_equity, 0)
+
             timestamp_str = (
                 timestamp.isoformat()
                 if hasattr(timestamp, "isoformat")
@@ -285,7 +366,7 @@ class BacktestEngine:
             equity_curve.append(
                 {
                     "timestamp": timestamp_str,
-                    "equity": max(current_equity, 0),  # Prevent negative equity
+                    "equity": current_equity,
                 }
             )
 
@@ -301,10 +382,14 @@ class BacktestEngine:
         adaptation_summary = None
         if adaptation_history is not None and adaptation_history:
             adaptation_summary = {
-                'total_adaptations': len(adaptation_history),
-                'adaptation_history': adaptation_history,
-                'final_hyperparameters': self.adaptation_system.get_current_hyperparameters() if self.adaptation_system else {},
-                'adaptation_statistics': self.adaptation_system.get_adaptation_statistics() if self.adaptation_system else {}
+                "total_adaptations": len(adaptation_history),
+                "adaptation_history": adaptation_history,
+                "final_hyperparameters": self.adaptation_system.get_current_hyperparameters()
+                if self.adaptation_system
+                else {},
+                "adaptation_statistics": self.adaptation_system.get_adaptation_statistics()
+                if self.adaptation_system
+                else {},
             }
 
         return equity_series, orders_df, adaptation_summary
@@ -377,6 +462,11 @@ def main() -> None:
         default=0.15,
         help="Safety margin for parameter changes (default: 0.15)",
     )
+    parser.add_argument(
+        "--auto-analyze",
+        action="store_true",
+        help="Automatically run analyze_backtest after backtest completion",
+    )
 
     args = parser.parse_args()
 
@@ -400,9 +490,9 @@ def main() -> None:
         adaptation_config = None
         if args.enable_adaptation:
             adaptation_config = {
-                'hyperparameter_config': {
-                    'adaptation_interval_minutes': args.adaptation_interval,
-                    'safety_margin': args.adaptation_safety_margin
+                "hyperparameter_config": {
+                    "adaptation_interval_minutes": args.adaptation_interval,
+                    "safety_margin": args.adaptation_safety_margin,
                 }
             }
 
@@ -426,12 +516,16 @@ def main() -> None:
 
         # Log adaptation summary if available
         if adaptation_summary:
-            print(f"Adaptation Summary:")
+            print("Adaptation Summary:")
             print(f"  Total adaptations: {adaptation_summary['total_adaptations']}")
-            print(f"  Final hyperparameters: {adaptation_summary['final_hyperparameters']}")
-            if adaptation_summary['adaptation_statistics']:
-                stats = adaptation_summary['adaptation_statistics']
-                print(f"  Strategy performance: {stats.get('strategy_performance', {})}")
+            print(
+                f"  Final hyperparameters: {adaptation_summary['final_hyperparameters']}"
+            )
+            if adaptation_summary["adaptation_statistics"]:
+                stats = adaptation_summary["adaptation_statistics"]
+                print(
+                    f"  Strategy performance: {stats.get('strategy_performance', {})}"
+                )
 
         # Calculate metrics
         metrics = MetricsCalculator.calculate_all_metrics(
@@ -457,8 +551,12 @@ def main() -> None:
                     "risk_profile": args.risk_profile,
                     "target_vol": args.target_vol,
                     "enable_adaptation": args.enable_adaptation,
-                    "adaptation_interval": args.adaptation_interval if args.enable_adaptation else None,
-                    "adaptation_safety_margin": args.adaptation_safety_margin if args.enable_adaptation else None,
+                    "adaptation_interval": args.adaptation_interval
+                    if args.enable_adaptation
+                    else None,
+                    "adaptation_safety_margin": args.adaptation_safety_margin
+                    if args.enable_adaptation
+                    else None,
                 },
                 "seeds": {
                     "numpy": 42,  # From load_data
@@ -471,7 +569,7 @@ def main() -> None:
         run_metadata.metadata["environment"] = run_metadata.capture_system_info()
 
         # Save run metadata
-        obs_client.export_artifact("run_metadata", run_metadata)
+        obs_client.export_artifact("run_metadata", run_metadata.to_dict())
 
         # Generate reports
         metadata = {
@@ -516,9 +614,54 @@ def main() -> None:
         print(f"Win Rate: {metrics.win_rate:.1%}")
         print(f"Total Trades: {metrics.total_trades}")
 
+        # Auto-run analyze_backtest if requested
+        if args.auto_analyze:
+            print("\nRunning automatic backtest analysis...")
+            try:
+                # Import and run analyze_backtest
+                import sys
+
+                from ztb.analysis.unified_analyze import UnifiedAnalysisSuite
+
+                # Create analysis suite
+                suite = UnifiedAnalysisSuite()
+
+                # Create mock args for analyze_backtest
+                class MockArgs:
+                    def __init__(self, backtest_path):
+                        self.backtest_path = backtest_path
+
+                mock_args = MockArgs(str(output_dir))
+
+                # Run analyze_backtest
+                result = suite.run_analyze_backtest(mock_args)
+                if result == 0:
+                    print("Backtest analysis completed successfully!")
+                else:
+                    print("Backtest analysis failed!")
+
+            except Exception as e:
+                print(f"Automatic backtest analysis failed: {e}")
+
     except Exception as e:
         print(f"Backtest failed: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def create_adapter(policy: str) -> StrategyAdapter:
+    """Create strategy adapter based on policy type."""
+    if policy == "rl":
+        # Use the latest trained model
+        model_path = "models/sac_v428_ultra_profit_optimized.zip"
+        return RLPolicyAdapter(model_path=model_path)
+    elif policy == "sma_fast_slow":
+        # TODO: Implement SMA crossover adapter
+        raise NotImplementedError("SMA crossover strategy not implemented")
+    elif policy == "buy_hold":
+        # TODO: Implement buy and hold adapter
+        raise NotImplementedError("Buy and hold strategy not implemented")
+    else:
+        raise ValueError(f"Unknown policy: {policy}")
 
 
 if __name__ == "__main__":
@@ -534,7 +677,7 @@ class MockOnlineLearningPipeline:
             "learning_rate": 1e-4,
             "batch_size": 64,
             "regularization_strength": 1e-5,
-            "dropout_rate": 0.1
+            "dropout_rate": 0.1,
         }
 
     def update_hyperparameter(self, name: str, value: float) -> None:

@@ -82,7 +82,9 @@ class StreamingHandler:
             return False, df, features
 
         if self._timestamp_column and self._timestamp_column in buffer_df.columns:
-            buffer_df = buffer_df.sort_values(self._timestamp_column).reset_index(drop=True)
+            buffer_df = buffer_df.sort_values(self._timestamp_column).reset_index(
+                drop=True
+            )
             if self._stream_last_timestamp is not None:
                 buffer_df = buffer_df[
                     buffer_df[self._timestamp_column] > self._stream_last_timestamp
@@ -103,7 +105,9 @@ class StreamingHandler:
         df = pd.concat([df, prepared], ignore_index=True, copy=False)
 
         if self._timestamp_column and self._timestamp_column in buffer_df.columns:
-            self._stream_last_timestamp = pd.to_datetime(buffer_df[self._timestamp_column]).max()
+            self._stream_last_timestamp = pd.to_datetime(
+                buffer_df[self._timestamp_column]
+            ).max()
 
         # Update features and base columns
         exclude_cols = ["ts", "timestamp", "exchange", "pair", "episode_id"]

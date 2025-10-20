@@ -153,7 +153,9 @@ class TestEvaluateStagePerformance:
         # Should not raise exception, just return
         evaluate_stage_performance("test_stage")
 
-        mock_exists.assert_called_once_with(config.get_model_path("curriculum_test_stage.zip"))
+        mock_exists.assert_called_once_with(
+            config.get_model_path("curriculum_test_stage.zip")
+        )
 
     @patch("os.path.exists")
     @patch("subprocess.run")

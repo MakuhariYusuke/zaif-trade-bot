@@ -109,13 +109,13 @@ model.learn(total_timesteps=1_000_000, callback=gc_callback)
 class MicrostructureConfig:
     # Spread (買値-売値差)
     base_spread_bps: float = 5.0  # 0.05% base spread
-    
+
     # Minimum tick (最小呼値)
     min_tick: float = 1.0  # BTC/JPY: 1円単位
-    
+
     # Minimum quantity (最小取引量)
     min_qty: float = 0.001  # BTC: 0.001 BTC
-    
+
     # Variable slippage (可変スリッページ)
     slip_base_bps: float = 2.0  # 0.02% base
     slip_atr_coef: float = 0.5  # ATR係数
@@ -130,21 +130,21 @@ def execute_order(self, action: int, quantity: float) -> float:
         price = self.ask_price  # 買値 = mid + spread/2
     elif action == SELL:
         price = self.bid_price  # 売値 = mid - spread/2
-    
+
     # 2. Min tick丸め
     price = round(price / self.min_tick) * self.min_tick
-    
+
     # 3. Min quantity チェック
     if abs(quantity) < self.min_qty:
         return 0.0  # 最小量未満は約定しない
-    
+
     # 4. Variable slippage
     atr = self.get_atr(window=14)
     slip = max(self.slip_base_bps, self.slip_atr_coef * atr)
-    
+
     # 5. 最終約定価格
     executed_price = price * (1 + slip/10000 * sign(action))
-    
+
     return executed_price
 ```
 
@@ -153,13 +153,13 @@ def execute_order(self, action: int, quantity: float) -> float:
 ```python
 def test_spread_application():
     # Spread適用で買値 > 売値を確認
-    
+
 def test_min_tick_rounding():
     # 最小呼値で価格が丸められることを確認
-    
+
 def test_min_qty_rejection():
     # 最小量未満の注文が約定しないことを確認
-    
+
 def test_variable_slippage():
     # ATR高時にスリッページが増加することを確認
 ```
@@ -186,11 +186,11 @@ def test_time_shift_sharpe_degradation():
     """特徴量を1期ずらすとSharpeが悪化するか"""
     # Original features
     sharpe_original = train_and_evaluate(features)
-    
+
     # Shift features by 1 period
     features_shifted = features.shift(1)
     sharpe_shifted = train_and_evaluate(features_shifted)
-    
+
     # Assert: Shifted should degrade
     assert sharpe_shifted < sharpe_original * 0.8, "Time shift should degrade Sharpe"
 ```
@@ -200,11 +200,11 @@ def test_time_shift_sharpe_degradation():
 def test_shuffle_sharpe_collapse():
     """時系列シャッフルでSharpeが崩壊するか"""
     sharpe_original = train_and_evaluate(df)
-    
+
     # Shuffle time series
     df_shuffled = df.sample(frac=1.0, random_state=42)
     sharpe_shuffled = train_and_evaluate(df_shuffled)
-    
+
     # Assert: Shuffle should collapse Sharpe
     assert sharpe_shuffled < 0.0, "Shuffle should collapse Sharpe to negative"
 ```
@@ -214,11 +214,11 @@ def test_shuffle_sharpe_collapse():
 def test_duplicate_rows_overfitting():
     """重複行追加で過学習しないか"""
     sharpe_original = train_and_evaluate(df)
-    
+
     # Duplicate 10% of rows
     df_dup = pd.concat([df, df.sample(frac=0.1)], ignore_index=True)
     sharpe_dup = train_and_evaluate(df_dup)
-    
+
     # Assert: Should not overfit
     assert abs(sharpe_dup - sharpe_original) < 0.1, "Duplicate should not overfit"
 ```
@@ -258,24 +258,24 @@ def test_duplicate_rows_overfitting():
 2. **Markdown生成**:
    ```markdown
    # Model Card: ensemble_C_1M_25000
-   
+
    ## Model Details
    - **Model ID**: ensemble_C_1M_25000
    - **Timestamp**: 2025-10-07 10:30:00 UTC
    - **Training Steps**: 25,000
-   
+
    ## Performance Metrics
    - **Sharpe Ratio**: 1.23
    - **Max Drawdown**: -15.0%
    - **Win Rate**: 52.3%
-   
+
    ## Configuration
    ```yaml
    learning_rate: 0.0003
    gamma: 0.99
    ent_coef: 0.01
    ```
-   
+
    ## Reproducibility
    - **Data Version**: v2.3.1
    - **Seed**: 42

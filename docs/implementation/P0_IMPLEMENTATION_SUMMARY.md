@@ -1,7 +1,7 @@
 # P0実装完了サマリー（手戻り防止・地雷埋め戻し）
 
-**実装日時**: 2025年10月7日  
-**実装範囲**: P0-1〜P0-3（今日やる・30〜90分）  
+**実装日時**: 2025年10月7日
+**実装範囲**: P0-1〜P0-3（今日やる・30〜90分）
 **目的**: 1M→2M学習前の手戻りコスト最小化、歩留まり向上
 
 ---
@@ -23,7 +23,7 @@
    # Before
    pnl = self._calculate_pnl()  # ポジション変更後に計算→常に0
    self.total_pnl += pnl
-   
+
    # After
    unrealized_pnl = self._calculate_pnl()  # unrealized PnLのみ
    portfolio_value = initial + realized_pnl + unrealized_pnl
@@ -86,10 +86,10 @@ pytest tests/unit/environment/test_pnl_invariants.py -v
    def compute_dataset_metadata(dataset_path: Path) -> Dict[str, Any]:
        # SHA256ハッシュ計算
        dataset_sha256 = compute_file_hash(dataset_path)
-       
+
        # データセット読み込み（CSV/pickle対応）
        df = pd.read_csv/pickle(dataset_path)
-       
+
        # メタデータ抽出
        return {
            "sha256": dataset_sha256,
@@ -186,7 +186,7 @@ def _execute_action(self, action: int) -> None:
         if self.position > 0:  # ロングポジション保有中
             self._close_position()
             self._consecutive_trade_steps += 1
-            
+
             # allow_reverse=Trueの場合のみ、即座にショートを開く
             if self.config.allow_reverse:
                 self._open_position(-1)
@@ -263,7 +263,7 @@ pytest tests/unit/environment/test_reverse_as_close.py -v
 ### 1. 手戻りコスト削減
 - **PnL会計バグ**: 1M途中で発覚→5k〜10k step巻き戻し（5〜10時間損失）
   - **P0-1で予防**: test_pnl_invariants 6 PASS → バグ完全排除
-  
+
 - **データ差し替え事故**: 1M途中でデータ版違い混入→全再学習（50〜100時間損失）
   - **P0-2で予防**: preflight_dataset_check → SHA256不一致で即FAIL
 
@@ -303,5 +303,5 @@ P0完了により、以下のリスクを最小化:
 
 ---
 
-**作成者**: GitHub Copilot  
+**作成者**: GitHub Copilot
 **レビュー**: 必要に応じてP1〜P2実装前に確認

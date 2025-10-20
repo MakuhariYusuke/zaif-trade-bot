@@ -2,11 +2,11 @@
   "session_id": "ppo_profitable_v390_hybrid",
   "algorithm": "ppo",
   "description": "Profitable Model Hunt v1: v378 stability + v379 aggressiveness + Bitcoin 18M円対応 + スキーマ保存",
-  
+
   "comment_experiment": "v390: v378/v379の成功要因を活かし、収益性のあるモデルを作成",
   "comment_strategy": "v378の安定性（HOLD 47%）+ v379の市場適応 + Bitcoin 18M円対応設定",
   "comment_target": "Return > 0.5%, 安定性重視、スキーマ自動保存",
-  
+
   "comment_improvements": [
     "✅ v378: 安定したアクション分布（HOLD 47%, BUY 27%, SELL 26%）",
     "✅ v379: 市場適応型報酬（volatility/trend-adjusted）",
@@ -14,16 +14,16 @@
     "✅ スキーマ自動保存: UnifiedTrainerが訓練時設定を保存",
     "✅ 収益性重視: profit_reward_multiplier 強化"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": null,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -45,7 +45,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 200000,
     "transaction_cost": 0.0005,
@@ -66,7 +66,7 @@
       "range_market_hold_tolerance": 0.5
     }
   },
-  
+
   "training": {
     "total_timesteps": 100000,
     "checkpoint_interval": 10000,
@@ -75,7 +75,7 @@
     "n_eval_episodes": 10,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -89,9 +89,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced.csv",
-  
+
   "comment_comparison": "v378/v379の成功要因を統合:",
   "comparison": {
     "v378_scale": {

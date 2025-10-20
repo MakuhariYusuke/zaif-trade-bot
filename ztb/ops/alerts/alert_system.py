@@ -3,11 +3,10 @@ Alerting system for health monitoring and critical system notifications.
 """
 
 import json
-import logging
 import smtplib
 from dataclasses import dataclass
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -41,6 +40,7 @@ class HealthAlert:
         """Set timestamp if not provided."""
         if self.timestamp is None:
             import time
+
             self.timestamp = time.time()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -81,13 +81,15 @@ class AlertConfig:
 
     def is_email_configured(self) -> bool:
         """Check if email alerting is configured."""
-        return all([
-            self.smtp_server,
-            self.smtp_username,
-            self.smtp_password,
-            self.email_from,
-            self.email_to
-        ])
+        return all(
+            [
+                self.smtp_server,
+                self.smtp_username,
+                self.smtp_password,
+                self.email_from,
+                self.email_to,
+            ]
+        )
 
     def is_slack_configured(self) -> bool:
         """Check if Slack alerting is configured."""
@@ -109,7 +111,10 @@ class AlertManager:
     def should_alert(self, alert: HealthAlert) -> bool:
         """Determine if an alert should be sent based on configuration and cooldown."""
         # Check priority thresholds
-        if alert.priority == AlertPriority.CRITICAL and not self.config.alert_on_critical:
+        if (
+            alert.priority == AlertPriority.CRITICAL
+            and not self.config.alert_on_critical
+        ):
             return False
         if alert.priority == AlertPriority.MEDIUM and not self.config.alert_on_warning:
             return False
@@ -121,6 +126,7 @@ class AlertManager:
         last_time = self.last_alert_times.get(alert_key, 0)
 
         import time
+
         current_time = time.time()
 
         cooldown_period = (
@@ -182,9 +188,9 @@ class AlertManager:
             return
 
         msg = MIMEMultipart()
-        msg['From'] = self.config.email_from
-        msg['To'] = ', '.join(self.config.email_to or [])
-        msg['Subject'] = f"[{alert.priority.value.upper()}] {alert.title}"
+        msg["From"] = self.config.email_from
+        msg["To"] = ", ".join(self.config.email_to or [])
+        msg["Subject"] = f"[{alert.priority.value.upper()}] {alert.title}"
 
         # Create HTML body
         html_body = f"""
@@ -198,21 +204,25 @@ class AlertManager:
         """
 
         if alert.details:
-            html_body += "<h3>Details:</h3><pre>" + json.dumps(alert.details, indent=2) + "</pre>"
+            html_body += (
+                "<h3>Details:</h3><pre>"
+                + json.dumps(alert.details, indent=2)
+                + "</pre>"
+            )
 
         html_body += """
         </body>
         </html>
         """
 
-        msg.attach(MIMEText(html_body, 'html'))
+        msg.attach(MIMEText(html_body, "html"))
 
         # Send email
         server = smtplib.SMTP(self.config.smtp_server, self.config.smtp_port)
         server.starttls()
-        server.login(self.config.smtp_username or '', self.config.smtp_password or '')
+        server.login(self.config.smtp_username or "", self.config.smtp_password or "")
         text = msg.as_string()
-        server.sendmail(self.config.email_from or '', self.config.email_to or [], text)
+        server.sendmail(self.config.email_from or "", self.config.email_to or [], text)
         server.quit()
 
     def _send_slack_alert(self, alert: HealthAlert) -> None:
@@ -240,35 +250,33 @@ class AlertManager:
                         {
                             "title": "Priority",
                             "value": alert.priority.value.upper(),
-                            "short": True
+                            "short": True,
                         },
-                        {
-                            "title": "Source",
-                            "value": alert.source,
-                            "short": True
-                        }
-                    ]
+                        {"title": "Source", "value": alert.source, "short": True},
+                    ],
                 }
             ]
         }
 
         if alert.details:
-            slack_message["attachments"][0]["fields"].append({
-                "title": "Details",
-                "value": json.dumps(alert.details, indent=2),
-                "short": False
-            })
+            slack_message["attachments"][0]["fields"].append(
+                {
+                    "title": "Details",
+                    "value": json.dumps(alert.details, indent=2),
+                    "short": False,
+                }
+            )
 
         response = requests.post(
-            self.config.slack_webhook_url or '',
-            json=slack_message,
-            timeout=10
+            self.config.slack_webhook_url or "", json=slack_message, timeout=10
         )
         response.raise_for_status()
 
     def _log_alert(self, alert: HealthAlert) -> None:
         """Log alert to application logs."""
-        log_message = f"ALERT [{alert.priority.value.upper()}] {alert.title}: {alert.message}"
+        log_message = (
+            f"ALERT [{alert.priority.value.upper()}] {alert.title}: {alert.message}"
+        )
 
         if alert.priority == AlertPriority.CRITICAL:
             logger.critical(log_message)
@@ -302,7 +310,7 @@ def create_alert_manager(config_path: Optional[str] = None) -> AlertManager:
 
     if config_path and Path(config_path).exists():
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = json.load(f)
 
             # Update config from file
@@ -334,7 +342,7 @@ def create_health_alert_from_result(result: Dict[str, Any]) -> Optional[HealthAl
             message="System health check detected critical issues that require immediate attention.",
             priority=AlertPriority.CRITICAL,
             source="health_check",
-            details=result
+            details=result,
         )
     elif status == "warning":
         return HealthAlert(
@@ -342,7 +350,7 @@ def create_health_alert_from_result(result: Dict[str, Any]) -> Optional[HealthAl
             message="System health check detected warnings that should be reviewed.",
             priority=AlertPriority.HIGH,
             source="health_check",
-            details=result
+            details=result,
         )
 
     return None

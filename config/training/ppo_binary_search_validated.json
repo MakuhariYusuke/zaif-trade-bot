@@ -4,21 +4,21 @@
   "data_path": "ml-dataset-enhanced.csv",
   "session_id": "ppo_binary_search_validated",
   "total_timesteps": 100000,
-  
+
   "_comment_core_learning": "High-confidence parameters (statistical significance confirmed)",
   "n_steps": 1024,
   "vf_coef": 0.1,
   "risk_free_rate": 0.0,
-  
+
   "_comment_medium_confidence": "Medium-confidence (delta 1-2, recommend 100k re-validation)",
   "gamma": 0.8475,
   "n_epochs": 16,
-  
+
   "_comment_reward_scaling": "Dramatic improvement in short-term, requires long-term validation",
   "reward_multipliers": 5.0,
   "reward_scaling": 0.1,
   "transaction_cost": 0.0001,
-  
+
   "_comment_preliminary": "Short-term (2048 steps) only - requires 50k+ re-validation",
   "batch_size": 16,
   "learning_rate": 1e-5,
@@ -27,11 +27,11 @@
   "target_kl": 0.001,
   "ent_coef": 0.001,
   "normalize_advantage": true,
-  
+
   "_comment_stable_defaults": "Stable parameters from previous optimizations",
   "max_grad_norm": 0.5,
   "seed": 42,
-  
+
   "_comment_lagrange": "Lagrange constraint parameters (optimized separately)",
   "enable_sell_mitigation": true,
   "enable_lagrange": true,
@@ -45,25 +45,25 @@
   "enable_pan": true,
   "enable_target_entropy": false,
   "enable_stratified_sampling": false,
-  
+
   "_comment_environment": "Environment settings",
   "max_position_size": 1.0,
   "curriculum_stage": "full",
   "allow_reverse": false,
-  
+
   "_comment_validation": "Validation criteria",
   "target_sell_rate_min": 0.12,
   "target_sell_rate_optimal": 0.175,
   "grad_norm_threshold": 1e-06,
   "moving_window": 5000,
-  
+
   "_comment_output": "Output paths",
   "checkpoint_dir": "checkpoints/ppo_binary_search_validated",
   "checkpoint_interval": 10000,
   "model_dir": "models",
   "tensorboard_log": "logs/ppo_binary_search_validated",
   "probe_csv_path": "checkpoints/ppo_binary_search_validated/sell_probe.csv",
-  
+
   "_comment_monitoring": "Monitoring and safety",
   "verbose": 1,
   "use_sde": false,

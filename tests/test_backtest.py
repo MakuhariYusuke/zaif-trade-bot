@@ -129,7 +129,7 @@ class TestStrategyAdapters:
         assert "signal" in signals.columns
         assert all(signals["signal"].isin([-1, 0, 1]))
 
-    def test_buy_hold_adapter(self) -> None :
+    def test_buy_hold_adapter(self) -> None:
         """Test buy and hold strategy adapter."""
         adapter = BuyAndHoldAdapter()
 

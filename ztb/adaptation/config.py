@@ -4,11 +4,12 @@ SAC適応設定
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict
+
 from .monitoring.config import MonitoringConfig
-from .safety.config import SafetyConfig
 from .online_learning.config import OnlineLearningConfig
 from .operations.config import OperationsConfig
+from .safety.config import SafetyConfig
 
 
 @dataclass
@@ -33,11 +34,13 @@ class SACConfig:
     # パフォーマンス設定
     max_concurrent_adaptations: int = 3
     adaptation_timeout_seconds: int = 300
-    resource_limits: Dict[str, float] = field(default_factory=lambda: {
-        "cpu_percent": 80.0,
-        "memory_percent": 85.0,
-        "gpu_percent": 90.0
-    })
+    resource_limits: Dict[str, float] = field(
+        default_factory=lambda: {
+            "cpu_percent": 80.0,
+            "memory_percent": 85.0,
+            "gpu_percent": 90.0,
+        }
+    )
 
     # ログと監視
     log_level: str = "INFO"

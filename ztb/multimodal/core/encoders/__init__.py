@@ -5,14 +5,22 @@
 
 __version__ = "1.0.0"
 
+from typing import List, Optional
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import List, Optional
+
 
 class BaseEncoder(nn.Module):
     """基本エンコーダークラス"""
 
-    def __init__(self, input_dim: int, hidden_dims: List[int], output_dim: int, dropout: float = 0.1):
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_dims: List[int],
+        output_dim: int,
+        dropout: float = 0.1,
+    ):
         super().__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -22,11 +30,9 @@ class BaseEncoder(nn.Module):
         prev_dim = input_dim
 
         for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(dropout)
-            ])
+            layers.extend(
+                [nn.Linear(prev_dim, hidden_dim), nn.ReLU(), nn.Dropout(dropout)]
+            )
             prev_dim = hidden_dim
 
         # 出力層
@@ -38,13 +44,19 @@ class BaseEncoder(nn.Module):
         """順伝播"""
         return self.encoder(x)
 
+
 class PriceEncoder(BaseEncoder):
     """価格データエンコーダー
 
     為替レートや価格データをエンコードする。
     """
 
-    def __init__(self, input_dim: int = 156, hidden_dims: Optional[List[int]] = None, output_dim: int = 64):
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dims: Optional[List[int]] = None,
+        output_dim: int = 64,
+    ):
         if hidden_dims is None:
             hidden_dims = [128, 64]
 
@@ -65,13 +77,19 @@ class PriceEncoder(BaseEncoder):
 
         return super().forward(x)
 
+
 class TextEncoder(nn.Module):
     """テキストデータエンコーダー
 
     BERTベースのテキストエンコーダー。
     """
 
-    def __init__(self, model_name: str = "bert-base-uncased", output_dim: int = 768, fine_tune: bool = True):
+    def __init__(
+        self,
+        model_name: str = "bert-base-uncased",
+        output_dim: int = 768,
+        fine_tune: bool = True,
+    ):
         super().__init__()
         self.model_name = model_name
         self.output_dim = output_dim
@@ -80,13 +98,17 @@ class TextEncoder(nn.Module):
         # BERTモデルの初期化（実際の実装ではtransformersライブラリを使用）
         # ここではプレースホルダー
         self.bert = nn.Linear(768, 768)  # ダミーのBERTモデル
-        self.projection = nn.Linear(768, output_dim) if output_dim != 768 else nn.Identity()
+        self.projection = (
+            nn.Linear(768, output_dim) if output_dim != 768 else nn.Identity()
+        )
 
         if not fine_tune:
             for param in self.bert.parameters():
                 param.requires_grad = False
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """テキストをエンコード
 
         Args:
@@ -108,13 +130,19 @@ class TextEncoder(nn.Module):
 
         return self.projection(cls_output)
 
+
 class EconomicEncoder(BaseEncoder):
     """経済指標エンコーダー
 
     経済指標データをエンコードする。
     """
 
-    def __init__(self, input_dim: int = 20, hidden_dims: Optional[List[int]] = None, output_dim: int = 32):
+    def __init__(
+        self,
+        input_dim: int = 20,
+        hidden_dims: Optional[List[int]] = None,
+        output_dim: int = 32,
+    ):
         if hidden_dims is None:
             hidden_dims = [64, 32]
 

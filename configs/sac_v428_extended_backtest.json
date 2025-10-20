@@ -65,7 +65,11 @@
       "tau": {"min": 0.001, "max": 0.01, "type": "log"},
       "gamma": {"min": 0.95, "max": 0.999, "type": "uniform"},
       "ent_coef": {"min": 0.001, "max": 0.1, "type": "log"},
-      "target_entropy": {"min": -5.0, "max": -1.0, "type": "uniform"}
+      "target_entropy": {"min": -5.0, "max": -1.0, "type": "uniform"},
+      "reward_scale": {"min": 50, "max": 1000, "type": "log"},
+      "reward_clip_min": {"min": -500, "max": -50, "type": "uniform"},
+      "reward_clip_max": {"min": 50, "max": 500, "type": "uniform"},
+      "use_simple_reward": {"type": "categorical", "choices": [true, false]}
     }
   },
   "notes": "SAC v428 Extended Duration Backtest: Testing over 2+ years of market data (2022-2024)"

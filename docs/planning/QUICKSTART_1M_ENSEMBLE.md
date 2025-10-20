@@ -56,7 +56,7 @@ python -m ztb.training.unified_trainer --help
 python scripts\run_1m_ensemble.py
 ```
 
-**所要時間**: 3-5時間 × 3 = 9-15時間  
+**所要時間**: 3-5時間 × 3 = 9-15時間
 **リソース**: CPU/メモリ集中
 **メリット**: 設定不要、完全自動
 
@@ -82,7 +82,7 @@ python scripts\run_1m_ensemble.py --model B
 python scripts\run_1m_ensemble.py --model C
 ```
 
-**所要時間**: 3-5時間（並列）  
+**所要時間**: 3-5時間（並列）
 **リソース**: 3倍のCPU/メモリ
 **メリット**: 時間短縮、進捗確認しやすい
 
@@ -92,7 +92,7 @@ python scripts\run_1m_ensemble.py --model C
 # モデルA
 python -m ztb.training.unified_trainer --config configs\train\ensemble_A_1M.json
 
-# モデルB  
+# モデルB
 python -m ztb.training.unified_trainer --config configs\train\ensemble_B_1M.json
 
 # モデルC
@@ -205,8 +205,8 @@ checkpoints\ensemble_A_1M\
 └── checkpoint_1000000\
 ```
 
-**チェックポイント数**: 40個（25k間隔）  
-**ディスク容量**: 約400MB-2GB  
+**チェックポイント数**: 40個（25k間隔）
+**ディスク容量**: 約400MB-2GB
 **用途**: 早期停止、モデル選択、過学習回避
 
 ### ログ
@@ -322,17 +322,17 @@ algorithms = [
 
 **よくある質問**:
 
-Q: 途中で中断した場合は?  
+Q: 途中で中断した場合は?
 A: チェックポイントから再開可能（将来対応予定）
 
-Q: 3モデル全部必要?  
+Q: 3モデル全部必要?
 A: 1モデルでも可。アンサンブルは2+推奨
 
-Q: GPUは必要?  
+Q: GPUは必要?
 A: 不要。CPUで動作（ただし遅い）
 
 ---
 
-**作成日**: 2025年10月7日  
-**ステータス**: unified_trainer.py統合完了 ✅  
+**作成日**: 2025年10月7日
+**ステータス**: unified_trainer.py統合完了 ✅
 **推奨実行方法**: `python scripts\run_1m_ensemble.py --model A` (並列実行)

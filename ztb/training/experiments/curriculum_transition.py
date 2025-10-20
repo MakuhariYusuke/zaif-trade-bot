@@ -5,10 +5,19 @@
 
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ztb.training.utils.training_utils import setup_project_path, create_ppo_model, load_training_data, save_model_with_path, evaluate_model
-from ztb.training.config.ppo_config import DEFAULT_REWARD_SCALING, DEFAULT_INITIAL_PORTFOLIO_VALUE
 from ztb.trading.environment.environment import HeavyTradingEnv
 from ztb.training.callbacks.callbacks import SimpleTrainingCallback
+from ztb.training.config.ppo_config import (
+    DEFAULT_INITIAL_PORTFOLIO_VALUE,
+    DEFAULT_REWARD_SCALING,
+)
+from ztb.training.utils.training_utils import (
+    create_ppo_model,
+    evaluate_model,
+    load_training_data,
+    save_model_with_path,
+    setup_project_path,
+)
 
 
 def main() -> None:

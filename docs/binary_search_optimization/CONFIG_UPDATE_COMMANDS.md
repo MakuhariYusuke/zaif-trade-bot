@@ -1,6 +1,6 @@
 # 本番設定ファイル更新コマンド
 
-**作成日**: 2025年10月10日  
+**作成日**: 2025年10月10日
 **対象**: 検証済みパラメータの本番適用
 
 ---
@@ -37,11 +37,11 @@ notepad configs\training\ppo_100k_optimized.json
 ```json
 {
   "_comment_ppo": "Optimized PPO hyperparameters from 2025-10-10 binary search validation",
-  
+
   "learning_rate": 0.007503,     // 旧: 0.009375625 → 新: 0.007503
   "batch_size": 256,             // 旧: 64 → 新: 256
   "max_grad_norm": 5.05,         // 旧: 0.5 → 新: 5.05 (暫定)
-  
+
   // 以下は既存の最適化済み値 (変更なし)
   "n_steps": 1024,
   "gamma": 0.8475,
@@ -123,22 +123,22 @@ backup_path = Path("configs/training/ppo_100k_optimized_backup_20251010.json")
 if config_path.exists():
     with open(config_path, 'r', encoding='utf-8') as f:
         config = json.load(f)
-    
+
     with open(backup_path, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
-    
+
     print(f"✅ Backup created: {backup_path}")
-    
+
     # 検証済みパラメータで更新
     config['learning_rate'] = 0.007503
     config['batch_size'] = 256
     config['max_grad_norm'] = 5.05
     config['_comment_ppo'] = "Optimized PPO hyperparameters from 2025-10-10 binary search validation"
-    
+
     # 更新を保存
     with open(config_path, 'w', encoding='utf-8') as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
-    
+
     print(f"✅ Config updated: {config_path}")
     print(f"   learning_rate: {config['learning_rate']}")
     print(f"   batch_size: {config['batch_size']}")

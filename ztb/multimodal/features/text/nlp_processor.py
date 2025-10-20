@@ -2,14 +2,16 @@
 マルチモーダル学習 - 自然言語数値化手法設計
 """
 
+import logging
+from typing import Dict, List
+
+import numpy as np
 import torch
 import torch.nn as nn
-from transformers import AutoTokenizer, AutoModel
-import numpy as np
-from typing import Dict, List, Optional, Tuple
-import logging
+from transformers import AutoModel, AutoTokenizer
 
 logger = logging.getLogger(__name__)
+
 
 class TextSentimentEncoder(nn.Module):
     """
@@ -17,10 +19,12 @@ class TextSentimentEncoder(nn.Module):
     複数の手法を組み合わせたハイブリッドアプローチ
     """
 
-    def __init__(self,
-                 model_name: str = "nlptown/bert-base-multilingual-uncased-sentiment",
-                 embedding_dim: int = 768,
-                 output_dim: int = 3):  # [negative, neutral, positive]
+    def __init__(
+        self,
+        model_name: str = "nlptown/bert-base-multilingual-uncased-sentiment",
+        embedding_dim: int = 768,
+        output_dim: int = 3,
+    ):  # [negative, neutral, positive]
         super().__init__()
 
         # BERTベースの感情分析モデル
@@ -33,7 +37,7 @@ class TextSentimentEncoder(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(256, output_dim),
-            nn.Softmax(dim=-1)
+            nn.Softmax(dim=-1),
         )
 
         # 感情強度エンコーダー（-1 to 1）
@@ -41,7 +45,7 @@ class TextSentimentEncoder(nn.Module):
             nn.Linear(embedding_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 1),
-            nn.Tanh()  # -1 to 1
+            nn.Tanh(),  # -1 to 1
         )
 
     def forward(self, texts: List[str]) -> Dict[str, torch.Tensor]:
@@ -59,11 +63,7 @@ class TextSentimentEncoder(nn.Module):
         """
         # トークナイズ
         inputs = self.tokenizer(
-            texts,
-            return_tensors="pt",
-            padding=True,
-            truncation=True,
-            max_length=512
+            texts, return_tensors="pt", padding=True, truncation=True, max_length=512
         )
 
         # BERTエンコーディング
@@ -78,10 +78,11 @@ class TextSentimentEncoder(nn.Module):
         intensity = self.intensity_encoder(embeddings)
 
         return {
-            'sentiment_scores': sentiment_scores,
-            'intensity': intensity,
-            'embeddings': embeddings
+            "sentiment_scores": sentiment_scores,
+            "intensity": intensity,
+            "embeddings": embeddings,
         }
+
 
 class FinancialTextProcessor:
     """
@@ -92,17 +93,33 @@ class FinancialTextProcessor:
         # 金融ドメイン特化の感情辞書
         self.financial_sentiment_dict = {
             # ポジティブワード
-            '上昇': 0.8, '上昇トレンド': 0.9, '強気': 0.7, '買い': 0.6,
-            '成長': 0.7, '回復': 0.6, '改善': 0.5, '好調': 0.6,
-            '最高値': 0.8, '新高値': 0.9, '買い増し': 0.7,
-
+            "上昇": 0.8,
+            "上昇トレンド": 0.9,
+            "強気": 0.7,
+            "買い": 0.6,
+            "成長": 0.7,
+            "回復": 0.6,
+            "改善": 0.5,
+            "好調": 0.6,
+            "最高値": 0.8,
+            "新高値": 0.9,
+            "買い増し": 0.7,
             # ネガティブワード
-            '下落': -0.8, '下落トレンド': -0.9, '弱気': -0.7, '売り': -0.6,
-            '減少': -0.7, '悪化': -0.8, '不調': -0.6, '損失': -0.8,
-            '最安値': -0.8, '新安値': -0.9, '売り越し': -0.7,
-
+            "下落": -0.8,
+            "下落トレンド": -0.9,
+            "弱気": -0.7,
+            "売り": -0.6,
+            "減少": -0.7,
+            "悪化": -0.8,
+            "不調": -0.6,
+            "損失": -0.8,
+            "最安値": -0.8,
+            "新安値": -0.9,
+            "売り越し": -0.7,
             # 中立的・文脈依存
-            '安定': 0.1, '変動': 0.0, '調整': -0.2
+            "安定": 0.1,
+            "変動": 0.0,
+            "調整": -0.2,
         }
 
     def extract_financial_sentiment(self, text: str) -> Dict[str, float]:
@@ -128,10 +145,11 @@ class FinancialTextProcessor:
         normalized_score = np.tanh(sentiment_score / max(len(matched_words), 1))
 
         return {
-            'sentiment_score': normalized_score,
-            'matched_words': matched_words,
-            'confidence': min(len(matched_words) / len(words), 1.0)
+            "sentiment_score": normalized_score,
+            "matched_words": matched_words,
+            "confidence": min(len(matched_words) / len(words), 1.0),
         }
+
 
 class MultiModalFeatureIntegrator(nn.Module):
     """
@@ -139,11 +157,13 @@ class MultiModalFeatureIntegrator(nn.Module):
     価格データ + テキスト感情 + 数値指標
     """
 
-    def __init__(self,
-                 price_features_dim: int = 156,
-                 text_features_dim: int = 768,
-                 economic_features_dim: int = 20,
-                 hidden_dim: int = 256):
+    def __init__(
+        self,
+        price_features_dim: int = 156,
+        text_features_dim: int = 768,
+        economic_features_dim: int = 20,
+        hidden_dim: int = 256,
+    ):
         super().__init__()
 
         self.price_features_dim = price_features_dim
@@ -154,26 +174,24 @@ class MultiModalFeatureIntegrator(nn.Module):
         self.price_encoder = nn.Sequential(
             nn.Linear(price_features_dim, hidden_dim),
             nn.ReLU(),
-            nn.LayerNorm(hidden_dim)
+            nn.LayerNorm(hidden_dim),
         )
 
         self.text_encoder = nn.Sequential(
             nn.Linear(text_features_dim, hidden_dim),
             nn.ReLU(),
-            nn.LayerNorm(hidden_dim)
+            nn.LayerNorm(hidden_dim),
         )
 
         self.economic_encoder = nn.Sequential(
             nn.Linear(economic_features_dim, hidden_dim),
             nn.ReLU(),
-            nn.LayerNorm(hidden_dim)
+            nn.LayerNorm(hidden_dim),
         )
 
         # クロスモーダル・アテンション
         self.cross_attention = nn.MultiheadAttention(
-            embed_dim=hidden_dim,
-            num_heads=8,
-            dropout=0.1
+            embed_dim=hidden_dim, num_heads=8, dropout=0.1
         )
 
         # 統合特徴量出力
@@ -181,13 +199,15 @@ class MultiModalFeatureIntegrator(nn.Module):
             nn.Linear(hidden_dim * 3, hidden_dim),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(hidden_dim, hidden_dim)
+            nn.Linear(hidden_dim, hidden_dim),
         )
 
-    def forward(self,
-                price_features: torch.Tensor,
-                text_embeddings: torch.Tensor,
-                economic_features: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        price_features: torch.Tensor,
+        text_embeddings: torch.Tensor,
+        economic_features: torch.Tensor,
+    ) -> torch.Tensor:
         """
         複数モダリティの特徴量統合
 
@@ -201,15 +221,21 @@ class MultiModalFeatureIntegrator(nn.Module):
         """
 
         # 各モダリティのエンコーディング
-        price_encoded = self.price_encoder(price_features)  # [batch, seq_len, hidden_dim]
-        text_encoded = self.text_encoder(text_embeddings)    # [batch, seq_len, hidden_dim]
-        econ_encoded = self.economic_encoder(economic_features)  # [batch, seq_len, hidden_dim]
+        price_encoded = self.price_encoder(
+            price_features
+        )  # [batch, seq_len, hidden_dim]
+        text_encoded = self.text_encoder(
+            text_embeddings
+        )  # [batch, seq_len, hidden_dim]
+        econ_encoded = self.economic_encoder(
+            economic_features
+        )  # [batch, seq_len, hidden_dim]
 
         # クロスモーダル・アテンション（テキストをクエリとして価格と経済指標に注目）
         attn_output, _ = self.cross_attention(
             query=text_encoded.transpose(0, 1),  # [seq_len, batch, hidden_dim]
             key=torch.cat([price_encoded, econ_encoded], dim=-1).transpose(0, 1),
-            value=torch.cat([price_encoded, econ_encoded], dim=-1).transpose(0, 1)
+            value=torch.cat([price_encoded, econ_encoded], dim=-1).transpose(0, 1),
         )
         attn_output = attn_output.transpose(0, 1)  # [batch, seq_len, hidden_dim]
 
@@ -218,6 +244,7 @@ class MultiModalFeatureIntegrator(nn.Module):
         integrated_features = self.fusion_layer(combined)
 
         return integrated_features
+
 
 class SyntheticDataGenerator:
     """
@@ -231,15 +258,15 @@ class SyntheticDataGenerator:
 
         # 市場状態パターン
         self.market_states = {
-            'bull': {'sentiment': 0.7, 'volatility': 0.3, 'trend': 1},
-            'bear': {'sentiment': -0.7, 'volatility': 0.5, 'trend': -1},
-            'sideways': {'sentiment': 0.0, 'volatility': 0.2, 'trend': 0},
-            'volatile': {'sentiment': -0.3, 'volatility': 0.8, 'trend': 0}
+            "bull": {"sentiment": 0.7, "volatility": 0.3, "trend": 1},
+            "bear": {"sentiment": -0.7, "volatility": 0.5, "trend": -1},
+            "sideways": {"sentiment": 0.0, "volatility": 0.2, "trend": 0},
+            "volatile": {"sentiment": -0.3, "volatility": 0.8, "trend": 0},
         }
 
-    def generate_market_news(self,
-                           market_state: str,
-                           num_samples: int = 100) -> List[Dict]:
+    def generate_market_news(
+        self, market_state: str, num_samples: int = 100
+    ) -> List[Dict]:
         """
         市場状態に基づく合成ニュース生成
 
@@ -256,26 +283,26 @@ class SyntheticDataGenerator:
 
         state_params = self.market_states[market_state]
         news_templates = {
-            'bull': [
+            "bull": [
                 "市場が上昇トレンドを継続、投資家心理改善",
                 "経済指標が予想を上回り、強気相場が続く",
-                "企業業績が好調で株価が最高値を更新"
+                "企業業績が好調で株価が最高値を更新",
             ],
-            'bear': [
+            "bear": [
                 "市場が下落トレンドにあり、投資家心理悪化",
                 "経済指標が失望を誘い、弱気相場が継続",
-                "企業業績の悪化で株価が最安値を記録"
+                "企業業績の悪化で株価が最安値を記録",
             ],
-            'sideways': [
+            "sideways": [
                 "市場が横ばい推移、投資家は様子見姿勢",
                 "経済指標が安定し、方向感に欠ける相場",
-                "企業業績が横ばいで株価に大きな変動なし"
+                "企業業績が横ばいで株価に大きな変動なし",
             ],
-            'volatile': [
+            "volatile": [
                 "市場が激しく変動、投資家心理不安定",
                 "経済指標の変動が大きく、相場が乱高下",
-                "地政学的リスクで株価が急落と急騰を繰り返す"
-            ]
+                "地政学的リスクで株価が急落と急騰を繰り返す",
+            ],
         }
 
         synthetic_data = []
@@ -287,24 +314,26 @@ class SyntheticDataGenerator:
 
             # 感情スコアにノイズを加える
             sentiment_noise = np.random.normal(0, 0.1)
-            sentiment_score = state_params['sentiment'] + sentiment_noise
+            sentiment_score = state_params["sentiment"] + sentiment_noise
 
             # 信頼度
             confidence = np.random.uniform(0.7, 0.95)
 
-            synthetic_data.append({
-                'text': template,
-                'sentiment_score': np.clip(sentiment_score, -1, 1),
-                'confidence': confidence,
-                'market_state': market_state,
-                'timestamp': f"2025-10-{np.random.randint(1, 31):02d}"
-            })
+            synthetic_data.append(
+                {
+                    "text": template,
+                    "sentiment_score": np.clip(sentiment_score, -1, 1),
+                    "confidence": confidence,
+                    "market_state": market_state,
+                    "timestamp": f"2025-10-{np.random.randint(1, 31):02d}",
+                }
+            )
 
         return synthetic_data
 
-    def generate_economic_indicators(self,
-                                   market_state: str,
-                                   num_samples: int = 100) -> np.ndarray:
+    def generate_economic_indicators(
+        self, market_state: str, num_samples: int = 100
+    ) -> np.ndarray:
         """
         市場状態に基づく経済指標生成
 
@@ -320,10 +349,16 @@ class SyntheticDataGenerator:
 
         # 経済指標のベース値
         base_indicators = {
-            'bull': [3.5, 4.2, 0.25, 105.0, 2.1],  # GDP, 失業率, 金利, 株価指数, インフレ
-            'bear': [1.8, 6.1, 0.75, 85.0, 1.2],
-            'sideways': [2.5, 5.0, 0.50, 95.0, 1.8],
-            'volatile': [2.8, 5.5, 0.60, 90.0, 2.5]
+            "bull": [
+                3.5,
+                4.2,
+                0.25,
+                105.0,
+                2.1,
+            ],  # GDP, 失業率, 金利, 株価指数, インフレ
+            "bear": [1.8, 6.1, 0.75, 85.0, 1.2],
+            "sideways": [2.5, 5.0, 0.50, 95.0, 1.8],
+            "volatile": [2.8, 5.5, 0.60, 90.0, 2.5],
         }
 
         indicators = []
@@ -335,15 +370,18 @@ class SyntheticDataGenerator:
             noisy_indicators = base * (1 + noise)
 
             # 市場状態に応じた追加変動
-            volatility_factor = state_params['volatility']
-            trend_factor = state_params['trend'] * 0.1
+            volatility_factor = state_params["volatility"]
+            trend_factor = state_params["trend"] * 0.1
 
-            final_indicators = noisy_indicators * (1 + volatility_factor * np.random.normal(0, 0.2, size=len(base)))
+            final_indicators = noisy_indicators * (
+                1 + volatility_factor * np.random.normal(0, 0.2, size=len(base))
+            )
             final_indicators = final_indicators * (1 + trend_factor)
 
             indicators.append(final_indicators)
 
         return np.array(indicators)
+
 
 # 使用例とテスト
 if __name__ == "__main__":
@@ -353,7 +391,7 @@ if __name__ == "__main__":
     test_texts = [
         "市場が大幅上昇、投資家心理が改善",
         "経済指標が悪化し株価が下落",
-        "市場が安定して推移"
+        "市場が安定して推移",
     ]
 
     results = encoder(test_texts)
@@ -364,7 +402,7 @@ if __name__ == "__main__":
     # 合成データ生成のテスト
     generator = SyntheticDataGenerator()
 
-    synthetic_news = generator.generate_market_news('bull', 5)
+    synthetic_news = generator.generate_market_news("bull", 5)
     print("\n合成ニュースデータ:")
     for news in synthetic_news:
         print(f"テキスト: {news['text']}")
@@ -372,6 +410,6 @@ if __name__ == "__main__":
         print(f"信頼度: {news['confidence']:.3f}")
         print("---")
 
-    economic_data = generator.generate_economic_indicators('bull', 5)
+    economic_data = generator.generate_economic_indicators("bull", 5)
     print(f"\n経済指標データ形状: {economic_data.shape}")
     print(f"サンプル指標: {economic_data[0]}")

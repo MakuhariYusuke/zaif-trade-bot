@@ -1,15 +1,13 @@
 # Evaluation and Visualization Script for Trading RL Models
 # 取引RLモデルの評価と可視化スクリプト
 
-import warnings
 import argparse
 import json
 import math
 import sys
 import warnings
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, TypedDict, cast, Generator
+from typing import Any, Dict, Generator, List, Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,20 +16,22 @@ import seaborn as sns
 from stable_baselines3 import PPO
 from torch.utils.tensorboard import SummaryWriter
 
+from ztb.config.manager import ConfigManager
+
 # Re-export from new modular structure for backward compatibility
 from ztb.evaluation.evaluator import (
-    TradingEvaluator,
     EvaluationResult,
-    ModelConfigDict,
     SingleEpisodeResultDict,
+    TradingEvaluator,
 )
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
+from ztb.utils.path_utils import get_file_dir
 
 warnings.filterwarnings("ignore")
 
 # ローカルモジュールのインポート
-parent_path = str(Path(__file__).parent.parent)
+parent_path = str(get_file_dir(__file__).parent)
 if parent_path not in sys.path:
     sys.path.insert(0, parent_path)
 from ztb.trading.environment.environment import HeavyTradingEnv
@@ -164,7 +164,9 @@ class TradingEvaluator:
         all_positions = []
         all_pnls = []
         all_actions = []
-        all_states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
+        all_states: Optional[List[Any]] = (
+            [] if self.config.get("save_states", False) else None
+        )
 
         for episode in range(self.config["n_eval_episodes"]):
             print(f"Evaluating episode {episode + 1}/{self.config['n_eval_episodes']}")
@@ -282,7 +284,9 @@ class TradingEvaluator:
         positions = []
         pnls = []
         actions = []
-        states: Optional[List[Any]] = [] if self.config.get("save_states", False) else None
+        states: Optional[List[Any]] = (
+            [] if self.config.get("save_states", False) else None
+        )
 
         step_count = 0
         while not done and step_count < self.config["max_steps_per_episode"]:
@@ -291,7 +295,9 @@ class TradingEvaluator:
             action_value, _ = predict_with_masks(
                 self.model, obs, self.env, deterministic=self.config["deterministic"]
             )
-            action = action_value.item() if hasattr(action_value, 'item') else action_value
+            action = (
+                action_value.item() if hasattr(action_value, "item") else action_value
+            )
 
             # 環境ステップ
             next_obs, reward, done, _, info = self.env.step(action)
@@ -343,7 +349,9 @@ class TradingEvaluator:
                 for action in episode_actions:
                     yield action
 
-        all_episode_actions = list(get_all_actions()) if not memory_optimized else list(get_all_actions())
+        all_episode_actions = (
+            list(get_all_actions()) if not memory_optimized else list(get_all_actions())
+        )
 
         episode_lengths = [len(r) for r in all_rewards]
 
@@ -644,10 +652,14 @@ class TradingEvaluator:
             reward_stats = stats.get("reward_stats", {})
             if reward_stats:
                 self.writer.add_scalar(
-                    "Evaluation/Mean_Reward", reward_stats.get("mean_total_reward", 0), 0
+                    "Evaluation/Mean_Reward",
+                    reward_stats.get("mean_total_reward", 0),
+                    0,
                 )
                 self.writer.add_scalar(
-                    "Evaluation/Mean_Step_Reward", reward_stats.get("mean_step_reward", 0), 0
+                    "Evaluation/Mean_Step_Reward",
+                    reward_stats.get("mean_step_reward", 0),
+                    0,
                 )
 
             # PnL統計
@@ -656,7 +668,9 @@ class TradingEvaluator:
                 self.writer.add_scalar(
                     "Evaluation/Mean_PnL", pnl_stats.get("mean_total_pnl", 0), 0
                 )
-                self.writer.add_scalar("Evaluation/PnL_Std", pnl_stats.get("std_total_pnl", 0), 0)
+                self.writer.add_scalar(
+                    "Evaluation/PnL_Std", pnl_stats.get("std_total_pnl", 0), 0
+                )
                 self.writer.add_scalar(
                     "Evaluation/Sharpe_Ratio", pnl_stats.get("sharpe_ratio", 0), 0
                 )
@@ -687,10 +701,10 @@ class TradingEvaluator:
                     0,
                 )
                 self.writer.add_scalar(
-                "Evaluation/Position_Change_Variance",
-                trading_stats["position_change_variance"],
-                0,
-            )
+                    "Evaluation/Position_Change_Variance",
+                    trading_stats["position_change_variance"],
+                    0,
+                )
                 self.writer.add_scalar(
                     "Evaluation/Hold_Ratio", trading_stats.get("hold_ratio", 0), 0
                 )
@@ -701,7 +715,9 @@ class TradingEvaluator:
                     "Evaluation/Sell_Ratio", trading_stats.get("sell_ratio", 0), 0
                 )
                 self.writer.add_scalar(
-                    "Evaluation/Profit_Per_Trade", trading_stats.get("profit_per_trade", 0), 0
+                    "Evaluation/Profit_Per_Trade",
+                    trading_stats.get("profit_per_trade", 0),
+                    0,
                 )
 
             # エピソード統計
@@ -1149,32 +1165,39 @@ class TradingEvaluator:
         """Clean up resources to prevent memory leaks."""
         try:
             # Close environment
-            if hasattr(self, 'env') and getattr(self, 'env', None) is not None:
+            if hasattr(self, "env") and getattr(self, "env", None) is not None:
                 self.env.close()
                 print("TradingEvaluator environment closed")
 
             # Close TensorBoard writer
-            if hasattr(self, 'writer') and getattr(self, 'writer', None) is not None:
+            if hasattr(self, "writer") and getattr(self, "writer", None) is not None:
                 self.writer.close()
                 print("TensorBoard writer closed")
-            
+
             # Clear model reference and break potential circular references
-            if hasattr(self, 'model') and getattr(self, 'model', None) is not None:
+            if hasattr(self, "model") and getattr(self, "model", None) is not None:
                 # Clear model references to environment
-                if hasattr(self.model, 'env') and getattr(self.model, 'env', None) is not None:
-                    setattr(self.model, 'env', None)
-                if hasattr(self.model, '_last_obs') and getattr(self.model, '_last_obs', None) is not None:
-                    setattr(self.model, '_last_obs', None)
+                if (
+                    hasattr(self.model, "env")
+                    and getattr(self.model, "env", None) is not None
+                ):
+                    setattr(self.model, "env", None)
+                if (
+                    hasattr(self.model, "_last_obs")
+                    and getattr(self.model, "_last_obs", None) is not None
+                ):
+                    setattr(self.model, "_last_obs", None)
                 self.model = None
                 print("TradingEvaluator model references cleared")
-            
+
             # Clear data references
-            if hasattr(self, 'df'):
+            if hasattr(self, "df"):
                 self.df = None
-                
+
         except Exception as e:
             print(f"Error during TradingEvaluator cleanup: {e}")
             import traceback
+
             print(f"Cleanup traceback: {traceback.format_exc()}")
 
     def __del__(self) -> None:
@@ -1187,6 +1210,11 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(
         description="Trading RL Model Evaluation and Visualization"
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Path to configuration file (YAML/JSON)",
     )
     parser.add_argument(
         "--model", type=str, required=True, help="Path to trained model"
@@ -1235,23 +1263,35 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # 設定の更新（デフォルト設定を維持しつつ上書き）
-    config = {
-        "results_dir": "./results/",
-        "n_eval_episodes": 20,
-        "max_steps_per_episode": 10000,
-        "render_mode": None,
-        "deterministic": True,
-        "plot_style": "seaborn",
-    }
-    config.update(
-        {
-            "n_eval_episodes": args.n_episodes,
-            "results_dir": "./results/",
-        }
-    )
+    # Load configuration using new ConfigManager
+    config_manager = ConfigManager.get_instance()
 
-    evaluator = TradingEvaluator(args.model, args.data, config)
+    try:
+        if hasattr(args, "config") and args.config:
+            global_config = config_manager.load_config(args.config)
+        else:
+            global_config = config_manager.load_config()
+
+        # Extract evaluation config
+        eval_config = (
+            global_config.evaluation.model_dump() if global_config.evaluation else {}
+        )
+
+        # Override with command line arguments
+        eval_config.update(
+            {
+                "n_eval_episodes": args.n_episodes,
+                "model_path": args.model,
+                "data_path": args.data,
+                "results_dir": "./results/",
+            }
+        )
+
+    except Exception as e:
+        print(f"❌ Failed to load configuration: {e}")
+        return
+
+    evaluator = TradingEvaluator(args.model, args.data, eval_config)
 
     if args.mode == "evaluate":
         stats = evaluator.evaluate_model()

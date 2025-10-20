@@ -6,25 +6,24 @@ Anomaly Detection Manager
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
-import pandas as pd
-from scipy import stats
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 
 from ..monitoring.safety import SafetyManager
-from .types import AnomalyType, AnomalyDetection, SafetyLevel
-
+from .types import AnomalyType, SafetyLevel
 
 logger = logging.getLogger(__name__)
 
 
 class AnomalyDetectionMethod(Enum):
     """異常検知手法"""
+
     STATISTICAL = "statistical"  # 統計的手法（Z-score, IQR）
     ISOLATION_FOREST = "isolation_forest"  # 孤立森
     ONE_CLASS_SVM = "one_class_svm"  # 一クラスSVM
@@ -37,10 +36,12 @@ class AnomalyConfig:
     """異常検知設定"""
 
     # 検知手法設定
-    enabled_methods: List[AnomalyDetectionMethod] = field(default_factory=lambda: [
-        AnomalyDetectionMethod.STATISTICAL,
-        AnomalyDetectionMethod.ISOLATION_FOREST
-    ])
+    enabled_methods: List[AnomalyDetectionMethod] = field(
+        default_factory=lambda: [
+            AnomalyDetectionMethod.STATISTICAL,
+            AnomalyDetectionMethod.ISOLATION_FOREST,
+        ]
+    )
 
     # 統計的検知設定
     statistical_threshold_sigma: float = 3.0  # 標準偏差の閾値
@@ -53,11 +54,13 @@ class AnomalyConfig:
     ml_retrain_interval_hours: int = 24  # 再学習間隔
 
     # アラート設定
-    alert_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        'high_confidence': 0.8,  # 高確信度閾値
-        'medium_confidence': 0.6,  # 中確信度閾値
-        'low_confidence': 0.4  # 低確信度閾値
-    })
+    alert_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "high_confidence": 0.8,  # 高確信度閾値
+            "medium_confidence": 0.6,  # 中確信度閾値
+            "low_confidence": 0.4,  # 低確信度閾値
+        }
+    )
 
     # 検知間隔設定
     detection_interval_seconds: int = 60  # 検知間隔
@@ -88,9 +91,9 @@ class AnomalyResult:
 class AnomalyDetectionManager:
     """異常検知マネージャー"""
 
-    def __init__(self,
-                 safety_manager: SafetyManager,
-                 config: Optional[AnomalyConfig] = None):
+    def __init__(
+        self, safety_manager: SafetyManager, config: Optional[AnomalyConfig] = None
+    ):
         self.safety_manager = safety_manager
         self.config = config or AnomalyConfig()
 
@@ -124,8 +127,7 @@ class AnomalyDetectionManager:
 
             self.is_active = True
             self.detection_thread = threading.Thread(
-                target=self._detection_worker,
-                daemon=True
+                target=self._detection_worker, daemon=True
             )
             self.detection_thread.start()
 
@@ -154,13 +156,20 @@ class AnomalyDetectionManager:
                 self.metric_history[metric_name].append((current_time, value))
 
                 # 履歴サイズを制限
-                if len(self.metric_history[metric_name]) > self.config.statistical_window_size:
-                    self.metric_history[metric_name] = self.metric_history[metric_name][-self.config.statistical_window_size:]
+                if (
+                    len(self.metric_history[metric_name])
+                    > self.config.statistical_window_size
+                ):
+                    self.metric_history[metric_name] = self.metric_history[metric_name][
+                        -self.config.statistical_window_size :
+                    ]
 
             # 各検知手法で異常を検知
             for method in self.config.enabled_methods:
                 try:
-                    method_anomalies = self._detect_with_method(method, metrics_data, current_time)
+                    method_anomalies = self._detect_with_method(
+                        method, metrics_data, current_time
+                    )
                     anomalies.extend(method_anomalies)
                 except Exception as e:
                     logger.error(f"Error in {method.value} detection: {e}")
@@ -171,7 +180,9 @@ class AnomalyDetectionManager:
             # 異常を履歴に追加
             self.anomaly_history.extend(anomalies)
             if len(self.anomaly_history) > self.config.max_anomaly_history:
-                self.anomaly_history = self.anomaly_history[-self.config.max_anomaly_history:]
+                self.anomaly_history = self.anomaly_history[
+                    -self.config.max_anomaly_history :
+                ]
 
             # コールバックを実行
             for anomaly in anomalies:
@@ -189,14 +200,13 @@ class AnomalyDetectionManager:
             for method in self.config.enabled_methods:
                 if method == AnomalyDetectionMethod.ISOLATION_FOREST:
                     self.detectors[method] = IsolationForest(
-                        contamination=self.config.ml_contamination,
-                        random_state=42
+                        contamination=self.config.ml_contamination, random_state=42
                     )
                 elif method == AnomalyDetectionMethod.ONE_CLASS_SVM:
                     from sklearn.svm import OneClassSVM
+
                     self.detectors[method] = OneClassSVM(
-                        nu=self.config.ml_contamination,
-                        kernel='rbf'
+                        nu=self.config.ml_contamination, kernel="rbf"
                     )
                 # 他の手法も必要に応じて初期化
 
@@ -205,10 +215,12 @@ class AnomalyDetectionManager:
         except Exception as e:
             logger.error(f"Failed to initialize detectors: {e}")
 
-    def _detect_with_method(self,
-                          method: AnomalyDetectionMethod,
-                          metrics_data: Dict[str, float],
-                          timestamp: datetime) -> List[AnomalyResult]:
+    def _detect_with_method(
+        self,
+        method: AnomalyDetectionMethod,
+        metrics_data: Dict[str, float],
+        timestamp: datetime,
+    ) -> List[AnomalyResult]:
         """指定された手法で異常を検知"""
         anomalies = []
 
@@ -216,7 +228,9 @@ class AnomalyDetectionManager:
             if method == AnomalyDetectionMethod.STATISTICAL:
                 anomalies.extend(self._statistical_detection(metrics_data, timestamp))
             elif method == AnomalyDetectionMethod.ISOLATION_FOREST:
-                anomalies.extend(self._isolation_forest_detection(metrics_data, timestamp))
+                anomalies.extend(
+                    self._isolation_forest_detection(metrics_data, timestamp)
+                )
             elif method == AnomalyDetectionMethod.ONE_CLASS_SVM:
                 anomalies.extend(self._one_class_svm_detection(metrics_data, timestamp))
 
@@ -226,9 +240,9 @@ class AnomalyDetectionManager:
             logger.error(f"Error in {method.value} detection: {e}")
             return []
 
-    def _statistical_detection(self,
-                              metrics_data: Dict[str, float],
-                              timestamp: datetime) -> List[AnomalyResult]:
+    def _statistical_detection(
+        self, metrics_data: Dict[str, float], timestamp: datetime
+    ) -> List[AnomalyResult]:
         """統計的手法による異常検知"""
         anomalies = []
 
@@ -240,7 +254,9 @@ class AnomalyDetectionManager:
                     continue
 
                 # 最近のデータを取得
-                recent_values = [v for _, v in history[-self.config.statistical_window_size:]]
+                recent_values = [
+                    v for _, v in history[-self.config.statistical_window_size :]
+                ]
 
                 # Z-scoreを計算
                 if len(recent_values) > 1:
@@ -251,7 +267,10 @@ class AnomalyDetectionManager:
                         z_score = abs(value - mean_val) / std_val
 
                         if z_score > self.config.statistical_threshold_sigma:
-                            confidence = min(z_score / (self.config.statistical_threshold_sigma * 2), 1.0)
+                            confidence = min(
+                                z_score / (self.config.statistical_threshold_sigma * 2),
+                                1.0,
+                            )
                             severity = self._calculate_severity(confidence)
 
                             anomaly = AnomalyResult(
@@ -266,11 +285,11 @@ class AnomalyDetectionManager:
                                 expected_value=mean_val,
                                 description=f"Statistical anomaly detected in {metric_name}: Z-score = {z_score:.2f}",
                                 raw_data={
-                                    'z_score': z_score,
-                                    'mean': mean_val,
-                                    'std': std_val,
-                                    'window_size': len(recent_values)
-                                }
+                                    "z_score": z_score,
+                                    "mean": mean_val,
+                                    "std": std_val,
+                                    "window_size": len(recent_values),
+                                },
                             )
                             anomalies.append(anomaly)
 
@@ -280,15 +299,17 @@ class AnomalyDetectionManager:
             logger.error(f"Statistical detection failed: {e}")
             return []
 
-    def _isolation_forest_detection(self,
-                                   metrics_data: Dict[str, float],
-                                   timestamp: datetime) -> List[AnomalyResult]:
+    def _isolation_forest_detection(
+        self, metrics_data: Dict[str, float], timestamp: datetime
+    ) -> List[AnomalyResult]:
         """孤立森による異常検知"""
         anomalies = []
 
         try:
             # 十分なデータがあるかチェック
-            total_samples = sum(len(history) for history in self.metric_history.values())
+            total_samples = sum(
+                len(history) for history in self.metric_history.values()
+            )
             if total_samples < self.config.ml_min_samples:
                 return anomalies
 
@@ -311,11 +332,11 @@ class AnomalyDetectionManager:
             X = np.array(feature_matrix).T
 
             # スケーリング
-            if 'isolation_forest' not in self.scalers:
-                self.scalers['isolation_forest'] = StandardScaler()
-                X_scaled = self.scalers['isolation_forest'].fit_transform(X)
+            if "isolation_forest" not in self.scalers:
+                self.scalers["isolation_forest"] = StandardScaler()
+                X_scaled = self.scalers["isolation_forest"].fit_transform(X)
             else:
-                X_scaled = self.scalers['isolation_forest'].transform(X)
+                X_scaled = self.scalers["isolation_forest"].transform(X)
 
             # モデルが学習済みかチェック
             detector = self.detectors.get(AnomalyDetectionMethod.ISOLATION_FOREST)
@@ -323,14 +344,21 @@ class AnomalyDetectionManager:
                 return anomalies
 
             # 再学習が必要かチェック
-            if (self.last_training_time is None or
-                (datetime.now() - self.last_training_time).total_seconds() > self.config.ml_retrain_interval_hours * 3600):
+            if (
+                self.last_training_time is None
+                or (datetime.now() - self.last_training_time).total_seconds()
+                > self.config.ml_retrain_interval_hours * 3600
+            ):
                 detector.fit(X_scaled)
                 self.last_training_time = datetime.now()
 
             # 予測
-            current_features = np.array([[metrics_data.get(name, 0) for name in feature_names]])
-            current_scaled = self.scalers['isolation_forest'].transform(current_features)
+            current_features = np.array(
+                [[metrics_data.get(name, 0) for name in feature_names]]
+            )
+            current_scaled = self.scalers["isolation_forest"].transform(
+                current_features
+            )
 
             # 異常スコアを計算（-1: 正常, 1: 異常）
             prediction = detector.predict(current_scaled)[0]
@@ -339,7 +367,10 @@ class AnomalyDetectionManager:
             # 異常スコアを確信度に変換（低いスコアほど異常）
             confidence = 1.0 / (1.0 + np.exp(score))  # シグモイド変換
 
-            if prediction == -1 and confidence > self.config.alert_thresholds['low_confidence']:
+            if (
+                prediction == -1
+                and confidence > self.config.alert_thresholds["low_confidence"]
+            ):
                 severity = self._calculate_severity(confidence)
 
                 anomaly = AnomalyResult(
@@ -354,10 +385,10 @@ class AnomalyDetectionManager:
                     expected_value=None,
                     description=f"Isolation Forest anomaly detected: score = {score:.4f}",
                     raw_data={
-                        'anomaly_score': score,
-                        'prediction': prediction,
-                        'features': feature_names
-                    }
+                        "anomaly_score": score,
+                        "prediction": prediction,
+                        "features": feature_names,
+                    },
                 )
                 anomalies.append(anomaly)
 
@@ -367,9 +398,9 @@ class AnomalyDetectionManager:
             logger.error(f"Isolation Forest detection failed: {e}")
             return []
 
-    def _one_class_svm_detection(self,
-                                metrics_data: Dict[str, float],
-                                timestamp: datetime) -> List[AnomalyResult]:
+    def _one_class_svm_detection(
+        self, metrics_data: Dict[str, float], timestamp: datetime
+    ) -> List[AnomalyResult]:
         """一クラスSVMによる異常検知"""
         anomalies = []
 
@@ -392,9 +423,9 @@ class AnomalyDetectionManager:
     def _calculate_severity(self, confidence: float) -> SafetyLevel:
         """確信度から深刻度を計算"""
         try:
-            if confidence >= self.config.alert_thresholds['high_confidence']:
+            if confidence >= self.config.alert_thresholds["high_confidence"]:
                 return SafetyLevel.CRITICAL
-            elif confidence >= self.config.alert_thresholds['medium_confidence']:
+            elif confidence >= self.config.alert_thresholds["medium_confidence"]:
                 return SafetyLevel.WARNING
             else:
                 return SafetyLevel.INFO
@@ -427,7 +458,8 @@ class AnomalyDetectionManager:
                     if metric in recent_anomalies:
                         # 同じタイプの異常が最近検知されていないかチェック
                         recent_same_type = [
-                            a for a in recent_anomalies[metric]
+                            a
+                            for a in recent_anomalies[metric]
                             if a.anomaly_type == anomaly.anomaly_type
                         ]
                         if recent_same_type:
@@ -469,10 +501,10 @@ class AnomalyDetectionManager:
             # SafetyManagerからメトリクスを取得
             # （実際の実装では適切なメソッドを呼び出す）
             return {
-                'cpu_usage': 45.5,
-                'memory_usage': 67.8,
-                'error_rate': 0.02,
-                'response_time': 150.0
+                "cpu_usage": 45.5,
+                "memory_usage": 67.8,
+                "error_rate": 0.02,
+                "response_time": 150.0,
             }
 
         except Exception as e:
@@ -496,8 +528,7 @@ class AnomalyDetectionManager:
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_anomalies = [
-                a for a in self.anomaly_history
-                if a.timestamp > cutoff_time
+                a for a in self.anomaly_history if a.timestamp > cutoff_time
             ]
 
             return [
@@ -509,7 +540,7 @@ class AnomalyDetectionManager:
                     "confidence": a.confidence_score,
                     "severity": a.severity.value,
                     "affected_metrics": a.affected_metrics,
-                    "description": a.description
+                    "description": a.description,
                 }
                 for a in recent_anomalies
             ]
@@ -550,7 +581,7 @@ class AnomalyDetectionManager:
                 "type_distribution": type_counts,
                 "method_distribution": method_counts,
                 "average_confidence": float(avg_confidence),
-                "anomalies_per_hour": total_anomalies / hours
+                "anomalies_per_hour": total_anomalies / hours,
             }
 
         except Exception as e:

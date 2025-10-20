@@ -67,7 +67,7 @@ def run_canary_test(duration_minutes: int = 3) -> tuple[bool, Dict[str, Any]]:
         "replay",
         "--policy",
         "sma_fast_slow",
-        f"--duration-minutes",
+        "--duration-minutes",
         str(duration_minutes),
         "--enable-risk",
         "--risk-profile",

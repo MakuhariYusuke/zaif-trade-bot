@@ -10,6 +10,7 @@ Usage:
     manager.save_async(model, step=1000)
 """
 
+import logging
 import pickle
 import threading
 import time
@@ -18,7 +19,6 @@ from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, cast
-import logging
 
 from ztb.utils.path_utils import ensure_dir
 
@@ -540,6 +540,7 @@ class HierarchicalCheckpointManager:
     def _init_executor(self) -> None:
         """Initialize ThreadPoolExecutor for async saving"""
         import os
+
         max_workers = min(4, os.cpu_count() or 2)
         self.executor = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="checkpoint"

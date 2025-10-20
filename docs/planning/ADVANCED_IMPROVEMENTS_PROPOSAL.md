@@ -1,6 +1,6 @@
 # AIエージェント提案: 高度な改善案の検討
 
-**日時**: 2025年10月6日  
+**日時**: 2025年10月6日
 **目的**: RecurrentPPO/LSTM化、連続ポジションサイズ化、自己教師タスク併用の技術的検討
 
 ---
@@ -93,7 +93,7 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 class CustomLSTMPolicy(ActorCriticPolicy):
     def __init__(self, *args, lstm_hidden_size=256, n_lstm_layers=1, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # LSTM layers
         self.lstm = nn.LSTM(
             input_size=self.features_dim,
@@ -101,21 +101,21 @@ class CustomLSTMPolicy(ActorCriticPolicy):
             num_layers=n_lstm_layers,
             batch_first=True,
         )
-        
+
         # Policy head (actor)
         self.action_net = nn.Linear(lstm_hidden_size, self.action_space.n)
-        
+
         # Value head (critic)
         self.value_net = nn.Linear(lstm_hidden_size, 1)
-        
+
     def forward(self, obs, lstm_states, episode_starts, deterministic=False):
         # LSTM forward pass
         lstm_out, lstm_states = self.lstm(obs, lstm_states)
-        
+
         # Policy and value
         action_logits = self.action_net(lstm_out)
         values = self.value_net(lstm_out)
-        
+
         return action_logits, values, lstm_states
 ```
 
@@ -215,7 +215,7 @@ from gym.spaces import Box
 class HeavyTradingEnv(gym.Env):
     def __init__(self, *args, use_continuous_actions=False, **kwargs):
         self.use_continuous_actions = use_continuous_actions
-        
+
         if use_continuous_actions:
             # 連続アクション: ポジションサイズ
             self.action_space = Box(
@@ -226,16 +226,16 @@ class HeavyTradingEnv(gym.Env):
         else:
             # 従来の離散アクション
             self.action_space = Discrete(3)
-    
+
     def step(self, action):
         if self.use_continuous_actions:
             # actionは-1.0~1.0の連続値
             target_position = float(action[0])
-            
+
             # ポジション調整
             current_position = self.position
             position_change = target_position - current_position
-            
+
             # トレード実行
             if abs(position_change) > 0.01:  # 閾値
                 self._execute_trade(position_change)
@@ -267,14 +267,14 @@ model = PPO(
 ```python
 def step(self, action):
     target_position = np.clip(action[0], -1.0, 1.0)
-    
+
     # 制約チェック
     if self._is_invalid_trade(target_position):
         # 無効なアクションには大きなペナルティ
         reward = -10.0
         # ポジションは変更しない
         target_position = self.position
-    
+
     # ...
 ```
 
@@ -393,51 +393,51 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 class MultiTaskPolicy(ActorCriticPolicy):
     def __init__(self, *args, aux_task_weight=0.1, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Shared feature extractor (既存)
         # self.features_extractor = ...
-        
+
         # Policy head (Actor) - 既存
         self.action_net = nn.Linear(self.features_dim, self.action_space.n)
-        
+
         # Value head (Critic) - 既存
         self.value_net = nn.Linear(self.features_dim, 1)
-        
+
         # Auxiliary task head - 新規
         self.aux_net = nn.Sequential(
             nn.Linear(self.features_dim, 128),
             nn.ReLU(),
             nn.Linear(128, 1),  # 価格変化予測
         )
-        
+
         self.aux_task_weight = aux_task_weight
-        
+
     def forward(self, obs, deterministic=False):
         features = self.extract_features(obs)
-        
+
         # Main task: Policy and Value
         action_logits = self.action_net(features)
         value = self.value_net(features)
-        
+
         # Auxiliary task: Price prediction
         price_pred = self.aux_net(features)
-        
+
         return action_logits, value, price_pred
-    
+
     def evaluate_actions(self, obs, actions):
         # Standard PPO loss
         action_log_probs, value, entropy = super().evaluate_actions(obs, actions)
-        
+
         # Auxiliary task loss
         _, _, price_pred = self.forward(obs)
-        
+
         # 価格変化のground truth (環境から取得)
         next_price_change = self._get_next_price_change(obs)
         aux_loss = nn.MSELoss()(price_pred, next_price_change)
-        
+
         # Total loss = PPO loss + aux_weight * aux_loss
         # (CustomPPO内で統合)
-        
+
         return action_log_probs, value, entropy, aux_loss
 ```
 
@@ -448,16 +448,16 @@ class CustomMultiTaskPPO(CustomPPO):
     def __init__(self, *args, aux_task_weight=0.1, **kwargs):
         super().__init__(*args, **kwargs)
         self.aux_task_weight = aux_task_weight
-        
+
     def train(self) -> None:
         for rollout_data in self.rollout_buffer.get(self.batch_size):
             # ... 既存のPPO train処理 ...
-            
+
             # Auxiliary task loss追加
             _, _, _, aux_loss = self.policy.evaluate_actions(
                 rollout_data.observations, rollout_data.actions
             )
-            
+
             # Total loss
             total_loss = (
                 policy_loss
@@ -465,12 +465,12 @@ class CustomMultiTaskPPO(CustomPPO):
                 - self.ent_coef * entropy_loss
                 + self.aux_task_weight * aux_loss  # ← 追加
             )
-            
+
             # Backward and optimize
             self.policy.optimizer.zero_grad()
             total_loss.backward()
             self.policy.optimizer.step()
-            
+
             # Logging
             self.logger.record("train/aux_loss", aux_loss.item())
 ```
@@ -680,7 +680,7 @@ pip install stable-baselines3 torch tensorboard
 
 ---
 
-**レポート作成日**: 2025年10月6日  
-**作成者**: GitHub Copilot  
-**ステータス**: 検討資料  
+**レポート作成日**: 2025年10月6日
+**作成者**: GitHub Copilot
+**ステータス**: 検討資料
 **次回更新**: RecurrentPPO調査完了後

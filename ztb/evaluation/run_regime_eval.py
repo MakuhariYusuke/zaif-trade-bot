@@ -117,7 +117,7 @@ def run_regime_evaluation(
     md_path = output_path / "regime_report.md"
     md_report = regime_evaluator.generate_report(regime_results, str(md_path))
 
-    print(f"Regime evaluation completed!")
+    print("Regime evaluation completed!")
     print(f"JSON report: {json_path}")
     print(f"Markdown report: {md_path}")
 

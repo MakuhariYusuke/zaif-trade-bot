@@ -5,11 +5,8 @@ Advanced Callbacks for Training.
 """
 
 from ztb.training.callbacks.advanced_callbacks import (
+    BestModelCallback,
     EarlyStoppingCallback,
-    BestModelCallback
 )
 
-__all__ = [
-    'EarlyStoppingCallback',
-    'BestModelCallback'
-]
+__all__ = ["EarlyStoppingCallback", "BestModelCallback"]

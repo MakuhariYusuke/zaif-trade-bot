@@ -1,6 +1,6 @@
 # ログレベル制御機能 統合サマリー
 
-**実装日**: 2025年10月7日  
+**実装日**: 2025年10月7日
 **目的**: unified_trainer実行時のログ出力を制御し、視認性を向上
 
 ---
@@ -105,7 +105,7 @@ python -m ztb.training.unified_trainer --config configs\train\ensemble_B_100k_te
 python -m ztb.training.unified_trainer --config configs\train\ensemble_B_100k_test.json --log-level WARNING
 ```
 
-**用途**: 
+**用途**:
 - 並列実行時（3つのウィンドウで混乱しないように）
 - 長時間実行時（1M学習等）
 - 安定稼働時

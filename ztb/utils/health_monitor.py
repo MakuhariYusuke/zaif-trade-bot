@@ -7,14 +7,15 @@ performance monitoring, and alerting capabilities.
 
 import logging
 import time
-import psutil
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional, Callable
 from enum import Enum
+from typing import Any, Callable, Dict, Optional
 
-from ztb.utils.config import ZTBConfig
+import psutil
+
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
-from ztb.utils.memory_monitor import get_memory_monitor, MemoryMonitor
+from ztb.utils.config import ZTBConfig
+from ztb.utils.memory_monitor import MemoryMonitor
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,9 @@ class HealthChecker:
         self.last_metrics: Optional[SystemMetrics] = None
         self.memory_monitor = MemoryMonitor(self.config)
 
-    def register_check(self, name: str, check_func: Callable[[], HealthCheckResult]) -> None:
+    def register_check(
+        self, name: str, check_func: Callable[[], HealthCheckResult]
+    ) -> None:
         """
         Register a health check function.
 
@@ -77,7 +80,7 @@ class HealthChecker:
             failure_threshold=self.config.get_int("ZTB_HEALTH_FAILURE_THRESHOLD", 3),
             recovery_timeout=self.config.get_float("ZTB_HEALTH_RECOVERY_TIMEOUT", 30.0),
             success_threshold=self.config.get_int("ZTB_HEALTH_SUCCESS_THRESHOLD", 2),
-            timeout=self.config.get_float("ZTB_HEALTH_CHECK_TIMEOUT", 5.0)
+            timeout=self.config.get_float("ZTB_HEALTH_CHECK_TIMEOUT", 5.0),
         )
         self.circuit_breakers[name] = CircuitBreaker(name, cb_config)
 
@@ -103,7 +106,7 @@ class HealthChecker:
                 message=f"Health check '{name}' not registered",
                 details={},
                 timestamp=time.time(),
-                duration=0.0
+                duration=0.0,
             )
 
         circuit_breaker = self.circuit_breakers[name]
@@ -117,7 +120,7 @@ class HealthChecker:
                     message=f"Circuit breaker is OPEN for '{name}'",
                     details={"circuit_state": "open"},
                     timestamp=time.time(),
-                    duration=0.0
+                    duration=0.0,
                 )
 
             # Run the health check
@@ -144,7 +147,7 @@ class HealthChecker:
                 message=f"Health check failed: {str(e)}",
                 details={"exception": str(e)},
                 timestamp=time.time(),
-                duration=time.time() - time.time()  # Approximate
+                duration=time.time() - time.time(),  # Approximate
             )
 
     def run_all_checks(self) -> Dict[str, HealthCheckResult]:
@@ -196,7 +199,7 @@ class HealthChecker:
         try:
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             network = len(psutil.net_connections())
 
             metrics = SystemMetrics(
@@ -205,7 +208,7 @@ class HealthChecker:
                 memory_mb=memory.used / 1024 / 1024,
                 disk_usage_percent=disk.percent,
                 network_connections=network,
-                timestamp=time.time()
+                timestamp=time.time(),
             )
 
             self.last_metrics = metrics
@@ -220,7 +223,7 @@ class HealthChecker:
                 memory_mb=0.0,
                 disk_usage_percent=0.0,
                 network_connections=0,
-                timestamp=time.time()
+                timestamp=time.time(),
             )
 
     def check_system_health(self) -> HealthCheckResult:
@@ -252,7 +255,9 @@ class HealthChecker:
 
         # Determine status
         if issues:
-            status = HealthStatus.DEGRADED if len(issues) == 1 else HealthStatus.UNHEALTHY
+            status = (
+                HealthStatus.DEGRADED if len(issues) == 1 else HealthStatus.UNHEALTHY
+            )
             message = f"System health issues: {', '.join(issues)}"
         else:
             status = HealthStatus.HEALTHY
@@ -268,10 +273,10 @@ class HealthChecker:
                 "memory_mb": metrics.memory_mb,
                 "disk_usage_percent": metrics.disk_usage_percent,
                 "network_connections": metrics.network_connections,
-                "issues": issues
+                "issues": issues,
             },
             timestamp=metrics.timestamp,
-            duration=time.time() - start_time
+            duration=time.time() - start_time,
         )
 
     def check_database_connectivity(self) -> HealthCheckResult:
@@ -301,7 +306,7 @@ class HealthChecker:
             message=message,
             details=details,
             timestamp=time.time(),
-            duration=time.time() - start_time
+            duration=time.time() - start_time,
         )
 
     def check_external_api_health(self) -> HealthCheckResult:
@@ -319,7 +324,10 @@ class HealthChecker:
             time.sleep(0.05)  # Simulate network latency
             status = HealthStatus.HEALTHY
             message = "External APIs responding normally"
-            details = {"response_time_ms": 50, "apis_checked": ["exchange_api", "market_data_api"]}
+            details = {
+                "response_time_ms": 50,
+                "apis_checked": ["exchange_api", "market_data_api"],
+            }
         except Exception as e:
             status = HealthStatus.UNHEALTHY
             message = f"External API check failed: {str(e)}"
@@ -331,7 +339,7 @@ class HealthChecker:
             message=message,
             details=details,
             timestamp=time.time(),
-            duration=time.time() - start_time
+            duration=time.time() - start_time,
         )
 
     def check_memory_health(self) -> HealthCheckResult:
@@ -345,16 +353,22 @@ class HealthChecker:
         memory_stats = self.memory_monitor.get_memory_stats()
 
         issues = []
-        current_mb = memory_stats['current_mb']
+        current_mb = memory_stats["current_mb"]
 
         # Check memory thresholds
-        critical_threshold = self.config.get_int("ZTB_MEMORY_CRITICAL_THRESHOLD_MB", 2000)
+        critical_threshold = self.config.get_int(
+            "ZTB_MEMORY_CRITICAL_THRESHOLD_MB", 2000
+        )
         warning_threshold = self.config.get_int("ZTB_MEMORY_WARNING_THRESHOLD_MB", 1000)
 
         if current_mb > critical_threshold:
-            issues.append(f"Critical memory usage: {current_mb:.1f}MB > {critical_threshold}MB")
+            issues.append(
+                f"Critical memory usage: {current_mb:.1f}MB > {critical_threshold}MB"
+            )
         elif current_mb > warning_threshold:
-            issues.append(f"High memory usage: {current_mb:.1f}MB > {warning_threshold}MB")
+            issues.append(
+                f"High memory usage: {current_mb:.1f}MB > {warning_threshold}MB"
+            )
 
         # Check memory trend
         trend = self.memory_monitor.get_memory_trend()
@@ -369,22 +383,26 @@ class HealthChecker:
         else:
             status = HealthStatus.HEALTHY
 
-        message = "Memory usage normal" if not issues else f"Memory issues: {', '.join(issues)}"
+        message = (
+            "Memory usage normal"
+            if not issues
+            else f"Memory issues: {', '.join(issues)}"
+        )
 
         return HealthCheckResult(
             name="memory_health",
             status=status,
             message=message,
             details={
-                "current_mb": memory_stats['current_mb'],
-                "average_mb": memory_stats['average_mb'],
-                "peak_mb": memory_stats['peak_mb'],
-                "samples": memory_stats['samples'],
+                "current_mb": memory_stats["current_mb"],
+                "average_mb": memory_stats["average_mb"],
+                "peak_mb": memory_stats["peak_mb"],
+                "samples": memory_stats["samples"],
                 "trend": trend,
-                "issues": issues
+                "issues": issues,
             },
             timestamp=time.time(),
-            duration=time.time() - start_time
+            duration=time.time() - start_time,
         )
 
     def setup_default_checks(self) -> None:
@@ -414,7 +432,7 @@ class HealthChecker:
                     "status": result.status.value,
                     "message": result.message,
                     "duration": result.duration,
-                    "details": result.details
+                    "details": result.details,
                 }
                 for name, result in results.items()
             },
@@ -423,17 +441,16 @@ class HealthChecker:
                 "memory_percent": metrics.memory_percent,
                 "memory_mb": metrics.memory_mb,
                 "disk_usage_percent": metrics.disk_usage_percent,
-                "network_connections": metrics.network_connections
+                "network_connections": metrics.network_connections,
             },
             "memory_stats": {
-                "current_mb": memory_stats['current_mb'],
-                "average_mb": memory_stats['average_mb'],
-                "peak_mb": memory_stats['peak_mb'],
-                "samples": memory_stats['samples'],
-                "trend": self.memory_monitor.get_memory_trend()
+                "current_mb": memory_stats["current_mb"],
+                "average_mb": memory_stats["average_mb"],
+                "peak_mb": memory_stats["peak_mb"],
+                "samples": memory_stats["samples"],
+                "trend": self.memory_monitor.get_memory_trend(),
             },
             "circuit_breakers": {
-                name: cb.state.value
-                for name, cb in self.circuit_breakers.items()
-            }
+                name: cb.state.value for name, cb in self.circuit_breakers.items()
+            },
         }

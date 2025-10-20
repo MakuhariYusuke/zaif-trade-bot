@@ -13,16 +13,27 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 import numpy as np
 import pandas as pd
 
-
 logger = logging.getLogger(__name__)
 if not logger.handlers:
     _handler = logging.StreamHandler()
-    _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    _handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
     logger.addHandler(_handler)
     logger.setLevel(logging.INFO)
     logger.propagate = False
@@ -417,7 +428,9 @@ class HyperparameterOptimizer(ABC):
         stability_bonus = max(0.0, 1.0 - reward_std / (abs(base_score) + 1e-6))
 
         entropy_value = action_dist.get("normalized_entropy", 0.0)
-        entropy_bonus = float(entropy_value) if isinstance(entropy_value, (int, float)) else 0.0
+        entropy_bonus = (
+            float(entropy_value) if isinstance(entropy_value, (int, float)) else 0.0
+        )
 
         score = base_score
         score += self.entropy_weight * entropy_bonus
@@ -500,7 +513,11 @@ class HyperparameterOptimizer(ABC):
 
     def _clip_to_range(self, value: Union[int, float]) -> Union[int, float]:
         min_val, max_val = self.get_parameter_range()
-        if isinstance(value, float) and isinstance(min_val, int) and isinstance(max_val, int):
+        if (
+            isinstance(value, float)
+            and isinstance(min_val, int)
+            and isinstance(max_val, int)
+        ):
             value = round(value)
         return max(min_val, min(max_val, value))
 
@@ -531,7 +548,9 @@ class HyperparameterOptimizer(ABC):
     def _is_close(self, a: Union[int, float], b: Union[int, float]) -> bool:
         if isinstance(a, int) and isinstance(b, int):
             return a == b
-        return math.isclose(float(a), float(b), rel_tol=1e-9, abs_tol=self.search_tolerance * 0.1)
+        return math.isclose(
+            float(a), float(b), rel_tol=1e-9, abs_tol=self.search_tolerance * 0.1
+        )
 
     def _value_in_range(
         self,
@@ -543,7 +562,11 @@ class HyperparameterOptimizer(ABC):
             value_int = int(round(float(value)))
             return lower <= value_int <= upper
         value_float = float(value)
-        return float(lower) - self.search_tolerance <= value_float <= float(upper) + self.search_tolerance
+        return (
+            float(lower) - self.search_tolerance
+            <= value_float
+            <= float(upper) + self.search_tolerance
+        )
 
     def _unique_candidates(
         self,
@@ -588,9 +611,14 @@ class HyperparameterOptimizer(ABC):
                 offset = int(round(span_int * quantile))
                 candidate_int = lower_int + offset
                 candidate_int = max(lower_int + 1, min(upper_int - 1, candidate_int))
-                if lower_int < candidate_int < upper_int and candidate_int not in candidates_int:
+                if (
+                    lower_int < candidate_int < upper_int
+                    and candidate_int not in candidates_int
+                ):
                     candidates_int.append(candidate_int)
-            return self._unique_candidates(candidates_int, existing_keys, total_timesteps)
+            return self._unique_candidates(
+                candidates_int, existing_keys, total_timesteps
+            )
 
         lower_float = float(lower_value)
         upper_float = float(upper_value)
@@ -602,7 +630,9 @@ class HyperparameterOptimizer(ABC):
         for quantile in self.warmup_quantiles:
             float_candidate = lower_float + span_float * quantile
             if self._value_in_range(float_candidate, lower_float, upper_float):
-                if not self._is_close(float_candidate, lower_float) and not self._is_close(float_candidate, upper_float):
+                if not self._is_close(
+                    float_candidate, lower_float
+                ) and not self._is_close(float_candidate, upper_float):
                     float_candidates.append(float_candidate)
         return self._unique_candidates(float_candidates, existing_keys, total_timesteps)
 
@@ -621,8 +651,14 @@ class HyperparameterOptimizer(ABC):
         if is_integer_range:
             midpoint_int = int(midpoint_value)
             probes = [midpoint_int - 1, midpoint_int + 1]
-            int_candidates = [value for value in probes if self._value_in_range(value, lower_value, upper_value)]
-            return self._unique_candidates(int_candidates, existing_keys, total_timesteps)
+            int_candidates = [
+                value
+                for value in probes
+                if self._value_in_range(value, lower_value, upper_value)
+            ]
+            return self._unique_candidates(
+                int_candidates, existing_keys, total_timesteps
+            )
 
         lower_float = float(lower_value)
         upper_float = float(upper_value)
@@ -658,7 +694,11 @@ class HyperparameterOptimizer(ABC):
         if is_integer_range:
             best_int = int(best_value)
             candidates = [best_int - 1, best_int + 1]
-            filtered = [value for value in candidates if self._value_in_range(value, lower_value, upper_value)]
+            filtered = [
+                value
+                for value in candidates
+                if self._value_in_range(value, lower_value, upper_value)
+            ]
             return self._unique_candidates(filtered, existing_keys, total_timesteps)
 
         lower_float = float(lower_value)
@@ -739,7 +779,9 @@ class HyperparameterOptimizer(ABC):
         self.update_ppo_params(coerced_value)
         model, callback, elapsed = self.train_model(total_timesteps)
         score, stats, action_dist = self.evaluate_result(callback)
-        model_path = self.save_model(model, coerced_value, iteration=iteration, note=note)
+        model_path = self.save_model(
+            model, coerced_value, iteration=iteration, note=note
+        )
 
         result = TrainingRunResult(
             parameter_value=coerced_value,
@@ -775,9 +817,9 @@ class HyperparameterOptimizer(ABC):
         """Evaluate specific values from custom search range and return the best."""
         logger.info("=== Custom Range Optimization for %s ===", self.parameter_name)
         logger.info("Evaluating values: %s", search_values)
-        
+
         best_result: Optional[TrainingRunResult] = None
-        
+
         for idx, value in enumerate(search_values, start=1):
             result = self._evaluate_value(
                 value,
@@ -786,7 +828,7 @@ class HyperparameterOptimizer(ABC):
                 note=f"custom_{idx}",
                 use_cache=True,
             )
-            
+
             self._log_binary_search_event(
                 "evaluation",
                 {
@@ -798,7 +840,7 @@ class HyperparameterOptimizer(ABC):
                     "elapsed_seconds": result.elapsed_seconds,
                 },
             )
-            
+
             if best_result is None or result.score > best_result.score:
                 best_result = result
                 self._log_binary_search_event(
@@ -810,10 +852,10 @@ class HyperparameterOptimizer(ABC):
                         "score": result.score,
                     },
                 )
-        
+
         if best_result is None:
             raise ValueError("No valid results from custom search range")
-        
+
         logger.info(
             "Best %s: %s (score: %.6f)",
             self.parameter_name,
@@ -836,8 +878,10 @@ class HyperparameterOptimizer(ABC):
         # Use custom search range if provided, otherwise use default range
         if self.custom_search_range is not None:
             logger.info("Using custom search range: %s", self.custom_search_range)
-            return self._optimize_custom_range(self.custom_search_range, total_timesteps)
-        
+            return self._optimize_custom_range(
+                self.custom_search_range, total_timesteps
+            )
+
         min_val, max_val = self.get_parameter_range()
         is_integer_range = isinstance(min_val, int) and isinstance(max_val, int)
 
@@ -861,7 +905,9 @@ class HyperparameterOptimizer(ABC):
         ) -> TrainingRunResult:
             nonlocal evaluation_index
             evaluation_index += 1
-            iteration_id = iteration_label if iteration_label is not None else evaluation_index
+            iteration_id = (
+                iteration_label if iteration_label is not None else evaluation_index
+            )
             result = self._evaluate_value(
                 raw_value,
                 total_timesteps=total_timesteps,
@@ -1032,9 +1078,7 @@ class HyperparameterOptimizer(ABC):
         )
 
         for idx, candidate in enumerate(refinement_candidates, start=1):
-            refine_result = evaluate_candidate(
-                candidate, stage=f"refine_{idx}"
-            )
+            refine_result = evaluate_candidate(candidate, stage=f"refine_{idx}")
             if refine_result.score > best_result.score:
                 best_result = refine_result
                 self._log_binary_search_event(
@@ -1141,7 +1185,8 @@ class BinarySearchArgumentParser:
             type=str,
             default=None,
             help=CLIFormatter.format_help(
-                "Comma-separated list of specific values to search (e.g., '16,32,64'). Overrides default range.", None
+                "Comma-separated list of specific values to search (e.g., '16,32,64'). Overrides default range.",
+                None,
             ),
         )
         return parser

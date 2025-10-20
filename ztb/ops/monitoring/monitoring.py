@@ -231,9 +231,7 @@ class ResourceMonitor:
         logger.warning(message)
 
         try:
-            from .notifications import (
-                send_notification,
-            )
+            from .notifications import send_notification
 
             send_notification(
                 title="Disk Space Alert", message=message, priority="high"
@@ -247,9 +245,7 @@ class ResourceMonitor:
         logger.warning(message)
 
         try:
-            from .notifications import (
-                send_notification,
-            )
+            from .notifications import send_notification
 
             send_notification(title="Memory Alert", message=message, priority="high")
         except ImportError:

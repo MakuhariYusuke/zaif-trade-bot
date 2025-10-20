@@ -3,16 +3,15 @@ Meta-Learning for SAC v421
 MAMLスタイルのメタラーニングによる迅速な市場適応
 """
 
-import logging
+import copy
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from typing import Dict, List, Optional, Tuple, Any, Callable, Union
-from dataclasses import dataclass
-from collections import defaultdict
-import copy
-from torch.utils.data import DataLoader, TensorDataset
 
 from ztb.utils.logging_utils import get_logger
 
@@ -22,6 +21,7 @@ logger = get_logger(__name__)
 @dataclass
 class TaskData:
     """タスクデータ"""
+
     states: torch.Tensor
     actions: torch.Tensor
     rewards: torch.Tensor
@@ -33,6 +33,7 @@ class TaskData:
 @dataclass
 class MetaLearningConfig:
     """メタラーニング設定"""
+
     inner_lr: float = 0.01
     outer_lr: float = 0.001
     meta_batch_size: int = 4
@@ -60,7 +61,9 @@ class MAML(nn.Module):
         """タスクへの適応"""
         # モデルコピー
         adapted_model = copy.deepcopy(self.model)
-        adapted_optimizer = optim.SGD(adapted_model.parameters(), lr=self.config.inner_lr)
+        adapted_optimizer = optim.SGD(
+            adapted_model.parameters(), lr=self.config.inner_lr
+        )
 
         # 適応ステップ
         adapted_model.train()
@@ -69,8 +72,13 @@ class MAML(nn.Module):
 
             # タスクデータでの損失計算
             outputs = adapted_model(task_data.states)
-            loss = loss_fn(outputs, task_data.actions, task_data.rewards,
-                          adapted_model(task_data.next_states), task_data.dones)
+            loss = loss_fn(
+                outputs,
+                task_data.actions,
+                task_data.rewards,
+                adapted_model(task_data.next_states),
+                task_data.dones,
+            )
 
             loss.backward()
             adapted_optimizer.step()
@@ -102,12 +110,16 @@ class Reptile(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-    def adapt_to_task(self, task_data: TaskData, loss_fn: Callable) -> Tuple[nn.Module, Dict[str, Any]]:
+    def adapt_to_task(
+        self, task_data: TaskData, loss_fn: Callable
+    ) -> Tuple[nn.Module, Dict[str, Any]]:
         """タスクへの適応"""
         adapted_model = copy.deepcopy(self.model)
         optimizer = optim.SGD(adapted_model.parameters(), lr=self.config.inner_lr)
 
-        initial_params = {name: param.clone() for name, param in adapted_model.named_parameters()}
+        initial_params = {
+            name: param.clone() for name, param in adapted_model.named_parameters()
+        }
 
         # 適応ステップ
         adapted_model.train()
@@ -117,28 +129,37 @@ class Reptile(nn.Module):
             optimizer.zero_grad()
 
             outputs = adapted_model(task_data.states)
-            loss = loss_fn(outputs, task_data.actions, task_data.rewards,
-                          adapted_model(task_data.next_states), task_data.dones)
+            loss = loss_fn(
+                outputs,
+                task_data.actions,
+                task_data.rewards,
+                adapted_model(task_data.next_states),
+                task_data.dones,
+            )
 
             loss.backward()
             optimizer.step()
             losses.append(loss.item())
 
         # パラメータ差分計算
-        final_params = {name: param.clone() for name, param in adapted_model.named_parameters()}
+        final_params = {
+            name: param.clone() for name, param in adapted_model.named_parameters()
+        }
         param_updates = {}
 
         for name in initial_params:
             param_updates[name] = final_params[name] - initial_params[name]
 
         return adapted_model, {
-            'initial_params': initial_params,
-            'final_params': final_params,
-            'param_updates': param_updates,
-            'adaptation_losses': losses
+            "initial_params": initial_params,
+            "final_params": final_params,
+            "param_updates": param_updates,
+            "adaptation_losses": losses,
         }
 
-    def meta_update(self, adapted_models: List[nn.Module], task_infos: List[Dict[str, Any]]):
+    def meta_update(
+        self, adapted_models: List[nn.Module], task_infos: List[Dict[str, Any]]
+    ):
         """メタ更新"""
         self.meta_optimizer.zero_grad()
 
@@ -147,8 +168,8 @@ class Reptile(nn.Module):
 
         for adapted_model, task_info in zip(adapted_models, task_infos):
             for name, param in adapted_model.named_parameters():
-                initial_param = task_info['initial_params'][name]
-                final_param = task_info['final_params'][name]
+                initial_param = task_info["initial_params"][name]
+                final_param = task_info["final_params"][name]
 
                 # 適応方向の勾配
                 gradient = final_param - initial_param
@@ -166,15 +187,19 @@ class Reptile(nn.Module):
 class MetaLearner:
     """メタラーニング統合クラス"""
 
-    def __init__(self, base_model: nn.Module, algorithm: str = 'maml',
-                 config: Optional[MetaLearningConfig] = None):
+    def __init__(
+        self,
+        base_model: nn.Module,
+        algorithm: str = "maml",
+        config: Optional[MetaLearningConfig] = None,
+    ):
         self.base_model = base_model
         self.algorithm = algorithm
         self.config = config or MetaLearningConfig()
 
-        if algorithm.lower() == 'maml':
+        if algorithm.lower() == "maml":
             self.meta_model = MAML(base_model, self.config)
-        elif algorithm.lower() == 'reptile':
+        elif algorithm.lower() == "reptile":
             self.meta_model = Reptile(base_model, self.config)
         else:
             raise ValueError(f"Unsupported algorithm: {algorithm}")
@@ -182,7 +207,7 @@ class MetaLearner:
         self.task_buffer = []
         self.performance_history = []
         self.best_model_state = None
-        self.best_performance = float('-inf')
+        self.best_performance = float("-inf")
 
     def collect_task_data(self, task_data: TaskData):
         """タスクデータ収集"""
@@ -195,19 +220,23 @@ class MetaLearner:
     def sample_tasks(self, num_tasks: int) -> List[TaskData]:
         """タスクサンプリング"""
         if len(self.task_buffer) < num_tasks:
-            logger.warning(f"Insufficient tasks in buffer: {len(self.task_buffer)} < {num_tasks}")
+            logger.warning(
+                f"Insufficient tasks in buffer: {len(self.task_buffer)} < {num_tasks}"
+            )
             return self.task_buffer.copy()
 
         # ランダムサンプリング（重複なし）
         indices = np.random.choice(len(self.task_buffer), num_tasks, replace=False)
         return [self.task_buffer[i] for i in indices]
 
-    def train_meta(self, loss_fn: Callable, num_epochs: int = 100) -> Dict[str, List[float]]:
+    def train_meta(
+        self, loss_fn: Callable, num_epochs: int = 100
+    ) -> Dict[str, List[float]]:
         """メタ学習実行"""
         training_history = {
-            'meta_losses': [],
-            'task_losses': [],
-            'validation_performance': []
+            "meta_losses": [],
+            "task_losses": [],
+            "validation_performance": [],
         }
 
         patience_counter = 0
@@ -221,7 +250,7 @@ class MetaLearner:
 
             task_losses = []
 
-            if self.algorithm.lower() == 'maml':
+            if self.algorithm.lower() == "maml":
                 # MAML学習
                 adapted_models = []
                 task_losses_epoch = []
@@ -233,39 +262,52 @@ class MetaLearner:
                     # 適応後モデルの損失計算
                     with torch.no_grad():
                         outputs = adapted_model(task.states)
-                        task_loss = loss_fn(outputs, task.actions, task.rewards,
-                                          adapted_model(task.next_states), task.dones)
+                        task_loss = loss_fn(
+                            outputs,
+                            task.actions,
+                            task.rewards,
+                            adapted_model(task.next_states),
+                            task.dones,
+                        )
                         task_losses_epoch.append(task_loss)
 
                 # メタ更新
                 meta_loss = self.meta_model.meta_update(task_losses_epoch)
                 task_losses.extend(task_losses_epoch)
 
-            elif self.algorithm.lower() == 'reptile':
+            elif self.algorithm.lower() == "reptile":
                 # Reptile学習
                 adapted_models = []
                 task_infos = []
 
                 for task in tasks:
-                    adapted_model, task_info = self.meta_model.adapt_to_task(task, loss_fn)
+                    adapted_model, task_info = self.meta_model.adapt_to_task(
+                        task, loss_fn
+                    )
                     adapted_models.append(adapted_model)
                     task_infos.append(task_info)
 
                     # タスク損失
-                    final_loss = task_info['adaptation_losses'][-1]
+                    final_loss = task_info["adaptation_losses"][-1]
                     task_losses.append(torch.tensor(final_loss))
 
                 # メタ更新
                 self.meta_model.meta_update(adapted_models, task_infos)
-                meta_loss = np.mean([info['adaptation_losses'][-1] for info in task_infos])
+                meta_loss = np.mean(
+                    [info["adaptation_losses"][-1] for info in task_infos]
+                )
 
             # 履歴記録
-            training_history['meta_losses'].append(meta_loss)
-            training_history['task_losses'].append(np.mean([loss.item() for loss in task_losses]))
+            training_history["meta_losses"].append(meta_loss)
+            training_history["task_losses"].append(
+                np.mean([loss.item() for loss in task_losses])
+            )
 
             # 検証性能評価（簡易版）
-            val_performance = self._evaluate_meta_performance(tasks[:2], loss_fn)  # 最初の2タスクで評価
-            training_history['validation_performance'].append(val_performance)
+            val_performance = self._evaluate_meta_performance(
+                tasks[:2], loss_fn
+            )  # 最初の2タスクで評価
+            training_history["validation_performance"].append(val_performance)
 
             # Early stopping
             if val_performance > self.best_performance:
@@ -280,10 +322,12 @@ class MetaLearner:
                 break
 
             if (epoch + 1) % 10 == 0:
-                logger.info(f"Meta epoch {epoch+1}/{num_epochs}, "
-                          f"meta_loss: {meta_loss:.6f}, "
-                          f"task_loss: {training_history['task_losses'][-1]:.6f}, "
-                          f"val_perf: {val_performance:.6f}")
+                logger.info(
+                    f"Meta epoch {epoch+1}/{num_epochs}, "
+                    f"meta_loss: {meta_loss:.6f}, "
+                    f"task_loss: {training_history['task_losses'][-1]:.6f}, "
+                    f"val_perf: {val_performance:.6f}"
+                )
 
         # 最適モデル復元
         if self.best_model_state is not None:
@@ -291,7 +335,9 @@ class MetaLearner:
 
         return training_history
 
-    def _evaluate_meta_performance(self, tasks: List[TaskData], loss_fn: Callable) -> float:
+    def _evaluate_meta_performance(
+        self, tasks: List[TaskData], loss_fn: Callable
+    ) -> float:
         """メタ性能評価"""
         total_performance = 0
 
@@ -301,15 +347,22 @@ class MetaLearner:
             # 適応後性能評価
             with torch.no_grad():
                 outputs = adapted_model(task.states)
-                loss = loss_fn(outputs, task.actions, task.rewards,
-                             adapted_model(task.next_states), task.dones)
+                loss = loss_fn(
+                    outputs,
+                    task.actions,
+                    task.rewards,
+                    adapted_model(task.next_states),
+                    task.dones,
+                )
                 # 負の損失を性能として使用（高いほど良い）
                 performance = -loss.item()
                 total_performance += performance
 
         return total_performance / len(tasks) if tasks else 0.0
 
-    def adapt_to_new_market(self, market_data: TaskData, adaptation_steps: Optional[int] = None) -> nn.Module:
+    def adapt_to_new_market(
+        self, market_data: TaskData, adaptation_steps: Optional[int] = None
+    ) -> nn.Module:
         """新規市場への適応"""
         if adaptation_steps is None:
             adaptation_steps = self.config.adaptation_steps
@@ -330,21 +383,24 @@ class MetaLearner:
 
     def save_meta_model(self, path: str):
         """メタモデル保存"""
-        torch.save({
-            'model_state_dict': self.meta_model.state_dict(),
-            'config': self.config,
-            'algorithm': self.algorithm,
-            'best_performance': self.best_performance
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.meta_model.state_dict(),
+                "config": self.config,
+                "algorithm": self.algorithm,
+                "best_performance": self.best_performance,
+            },
+            path,
+        )
         logger.info(f"Meta model saved to {path}")
 
     def load_meta_model(self, path: str):
         """メタモデル読み込み"""
         checkpoint = torch.load(path)
-        self.meta_model.load_state_dict(checkpoint['model_state_dict'])
-        self.config = checkpoint['config']
-        self.algorithm = checkpoint['algorithm']
-        self.best_performance = checkpoint['best_performance']
+        self.meta_model.load_state_dict(checkpoint["model_state_dict"])
+        self.config = checkpoint["config"]
+        self.algorithm = checkpoint["algorithm"]
+        self.best_performance = checkpoint["best_performance"]
         logger.info(f"Meta model loaded from {path}")
 
 
@@ -362,14 +418,21 @@ class MarketMetaLearner:
             nn.Linear(hidden_dims[0], hidden_dims[1]),
             nn.ReLU(),
             nn.Linear(hidden_dims[1], action_dim),
-            nn.Tanh()  # 行動空間を[-1, 1]に制限
+            nn.Tanh(),  # 行動空間を[-1, 1]に制限
         )
 
-        self.meta_learner = MetaLearner(base_model, algorithm='maml')
+        self.meta_learner = MetaLearner(base_model, algorithm="maml")
         self.market_models = {}  # 市場ごとの適応済みモデル
 
-    def add_market_data(self, market_name: str, states: np.ndarray, actions: np.ndarray,
-                       rewards: np.ndarray, next_states: np.ndarray, dones: np.ndarray):
+    def add_market_data(
+        self,
+        market_name: str,
+        states: np.ndarray,
+        actions: np.ndarray,
+        rewards: np.ndarray,
+        next_states: np.ndarray,
+        dones: np.ndarray,
+    ):
         """市場データ追加"""
         task_data = TaskData(
             states=torch.FloatTensor(states),
@@ -377,13 +440,14 @@ class MarketMetaLearner:
             rewards=torch.FloatTensor(rewards),
             next_states=torch.FloatTensor(next_states),
             dones=torch.FloatTensor(dones),
-            task_id=market_name
+            task_id=market_name,
         )
 
         self.meta_learner.collect_task_data(task_data)
 
     def train_on_markets(self, num_epochs: int = 100) -> Dict[str, List[float]]:
         """複数市場でのメタ学習"""
+
         def market_loss(outputs, actions, rewards, next_outputs, dones):
             # SACスタイルの損失（簡易版）
             action_loss = torch.mean((outputs - actions) ** 2)
@@ -391,15 +455,17 @@ class MarketMetaLearner:
 
         return self.meta_learner.train_meta(market_loss, num_epochs)
 
-    def adapt_to_market(self, market_name: str, market_data: Dict[str, np.ndarray]) -> nn.Module:
+    def adapt_to_market(
+        self, market_name: str, market_data: Dict[str, np.ndarray]
+    ) -> nn.Module:
         """特定市場への適応"""
         task_data = TaskData(
-            states=torch.FloatTensor(market_data['states']),
-            actions=torch.FloatTensor(market_data['actions']),
-            rewards=torch.FloatTensor(market_data['rewards']),
-            next_states=torch.FloatTensor(market_data['next_states']),
-            dones=torch.FloatTensor(market_data['dones']),
-            task_id=market_name
+            states=torch.FloatTensor(market_data["states"]),
+            actions=torch.FloatTensor(market_data["actions"]),
+            rewards=torch.FloatTensor(market_data["rewards"]),
+            next_states=torch.FloatTensor(market_data["next_states"]),
+            dones=torch.FloatTensor(market_data["dones"]),
+            task_id=market_name,
         )
 
         adapted_model = self.meta_learner.adapt_to_new_market(task_data)
@@ -428,8 +494,8 @@ class MarketMetaLearner:
     def get_adaptation_stats(self) -> Dict[str, Any]:
         """適応統計取得"""
         return {
-            'num_markets': len(self.market_models),
-            'market_names': list(self.market_models.keys()),
-            'meta_performance': self.meta_learner.best_performance,
-            'algorithm': self.meta_learner.algorithm
+            "num_markets": len(self.market_models),
+            "market_names": list(self.market_models.keys()),
+            "meta_performance": self.meta_learner.best_performance,
+            "algorithm": self.meta_learner.algorithm,
         }

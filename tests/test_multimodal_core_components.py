@@ -4,12 +4,20 @@
 """
 
 import unittest
+
 import torch
-import numpy as np
 
 # テスト対象のインポート
-from ztb.multimodal.core.attention import CrossModalAttention, MultiHeadCrossAttention, AttentionFusion
-from ztb.multimodal.core.fusion import TemporalIntegrationLayer, ModalityFusion, MultiModalFeatureEncoder
+from ztb.multimodal.core.attention import (
+    AttentionFusion,
+    CrossModalAttention,
+    MultiHeadCrossAttention,
+)
+from ztb.multimodal.core.fusion import (
+    ModalityFusion,
+    MultiModalFeatureEncoder,
+    TemporalIntegrationLayer,
+)
 
 
 class TestCrossModalAttention(unittest.TestCase):
@@ -18,10 +26,7 @@ class TestCrossModalAttention(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         self.attention = CrossModalAttention(
-            hidden_dim=64,
-            num_heads=4,
-            dropout=0.1,
-            num_layers=2
+            hidden_dim=64, num_heads=4, dropout=0.1, num_layers=2
         )
         self.batch_size = 2
         self.seq_len = 8
@@ -50,7 +55,9 @@ class TestCrossModalAttention(unittest.TestCase):
         attention_mask = torch.ones(self.batch_size, self.seq_len)
         attention_mask[:, -2:] = 0  # 最後の2トークンをマスク
 
-        output = self.attention(price_features, text_features, economic_features, attention_mask)
+        output = self.attention(
+            price_features, text_features, economic_features, attention_mask
+        )
 
         self.assertEqual(output.shape, (self.batch_size, self.seq_len, 64))
         self.assertTrue(torch.isfinite(output).all())
@@ -62,9 +69,7 @@ class TestMultiHeadCrossAttention(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         self.attention = MultiHeadCrossAttention(
-            hidden_dim=64,
-            num_heads=4,
-            dropout=0.1
+            hidden_dim=64, num_heads=4, dropout=0.1
         )
         self.batch_size = 2
         self.seq_len = 8
@@ -75,15 +80,17 @@ class TestMultiHeadCrossAttention(unittest.TestCase):
         text_features = torch.randn(self.batch_size, self.seq_len, 64)
         economic_features = torch.randn(self.batch_size, self.seq_len, 64)
 
-        output, attention_weights = self.attention(price_features, text_features, economic_features)
+        output, attention_weights = self.attention(
+            price_features, text_features, economic_features
+        )
 
         self.assertEqual(output.shape, (self.batch_size, self.seq_len, 64))
         self.assertTrue(torch.isfinite(output).all())
 
         # アテンション重みの確認
-        self.assertIn('price_text', attention_weights)
-        self.assertIn('price_economic', attention_weights)
-        self.assertIn('text_economic', attention_weights)
+        self.assertIn("price_text", attention_weights)
+        self.assertIn("price_economic", attention_weights)
+        self.assertIn("text_economic", attention_weights)
 
 
 class TestAttentionFusion(unittest.TestCase):
@@ -111,10 +118,7 @@ class TestTemporalIntegrationLayer(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         self.integration = TemporalIntegrationLayer(
-            hidden_dim=64,
-            num_layers=2,
-            num_heads=4,
-            dropout=0.1
+            hidden_dim=64, num_layers=2, num_heads=4, dropout=0.1
         )
         self.batch_size = 2
         self.seq_len = 8
@@ -160,10 +164,12 @@ class TestModalityFusion(unittest.TestCase):
         fusion = ModalityFusion(
             num_modalities=self.num_modalities,
             hidden_dim=self.hidden_dim,
-            fusion_method="attention"
+            fusion_method="attention",
         )
 
-        modality_features = torch.randn(self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities)
+        modality_features = torch.randn(
+            self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities
+        )
 
         output = fusion(modality_features)
 
@@ -175,10 +181,12 @@ class TestModalityFusion(unittest.TestCase):
         fusion = ModalityFusion(
             num_modalities=self.num_modalities,
             hidden_dim=self.hidden_dim,
-            fusion_method="concat"
+            fusion_method="concat",
         )
 
-        modality_features = torch.randn(self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities)
+        modality_features = torch.randn(
+            self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities
+        )
 
         output = fusion(modality_features)
 
@@ -190,10 +198,12 @@ class TestModalityFusion(unittest.TestCase):
         fusion = ModalityFusion(
             num_modalities=self.num_modalities,
             hidden_dim=self.hidden_dim,
-            fusion_method="weighted_sum"
+            fusion_method="weighted_sum",
         )
 
-        modality_features = torch.randn(self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities)
+        modality_features = torch.randn(
+            self.batch_size, self.seq_len, self.hidden_dim * self.num_modalities
+        )
 
         output = fusion(modality_features)
 
@@ -212,7 +222,7 @@ class TestMultiModalFeatureEncoder(unittest.TestCase):
             economic_dim=20,
             hidden_dim=64,
             num_heads=4,
-            dropout=0.1
+            dropout=0.1,
         )
         self.batch_size = 2
 
@@ -250,5 +260,5 @@ class TestMultiModalFeatureEncoder(unittest.TestCase):
         self.assertTrue(torch.isfinite(output).all())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -4,8 +4,9 @@ Model management for live trading bot.
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-from stable_baselines3 import PPO, SAC
+
 from sb3_contrib import MaskablePPO
+from stable_baselines3 import PPO, SAC
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,9 @@ class ModelManager:
                 self._is_sac = True
 
         self.model = model
-        logger.info(f"_load_model completed: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}")
+        logger.info(
+            f"_load_model completed: _is_maskable_ppo={self._is_maskable_ppo}, _is_sac={self._is_sac}"
+        )
         return model
 
     def load_schema_info(self, model_name: str) -> None:
@@ -86,7 +89,7 @@ class ModelManager:
                 self.model_schema_hash = metadata.schema_hash
                 self.schema_available = True
 
-                logger.info(f"📋 Model feature requirements:")
+                logger.info("📋 Model feature requirements:")
                 logger.info(f"   Total: {len(self.feature_names)} features")
                 logger.info(f"   First 5: {self.feature_names[:5]}")
                 logger.info(f"   Last 5: {self.feature_names[-5:]}")

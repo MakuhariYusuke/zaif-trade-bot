@@ -8,16 +8,17 @@ Tests gradient accumulation functionality including:
 - Trainer integration
 """
 
+from unittest.mock import Mock
+
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-from unittest.mock import Mock, MagicMock
+
 from ztb.training.gradient_accumulation import (
-    GradientAccumulator,
     GradientAccumulationTrainer,
+    GradientAccumulator,
     create_gradient_accumulator,
-    effective_batch_size_info
+    effective_batch_size_info,
 )
 
 
@@ -42,7 +43,7 @@ class TestGradientAccumulator:
 
         # Mock optimizer
         optimizer = Mock()
-        optimizer.param_groups = [{'params': [Mock()]}]
+        optimizer.param_groups = [{"params": [Mock()]}]
         optimizer.step = Mock()
         optimizer.zero_grad = Mock()
 
@@ -53,32 +54,31 @@ class TestGradientAccumulator:
 
         # Step 1 - accumulate
         step_info1 = accumulator.accumulate_step(loss1, optimizer)
-        assert not step_info1['should_update']
-        assert step_info1['step_loss'] == 2.0 / 3
-        assert step_info1['accumulated_loss'] == 2.0 / 3
+        assert not step_info1["should_update"]
+        assert step_info1["step_loss"] == 2.0 / 3
+        assert step_info1["accumulated_loss"] == 2.0 / 3
         assert not optimizer.step.called
 
         # Step 2 - accumulate
         step_info2 = accumulator.accumulate_step(loss2, optimizer)
-        assert not step_info2['should_update']
-        assert step_info2['step_loss'] == 4.0 / 3
-        assert step_info2['accumulated_loss'] == (2.0 + 4.0) / 3
+        assert not step_info2["should_update"]
+        assert step_info2["step_loss"] == 4.0 / 3
+        assert step_info2["accumulated_loss"] == (2.0 + 4.0) / 3
         assert not optimizer.step.called
 
         # Step 3 - update
         step_info3 = accumulator.accumulate_step(loss3, optimizer)
-        assert step_info3['should_update']
-        assert step_info3['step_loss'] == 6.0 / 3
-        assert step_info3['accumulated_loss'] == (2.0 + 4.0 + 6.0) / 3
+        assert step_info3["should_update"]
+        assert step_info3["step_loss"] == 6.0 / 3
+        assert step_info3["accumulated_loss"] == (2.0 + 4.0 + 6.0) / 3
         assert optimizer.step.called
         assert optimizer.zero_grad.called
 
     def test_gradient_clipping_norm(self):
         """Test gradient norm clipping."""
         accumulator = GradientAccumulator(
-            accumulation_steps=1,  # Update after each step
-            clip_grad_norm=1.0
-        )
+            accumulation_steps=1, clip_grad_norm=1.0
+        )  # Update after each step
 
         model = SimpleModel()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
@@ -93,7 +93,11 @@ class TestGradientAccumulator:
         step_info = accumulator.accumulate_step(loss, optimizer)
 
         # Check that gradients were clipped
-        grad_norms = [torch.norm(p.grad.detach()) for p in model.parameters() if p.grad is not None]
+        grad_norms = [
+            torch.norm(p.grad.detach())
+            for p in model.parameters()
+            if p.grad is not None
+        ]
         if grad_norms:
             total_norm = torch.norm(torch.stack(grad_norms))
             assert total_norm <= 1.0
@@ -101,9 +105,8 @@ class TestGradientAccumulator:
     def test_gradient_clipping_value(self):
         """Test gradient value clipping."""
         accumulator = GradientAccumulator(
-            accumulation_steps=1,  # Update after each step
-            clip_grad_value=0.1
-        )
+            accumulation_steps=1, clip_grad_value=0.1
+        )  # Update after each step
 
         model = SimpleModel()
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
@@ -127,7 +130,7 @@ class TestGradientAccumulator:
         accumulator = GradientAccumulator(
             accumulation_steps=2,
             mixed_precision=True,
-            scaler=torch.cuda.amp.GradScaler()
+            scaler=torch.cuda.amp.GradScaler(),
         )
 
         model = SimpleModel().cuda()
@@ -141,7 +144,7 @@ class TestGradientAccumulator:
             loss = nn.MSELoss()(output, y)
 
         step_info = accumulator.accumulate_step(loss, optimizer)
-        assert not step_info['should_update']
+        assert not step_info["should_update"]
 
         # Second step should trigger update
         with torch.cuda.amp.autocast():
@@ -149,7 +152,7 @@ class TestGradientAccumulator:
             loss = nn.MSELoss()(output, y)
 
         step_info = accumulator.accumulate_step(loss, optimizer)
-        assert step_info['should_update']
+        assert step_info["should_update"]
 
     def test_reset(self):
         """Test accumulator reset."""
@@ -157,7 +160,7 @@ class TestGradientAccumulator:
 
         # Mock optimizer
         optimizer = Mock()
-        optimizer.param_groups = [{'params': [Mock()]}]
+        optimizer.param_groups = [{"params": [Mock()]}]
 
         # Accumulate one step
         loss = torch.tensor(1.0, requires_grad=True)
@@ -175,21 +178,21 @@ class TestGradientAccumulator:
         accumulator = GradientAccumulator(accumulation_steps=3)
 
         optimizer = Mock()
-        optimizer.param_groups = [{'params': [Mock()]}]
+        optimizer.param_groups = [{"params": [Mock()]}]
         optimizer.step = Mock()
         optimizer.zero_grad = Mock()
 
-        losses = [torch.tensor(float(i+1), requires_grad=True) for i in range(5)]
+        losses = [torch.tensor(float(i + 1), requires_grad=True) for i in range(5)]
 
         with accumulator.accumulation_context(optimizer) as accumulate:
             for i, loss in enumerate(losses):
                 step_info = accumulate(loss)
                 if i < 2:  # First two steps
-                    assert not step_info['should_update']
+                    assert not step_info["should_update"]
                 elif i == 2:  # Third step - update
-                    assert step_info['should_update']
+                    assert step_info["should_update"]
                 elif i == 3:  # Fourth step - accumulate again
-                    assert not step_info['should_update']
+                    assert not step_info["should_update"]
                 # i == 4 will be handled by context manager finalizer
 
 
@@ -206,7 +209,7 @@ class TestGradientAccumulationTrainer:
             optimizer=optimizer,
             accumulation_steps=4,
             clip_grad_norm=1.0,
-            mixed_precision=False
+            mixed_precision=False,
         )
 
         assert trainer.accumulation_steps == 4
@@ -224,7 +227,7 @@ class TestGradientAccumulationTrainer:
             optimizer=optimizer,
             accumulation_steps=2,
             mixed_precision=True,
-            device='cuda'
+            device="cuda",
         )
 
         assert trainer.mixed_precision
@@ -236,9 +239,7 @@ class TestGradientAccumulationTrainer:
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
         trainer = GradientAccumulationTrainer(
-            model=model,
-            optimizer=optimizer,
-            accumulation_steps=2
+            model=model, optimizer=optimizer, accumulation_steps=2
         )
 
         # Create batch
@@ -249,20 +250,20 @@ class TestGradientAccumulationTrainer:
 
         # First step
         step_info = trainer.training_step(batch, loss_fn)
-        assert not step_info['parameters_updated']
-        assert step_info['effective_batch_size'] == 6  # 3 * 2
+        assert not step_info["parameters_updated"]
+        assert step_info["effective_batch_size"] == 6  # 3 * 2
 
         # Second step - should update
         step_info = trainer.training_step(batch, loss_fn)
-        assert step_info['parameters_updated']
-        assert step_info['effective_batch_size'] == 6
+        assert step_info["parameters_updated"]
+        assert step_info["effective_batch_size"] == 6
 
     def test_effective_batch_size(self):
         """Test effective batch size calculation."""
         trainer = GradientAccumulationTrainer(
             SimpleModel(),
             torch.optim.SGD(SimpleModel().parameters(), lr=0.01),
-            accumulation_steps=4
+            accumulation_steps=4,
         )
 
         assert trainer.get_effective_batch_size(8) == 32
@@ -275,9 +276,7 @@ class TestUtilityFunctions:
     def test_create_gradient_accumulator(self):
         """Test gradient accumulator creation."""
         accumulator = create_gradient_accumulator(
-            accumulation_steps=4,
-            clip_grad_norm=2.0,
-            mixed_precision=False
+            accumulation_steps=4, clip_grad_norm=2.0, mixed_precision=False
         )
 
         assert accumulator.accumulation_steps == 4
@@ -288,9 +287,7 @@ class TestUtilityFunctions:
     def test_create_gradient_accumulator_mixed_precision(self):
         """Test gradient accumulator creation with mixed precision."""
         accumulator = create_gradient_accumulator(
-            accumulation_steps=2,
-            mixed_precision=True,
-            device='cuda'
+            accumulation_steps=2, mixed_precision=True, device="cuda"
         )
 
         assert accumulator.mixed_precision
@@ -299,18 +296,16 @@ class TestUtilityFunctions:
     def test_effective_batch_size_info(self):
         """Test effective batch size information."""
         info = effective_batch_size_info(
-            actual_batch_size=8,
-            accumulation_steps=4,
-            num_epochs=10
+            actual_batch_size=8, accumulation_steps=4, num_epochs=10
         )
 
-        assert info['actual_batch_size'] == 8
-        assert info['accumulation_steps'] == 4
-        assert info['effective_batch_size'] == 32
-        assert info['gradient_updates_per_epoch'] == 8
-        assert 'training_notes' in info
-        assert len(info['training_notes']) == 4
+        assert info["actual_batch_size"] == 8
+        assert info["accumulation_steps"] == 4
+        assert info["effective_batch_size"] == 32
+        assert info["gradient_updates_per_epoch"] == 8
+        assert "training_notes" in info
+        assert len(info["training_notes"]) == 4
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

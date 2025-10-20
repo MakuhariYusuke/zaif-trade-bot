@@ -61,7 +61,9 @@ class IchimokuCloudSlope(BaseFeature):
 
                 # Normalize by average price to make it scale-invariant
                 avg_price = df["close"].iloc[-period:].mean()
-                norm_slope = slope / (avg_price + 0.001) * 1000  # Scale up for visibility
+                norm_slope = (
+                    slope / (avg_price + 0.001) * 1000
+                )  # Scale up for visibility
 
                 slope_scores.append(norm_slope)
             else:
@@ -71,7 +73,9 @@ class IchimokuCloudSlope(BaseFeature):
         avg_slope = np.mean(slope_scores)
 
         # Cloud angle (arctangent of slope, converted to degrees)
-        cloud_angle = np.degrees(np.arctan(avg_slope / 100))  # Scale down for reasonable angles
+        cloud_angle = np.degrees(
+            np.arctan(avg_slope / 100)
+        )  # Scale down for reasonable angles
 
         # Slope direction and strength
         slope_direction = np.sign(avg_slope)
@@ -84,10 +88,14 @@ class IchimokuCloudSlope(BaseFeature):
         # Final cloud slope score
         # Combine slope, angle, and rotation
         cloud_slope_score = (
-            0.5 * slope_direction * slope_strength +  # Direction and strength
-            0.3 * np.clip(cloud_angle / 45, -1, 1) +  # Angle component (-45 to 45 degrees)
-            0.2 * np.sign(rotation_slope) * np.clip(abs(rotation_slope) / 10, 0, 1)
+            0.5 * slope_direction * slope_strength
+            + 0.3 * np.clip(cloud_angle / 45, -1, 1)  # Direction and strength
+            + 0.2  # Angle component (-45 to 45 degrees)
+            * np.sign(rotation_slope)
+            * np.clip(abs(rotation_slope) / 10, 0, 1)
         )
 
-        result_df = pd.DataFrame({"ichimoku_cloud_slope": cloud_slope_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_cloud_slope": cloud_slope_score}, index=df.index
+        )
         return result_df

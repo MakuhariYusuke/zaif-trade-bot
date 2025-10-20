@@ -1,10 +1,10 @@
 """
 Health monitoring for live trading bot.
 """
-import logging
-from typing import Any, Dict, Optional
 import gc
+import logging
 import time
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class HealthMonitor:
             # System resources
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
 
             # Process info
             process = psutil.Process()
@@ -74,10 +74,16 @@ class HealthMonitor:
             from prometheus_client import Counter, Gauge, Histogram  # type: ignore[import-untyped]
 
             metrics = {
-                "price_fetches": Counter("price_fetches_total", "Total price fetches", ["success"]),
-                "price_fetch_duration": Histogram("price_fetch_duration_seconds", "Price fetch duration"),
+                "price_fetches": Counter(
+                    "price_fetches_total", "Total price fetches", ["success"]
+                ),
+                "price_fetch_duration": Histogram(
+                    "price_fetch_duration_seconds", "Price fetch duration"
+                ),
                 "price_current": Gauge("price_current", "Current price"),
-                "trades_executed": Counter("trades_executed_total", "Total trades executed", ["action"]),
+                "trades_executed": Counter(
+                    "trades_executed_total", "Total trades executed", ["action"]
+                ),
                 "pnl_current": Gauge("pnl_current", "Current PnL"),
                 "position_size": Gauge("position_size", "Current position size"),
             }
@@ -95,7 +101,7 @@ class HealthMonitor:
         pnl: float,
         position: float,
         trade_success: bool = False,
-        action: Optional[str] = None
+        action: Optional[str] = None,
     ) -> None:
         """Update metrics with current values."""
         if not metrics:

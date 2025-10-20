@@ -4,9 +4,10 @@ Integration test for SAC model in live_trader system.
 Tests the live_trader with sac_v420_hold_relaxed model for 0.025 hours.
 """
 
+import os
 import subprocess
 import sys
-import os
+
 
 def test_sac_live_trader():
     """Test SAC model integration with live_trader."""
@@ -18,17 +19,23 @@ def test_sac_live_trader():
     project_root = os.path.dirname(tests_dir)  # project_root
 
     # Path to main.py
-    main_py_path = os.path.join(project_root, 'ztb', 'trading', 'live_trader', 'main.py')
+    main_py_path = os.path.join(
+        project_root, "ztb", "trading", "live_trader", "main.py"
+    )
 
     # Command to run live_trader with SAC model
     cmd = [
         sys.executable,
         main_py_path,
-        '--model-path', 'models/sac_v420_hold_relaxed.zip',
-        '--algorithm', 'sac',
-        '--venue', 'coincheck',
-        '--duration', '0.025',
-        '--dry-run'
+        "--model-path",
+        "models/sac_v420_hold_relaxed.zip",
+        "--algorithm",
+        "sac",
+        "--venue",
+        "coincheck",
+        "--duration",
+        "0.025",
+        "--dry-run",
     ]
 
     print("Running SAC live_trader test...")
@@ -37,12 +44,8 @@ def test_sac_live_trader():
     try:
         # Run the command
         result = subprocess.run(
-            cmd,
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minutes timeout
-        )
+            cmd, cwd=project_root, capture_output=True, text=True, timeout=300
+        )  # 5 minutes timeout
 
         print("STDOUT:")
         print(result.stdout)
@@ -64,6 +67,7 @@ def test_sac_live_trader():
     except Exception as e:
         print(f"✗ Test failed with exception: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = test_sac_live_trader()

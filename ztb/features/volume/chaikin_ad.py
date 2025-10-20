@@ -11,9 +11,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("Chaikin_AD")
@@ -43,7 +44,7 @@ class ChaikinAD(BaseFeature):
             df["high"].values.astype(np.float64),
             df["low"].values.astype(np.float64),
             df["close"].values.astype(np.float64),
-            df["volume"].values.astype(np.float64)
+            df["volume"].values.astype(np.float64),
         )
 
         result_df = pd.DataFrame({"chaikin_ad": chaikin_ad_values}, index=df.index)

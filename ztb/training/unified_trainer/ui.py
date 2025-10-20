@@ -18,12 +18,12 @@ class TrainingUI:
 
     def print_header(self, algorithm: str, config_name: str):
         """Print training header."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("🤖 ZAIF TRADE BOT - UNIFIED TRAINER")
-        print("="*80)
+        print("=" * 80)
         print(f"Algorithm: {algorithm.upper()}")
         print(f"Config: {config_name}")
-        print("="*80)
+        print("=" * 80)
 
     def print_config_summary(self, config: Dict[str, Any]):
         """Print configuration summary."""
@@ -31,26 +31,29 @@ class TrainingUI:
         print("-" * 40)
 
         # Algorithm info
-        algorithm = config.get('algorithm', 'unknown')
+        algorithm = config.get("algorithm", "unknown")
         print(f"Algorithm: {algorithm}")
 
         # Training parameters
-        total_timesteps = config.get('total_timesteps', 'unknown')
-        print(f"Total Timesteps: {total_timesteps:,}")
+        total_timesteps = config.get("total_timesteps", "unknown")
+        if isinstance(total_timesteps, (int, float)):
+            print(f"Total Timesteps: {total_timesteps:,}")
+        else:
+            print(f"Total Timesteps: {total_timesteps}")
 
         # Data info
-        data_path = config.get('data_path', 'unknown')
+        data_path = config.get("data_path", "unknown")
         print(f"Data Path: {data_path}")
 
         # Model info
-        model_name = config.get('model_name', 'unknown')
+        model_name = config.get("model_name", "unknown")
         print(f"Model Name: {model_name}")
 
         # SAC specific config
-        if algorithm.lower() == 'sac':
-            sac_config = config.get('sac_hyperparameters', {})
+        if algorithm.lower() == "sac":
+            sac_config = config.get("sac_hyperparameters", {})
             print(f"Learning Rate: {sac_config.get('learning_rate', 'default')}")
-            buffer_size = sac_config.get('buffer_size', 'default')
+            buffer_size = sac_config.get("buffer_size", "default")
             if isinstance(buffer_size, (int, float)):
                 print(f"Buffer Size: {buffer_size:,}")
             else:
@@ -64,7 +67,9 @@ class TrainingUI:
         self.start_time = time.time()
         print("\n🚀 Starting training...")
 
-    def print_training_complete(self, success: bool, stats: Optional[Dict[str, Any]] = None):
+    def print_training_complete(
+        self, success: bool, stats: Optional[Dict[str, Any]] = None
+    ):
         """Print training completion status."""
         duration = time.time() - self.start_time if self.start_time else 0
 
@@ -80,8 +85,13 @@ class TrainingUI:
         else:
             print(f"\n❌ Training failed after {duration:.1f}s")
 
-    def print_training_progress_ensemble(self, step: int, total_steps: int,
-                                       episode_reward: float, ensemble_stats: Dict[str, Any]):
+    def print_training_progress_ensemble(
+        self,
+        step: int,
+        total_steps: int,
+        episode_reward: float,
+        ensemble_stats: Dict[str, Any],
+    ):
         """Print training progress with ensemble information."""
         if self.start_time is None:
             self.start_time = time.time()
@@ -94,19 +104,33 @@ class TrainingUI:
             steps_per_sec = step / elapsed
             remaining_steps = total_steps - step
             eta_seconds = remaining_steps / steps_per_sec
-            eta_str = f"{eta_seconds/3600:.1f}h" if eta_seconds > 3600 else f"{eta_seconds/60:.1f}m"
+            eta_str = (
+                f"{eta_seconds/3600:.1f}h"
+                if eta_seconds > 3600
+                else f"{eta_seconds/60:.1f}m"
+            )
         else:
             eta_str = "unknown"
 
-        print(f"\r🔄 Step {step:,}/{total_steps:,} ({progress:.1f}%) | "
-              f"Reward: {episode_reward:.2f} | "
-              f"Ensemble Conf: {ensemble_stats.get('avg_confidence', 0):.2f} | "
-              f"ETA: {eta_str}", end="", flush=True)
+        print(
+            f"\r🔄 Step {step:,}/{total_steps:,} ({progress:.1f}%) | "
+            f"Reward: {episode_reward:.2f} | "
+            f"Ensemble Conf: {ensemble_stats.get('avg_confidence', 0):.2f} | "
+            f"ETA: {eta_str}",
+            end="",
+            flush=True,
+        )
 
     def update_ensemble_progress(self, step: int, ensemble_stats: Dict[str, Any]):
         """Update ensemble progress display."""
-        avg_confidence = ensemble_stats.get('overall_stats', {}).get('avg_confidence', 0)
-        print(f"\r🎯 Ensemble | Confidence: {avg_confidence:.3f} | Members: {ensemble_stats.get('overall_stats', {}).get('total_members', 0)}", end="", flush=True)
+        avg_confidence = ensemble_stats.get("overall_stats", {}).get(
+            "avg_confidence", 0
+        )
+        print(
+            f"\r🎯 Ensemble | Confidence: {avg_confidence:.3f} | Members: {ensemble_stats.get('overall_stats', {}).get('total_members', 0)}",
+            end="",
+            flush=True,
+        )
 
     def print_ensemble_adaptation(self, adaptation_info: Dict[str, Any]):
         """Print ensemble adaptation information."""
@@ -130,7 +154,9 @@ class TrainingUI:
 
         print(f"Adaptation completed in {adaptation_info.get('duration', 0):.2f}s")
 
-    def print_error_with_suggestions(self, error: str, suggestions: Optional[List[str]] = None):
+    def print_error_with_suggestions(
+        self, error: str, suggestions: Optional[List[str]] = None
+    ):
         """Print error with helpful suggestions."""
         print(f"\n❌ ERROR: {error}")
 
@@ -139,7 +165,9 @@ class TrainingUI:
             for i, suggestion in enumerate(suggestions, 1):
                 print(f"  {i}. {suggestion}")
 
-    def print_success_with_metrics(self, message: str, metrics: Optional[Dict[str, Any]] = None):
+    def print_success_with_metrics(
+        self, message: str, metrics: Optional[Dict[str, Any]] = None
+    ):
         """Print success message with key metrics."""
         print(f"\n✅ {message}")
 
@@ -151,8 +179,14 @@ class TrainingUI:
                 else:
                     print(f"  {key}: {value}")
 
-    def create_progress_bar(self, current: int, total: int, prefix: str = "",
-                          suffix: str = "", length: int = 50) -> str:
+    def create_progress_bar(
+        self,
+        current: int,
+        total: int,
+        prefix: str = "",
+        suffix: str = "",
+        length: int = 50,
+    ) -> str:
         """Create a visual progress bar."""
         percent = (current / total) * 100 if total > 0 else 0
         filled_length = int(length * current / total) if total > 0 else 0
@@ -198,9 +232,11 @@ class TrainingUI:
         if member_stats:
             print("\nMember Details:")
             for member_id, stats in member_stats.items():
-                print(f"  {member_id}: {stats.get('specialization', 'unknown')} "
-                      f"(conf: {stats.get('confidence', 0):.2f}, "
-                      f"perf: {stats.get('performance_score', 0):.2f})")
+                print(
+                    f"  {member_id}: {stats.get('specialization', 'unknown')} "
+                    f"(conf: {stats.get('confidence', 0):.2f}, "
+                    f"perf: {stats.get('performance_score', 0):.2f})"
+                )
 
         print("-" * 40)
 

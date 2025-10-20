@@ -10,7 +10,6 @@ import logging
 import sys
 from pathlib import Path
 
-
 # 年間取引日数（一般的に252日）
 TRADING_DAYS_PER_YEAR = 252
 
@@ -98,7 +97,8 @@ def main() -> int:
     config_data = {}
     if args.config:
         import json
-        with open(args.config, 'r') as f:
+
+        with open(args.config, "r") as f:
             config_data = json.load(f)
         logger.info(f"Loaded config from {args.config}")
 
@@ -114,23 +114,28 @@ def main() -> int:
     # Create environment config
     env_config = {
         "reward_scaling": config_data.get("reward_scaling", 6.0),
-        "transaction_cost": config_data.get("transaction_cost", 0.0),  # Coincheck has 0% fees
+        "transaction_cost": config_data.get(
+            "transaction_cost", 0.0
+        ),  # Coincheck has 0% fees
         "max_position_size": config_data.get("max_position_size", 1.0),
         "feature_set": args.feature_set,
         "timeframe": args.timeframe,
         "curriculum_stage": config_data.get("curriculum_stage", "simple_portfolio"),
-        "reward_settings": config_data.get("reward_settings", {
-            "enable_forced_diversity": True,
-            "profit_bonus_multipliers": [0.5, 1.0, 1.5],
-            "custom_reward_params": {
-                "no_position_buy_reward": 1.5,
-                "no_position_sell_penalty": -2.0,
-                "no_position_hold_penalty": -2.0,
-                "has_position_sell_reward": 2.0,
-                "has_position_buy_penalty": -2.0,
-                "has_position_hold_penalty": -2.0
-            }
-        })
+        "reward_settings": config_data.get(
+            "reward_settings",
+            {
+                "enable_forced_diversity": True,
+                "profit_bonus_multipliers": [0.5, 1.0, 1.5],
+                "custom_reward_params": {
+                    "no_position_buy_reward": 1.5,
+                    "no_position_sell_penalty": -2.0,
+                    "no_position_hold_penalty": -2.0,
+                    "has_position_sell_reward": 2.0,
+                    "has_position_buy_penalty": -2.0,
+                    "has_position_hold_penalty": -2.0,
+                },
+            },
+        ),
     }
 
     # Run paper trading simulation (create fresh env for each episode)
@@ -165,20 +170,26 @@ def main() -> int:
             for _ in range(args.max_steps):
                 # Get action from model using predict_with_masks for proper action mask handling
                 obs_reshaped = obs.reshape(1, -1)
-                action, _ = predict_with_masks(model, obs_reshaped, env, deterministic=True)
+                action, _ = predict_with_masks(
+                    model, obs_reshaped, env, deterministic=True
+                )
                 action_int = int(action[0])  # Extract from array and convert to int
 
                 print(f"Step {_}: action={action_int}")
 
                 logger.debug(f"Step {_}, obs[:3]: {obs[:3]}, action: {action_int}")
 
-                print(f"Before step: position={env.position}, trades={env.trades_count}")
+                print(
+                    f"Before step: position={env.position}, trades={env.trades_count}"
+                )
 
                 # Execute action
                 obs, reward, terminated, truncated, info = env.step(action_int)
                 done = terminated or truncated
 
-                print(f"After step: position={env.position}, reward={reward}, trades={env.trades_count}")
+                print(
+                    f"After step: position={env.position}, reward={reward}, trades={env.trades_count}"
+                )
 
                 episode_reward += reward
                 episode_trades += (

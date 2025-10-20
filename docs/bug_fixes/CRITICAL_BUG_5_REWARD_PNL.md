@@ -32,7 +32,7 @@ def execute_action(self, action: int, current_step: int, min_holding_period: int
     if action == 0:  # HOLD
         self._consecutive_trade_steps = 0
         return
-    
+
     if action == 1:  # BUY
         if self.position < 0:
             self.close_position()  # No return value captured
@@ -45,13 +45,13 @@ def execute_action(self, action: int, current_step: int, min_holding_period: int
     if action == 0:  # HOLD
         self._consecutive_trade_steps = 0
         return 0.0
-    
+
     trade_pnl = 0.0
-    
+
     if action == 1:  # BUY
         if self.position < 0:
             trade_pnl = self.close_position()  # Capture realized PnL
-    
+
     return trade_pnl
 ```
 
@@ -93,7 +93,7 @@ This is the **5th critical bug** found in deep investigation after user's "çŸ³æ©
 
 Previous bugs:
 1. MaskablePPO action_masks ignored in core training
-2. Ensemble missing mask_provider enforcement  
+2. Ensemble missing mask_provider enforcement
 3. min_holding_period + allow_reverse interaction
 4. 4 evaluation scripts missing predict_with_masks
 

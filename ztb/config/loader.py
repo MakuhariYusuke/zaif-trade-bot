@@ -11,6 +11,8 @@ from typing import Any, Dict, List, Optional, cast
 import yaml
 from pydantic import ValidationError
 
+from ztb.utils.path_utils import get_project_root
+
 from .schema import GlobalConfig
 
 
@@ -71,18 +73,28 @@ class ConfigLoader:
 
         Tries to load {base_config_path}.{environment}.yaml first,
         then falls back to {base_config_path}.yaml.
+
+        Args:
+            base_config_path: Base configuration path (relative to project root if not absolute)
         """
-        env_config_path = f"{base_config_path}.{self.environment}.yaml"
-        base_path = f"{base_config_path}.yaml"
+        # Resolve path relative to project root if not absolute
+        base_path = Path(base_config_path)
+        if not base_path.is_absolute():
+            base_path = get_project_root() / base_path
+
+        env_config_path = (
+            base_path.parent / f"{base_path.stem}.{self.environment}{base_path.suffix}"
+        )
+        base_config_full_path = base_path
 
         # Try environment-specific config first
-        if Path(env_config_path).exists():
-            config = self.load_yaml(env_config_path)
+        if env_config_path.exists():
+            config = self.load_yaml(str(env_config_path))
             if config:
                 return config
 
         # Fallback to base config
-        return self.load_yaml(base_path)
+        return self.load_yaml(str(base_config_full_path))
 
     def validate_config(
         self, config: Dict[str, Any], schema: Any = None
@@ -112,8 +124,13 @@ class ConfigLoader:
     def _load_yaml_impl(self, config_path: str) -> Dict[str, Any]:
         """Implementation of YAML config loading."""
         path = Path(config_path)
+
+        # Resolve path relative to project root if not absolute
+        if not path.is_absolute():
+            path = get_project_root() / path
+
         if not path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
+            raise FileNotFoundError(f"Config file not found: {path}")
 
         with open(path, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)

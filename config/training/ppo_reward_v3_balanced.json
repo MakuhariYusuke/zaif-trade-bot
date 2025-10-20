@@ -2,16 +2,16 @@
   "session_id": "ppo_reward_v3_balanced",
   "algorithm": "ppo",
   "description": "Reward v3: バランス型 - リスク調整済み報酬 + drawdown_penalty",
-  
+
   "comment_experiment": "Experiment 3: Balanced risk-adjusted reward structure",
   "comment_strategy": "2x profit_weight + drawdown_penalty + moderate hold_penalty + sharpe_ratio_bonus",
   "comment_target": "Reward >50, HOLD ~45%, Stable returns",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -46,7 +46,7 @@
       "action_diversity_bonus": 0.005
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -55,7 +55,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -68,9 +68,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_changes": "Key changes from v371:",
   "changes": [
     "hold_penalty_weight: 0.002 → 0.001 (-50%)",
@@ -79,7 +79,7 @@
     "sharpe_ratio_bonus: NEW 0.1 (reward risk-adjusted returns)",
     "action_diversity_bonus: 0.01 → 0.005 (-50%)"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "~45%",
     "buy_sell_rate_target": "~55%",

@@ -7,11 +7,7 @@ import numpy as np
 import pytest
 from sklearn.preprocessing import StandardScaler
 
-from ztb.utils.normalization import (
-    NormalizationStats,
-    load_scaler,
-    save_scaler,
-)
+from ztb.utils.normalization import NormalizationStats, load_scaler, save_scaler
 
 
 class TestNormalizationStats:
@@ -117,7 +113,9 @@ class TestNormalizationStats:
             std=sample_stats.std.copy(),
         )
 
-        with pytest.raises(ValueError, match="Normalization statistics validation failed"):
+        with pytest.raises(
+            ValueError, match="Normalization statistics validation failed"
+        ):
             sample_stats.validate(other, strict=True)
 
     def test_save_and_load(

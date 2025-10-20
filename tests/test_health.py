@@ -2,17 +2,12 @@
 Tests for system health monitoring functionality.
 """
 
-import json
 import unittest
 from unittest.mock import MagicMock, patch
-
-import pytest
-import psutil
 
 from ztb.ops.health.system_health import (
     HealthCheckResult,
     SystemHealthChecker,
-    run_health_check,
     run_health_check_async,
 )
 
@@ -26,7 +21,7 @@ class TestHealthCheckResult(unittest.TestCase):
             name="test_check",
             status="healthy",
             message="Test passed",
-            details={"value": 100}
+            details={"value": 100},
         )
 
         self.assertEqual(result.name, "test_check")
@@ -63,7 +58,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertIn("critical", summary)
         self.assertIn("checks", summary)
 
-    @patch('psutil.cpu_percent')
+    @patch("psutil.cpu_percent")
     def test_cpu_usage_check_normal(self, mock_cpu_percent):
         """Test CPU usage check with normal usage."""
         mock_cpu_percent.return_value = 50.0
@@ -76,7 +71,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("normal", check.message)
 
-    @patch('psutil.cpu_percent')
+    @patch("psutil.cpu_percent")
     def test_cpu_usage_check_high(self, mock_cpu_percent):
         """Test CPU usage check with high usage."""
         mock_cpu_percent.return_value = 85.0
@@ -89,7 +84,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "warning")
         self.assertIn("high", check.message)
 
-    @patch('psutil.cpu_percent')
+    @patch("psutil.cpu_percent")
     def test_cpu_usage_check_critical(self, mock_cpu_percent):
         """Test CPU usage check with critical usage."""
         mock_cpu_percent.return_value = 95.0
@@ -102,7 +97,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "critical")
         self.assertIn("critically high", check.message)
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_memory_usage_check_normal(self, mock_virtual_memory):
         """Test memory usage check with normal usage."""
         mock_memory = MagicMock()
@@ -119,7 +114,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("normal", check.message)
 
-    @patch('psutil.virtual_memory')
+    @patch("psutil.virtual_memory")
     def test_memory_usage_check_warning(self, mock_virtual_memory):
         """Test memory usage check with warning usage."""
         mock_memory = MagicMock()
@@ -136,7 +131,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "warning")
         self.assertIn("high", check.message)
 
-    @patch('psutil.disk_usage')
+    @patch("psutil.disk_usage")
     def test_disk_space_check_healthy(self, mock_disk_usage):
         """Test disk space check with healthy usage."""
         mock_disk = MagicMock()
@@ -153,7 +148,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("adequate", check.message)
 
-    @patch('socket.create_connection')
+    @patch("socket.create_connection")
     def test_network_connectivity_check_success(self, mock_create_connection):
         """Test network connectivity check success."""
         mock_create_connection.return_value = MagicMock()
@@ -166,7 +161,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("available", check.message)
 
-    @patch('socket.create_connection')
+    @patch("socket.create_connection")
     def test_network_connectivity_check_failure(self, mock_create_connection):
         """Test network connectivity check failure."""
         mock_create_connection.side_effect = Exception("Connection failed")
@@ -190,7 +185,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("compatible", check.message)
 
-    @patch('builtins.__import__')
+    @patch("builtins.__import__")
     def test_dependency_check_available(self, mock_import):
         """Test dependency check with available package."""
         mock_import.return_value = MagicMock()
@@ -199,7 +194,9 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.checker._check_dependencies()
 
         # Should have 4 dependency checks
-        dependency_checks = [c for c in self.checker.checks if c.name.startswith("dependency_")]
+        dependency_checks = [
+            c for c in self.checker.checks if c.name.startswith("dependency_")
+        ]
         self.assertEqual(len(dependency_checks), 4)
 
         # All should be healthy
@@ -207,7 +204,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(check.status, "healthy")
             self.assertIn("available", check.message)
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_data_access_check_all_exist(self, mock_exists):
         """Test data access check when all directories exist."""
         mock_exists.return_value = True
@@ -220,7 +217,7 @@ class TestSystemHealthChecker(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(check.status, "healthy")
         self.assertIn("accessible", check.message)
 
-    @patch('os.path.exists')
+    @patch("os.path.exists")
     def test_data_access_check_missing(self, mock_exists):
         """Test data access check when directories are missing."""
         mock_exists.return_value = False
@@ -251,7 +248,14 @@ class TestRunHealthCheck(unittest.IsolatedAsyncioTestCase):
         result = await run_health_check_async()
 
         # Should have all expected keys
-        expected_keys = ["status", "total_checks", "healthy", "warning", "critical", "checks"]
+        expected_keys = [
+            "status",
+            "total_checks",
+            "healthy",
+            "warning",
+            "critical",
+            "checks",
+        ]
         for key in expected_keys:
             self.assertIn(key, result)
 

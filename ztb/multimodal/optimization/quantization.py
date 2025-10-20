@@ -3,12 +3,14 @@
 動的量子化、静的量子化、量子化対応トレーニングを提供。
 """
 
+import logging
+from typing import Any, Dict, List
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import Dict, Any, Optional, List
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class DynamicQuantization:
     """動的量子化クラス
@@ -33,7 +35,7 @@ class DynamicQuantization:
             量子化されたモデル
         """
         # 量子化設定
-        model.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+        model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
 
         # モデルを量子化対応に変換
         model_prepared = torch.quantization.prepare(model, inplace=False)
@@ -69,6 +71,7 @@ class DynamicQuantization:
                     dummy_input = torch.randn(batch_size, 256)
                     model(dummy_input)
 
+
 class StaticQuantization:
     """静的量子化クラス
 
@@ -82,9 +85,9 @@ class StaticQuantization:
         """
         self.dtype = dtype
 
-    def quantize_model(self,
-                      model: nn.Module,
-                      calibration_data: List[torch.Tensor]) -> nn.Module:
+    def quantize_model(
+        self, model: nn.Module, calibration_data: List[torch.Tensor]
+    ) -> nn.Module:
         """モデルを静的量子化
 
         Args:
@@ -95,7 +98,7 @@ class StaticQuantization:
             量子化されたモデル
         """
         # 量子化設定
-        model.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+        model.qconfig = torch.quantization.get_default_qconfig("fbgemm")
 
         # モデルを量子化対応に変換
         model_prepared = torch.quantization.prepare(model, inplace=False)
@@ -109,9 +112,9 @@ class StaticQuantization:
         logger.info(f"静的量子化完了: dtype={self.dtype}")
         return model_quantized
 
-    def _calibrate_with_data(self,
-                           model: nn.Module,
-                           calibration_data: List[torch.Tensor]):
+    def _calibrate_with_data(
+        self, model: nn.Module, calibration_data: List[torch.Tensor]
+    ):
         """キャリブレーションデータでキャリブレーション"""
         model.eval()
 
@@ -121,6 +124,7 @@ class StaticQuantization:
                     model(data)
                 except Exception as e:
                     logger.warning(f"キャリブレーション中にエラー: {e}")
+
 
 class QuantizationAwareTraining:
     """量子化対応トレーニングクラス
@@ -138,7 +142,7 @@ class QuantizationAwareTraining:
     def prepare_model(self) -> nn.Module:
         """量子化対応トレーニング用にモデルを準備"""
         # 量子化設定
-        self.model.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+        self.model.qconfig = torch.quantization.get_default_qat_qconfig("fbgemm")
 
         # モデルをQAT対応に変換
         model_prepared = torch.quantization.prepare_qat(self.model, inplace=False)
@@ -152,6 +156,7 @@ class QuantizationAwareTraining:
 
         logger.info("量子化モデル変換完了")
         return model_quantized
+
 
 class QuantizationUtils:
     """量子化ユーティリティクラス"""
@@ -171,15 +176,15 @@ class QuantizationUtils:
         total_size = param_size + buffer_size
 
         return {
-            'parameters_mb': param_size / 1024 / 1024,
-            'buffers_mb': buffer_size / 1024 / 1024,
-            'total_mb': total_size / 1024 / 1024
+            "parameters_mb": param_size / 1024 / 1024,
+            "buffers_mb": buffer_size / 1024 / 1024,
+            "total_mb": total_size / 1024 / 1024,
         }
 
     @staticmethod
-    def measure_inference_time(model: nn.Module,
-                             input_data: torch.Tensor,
-                             num_runs: int = 100) -> Dict[str, float]:
+    def measure_inference_time(
+        model: nn.Module, input_data: torch.Tensor, num_runs: int = 100
+    ) -> Dict[str, float]:
         """推論時間を測定"""
         import time
 
@@ -203,15 +208,15 @@ class QuantizationUtils:
         std_time = torch.tensor(times).std().item()
 
         return {
-            'avg_inference_time': avg_time,
-            'std_inference_time': std_time,
-            'fps': 1.0 / avg_time
+            "avg_inference_time": avg_time,
+            "std_inference_time": std_time,
+            "fps": 1.0 / avg_time,
         }
 
     @staticmethod
-    def compare_models(original_model: nn.Module,
-                      quantized_model: nn.Module,
-                      test_data: torch.Tensor) -> Dict[str, Any]:
+    def compare_models(
+        original_model: nn.Module, quantized_model: nn.Module, test_data: torch.Tensor
+    ) -> Dict[str, Any]:
         """オリジナルモデルと量子化モデルの比較"""
 
         # サイズ比較
@@ -220,7 +225,9 @@ class QuantizationUtils:
 
         # 推論時間比較
         orig_time = QuantizationUtils.measure_inference_time(original_model, test_data)
-        quant_time = QuantizationUtils.measure_inference_time(quantized_model, test_data)
+        quant_time = QuantizationUtils.measure_inference_time(
+            quantized_model, test_data
+        )
 
         # 出力比較（数値精度）
         original_model.eval()
@@ -234,18 +241,15 @@ class QuantizationUtils:
         mse = nn.MSELoss()(orig_output, quant_output).item()
 
         return {
-            'size_comparison': {
-                'original_mb': orig_size['total_mb'],
-                'quantized_mb': quant_size['total_mb'],
-                'compression_ratio': quant_size['total_mb'] / orig_size['total_mb']
+            "size_comparison": {
+                "original_mb": orig_size["total_mb"],
+                "quantized_mb": quant_size["total_mb"],
+                "compression_ratio": quant_size["total_mb"] / orig_size["total_mb"],
             },
-            'performance_comparison': {
-                'original_fps': orig_time['fps'],
-                'quantized_fps': quant_time['fps'],
-                'speedup_ratio': quant_time['fps'] / orig_time['fps']
+            "performance_comparison": {
+                "original_fps": orig_time["fps"],
+                "quantized_fps": quant_time["fps"],
+                "speedup_ratio": quant_time["fps"] / orig_time["fps"],
             },
-            'accuracy': {
-                'mse': mse,
-                'output_similarity': 1.0 - mse  # 簡易的な類似度
-            }
+            "accuracy": {"mse": mse, "output_similarity": 1.0 - mse},  # 簡易的な類似度
         }

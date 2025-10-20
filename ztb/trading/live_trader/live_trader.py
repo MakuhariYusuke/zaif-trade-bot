@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 
 # Add project root to path
 from ztb.utils.path_utils import get_project_root
+
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
@@ -27,17 +28,14 @@ from numpy.typing import NDArray
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import PPO, SAC
 
-from ztb.trading.live.action_mask_provider import (
-    ActionMaskConfig,
-    ActionMaskProvider,
-)
+from ztb.trading.live.action_mask_provider import ActionMaskConfig, ActionMaskProvider
+from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.trading.live_trader.action_prediction import ActionPrediction
 from ztb.trading.live_trader.config import LiveTradingOptions, prometheus_available
 from ztb.trading.live_trader.feature_computation import FeatureComputation
 from ztb.trading.live_trader.health_monitoring import HealthMonitoring
 from ztb.trading.live_trader.model_loading import ModelLoading
 from ztb.trading.live_trader.trading_loop import TradingLoop
-from ztb.trading.live.registry.broker_registry import get_broker_registry
 from ztb.utils.logging_utils import get_logger
 
 # Import feature computation
@@ -67,17 +65,17 @@ try:
 except ImportError:
     position_manager_available = False
 
-# Import Discord notifier
-from ztb.utils.notify.discord import DiscordNotifier
-
 # Import utility modules
 from ztb.utils.cache_utils import TTLCache
 from ztb.utils.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
-from ztb.utils.performance_utils import PerformanceMonitor, timed
-from ztb.utils.rate_limiter import TokenBucketRateLimiter, RateLimitConfig
 
 # Import configuration management
 from ztb.utils.config import ZTBConfig
+
+# Import Discord notifier
+from ztb.utils.notify.discord import DiscordNotifier
+from ztb.utils.performance_utils import PerformanceMonitor, timed
+from ztb.utils.rate_limiter import RateLimitConfig, TokenBucketRateLimiter
 
 # Import risk management
 try:
@@ -99,13 +97,7 @@ load_dotenv()
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from ztb.trading.constants import (
-    ACTION_HOLD,
-    ACTION_BUY,
-    ACTION_SELL,
-    ACTION_NAMES,
-    normalize_action,
-)
+from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_NAMES, ACTION_SELL
 
 
 class LiveTrader:
@@ -125,10 +117,12 @@ class LiveTrader:
         logger = get_logger(__name__)
         logger.info("LiveTrader.__init__ started")
         print("LiveTrader.__init__ started")
-        
+
         # Quick dry-run initialization
         if dry_run:
-            logger.info("Dry-run mode: using simplified initialization with live components")
+            logger.info(
+                "Dry-run mode: using simplified initialization with live components"
+            )
             self.dry_run = True
             if isinstance(model_path, LiveTradingOptions):
                 options = model_path
@@ -151,7 +145,7 @@ class LiveTrader:
             self.expected_features = 64
             self.feature_names = None
             self.schema_available = False
-            
+
             # Initialize essential attributes for dry-run
             self.price_cache = TTLCache(ttl_seconds=30.0)
             self._last_valid_price = 0.0
@@ -162,11 +156,11 @@ class LiveTrader:
             self.daily_start_pnl = 0.0
             self.daily_trades = 0
             self.notifier = None
-            self.config = {'price_history_length': 100}  # Basic config for dry-run
+            self.config = {"price_history_length": 100}  # Basic config for dry-run
             self._current_step = 0
             self._cleanup_counter = 0
             self._cleanup_interval = 100
-            
+
             # Initialize exchange adapter for live price access in dry-run
             venue = self.options.venue.lower()
             if venue == "coincheck":
@@ -176,7 +170,7 @@ class LiveTrader:
                 adapter_name = "coincheck"
             else:
                 raise ValueError(f"Unsupported venue for dry-run: {venue}")
-            
+
             try:
                 broker_registry = get_broker_registry()
                 self.exchange_adapter = broker_registry.get_broker(
@@ -187,49 +181,67 @@ class LiveTrader:
                 )
                 logger.info(f"{venue.upper()} adapter initialized for dry-run")
             except Exception as e:
-                logger.warning(f"Failed to initialize {venue.upper()} adapter for dry-run: {e}")
+                logger.warning(
+                    f"Failed to initialize {venue.upper()} adapter for dry-run: {e}"
+                )
                 self.exchange_adapter = None
-            
+
             # Initialize PositionManager for dry-run
             if position_manager_available:
                 try:
                     # Create a simple config object for PositionManager
                     class LivePositionConfig:
                         """Configuration for PositionManager in live trading."""
+
                         def __init__(self, config_dict: Dict[str, Any]) -> None:
                             self.allow_reverse = config_dict.get("allow_reverse", False)
-                            self.transaction_cost = config_dict.get("transaction_cost", 0.001)
-                            self.max_position_size = config_dict.get(
-                                "max_position_size", 
-                                config_dict.get("min_trade_amount", 0.001)
+                            self.transaction_cost = config_dict.get(
+                                "transaction_cost", 0.001
                             )
-                            self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
-                            self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
-                            
+                            self.max_position_size = config_dict.get(
+                                "max_position_size",
+                                config_dict.get("min_trade_amount", 0.001),
+                            )
+                            self.enforce_reverse_cooldown = config_dict.get(
+                                "enforce_reverse_cooldown", False
+                            )
+                            self.initial_portfolio_value = config_dict.get(
+                                "initial_portfolio_value", 200000.0
+                            )
+
                     position_config = LivePositionConfig(self.config)
-                    
+
                     self.position_manager = PositionManager(  # type: ignore[name-defined]
                         config=position_config,
-                        get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+                        get_price_callback=lambda: self._last_valid_price
+                        if hasattr(self, "_last_valid_price")
+                        and self._last_valid_price > 0
+                        else 5000000.0,
                     )
-                    logger.info(f"PositionManager initialized for dry-run (position_size={position_config.max_position_size})")
+                    logger.info(
+                        f"PositionManager initialized for dry-run (position_size={position_config.max_position_size})"
+                    )
                 except Exception as e:
-                    logger.warning(f"Failed to initialize PositionManager for dry-run: {e}")
+                    logger.warning(
+                        f"Failed to initialize PositionManager for dry-run: {e}"
+                    )
                     self.position_manager = None
             else:
                 self.position_manager = None
-                logger.warning("PositionManager not available, using legacy position logic")
-            
+                logger.warning(
+                    "PositionManager not available, using legacy position logic"
+                )
+
             # Initialize action mask provider for dry-run
             mask_config = ActionMaskConfig(
                 min_holding_period=self.config.get("min_holding_period", 5),
                 enable_forced_close=True,
-                max_position_age=self.config.get("max_position_age", 1000)
+                max_position_age=self.config.get("max_position_age", 1000),
             )
             self.mask_provider = ActionMaskProvider(mask_config)
             self._is_maskable_ppo = False
             self._position_entry_step = 0
-            
+
             # Initialize minimal components for dry-run
             self.trading_loop = TradingLoop(self)
             self.feature_computation = FeatureComputation(self)
@@ -238,11 +250,12 @@ class LiveTrader:
             self.model_loading = ModelLoading(self)
             # Load model for dry-run
             self.model = self.model_loading.load_model()
-            
+
             # Initialize price history with current live price for dry-run
             try:
                 # Get live price synchronously for dry-run initialization
                 import requests
+
                 response = requests.get("https://coincheck.com/api/ticker", timeout=5)
                 response.raise_for_status()
                 data = response.json()
@@ -250,17 +263,23 @@ class LiveTrader:
                     current_price = float(data["last"])
                     self._last_valid_price = current_price
                     self.price_history.clear()
-                    self.price_history.extend([current_price] * 100)  # Fill with current price
-                    logger.info(f"Initialized price history with live price: ¥{current_price:,.0f}")
+                    self.price_history.extend(
+                        [current_price] * 100
+                    )  # Fill with current price
+                    logger.info(
+                        f"Initialized price history with live price: ¥{current_price:,.0f}"
+                    )
                 else:
                     raise ValueError("Invalid API response")
             except Exception as e:
-                logger.warning(f"Failed to initialize price history with live price: {e}, using fallback")
+                logger.warning(
+                    f"Failed to initialize price history with live price: {e}, using fallback"
+                )
                 fallback_price = 5000000.0
                 self._last_valid_price = fallback_price
                 self.price_history.clear()
                 self.price_history.extend([fallback_price] * 100)
-            
+
             logger.info("Dry-run initialization completed with live components")
             return
 
@@ -358,24 +377,35 @@ class LiveTrader:
                 # Create a simple config object for PositionManager
                 class LivePositionConfig:
                     """Configuration for PositionManager in live trading."""
+
                     def __init__(self, config_dict: Dict[str, Any]) -> None:
                         self.allow_reverse = config_dict.get("allow_reverse", False)
-                        self.transaction_cost = config_dict.get("transaction_cost", 0.001)
+                        self.transaction_cost = config_dict.get(
+                            "transaction_cost", 0.001
+                        )
                         # Bug #28 fix: Pass max_position_size to prevent scale mismatch
                         self.max_position_size = config_dict.get(
-                            "max_position_size", 
-                            config_dict.get("min_trade_amount", 0.001)
+                            "max_position_size",
+                            config_dict.get("min_trade_amount", 0.001),
                         )
-                        self.enforce_reverse_cooldown = config_dict.get("enforce_reverse_cooldown", False)
-                        self.initial_portfolio_value = config_dict.get("initial_portfolio_value", 200000.0)
-                        
+                        self.enforce_reverse_cooldown = config_dict.get(
+                            "enforce_reverse_cooldown", False
+                        )
+                        self.initial_portfolio_value = config_dict.get(
+                            "initial_portfolio_value", 200000.0
+                        )
+
                 position_config = LivePositionConfig(self.config)
-                
+
                 self.position_manager = PositionManager(  # type: ignore[name-defined]
                     config=position_config,
-                    get_price_callback=lambda: self._last_valid_price if hasattr(self, '_last_valid_price') and self._last_valid_price > 0 else 5000000.0
+                    get_price_callback=lambda: self._last_valid_price
+                    if hasattr(self, "_last_valid_price") and self._last_valid_price > 0
+                    else 5000000.0,
                 )
-                logger.info(f"PositionManager initialized for live trading (position_size={position_config.max_position_size})")
+                logger.info(
+                    f"PositionManager initialized for live trading (position_size={position_config.max_position_size})"
+                )
             except Exception as e:
                 logger.warning(f"Failed to initialize PositionManager: {e}")
                 self.position_manager = None
@@ -396,17 +426,17 @@ class LiveTrader:
 
         # Initialize price validation
         self._last_valid_price = 0.0
-        
+
         # Initialize schema attributes
         self.schema_available = False
         self.expected_features = 64  # Default
         self.feature_names = None
-        
+
         # Initialize action mask provider for MaskablePPO support (Bug #27 fix)
         mask_config = ActionMaskConfig(
             min_holding_period=self.config.get("min_holding_period", 5),
             enable_forced_close=True,
-            max_position_age=self.config.get("max_position_age", 1000)
+            max_position_age=self.config.get("max_position_age", 1000),
         )
         self.mask_provider = ActionMaskProvider(mask_config)
         self._is_maskable_ppo = False  # Will be set in _load_model()
@@ -432,24 +462,22 @@ class LiveTrader:
         # Initialize utility components
         # Price cache for API response caching (TTL: 30 seconds)
         self.price_cache = TTLCache(ttl_seconds=30.0)
-        
+
         # Rate limiter for API calls (1 request per second, burst limit 5)
         rate_limit_config = RateLimitConfig(
-            requests_per_second=1.0,
-            burst_limit=5,
-            window_seconds=1.0
+            requests_per_second=1.0, burst_limit=5, window_seconds=1.0
         )
         self.rate_limiter = TokenBucketRateLimiter(rate_limit_config)
-        
+
         # Circuit breaker for API protection (5 failures -> open, 60s recovery)
         circuit_config = CircuitBreakerConfig(
             failure_threshold=5,
             recovery_timeout=60.0,
             success_threshold=3,
-            timeout=10.0
+            timeout=10.0,
         )
         self.api_circuit_breaker = CircuitBreaker("coincheck_api", circuit_config)
-        
+
         # Update price history if adapter is available (skip in dry-run)
         if self.exchange_adapter and not self.dry_run:
             self._update_price_history()
@@ -458,10 +486,12 @@ class LiveTrader:
             # Initialize with mock prices for dry-run
             mock_price = 5000000.0  # Mock BTC/JPY price
             self.price_history.clear()
-            self.price_history.extend([mock_price] * self.config.get("price_history_length", 100))
+            self.price_history.extend(
+                [mock_price] * self.config.get("price_history_length", 100)
+            )
         else:
             logger.info("Price history update deferred until adapter is available")
-        
+
         # Memory optimization: Periodic cleanup counter
         self._cleanup_counter = 0
         self._cleanup_interval = 100  # Clean up every 100 iterations
@@ -475,11 +505,15 @@ class LiveTrader:
 
         # Send startup notification (with schema info if available)
         feature_info = "68 technical indicators (default)"
-        if hasattr(self, 'schema_available') and self.schema_available and self.expected_features:
+        if (
+            hasattr(self, "schema_available")
+            and self.schema_available
+            and self.expected_features
+        ):
             feature_info = f"{self.expected_features} features (schema-validated ✅)"
-        elif hasattr(self, 'expected_features') and self.expected_features:
+        elif hasattr(self, "expected_features") and self.expected_features:
             feature_info = f"{self.expected_features} features (detected)"
-        
+
         self._send_notification(
             "🚀 BTC/JPY Live Trading Started",
             f"Model: {model_path}\nStrategy: Sell-biased\nMode: {'DEMO' if self.demo_mode else 'LIVE'}\nFeatures: {feature_info}\nTrading Mode: Normal (1M timeframe)\nUtils: RateLimiter+CircuitBreaker+Cache enabled",
@@ -523,18 +557,28 @@ class LiveTrader:
                     # Get current price
                     try:
                         current_price = self._get_current_price()
-                        logger.info(f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}")
+                        logger.info(
+                            f"📈 Price update #{iteration_count}: ¥{current_price:,.0f}"
+                        )
                     except Exception as e:
                         logger.error(f"Failed to get current price: {e}")
                         if self._last_valid_price > 0:
                             current_price = self._last_valid_price
-                            logger.warning(f"Using last valid price: ¥{current_price:,.0f}")
+                            logger.warning(
+                                f"Using last valid price: ¥{current_price:,.0f}"
+                            )
                         else:
                             logger.error("No valid price available, skipping iteration")
                             consecutive_errors += 1
                             if consecutive_errors >= max_consecutive_errors:
-                                logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                                self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                                logger.critical(
+                                    f"Too many consecutive errors ({consecutive_errors}), stopping trading loop"
+                                )
+                                self._send_notification(
+                                    "🚨 CRITICAL: Trading Stopped",
+                                    f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.",
+                                    "error",
+                                )
                                 break
                             time.sleep(60)
                             continue
@@ -572,7 +616,9 @@ class LiveTrader:
 
                     # Validate position before executing action
                     if not (-1 <= self.position <= 1):
-                        logger.error(f"Invalid position detected: {self.position}, resetting to 0")
+                        logger.error(
+                            f"Invalid position detected: {self.position}, resetting to 0"
+                        )
                         self.position = 0.0
 
                     # Execute action
@@ -590,7 +636,7 @@ class LiveTrader:
                         self._send_notification(
                             f"📊 Trading Update #{iteration_count}",
                             f"Price: ¥{current_price:,.0f}\nAction: {action_name}\nPnL: ¥{pnl:,.2f}\nPosition: {self.position:.4f} BTC",
-                            "info" if action == ACTION_HOLD else "success"
+                            "info" if action == ACTION_HOLD else "success",
                         )
                         logger.debug("Notification sent for iteration")
 
@@ -601,17 +647,30 @@ class LiveTrader:
                         logger.warning(f"Failed to perform periodic cleanup: {e}")
 
                 except Exception as e:
-                    logger.error(f"❌ Critical error in trading loop iteration {iteration_count}: {e}")
+                    logger.error(
+                        f"❌ Critical error in trading loop iteration {iteration_count}: {e}"
+                    )
                     import traceback
+
                     logger.error(f"Traceback: {traceback.format_exc()}")
                     print(f"Traceback: {traceback.format_exc()}")
                     consecutive_errors += 1
-                    
-                    self._send_notification("⚠️ Trading Error", f"Critical error in iteration {iteration_count}: {e}", "error")
-                    
+
+                    self._send_notification(
+                        "⚠️ Trading Error",
+                        f"Critical error in iteration {iteration_count}: {e}",
+                        "error",
+                    )
+
                     if consecutive_errors >= max_consecutive_errors:
-                        logger.critical(f"Too many consecutive errors ({consecutive_errors}), stopping trading loop")
-                        self._send_notification("🚨 CRITICAL: Trading Stopped", f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.", "error")
+                        logger.critical(
+                            f"Too many consecutive errors ({consecutive_errors}), stopping trading loop"
+                        )
+                        self._send_notification(
+                            "🚨 CRITICAL: Trading Stopped",
+                            f"Too many consecutive errors ({consecutive_errors}). Manual intervention required.",
+                            "error",
+                        )
                         break
 
             # Wait before next iteration (1 minute)
@@ -628,18 +687,18 @@ class LiveTrader:
         self._send_notification(
             "🏁 Trading Session Complete",
             f"Duration: {duration_hours} hours\nTotal PnL: ¥{total_pnl:,.2f}\nTrades: {trades_count}\nFinal Position: {self.position:.4f} BTC",
-            "success"
+            "success",
         )
 
     def _get_current_price(self) -> float:
         """
         Get current BTC/JPY price from exchange adapter.
-        
+
         Returns:
             Current price as float
         """
         import asyncio
-        
+
         async def _async_get_price():
             if self.exchange_adapter is not None:
                 try:
@@ -651,7 +710,7 @@ class LiveTrader:
                     logger = get_logger(__name__)
                     logger.warning(f"Failed to get price from adapter: {e}")
             return None
-        
+
         # Run async function synchronously
         try:
             price = asyncio.run(_async_get_price())
@@ -660,7 +719,7 @@ class LiveTrader:
         except Exception as e:
             logger = get_logger(__name__)
             logger.error(f"Failed to get current price: {e}")
-        
+
         # Fallback to last valid price or mock price
         if self._last_valid_price > 0:
             return self._last_valid_price
@@ -675,31 +734,31 @@ class LiveTrader:
         try:
             if len(prices) < 2:
                 return 50.0
-                
+
             gains = []
             losses = []
-            
+
             for i in range(1, len(prices)):
-                change = prices[i] - prices[i-1]
+                change = prices[i] - prices[i - 1]
                 if change > 0:
                     gains.append(change)
                     losses.append(0)
                 else:
                     gains.append(0)
                     losses.append(-change)
-            
+
             avg_gain = sum(gains) / len(gains) if gains else 0
             avg_loss = sum(losses) / len(losses) if losses else 0
-            
+
             if avg_loss == 0:
                 return 100.0
-                
+
             rs = avg_gain / avg_loss
             rsi = 100 - (100 / (1 + rs))
-            
+
             # Validate RSI is in reasonable range
             return max(0.0, min(100.0, rsi))
-            
+
         except Exception as e:
             logger.warning(f"Error computing RSI: {e}")
             return 50.0
@@ -711,50 +770,56 @@ class LiveTrader:
     def _execute_action(self, action: int) -> float:
         """
         Execute trading action using PositionManager if available.
-        
+
         Args:
             action: Action to execute (0=HOLD, 1=BUY, 2=SELL)
-            
+
         Returns:
             pnl: PnL from the action
         """
         logger = get_logger(__name__)
-        
+
         if self.position_manager is not None:
             # Use PositionManager for execution
             try:
                 pnl = self.position_manager.execute_action(
-                    action, 
+                    action,
                     self._current_step,
-                    min_holding_period=self.config.get("min_holding_period", 5)
+                    min_holding_period=self.config.get("min_holding_period", 5),
                 )
-                
+
                 # Sync position state with PositionManager
                 self.position = self.position_manager.position
                 self.entry_price = self.position_manager.entry_price
                 self.total_pnl = self.position_manager.total_pnl
                 self.trades_count = self.position_manager.trades_count
-                
-                logger.info(f"Action executed via PositionManager: {self.ACTION_NAMES.get(action, f'UNKNOWN({action})')}, PnL: {pnl:.2f}")
+
+                logger.info(
+                    f"Action executed via PositionManager: {self.ACTION_NAMES.get(action, f'UNKNOWN({action})')}, PnL: {pnl:.2f}"
+                )
                 return pnl
-                
+
             except Exception as e:
                 logger.error(f"Failed to execute action via PositionManager: {e}")
                 return 0.0
         else:
             # Legacy execution logic (fallback)
-            logger.warning("PositionManager not available, using legacy execution logic")
-            
+            logger.warning(
+                "PositionManager not available, using legacy execution logic"
+            )
+
             old_position = self.position
             current_price = self._last_valid_price
-            
+
             if action == 1:  # BUY
                 if self.position <= 0:  # Flat or short
                     self.position = 1
                     self.entry_price = current_price
                     self.trades_count += 1
-                    logger.info(f"BUY executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}")
-                    
+                    logger.info(
+                        f"BUY executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}"
+                    )
+
                     if not self.dry_run:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -763,16 +828,20 @@ class LiveTrader:
                             f"New Position: long",
                             "success",
                         )
-                    
-                    return -current_price * self.config.get('transaction_cost', 0.001)  # Entry cost
-                    
+
+                    return -current_price * self.config.get(
+                        "transaction_cost", 0.001
+                    )  # Entry cost
+
             elif action == 2:  # SELL
                 if self.position >= 0:  # Flat or long
                     self.position = -1
                     self.entry_price = current_price
                     self.trades_count += 1
-                    logger.info(f"SELL executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}")
-                    
+                    logger.info(
+                        f"SELL executed: {self.config.get('min_trade_amount', 0.001)} BTC at ¥{current_price:,.0f}"
+                    )
+
                     if not self.dry_run:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -781,28 +850,36 @@ class LiveTrader:
                             f"New Position: short",
                             "success",
                         )
-                    
-                    return -current_price * self.config.get('transaction_cost', 0.001)  # Entry cost
-            
+
+                    return -current_price * self.config.get(
+                        "transaction_cost", 0.001
+                    )  # Entry cost
+
             # Calculate PnL if position was closed/reversed
             if old_position != self.position and old_position != 0:
                 if old_position > 0:  # Closing long position
-                    pnl = (current_price - self.entry_price) * self.config.get("min_trade_amount", 0.001)
+                    pnl = (current_price - self.entry_price) * self.config.get(
+                        "min_trade_amount", 0.001
+                    )
                 else:  # Closing short position
-                    pnl = (self.entry_price - current_price) * self.config.get("min_trade_amount", 0.001)
-                
+                    pnl = (self.entry_price - current_price) * self.config.get(
+                        "min_trade_amount", 0.001
+                    )
+
                 self.total_pnl += pnl
-                logger.info(f"Position closed, PnL: {pnl:.2f}, Total PnL: {self.total_pnl:.2f}")
-                
+                logger.info(
+                    f"Position closed, PnL: {pnl:.2f}, Total PnL: {self.total_pnl:.2f}"
+                )
+
                 if not self.dry_run:
                     self._send_notification(
                         "📊 Position Update",
                         f"PnL: {pnl:.2f} JPY\nTotal PnL: {self.total_pnl:.2f} JPY\nTrades: {self.trades_count}",
                         "info",
                     )
-                
+
                 return pnl
-            
+
             return 0.0  # HOLD or no action
 
     def get_health_status(self) -> Dict[str, Any]:
@@ -821,8 +898,10 @@ class LiveTrader:
             logger.warning(f"Failed to update price history: {e}")
             # Fallback to current price
             current_price = asyncio.run(self._get_current_price())
-            self._safe_update_price_history([current_price] * self.config["price_history_length"])
-    
+            self._safe_update_price_history(
+                [current_price] * self.config["price_history_length"]
+            )
+
     def _safe_update_price_history(self, prices: List[float]) -> None:
         """Safely update price history with None checks."""
         logger = get_logger(__name__)
@@ -835,7 +914,7 @@ class LiveTrader:
             )
         else:
             logger.warning("No valid prices to update history")
-    
+
     def _periodic_cleanup(self) -> None:
         """Perform periodic memory cleanup to prevent accumulation."""
         self._cleanup_counter += 1
@@ -853,8 +932,9 @@ class LiveTrader:
 
             # Only force garbage collection if memory usage is high
             # Avoid frequent GC as it can impact performance
-            import psutil
             import os
+
+            import psutil
 
             try:
                 process = psutil.Process(os.getpid())
@@ -862,10 +942,14 @@ class LiveTrader:
                 if memory_percent > 80.0:  # Only GC if memory usage > 80%
                     gc.collect()
                     logger = get_logger(__name__)
-                    logger.info(f"Periodic cleanup: memory usage was {memory_percent:.1f}%, forced GC")
+                    logger.info(
+                        f"Periodic cleanup: memory usage was {memory_percent:.1f}%, forced GC"
+                    )
                 else:
                     logger = get_logger(__name__)
-                    logger.debug(f"Periodic cleanup: memory usage {memory_percent:.1f}%, no GC needed")
+                    logger.debug(
+                        f"Periodic cleanup: memory usage {memory_percent:.1f}%, no GC needed"
+                    )
             except ImportError:
                 # psutil not available, skip memory check
                 pass
@@ -908,7 +992,7 @@ class LiveTrader:
             ),  # 5% emergency stop loss
             # Technical analysis parameters
             "price_history_length": self.ztb_config.get_int(
-                "ZTB_PRICE_HISTORY_LENGTH",  64
+                "ZTB_PRICE_HISTORY_LENGTH", 64
             ),  # Length of price history for indicators
             "rsi_neutral_value": self.ztb_config.get_float(
                 "ZTB_RSI_NEUTRAL_VALUE", 50.0
@@ -958,7 +1042,9 @@ class LiveTrader:
         return self.model_loading.load_model()
 
         logger = get_logger(__name__)
-        logger.info(f"Loading {self.options.algorithm.upper()} model from {self.model_path}")
+        logger.info(
+            f"Loading {self.options.algorithm.upper()} model from {self.model_path}"
+        )
 
         if self.options.algorithm.lower() == "sac":
             model = SAC.load(str(self.model_path))
@@ -986,23 +1072,27 @@ class LiveTrader:
         logger.info(f"Observation shape: {obs_space.shape}")
         logger.info(f"Model action space: {action_space}")
         logger.info(f"Action space type: {type(action_space)}")
-        
+
         # Check if action space is continuous
         try:
             import gymnasium as gym
+
             Box = gym.spaces.Box
             Discrete = gym.spaces.Discrete
         except ImportError:
             try:
                 import gym
+
                 Box = gym.spaces.Box
                 Discrete = gym.spaces.Discrete
             except ImportError:
                 # Fallback: check by type name
                 Box = type(None)
                 Discrete = type(None)
-                logger.warning("Could not import gym/gymnasium spaces, cannot detect action space type")
-        
+                logger.warning(
+                    "Could not import gym/gymnasium spaces, cannot detect action space type"
+                )
+
         if isinstance(action_space, Box):
             self.is_continuous_action = True
             logger.info("Detected continuous action space - will discretize actions")
@@ -1011,48 +1101,56 @@ class LiveTrader:
             logger.info("Detected discrete action space")
         else:
             self.is_continuous_action = False
-            logger.warning(f"Unknown action space type: {type(action_space)} - assuming discrete")
+            logger.warning(
+                f"Unknown action space type: {type(action_space)} - assuming discrete"
+            )
 
         # ========================================================================
         # Schema-based feature validation (Phase 3 Integration)
         # ========================================================================
         try:
-            from ztb.trading.environment.schema_env_factory import create_env_from_model_path
+            from ztb.trading.environment.schema_env_factory import (
+                create_env_from_model_path,
+            )
             from ztb.training.core.feature_schema_manager import FeatureSchemaManager
-            
+
             # Load model schema
             model_name = self.model_path.stem
             schema_manager = FeatureSchemaManager(model_name)
-            
+
             try:
                 metadata = schema_manager.load_schema()
                 logger.info(f"✅ Schema loaded for model: {model_name}")
                 logger.info(f"   Expected features: {metadata.num_features}")
                 logger.info(f"   Schema hash: {metadata.schema_hash}")
                 logger.info(f"   Created at: {metadata.created_at}")
-                
+
                 # Store schema info for feature validation
                 self.expected_features = metadata.num_features
                 self.feature_names = metadata.feature_names
                 self.model_schema_hash = metadata.schema_hash
                 self.schema_available = True
-                
-                logger.info(f"📋 Model feature requirements:")
+
+                logger.info("📋 Model feature requirements:")
                 logger.info(f"   Total: {len(self.feature_names)} features")
                 logger.info(f"   First 5: {self.feature_names[:5]}")
                 logger.info(f"   Last 5: {self.feature_names[-5:]}")
-                
+
             except FileNotFoundError:
                 logger.warning(f"⚠️  Schema not found for model: {model_name}")
-                logger.warning(f"   Schema file expected at: {self.ztb_config.get_model_dir()}/schemas/{model_name}/")
-                logger.warning(f"   Falling back to legacy validation")
-                logger.warning(f"   Recommendation: Run migration if this is an old model")
-                
+                logger.warning(
+                    f"   Schema file expected at: {self.ztb_config.get_model_dir()}/schemas/{model_name}/"
+                )
+                logger.warning("   Falling back to legacy validation")
+                logger.warning(
+                    "   Recommendation: Run migration if this is an old model"
+                )
+
                 self.expected_features = None
                 self.feature_names = None
                 self.model_schema_hash = None
                 self.schema_available = False
-                
+
         except ImportError as e:
             logger.warning(f"Schema system not available: {e}")
             logger.warning("Using legacy feature validation")
@@ -1071,7 +1169,9 @@ class LiveTrader:
                 ]
 
             # Skip feature validation during model loading - will be done after adapter initialization
-            logger.info("Feature validation deferred until after adapter initialization")
+            logger.info(
+                "Feature validation deferred until after adapter initialization"
+            )
 
         except Exception as e:
             logger.warning(f"Could not prepare for feature validation: {e}")
@@ -1083,16 +1183,18 @@ class LiveTrader:
 
         return model
 
-    async def get_account_balance(self, currency: Optional[str] = None) -> Dict[str, float]:
+    async def get_account_balance(
+        self, currency: Optional[str] = None
+    ) -> Dict[str, float]:
         """
         Get account balance from exchange using existing adapter.
-        
+
         Args:
             currency: Optional currency filter (e.g., 'BTC', 'JPY')
-            
+
         Returns:
             Dict mapping currency to available balance
-            
+
         Example:
             >>> balances = await trader.get_account_balance()
             >>> print(f"BTC: {balances.get('BTC', 0.0)}, JPY: {balances.get('JPY', 0.0)}")
@@ -1101,7 +1203,7 @@ class LiveTrader:
             logger = get_logger(__name__)
             logger.warning("Exchange adapter not available, cannot fetch balance")
             return {}
-        
+
         try:
             balances = await self.exchange_adapter.get_balance(currency=currency)
             result = {}
@@ -1116,7 +1218,7 @@ class LiveTrader:
             self._send_notification(
                 "⚠️ Balance Fetch Error",
                 f"Failed to retrieve account balance: {str(e)}",
-                "error"
+                "error",
             )
             return {}
 
@@ -1349,7 +1451,9 @@ class LiveTrader:
         else:
             # Initialize deque with initial values
             self.price_history.clear()
-            self.price_history.extend([current_price] * self.config["price_history_length"])
+            self.price_history.extend(
+                [current_price] * self.config["price_history_length"]
+            )
 
         # Convert deque to list for calculation functions
         price_list = list(self.price_history)
@@ -1404,7 +1508,7 @@ class LiveTrader:
         # ========================================================================
         # Determine expected feature count from schema or model
         expected_features = 68  # Default fallback
-        
+
         if self.schema_available and self.expected_features is not None:
             # Use schema information (most reliable)
             expected_features = self.expected_features
@@ -1445,10 +1549,14 @@ class LiveTrader:
             # TODO: Future enhancement - reorder features based on schema
             # This would ensure features are in the exact order expected by the model
             logger = get_logger(__name__)
-            logger.debug(f"Feature schema available with {len(self.feature_names)} named features")
+            logger.debug(
+                f"Feature schema available with {len(self.feature_names)} named features"
+            )
 
         logger = get_logger(__name__)
-        logger.debug(f"✅ Final features: {len(features)} (expected: {expected_features})")
+        logger.debug(
+            f"✅ Final features: {len(features)} (expected: {expected_features})"
+        )
         features_array: NDArray[np.float32] = np.array(features, dtype=np.float32)
         return features_array
 
@@ -1456,7 +1564,7 @@ class LiveTrader:
         """
         Apply sell bias to trading decisions with BUY promotion to balance trades.
         Returns True if trade should be executed.
-        
+
         Bug #31 Fix: Allow short position opening after warmup period.
         """
         if action == ACTION_HOLD:  # Hold
@@ -1469,7 +1577,7 @@ class LiveTrader:
             # Bug #33 Fix: Warmup only restricts SHORT opening, not position closing
             # Allow warmup period before enabling short positions
             sell_warmup_trades = self.config.get("sell_warmup_trades", 2)
-            
+
             # Check if this SELL would OPEN a short position (flat → short)
             if self.position == 0 and self.trades_count < sell_warmup_trades:
                 # Only suppress SELL when opening new short during warmup
@@ -1478,18 +1586,18 @@ class LiveTrader:
                     f"Suppressing SHORT opening in warmup period (trade #{self.trades_count + 1}/{sell_warmup_trades})"
                 )
                 return False
-            
+
             # After warmup OR when closing long: allow SELL
             # (position > 0: closing long, position == 0 and trades >= warmup: opening short OK)
             return True
-            
+
         elif action == ACTION_BUY:  # Buy signal
             # Bug #41 Fix: Always allow BUY when closing short position
             if self.position < 0:
                 # Closing short position (short → flat or short → long)
                 # Always allow position closing regardless of probability filter
                 return True
-            
+
             # Promote BUY actions to balance with SELL bias
             # Use higher probability for BUY to counteract SELL bias from reward function
             buy_probability = min(
@@ -1555,11 +1663,11 @@ class LiveTrader:
 
     def _update_position(self, action: int, current_price: float) -> None:
         """Update position based on model action using PositionManager.
-        
+
         Args:
             action: Trading action (0=HOLD, 1=BUY, 2=SELL)
             current_price: Current BTC/JPY price
-            
+
         Fixes:
             Bug #25: PnL calculation now uses PositionManager (prevents entry_price overwrite bug)
             Bug #26: Position closes go to flat (prevents immediate reversal bug)
@@ -1568,20 +1676,20 @@ class LiveTrader:
             # Use PositionManager for correct position and PnL management
             old_position = self.position_manager.position
             old_trades = self.position_manager.trades_count
-            
+
             # Execute action through PositionManager
             # Note: Using _current_step=0 since live trading doesn't have step counter
             # and min_holding_period=0 to allow flexible trading
             trade_pnl = self.position_manager.execute_action(
                 action=action,
                 current_step=0,  # Live trading doesn't use step-based timing
-                min_holding_period=0  # No min holding period for live trading
+                min_holding_period=0,  # No min holding period for live trading
             )
-            
+
             # Sync state from PositionManager
             self.position = self.position_manager.position
             self.entry_price = self.position_manager.entry_price
-            
+
             # Update position entry step for mask provider (Bug #27 fix)
             if old_position == 0 and self.position != 0:
                 # Position opened
@@ -1589,7 +1697,7 @@ class LiveTrader:
             elif old_position != 0 and self.position == 0:
                 # Position closed
                 self._position_entry_step = 0
-            
+
             # Convert numeric position to string representation
             if self.position > 0:
                 position_str = "long"
@@ -1597,16 +1705,18 @@ class LiveTrader:
                 position_str = "short"
             else:
                 position_str = "flat"
-            
+
             # Update trade counters
             if self.position_manager.trades_count > old_trades:
                 self.trades_count = self.position_manager.trades_count
                 self.daily_trades += 1
-            
+
             # Execute actual trade if position changed
             if old_position != self.position_manager.position:
                 if action == ACTION_BUY:
-                    success = self._execute_trade("buy", self.config["min_trade_amount"])
+                    success = self._execute_trade(
+                        "buy", self.config["min_trade_amount"]
+                    )
                     if success:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -1616,7 +1726,9 @@ class LiveTrader:
                             "success",
                         )
                 elif action == ACTION_SELL:
-                    success = self._execute_trade("sell", self.config["min_trade_amount"])
+                    success = self._execute_trade(
+                        "sell", self.config["min_trade_amount"]
+                    )
                     if success:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -1625,13 +1737,13 @@ class LiveTrader:
                             f"New Position: {position_str}",
                             "success",
                         )
-            
+
             # Bug #29 fix: Always sync realized_pnl, even when trade_pnl is 0
             # (Opening positions have 0 trade_pnl but negative entry fees)
             old_total_pnl = self.total_pnl
             self.total_pnl = self.position_manager.realized_pnl
             pnl_change = self.total_pnl - old_total_pnl
-            
+
             # Validate PnL if it changed
             if pnl_change != 0.0:
                 # Validate PnL calculation (Reviewer B recommendation)
@@ -1642,7 +1754,7 @@ class LiveTrader:
                     )
                     self.total_pnl = old_total_pnl
                     pnl_change = 0.0
-                
+
                 # Sanity check: PnL change shouldn't exceed 10x estimated portfolio value
                 # Estimate portfolio as 1M JPY base + total accumulated PnL
                 estimated_portfolio = 1_000_000.0 + old_total_pnl
@@ -1653,7 +1765,7 @@ class LiveTrader:
                         f"(estimated portfolio: {estimated_portfolio:.2f} JPY). "
                         f"This may indicate a calculation bug. Please verify."
                     )
-                
+
                 # Update auto-stop system with PnL change
                 if self.auto_stop and pnl_change != 0.0:
                     self.auto_stop.update_trade_result(
@@ -1667,7 +1779,7 @@ class LiveTrader:
                             "timestamp": datetime.now(),
                         },
                     )
-                
+
                 self._send_notification(
                     "📊 Position Update",
                     f"PnL: {trade_pnl:.2f} JPY\nTotal PnL: {self.total_pnl:.2f} JPY\nPosition: {position_str}\nTrades: {self.trades_count}",
@@ -1676,7 +1788,9 @@ class LiveTrader:
         else:
             # Legacy fallback (should not be used if PositionManager is available)
             logger = get_logger(__name__)
-            logger.warning("Using legacy position management (PositionManager not available)")
+            logger.warning(
+                "Using legacy position management (PositionManager not available)"
+            )
             old_position = self.position
 
             # Handle position changes based on action and current position
@@ -1686,7 +1800,9 @@ class LiveTrader:
                     self.entry_price = current_price
                     self.trades_count += 1
                     self.daily_trades += 1
-                    success = self._execute_trade("buy", self.config["min_trade_amount"])
+                    success = self._execute_trade(
+                        "buy", self.config["min_trade_amount"]
+                    )
                     if success:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -1702,7 +1818,9 @@ class LiveTrader:
                     self.entry_price = current_price
                     self.trades_count += 1
                     self.daily_trades += 1
-                    success = self._execute_trade("sell", self.config["min_trade_amount"])
+                    success = self._execute_trade(
+                        "sell", self.config["min_trade_amount"]
+                    )
                     if success:
                         self._send_notification(
                             "📈 Trade Executed",
@@ -1722,7 +1840,7 @@ class LiveTrader:
                 else:  # Closing short position
                     pnl = (self.entry_price - current_price) * self.config[
                         "min_trade_amount"
-                    ] 
+                    ]
 
                 self.total_pnl += pnl
 

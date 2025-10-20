@@ -2,16 +2,16 @@
   "session_id": "ppo_reward_v2_profit",
   "algorithm": "ppo",
   "description": "Reward v2: 利益最大化型 - profit_weight 5x増幅 + 超低コスト",
-  
+
   "comment_experiment": "Experiment 2: Profit maximization reward structure",
   "comment_strategy": "5x profit_weight + ultra-low transaction_cost + moderate hold_penalty",
   "comment_target": "Reward >200, HOLD <50%, High profit focus",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.00005,
@@ -45,7 +45,7 @@
       "action_diversity_bonus": 0.01
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -54,7 +54,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -67,9 +67,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_changes": "Key changes from v371:",
   "changes": [
     "transaction_cost: 0.0001 → 0.00005 (-50%)",
@@ -77,7 +77,7 @@
     "loss_penalty_multiplier: NEW 2.0 (penalize bad trades)",
     "hold_penalty_weight: 0.002 → 0.003 (1.5x)"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "<50%",
     "buy_sell_rate_target": ">50%",

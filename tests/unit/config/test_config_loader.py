@@ -4,12 +4,9 @@ Unit tests for ztb.config.loader module.
 
 import json
 import os
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-import yaml
 
 try:
     from ztb.config.loader import ConfigLoader, initialize_risk_profiles, load_config
@@ -62,7 +59,9 @@ class TestConfigLoader:
         assert loader._file_mtimes["test.yaml"] == 1234567890
 
     @patch("ztb.config.loader.Path")
-    @patch("builtins.open", new_callable=mock_open, read_data="invalid: yaml: content:\n")
+    @patch(
+        "builtins.open", new_callable=mock_open, read_data="invalid: yaml: content:\n"
+    )
     def test_load_yaml_invalid_yaml(self, mock_file, mock_path):
         """Test load_yaml with invalid YAML."""
         mock_path_instance = MagicMock()
@@ -112,8 +111,10 @@ class TestConfigLoader:
 
         mock_path.side_effect = path_side_effect
 
-        with patch.object(loader, 'load_yaml') as mock_load:
-            mock_load.side_effect = lambda p: {"env": "prod"} if "production" in p else {"base": "config"}
+        with patch.object(loader, "load_yaml") as mock_load:
+            mock_load.side_effect = (
+                lambda p: {"env": "prod"} if "production" in p else {"base": "config"}
+            )
 
             result = loader.load_yaml_with_env_fallback("config")
             mock_load.assert_called_once_with("config.production.yaml")
@@ -140,7 +141,7 @@ class TestConfigLoader:
 
         mock_path.side_effect = path_side_effect
 
-        with patch.object(loader, 'load_yaml') as mock_load:
+        with patch.object(loader, "load_yaml") as mock_load:
             mock_load.return_value = {"base": "config"}
 
             result = loader.load_yaml_with_env_fallback("config")
@@ -207,21 +208,21 @@ class TestConfigLoader:
         mock_defaults.model_dump.return_value = {"defaults": "data"}
         # Mock for final config
         mock_final = {"validated": "config"}
-        
+
         def side_effect(*args, **kwargs):
             if not kwargs:  # GlobalConfig() for defaults
                 return mock_defaults
             else:  # GlobalConfig(**merged)
                 return mock_final
-        
+
         mock_global_config.side_effect = side_effect
 
         loader = ConfigLoader()
-        with patch.object(loader, 'load_yaml'), \
-             patch.object(loader, 'load_env'), \
-             patch.object(loader, 'load_cli'), \
-             patch.object(loader, 'merge_configs', return_value={"merged": "config"}):
-            
+        with patch.object(loader, "load_yaml"), patch.object(
+            loader, "load_env"
+        ), patch.object(loader, "load_cli"), patch.object(
+            loader, "merge_configs", return_value={"merged": "config"}
+        ):
             result = loader.get_config("config.yaml", {"cli": "args"})
             assert result == {"validated": "config"}
 
@@ -230,7 +231,7 @@ class TestConfigLoader:
         loader = ConfigLoader()
         schema_path = tmp_path / "schema.json"
         loader.dump_schema(str(schema_path))
-        
+
         assert schema_path.exists()
         with open(schema_path, "r") as f:
             schema = json.load(f)

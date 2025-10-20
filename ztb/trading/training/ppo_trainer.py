@@ -15,8 +15,11 @@ if TYPE_CHECKING:  # Provide type info to mypy by importing the real symbol if p
     except Exception:  # pragma: no cover - best-effort for static analysis
 
         class PPOTrainer:  # type: ignore
-            def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-            def train(self, *args: Any, **kwargs: Any) -> object: ...
+            def __init__(self, *args: Any, **kwargs: Any) -> None:
+                ...
+
+            def train(self, *args: Any, **kwargs: Any) -> object:
+                ...
 
 else:  # Runtime: prefer to use the real implementation when available
     try:

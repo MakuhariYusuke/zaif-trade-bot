@@ -147,7 +147,7 @@ def test_data_quality():
     # 欠損値チェック
     null_counts = df.isnull().sum()
     total_nulls = null_counts.sum()
-    print(f"\n欠損値チェック:")
+    print("\n欠損値チェック:")
     print(f"  総欠損値: {total_nulls}")
     if total_nulls > 0:
         print("  列別欠損値:")

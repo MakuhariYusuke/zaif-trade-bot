@@ -9,7 +9,9 @@ from ..timeframe import Timeframe
 
 
 @FeatureRegistry.register("HeikinAshi_Color")
-def compute_heikin_ashi_color(df: pd.DataFrame, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_heikin_ashi_color(
+    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+) -> pd.Series:
     """Heikin-Ashi Color: 1 (bullish), -1 (bearish), 0 (doji)"""
     feature = HeikinAshi()
     result_df = feature.compute(df, timeframe=timeframe)
@@ -17,8 +19,7 @@ def compute_heikin_ashi_color(df: pd.DataFrame, timeframe: Optional[Timeframe] =
     ha_close = result_df["ha_close"]
 
     # Calculate color: 1 for bullish (close > open), -1 for bearish (close < open), 0 for doji (close == open)
-    color = np.where(ha_close > ha_open, 1,
-                     np.where(ha_close < ha_open, -1, 0))
+    color = np.where(ha_close > ha_open, 1, np.where(ha_close < ha_open, -1, 0))
     return pd.Series(color, index=df.index)
 
 
@@ -37,7 +38,9 @@ class HeikinAshi(BaseFeature):
     def __init__(self, **kwargs: Any):
         super().__init__(name="HeikinAshi", deps=["open", "high", "low", "close"])
 
-    def compute(self, df: pd.DataFrame, timeframe: Optional[Timeframe] = None, **params: Any) -> pd.DataFrame:
+    def compute(
+        self, df: pd.DataFrame, timeframe: Optional[Timeframe] = None, **params: Any
+    ) -> pd.DataFrame:
         """
         Args:
             df (pd.DataFrame): Input DataFrame. Must include columns:
@@ -96,6 +99,7 @@ class HeikinAshi(BaseFeature):
 
 
 # === Multi-Timeframe Heikin-Ashi Features ===
+
 
 @FeatureRegistry.register("HeikinAshi_Color_M1")
 def compute_heikin_ashi_color_m1(df: pd.DataFrame) -> pd.Series:

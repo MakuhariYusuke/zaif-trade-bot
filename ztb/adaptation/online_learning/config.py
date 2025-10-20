@@ -3,8 +3,9 @@ Configuration management for Online Learning Pipeline
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import LearningMode, UpdateStrategy, MemoryStrategy, StreamingConfig
+from typing import Optional
+
+from .types import LearningMode, MemoryStrategy, StreamingConfig, UpdateStrategy
 
 
 @dataclass
@@ -25,13 +26,15 @@ class OnlineLearningConfig:
     importance_threshold: float = 0.1
 
     # ストリーミング設定
-    streaming_config: StreamingConfig = field(default_factory=lambda: StreamingConfig(
-        batch_size=32,
-        buffer_size=1000,
-        max_delay_ms=1000,
-        checkpoint_interval=1000,
-        data_source="redis"
-    ))
+    streaming_config: StreamingConfig = field(
+        default_factory=lambda: StreamingConfig(
+            batch_size=32,
+            buffer_size=1000,
+            max_delay_ms=1000,
+            checkpoint_interval=1000,
+            data_source="redis",
+        )
+    )
 
     # 適応設定
     enable_drift_adaptation: bool = True
@@ -68,7 +71,10 @@ class OnlineLearningConfig:
         if self.max_memory_samples < 1000:
             raise ValueError("max_memory_samples must be at least 1000")
 
-        if self.adaptation_trigger_threshold <= 0 or self.adaptation_trigger_threshold >= 1:
+        if (
+            self.adaptation_trigger_threshold <= 0
+            or self.adaptation_trigger_threshold >= 1
+        ):
             raise ValueError("adaptation_trigger_threshold must be between 0 and 1")
 
 
@@ -85,12 +91,18 @@ class LearningSchedule:
     def get_learning_rate(self, step: int) -> float:
         """指定ステップでの学習率を取得"""
         if self.decay_type == "exponential":
-            lr = self.initial_learning_rate * (self.decay_rate ** (step // self.decay_steps))
+            lr = self.initial_learning_rate * (
+                self.decay_rate ** (step // self.decay_steps)
+            )
         elif self.decay_type == "linear":
-            decay = (self.initial_learning_rate - self.min_learning_rate) * (step / self.decay_steps)
+            decay = (self.initial_learning_rate - self.min_learning_rate) * (
+                step / self.decay_steps
+            )
             lr = max(self.initial_learning_rate - decay, self.min_learning_rate)
         elif self.decay_type == "step":
-            lr = self.initial_learning_rate * (self.decay_rate ** (step // self.decay_steps))
+            lr = self.initial_learning_rate * (
+                self.decay_rate ** (step // self.decay_steps)
+            )
         else:
             lr = self.initial_learning_rate
 

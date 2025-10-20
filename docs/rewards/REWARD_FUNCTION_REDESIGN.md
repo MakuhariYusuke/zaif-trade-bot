@@ -91,13 +91,13 @@ def calculate_reward_v2(
 ) -> float:
     """
     シンプルで安定した報酬関数 v2.0
-    
+
     設計原則:
     1. PnL（損益）をベースとする
     2. 取引コストを明示的に考慮
     3. 報酬を[-1, 1]に正規化
     4. HOLDは中立（ペナルティなし）
-    
+
     Args:
         action: 行動 (0=HOLD, 1=BUY, 2=SELL)
         pnl: 損益（円建て）
@@ -105,18 +105,18 @@ def calculate_reward_v2(
         portfolio_value: ポートフォリオ価値
         position: 現在のポジション
         old_position: 前回のポジション
-        
+
     Returns:
         正規化された報酬 [-1, 1]
     """
-    
+
     # 1. PnLを正規化（ポートフォリオ価値の割合）
     # 例: pnl=1000, portfolio_value=200000 → pnl_ratio=0.005 (0.5%)
     pnl_ratio = pnl / max(portfolio_value, 1.0)
-    
+
     # 2. 取引が発生したか確認
     position_changed = (position != old_position)
-    
+
     # 3. 取引コストを計算（取引時のみ）
     if position_changed:
         # 取引額 = |新ポジション - 旧ポジション| * 現在価格
@@ -125,19 +125,19 @@ def calculate_reward_v2(
         cost_penalty = 0.0  # pnl に含まれているため追加ペナルティなし
     else:
         cost_penalty = 0.0
-    
+
     # 4. ベース報酬 = PnL比率
     base_reward = pnl_ratio
-    
+
     # 5. スケーリング: [-1, 1] の範囲に収める
     # 想定: 1ステップでの利益/損失は ±0.5% 程度
     # pnl_ratio を 10倍してクリッピング
     reward_scale = 10.0  # 0.1% の利益 → 報酬 1.0
     scaled_reward = base_reward * reward_scale
-    
+
     # 6. クリッピング: [-1, 1]
     clipped_reward = max(-1.0, min(1.0, scaled_reward))
-    
+
     return clipped_reward
 ```
 
@@ -151,9 +151,9 @@ def calculate_reward_simple(
 ) -> float:
     """
     最もシンプルな報酬関数
-    
+
     報酬 = PnL / ポートフォリオ価値 * スケール
-    
+
     これにより:
     - 利益 → 正の報酬
     - 損失 → 負の報酬
@@ -162,15 +162,15 @@ def calculate_reward_simple(
     """
     # PnL比率を計算
     pnl_ratio = pnl / max(portfolio_value, 1.0)
-    
+
     # スケーリング: 0.1%の利益で報酬1.0
     reward_scale = 1000.0
     reward = pnl_ratio * reward_scale
-    
+
     # クリッピング: [-10, 10]
     # より大きな範囲で、大きな利益/損失も反映
     reward = max(-10.0, min(10.0, reward))
-    
+
     return reward
 ```
 
@@ -233,36 +233,36 @@ def calculate_reward_simple(
 ) -> float:
     """
     Simple PnL-based reward function.
-    
+
     Reward = (PnL / Portfolio Value) * Scale
     Clipped to [-10, 10]
-    
+
     This eliminates:
     - Complex penalty calculations
     - Action-specific bonuses
     - Position penalties
     - Diversity bonuses
-    
+
     Focus purely on profit/loss.
     """
     # Normalize PnL by portfolio value
     pnl_ratio = pnl / max(portfolio_value, 1.0)
-    
+
     # Scale: 0.1% profit = reward 1.0
     reward_scale = self.get_setting_float("reward_scale", 1000.0)
     reward = pnl_ratio * reward_scale
-    
+
     # Clip to prevent extreme values
     clip_min = self.get_setting_float("reward_clip_min", -10.0)
     clip_max = self.get_setting_float("reward_clip_max", 10.0)
     reward = max(clip_min, min(clip_max, reward))
-    
+
     # Optional: Small penalty for inactivity (very small)
     # This prevents pure HOLD strategy
     if self.get_setting_bool("enable_inactivity_penalty", False):
         inactivity_penalty = self.get_setting_float("inactivity_penalty", 0.001)
         reward -= inactivity_penalty
-    
+
     return reward
 ```
 

@@ -8,11 +8,13 @@ from typing import Any, Dict, List, TypedDict
 
 class ModelConfigDict(TypedDict, total=False):
     """Model configuration dictionary."""
+
     pass  # For now, keep as Dict[str, Any] equivalent
 
 
 class SingleEpisodeResultDict(TypedDict):
     """Single episode evaluation result."""
+
     rewards: List[float]
     positions: List[float]
     pnls: List[float]
@@ -29,6 +31,7 @@ class EvaluationResult(TypedDict, total=False):
     Contains all metrics and statistics from model evaluation including
     performance metrics, risk metrics, and trading statistics.
     """
+
     # Performance metrics
     total_return: float
     annual_return: float

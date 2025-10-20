@@ -16,7 +16,7 @@ model = MaskablePPO.load("models/ppo_reward_v381.zip")  # 110特徴量を期待
 
 # 実行
 action = model.predict(obs)
-# ❌ エラー: ValueError: Unexpected observation shape (68,) for Box environment, 
+# ❌ エラー: ValueError: Unexpected observation shape (68,) for Box environment,
 #            please use (110,) for the observation shape.
 ```
 
@@ -90,16 +90,16 @@ def create_env_from_schema(
 ) -> HeavyTradingEnv:
     """
     モデルのスキーマ情報から環境を作成
-    
+
     Args:
         model_name: モデル名（例: "ppo_reward_v384_curated_60"）
         df: 市場データ
         config: 環境設定（Noneの場合はデフォルト）
         models_dir: モデルディレクトリ
-        
+
     Returns:
         HeavyTradingEnv: スキーマに基づいた環境
-        
+
     Raises:
         FileNotFoundError: スキーマが見つからない場合
         ValueError: データに必要な特徴量がない場合
@@ -108,11 +108,11 @@ def create_env_from_schema(
     manager = FeatureSchemaManager(model_name, models_dir)
     metadata = manager.load_schema()
     scaler = manager.load_scaler()
-    
+
     logger.info(f"Creating environment from schema: {model_name}")
     logger.info(f"  Expected features: {metadata.num_features}")
     logger.info(f"  Feature names: {metadata.feature_names[:5]}... (showing first 5)")
-    
+
     # データに必要な特徴量があるか確認
     missing_features = set(metadata.feature_names) - set(df.columns)
     if missing_features:
@@ -121,10 +121,10 @@ def create_env_from_schema(
             f"Dataset has: {len(df.columns)} columns\n"
             f"Model expects: {metadata.num_features} features"
         )
-    
+
     # 設定を構築
     env_config = config or {}
-    
+
     # スキーマ情報を設定に追加
     env_config.update({
         "feature_names": metadata.feature_names,
@@ -132,25 +132,25 @@ def create_env_from_schema(
         "schema_hash": metadata.schema_hash,
         "model_name": model_name,
     })
-    
+
     # スケーラー情報を追加
     if scaler:
         env_config.update({
             "scaler_mean": scaler["mean"],
             "scaler_std": scaler["std"],
         })
-    
+
     # 訓練設定から環境パラメータを抽出（可能な範囲で）
     training_config = metadata.training_config
     for key in ["reward_scaling", "transaction_cost", "max_position_size", "risk_free_rate"]:
         if key in training_config and key not in env_config:
             env_config[key] = training_config[key]
-    
+
     # 環境作成
     env = HeavyTradingEnv(df=df, config=env_config)
-    
+
     logger.info(f"✅ Environment created with {metadata.num_features} features")
-    
+
     return env
 
 
@@ -161,25 +161,25 @@ def create_env_from_model_path(
 ) -> HeavyTradingEnv:
     """
     モデルファイルパスから環境を作成
-    
+
     Args:
         model_path: モデルファイルパス（例: "models/ppo_reward_v384_curated_60.zip"）
         df: 市場データ
         config: 環境設定
-        
+
     Returns:
         HeavyTradingEnv: スキーマに基づいた環境
     """
     # モデル名を抽出
     model_name = Path(model_path).stem
-    
+
     # models/ディレクトリを特定
     model_path_obj = Path(model_path)
     if model_path_obj.parent.name == "models":
         models_dir = model_path_obj.parent
     else:
         models_dir = Path("models")
-    
+
     return create_env_from_schema(model_name, df, config, models_dir)
 ```
 
@@ -203,13 +203,13 @@ def test_create_env_from_schema():
         'volume': np.random.randn(100),
         # ... 68特徴量
     })
-    
+
     # 環境作成
     env = create_env_from_schema(
         model_name="ppo_reward_v384_curated_60",
         df=df
     )
-    
+
     # 検証
     assert env is not None
     assert env.observation_space.shape[0] == 68  # v384は68特徴量
@@ -226,15 +226,15 @@ def test_create_env_from_schema():
 class HeavyTradingEnv:
     def __init__(self, df: pd.DataFrame, config: Optional[Dict[str, Any]] = None):
         # 既存のコード...
-        
+
         # スキーマ情報の取得（オプショナル）
         self.schema_hash = config.get("schema_hash")
         self.model_name = config.get("model_name")
         self.feature_names = config.get("feature_names")
-        
+
         if self.feature_names:
             logger.info(f"Using schema-defined features: {len(self.feature_names)}")
-        
+
         # 既存のコード...
 ```
 
@@ -297,12 +297,12 @@ def run_backtest_with_schema(
 ) -> dict:
     """
     スキーマを考慮したバックテスト
-    
+
     Args:
         model_path: モデルファイルパス
         data_path: データファイルパス
         episodes: エピソード数
-        
+
     Returns:
         バックテスト結果
     """
@@ -311,15 +311,15 @@ def run_backtest_with_schema(
     logger.info("="*80)
     logger.info(f"Model: {model_path}")
     logger.info(f"Data: {data_path}")
-    
+
     # データ読み込み
     df = load_csv_data_optimized(data_path)
     logger.info(f"Loaded {len(df):,} rows with {len(df.columns)} columns")
-    
+
     # スキーマベースで環境作成（自動的に特徴量数を調整）
     env = create_env_from_model_path(model_path, df)
     logger.info(f"Environment created with {env.observation_space.shape[0]} features")
-    
+
     # モデル読み込み
     try:
         from sb3_contrib import MaskablePPO
@@ -328,12 +328,12 @@ def run_backtest_with_schema(
     except Exception as e:
         logger.error(f"Failed to load model: {e}")
         raise
-    
+
     # バックテスト実行
     all_rewards = []
     all_pnls = []
     action_counts = {"HOLD": 0, "BUY": 0, "SELL": 0}
-    
+
     for ep in range(episodes):
         obs, info = env.reset()
         done = False
@@ -341,17 +341,17 @@ def run_backtest_with_schema(
         ep_reward = 0.0
         ep_pnl = 0.0
         steps = 0
-        
+
         while not (done or truncated) and steps < 1000:
             action, _ = predict_with_masks(model, obs, env, deterministic=True)
             if isinstance(action, np.ndarray):
                 action = action.item()
-            
+
             obs, reward, done, truncated, info = env.step(action)
-            
+
             ep_reward += reward
             ep_pnl += info.get('pnl', 0.0)
-            
+
             # Count actions
             if action == 0:
                 action_counts["HOLD"] += 1
@@ -359,20 +359,20 @@ def run_backtest_with_schema(
                 action_counts["BUY"] += 1
             else:
                 action_counts["SELL"] += 1
-            
+
             steps += 1
-        
+
         all_rewards.append(ep_reward)
         all_pnls.append(ep_pnl)
-        
+
         logger.info(
             f"Episode {ep+1:2d}: Reward={ep_reward:7.2f}, "
             f"PnL={ep_pnl:10,.0f} JPY, Steps={steps:4d}"
         )
-    
+
     # 結果サマリー
     total_actions = sum(action_counts.values())
-    
+
     results = {
         "model_path": model_path,
         "data_path": data_path,
@@ -385,7 +385,7 @@ def run_backtest_with_schema(
             for k, v in action_counts.items()
         },
     }
-    
+
     logger.info("\n" + "="*80)
     logger.info("Backtest Results")
     logger.info("="*80)
@@ -395,7 +395,7 @@ def run_backtest_with_schema(
     logger.info(f"Action Distribution:")
     for action, stats in results['action_distribution'].items():
         logger.info(f"  {action}: {stats['count']:,} ({stats['pct']:.1f}%)")
-    
+
     return results
 
 
@@ -405,24 +405,24 @@ def main():
     parser.add_argument("--data", default="ml-dataset-enhanced.csv", help="Data path (.csv)")
     parser.add_argument("--episodes", type=int, default=10, help="Number of episodes")
     parser.add_argument("--output", help="Output JSON file")
-    
+
     args = parser.parse_args()
-    
+
     try:
         results = run_backtest_with_schema(
             model_path=args.model,
             data_path=args.data,
             episodes=args.episodes
         )
-        
+
         # 結果保存
         if args.output:
             with open(args.output, 'w') as f:
                 json.dump(results, f, indent=2)
             logger.info(f"Results saved to: {args.output}")
-        
+
         return 0
-        
+
     except Exception as e:
         logger.error(f"Backtest failed: {e}", exc_info=True)
         return 1
@@ -503,7 +503,7 @@ KNOWN_MODELS = {
 def migrate_model(model_name: str, force: bool = False):
     """単一モデルのスキーマを移行"""
     logger.info(f"Migrating schema for: {model_name}")
-    
+
     # スキーマがすでに存在するか確認
     manager = FeatureSchemaManager(model_name)
     try:
@@ -515,18 +515,18 @@ def migrate_model(model_name: str, force: bool = False):
             return False
     except FileNotFoundError:
         pass  # スキーマが存在しない（正常）
-    
+
     # レガシースキーマを移行
     legacy_schema_path = Path("models/features_schema.json")
     legacy_scaler_path = Path("models/scaler.npz")
-    
+
     if not legacy_schema_path.exists():
         logger.error(f"Legacy schema not found: {legacy_schema_path}")
         return False
-    
+
     # 既知の設定を取得
     config = KNOWN_MODELS.get(model_name, {}).get("config", {})
-    
+
     # 移行実行
     migrate_legacy_schema(
         model_name=model_name,
@@ -534,7 +534,7 @@ def migrate_model(model_name: str, force: bool = False):
         legacy_scaler_path=legacy_scaler_path,
         config=config
     )
-    
+
     logger.info(f"✅ Migration completed for {model_name}")
     return True
 
@@ -544,31 +544,31 @@ def migrate_all_models(force: bool = False):
     logger.info("="*80)
     logger.info("Migrating all known models")
     logger.info("="*80)
-    
+
     success_count = 0
     for model_name in KNOWN_MODELS:
         if migrate_model(model_name, force):
             success_count += 1
-    
+
     logger.info(f"\n✅ Successfully migrated {success_count}/{len(KNOWN_MODELS)} models")
 
 
 def main():
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Migrate legacy schemas")
     parser.add_argument("--model", help="Specific model to migrate")
     parser.add_argument("--all", action="store_true", help="Migrate all known models")
     parser.add_argument("--force", action="store_true", help="Overwrite existing schemas")
     parser.add_argument("--list", action="store_true", help="List all available schemas")
-    
+
     args = parser.parse_args()
-    
+
     if args.list:
         # 利用可能なスキーマをリスト
         FeatureSchemaManager.print_schema_summary()
         return 0
-    
+
     if args.all:
         migrate_all_models(args.force)
     elif args.model:
@@ -576,7 +576,7 @@ def main():
     else:
         parser.print_help()
         return 1
-    
+
     return 0
 
 
@@ -609,20 +609,20 @@ python scripts/migrate_legacy_schemas.py --list
 def __init__(self, model_path: str, ...):
     # モデル読み込み
     self.model = MaskablePPO.load(model_path)
-    
+
     # スキーマベースで環境作成（追加）
     from ztb.trading.environment.schema_env_factory import create_env_from_model_path
-    
+
     # リアルタイムデータ取得
     df = self._fetch_latest_data()
-    
+
     # スキーマベースで環境作成
     self.env = create_env_from_model_path(
         model_path=model_path,
         df=df,
         config=self.config
     )
-    
+
     logger.info(f"Environment created with {self.env.observation_space.shape[0]} features")
 ```
 
@@ -793,7 +793,7 @@ env = create_env_from_schema(model_name, df, config)
 
 ---
 
-**作成日**: 2025-10-10  
-**対象フェーズ**: Phase 3 (Environment & Backtest Integration)  
-**前提**: Phase 1-2完了（FeatureSchemaManager + UnifiedTrainer統合）  
+**作成日**: 2025-10-10
+**対象フェーズ**: Phase 3 (Environment & Backtest Integration)
+**前提**: Phase 1-2完了（FeatureSchemaManager + UnifiedTrainer統合）
 **目標**: バックテスト時の次元不一致エラーを完全解消

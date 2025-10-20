@@ -333,7 +333,7 @@ def generate_weekly_report_section(results: pd.DataFrame) -> str:
     # Recommended configuration
     best_config = top3.iloc[0]
     report_lines.append("### Recommended Configuration")
-    report_lines.append(f"**Optimal for Raspberry Pi environments:**")
+    report_lines.append("**Optimal for Raspberry Pi environments:**")
     report_lines.append(f"- Compression: `{best_config['compression']}`")
     report_lines.append(f"- Row Group Size: `{best_config['row_group_size']:,}`")
     columns_rec = (
@@ -455,7 +455,7 @@ def main() -> None:
     # Update weekly report if requested
     if args.update_weekly:
         update_weekly_report(results)
-        print(f"\nBenchmark section added to weekly report")
+        print("\nBenchmark section added to weekly report")
 
 
 if __name__ == "__main__":

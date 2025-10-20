@@ -19,14 +19,14 @@ def create_time_series_splits(data, n_splits=5, test_size=0.2, gap=24):
     """時系列データを考慮したクロスバリデーション分割"""
     tscv = TimeSeriesSplit(n_splits=n_splits, test_size=test_size)
     splits = []
-    
+
     for train_idx, test_idx in tscv.split(data):
         # ギャップを考慮したインデックス調整
         if gap > 0:
             test_idx = test_idx[gap:] if len(test_idx) > gap else test_idx
-        
+
         splits.append((train_idx, test_idx))
-    
+
     return splits
 ```
 
@@ -47,19 +47,19 @@ def analyze_ensemble_weights(models, test_data):
     """アンサンブル重みの貢献度分析"""
     individual_returns = {}
     correlations = {}
-    
+
     # 各モデルの個別パフォーマンス
     for name, model in models.items():
         returns = evaluate_model_returns(model, test_data)
         individual_returns[name] = returns
-    
+
     # 相関分析
     returns_df = pd.DataFrame(individual_returns)
     correlations = returns_df.corr()
-    
+
     # 重み最適化の貢献度
     weights = optimize_ensemble_weights(individual_returns)
-    
+
     return {
         'individual_performance': individual_returns,
         'correlations': correlations,
@@ -93,13 +93,13 @@ def setup_reproducibility(seed=None):
     """再現性確保のためのセットアップ"""
     if seed is None:
         seed = int(hashlib.md5(str(time.time()).encode()).hexdigest()[:8], 16)
-    
+
     # シード設定
     np.random.seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    
+
     return seed
 
 def save_experiment_config(config, results_dir):
@@ -107,7 +107,7 @@ def save_experiment_config(config, results_dir):
     config_path = os.path.join(results_dir, 'experiment_config.yaml')
     with open(config_path, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
-    
+
     return config_path
 ```
 

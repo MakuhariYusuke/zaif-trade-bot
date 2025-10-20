@@ -89,7 +89,7 @@ python -m ztb.training.binary_search.batch_size_optimized `
   --timesteps 20000
 ```
 
-**期待時間**: 2-3時間  
+**期待時間**: 2-3時間
 **出力先**: `binary_search_results/batch_size_history.json`
 
 **結果の見方 (50k精査の値を決める)**:
@@ -121,7 +121,7 @@ notepad binary_search_results\batch_size_binary_search.jsonl
 2. **improvement (改善度) を計算**:
    ```
    improvement = 初期スコア - 最適スコア
-   
+
    例: (-303.02) - (-298.24) = 4.78
    ```
 3. **スコア差分で判断**:
@@ -150,7 +150,7 @@ python -m ztb.training.binary_search.learning_rate_optimized `
   --timesteps 10000
 ```
 
-**期待時間**: 1-2時間  
+**期待時間**: 1-2時間
 **出力先**: `binary_search_results/learning_rate_history.json`
 
 #### Day 4-6: max_grad_norm (30k×seed1)
@@ -163,7 +163,7 @@ python -m ztb.training.binary_search.max_grad_norm_optimized `
   --seed 42
 ```
 
-**期待時間**: 3-4時間  
+**期待時間**: 3-4時間
 **出力先**: `binary_search_results/max_grad_norm_history.json`
 
 **再現性確認 (seed2)**:
@@ -220,7 +220,7 @@ python -m ztb.training.binary_search.batch_size_optimized `
   --search_range 8,16,32,64,128
 ```
 
-**期待時間**: 
+**期待時間**:
 - 高信頼度 (1値のみ): 3-4時間
 - 中信頼度 (3値): 5-8時間
 - 低信頼度 (5値): 10-15時間
@@ -357,14 +357,14 @@ REM learning_rateでも使用可能
 python -m ztb.training.binary_search.learning_rate_optimized --mode binary --max_iterations 2 --timesteps 50000 --search_range 1e-5,1e-4,0.001
 ```
 
-**💡 ヒント**: 
+**💡 ヒント**:
 - `--search_range`は特定の値のみを評価したい場合に使用
 - Phase 1の結果に基づいてPhase 2の範囲を絞り込む際に便利
 - 省略すると、デフォルトの範囲でバイナリサーチが実行されます
 
 ### ❌ PowerShellで '.\.venv\Scripts\Activate.ps1' が認識されない 🆕
 
-**原因1**: PowerShellのパス認識問題  
+**原因1**: PowerShellのパス認識問題
 **原因2**: 仮想環境が不完全 (Activate.ps1が存在しない)
 
 **🔍 まず診断: アクティベーションファイルの存在確認**

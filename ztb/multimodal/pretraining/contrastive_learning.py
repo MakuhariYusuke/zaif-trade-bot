@@ -12,12 +12,12 @@ through data augmentation and contrastive loss.
 - 表現学習を通じた金融時系列の特徴抽出
 """
 
+from typing import Dict, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, List, Optional, Tuple, Any
-import numpy as np
-from ..core.encoders import PriceEncoder
+
 from ztb.trading.environment.components.memory_manager import MemoryManager
 
 
@@ -27,13 +27,15 @@ class TimeSeriesAugmentation:
     時系列データ向けデータ拡張手法
     """
 
-    def __init__(self,
-                 shift_prob: float = 0.5,
-                 noise_prob: float = 0.3,
-                 scale_prob: float = 0.2,
-                 max_shift: int = 5,
-                 noise_std: float = 0.1,
-                 scale_range: Tuple[float, float] = (0.8, 1.2)):
+    def __init__(
+        self,
+        shift_prob: float = 0.5,
+        noise_prob: float = 0.3,
+        scale_prob: float = 0.2,
+        max_shift: int = 5,
+        noise_std: float = 0.1,
+        scale_range: Tuple[float, float] = (0.8, 1.2),
+    ):
         """
         Initialize augmentation parameters
 
@@ -68,15 +70,13 @@ class TimeSeriesAugmentation:
         if torch.rand(1) < self.shift_prob:
             shift = torch.randint(-self.max_shift, self.max_shift + 1, (1,)).item()
             if shift > 0:
-                augmented = torch.cat([
-                    augmented[:, shift:, :],
-                    augmented[:, :shift, :]
-                ], dim=1)
+                augmented = torch.cat(
+                    [augmented[:, shift:, :], augmented[:, :shift, :]], dim=1
+                )
             elif shift < 0:
-                augmented = torch.cat([
-                    augmented[:, -shift:, :],
-                    augmented[:, :-shift, :]
-                ], dim=1)
+                augmented = torch.cat(
+                    [augmented[:, -shift:, :], augmented[:, :-shift, :]], dim=1
+                )
 
         # Add random noise
         if torch.rand(1) < self.noise_prob:
@@ -85,7 +85,10 @@ class TimeSeriesAugmentation:
 
         # Random scaling
         if torch.rand(1) < self.scale_prob:
-            scale = torch.rand(1) * (self.scale_range[1] - self.scale_range[0]) + self.scale_range[0]
+            scale = (
+                torch.rand(1) * (self.scale_range[1] - self.scale_range[0])
+                + self.scale_range[0]
+            )
             augmented = augmented * scale
 
         return augmented
@@ -97,11 +100,13 @@ class ContrastiveLearningModel(nn.Module):
     時系列表現学習向けコントラスト学習モデル
     """
 
-    def __init__(self,
-                 input_dim: int = 156,
-                 hidden_dim: int = 512,
-                 projection_dim: int = 128,
-                 temperature: float = 0.5):
+    def __init__(
+        self,
+        input_dim: int = 156,
+        hidden_dim: int = 512,
+        projection_dim: int = 128,
+        temperature: float = 0.5,
+    ):
         """
         Initialize Contrastive Learning Model
 
@@ -124,14 +129,14 @@ class ContrastiveLearningModel(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim)
+            nn.Linear(hidden_dim, hidden_dim),
         )
 
         # Projection head
         self.projection_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, projection_dim)
+            nn.Linear(hidden_dim, projection_dim),
         )
 
     def encode(self, x: torch.Tensor) -> torch.Tensor:
@@ -163,7 +168,9 @@ class ContrastiveLearningModel(nn.Module):
         """
         return self.projection_head(h)
 
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x1: torch.Tensor, x2: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass for contrastive learning
 
@@ -184,7 +191,9 @@ class ContrastiveLearningModel(nn.Module):
 
         return z1, z2
 
-    def compute_contrastive_loss(self, z1: torch.Tensor, z2: torch.Tensor) -> torch.Tensor:
+    def compute_contrastive_loss(
+        self, z1: torch.Tensor, z2: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute NT-Xent loss (Normalized Temperature-scaled Cross Entropy)
 
@@ -209,7 +218,7 @@ class ContrastiveLearningModel(nn.Module):
 
         # Mask out self-similarities
         mask = torch.eye(2 * batch_size, device=z.device, dtype=torch.bool)
-        sim_matrix = sim_matrix.masked_fill(mask, float('-inf'))
+        sim_matrix = sim_matrix.masked_fill(mask, float("-inf"))
 
         # Compute cross entropy loss
         loss = F.cross_entropy(sim_matrix, labels)
@@ -222,12 +231,14 @@ class ContrastiveLearningTrainer:
     コントラスト学習のトレーナー
     """
 
-    def __init__(self,
-                 model: ContrastiveLearningModel,
-                 optimizer: torch.optim.Optimizer,
-                 augmentation: TimeSeriesAugmentation,
-                 device: str = 'cuda' if torch.cuda.is_available() else 'cpu',
-                 memory_manager: Optional[MemoryManager] = None):
+    def __init__(
+        self,
+        model: ContrastiveLearningModel,
+        optimizer: torch.optim.Optimizer,
+        augmentation: TimeSeriesAugmentation,
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
+        memory_manager: Optional[MemoryManager] = None,
+    ):
         """
         Initialize trainer
 
@@ -242,7 +253,9 @@ class ContrastiveLearningTrainer:
         self.optimizer = optimizer
         self.augmentation = augmentation
         self.device = device
-        self.memory_manager = memory_manager or MemoryManager(memory_logging_enabled=False)
+        self.memory_manager = memory_manager or MemoryManager(
+            memory_logging_enabled=False
+        )
         self.step_counter = 0
 
     def train_step(self, batch: torch.Tensor) -> Dict[str, float]:
@@ -279,12 +292,14 @@ class ContrastiveLearningTrainer:
             torch.cuda.empty_cache()
 
         return {
-            'loss': loss.item(),
-            'z1_norm': z1.norm(dim=1).mean().item(),
-            'z2_norm': z2.norm(dim=1).mean().item()
+            "loss": loss.item(),
+            "z1_norm": z1.norm(dim=1).mean().item(),
+            "z2_norm": z2.norm(dim=1).mean().item(),
         }
 
-    def validate(self, val_data: torch.Tensor, batch_size: int = 32) -> Dict[str, float]:
+    def validate(
+        self, val_data: torch.Tensor, batch_size: int = 32
+    ) -> Dict[str, float]:
         """
         Validation on dataset
 
@@ -301,7 +316,7 @@ class ContrastiveLearningTrainer:
 
         with torch.no_grad():
             for i in range(0, len(val_data), batch_size):
-                batch = val_data[i:i+batch_size].to(self.device)
+                batch = val_data[i : i + batch_size].to(self.device)
 
                 # Create two augmented views
                 x1 = self.augmentation(batch)
@@ -313,9 +328,7 @@ class ContrastiveLearningTrainer:
                 total_loss += loss.item()
                 num_batches += 1
 
-        return {
-            'val_loss': total_loss / num_batches
-        }
+        return {"val_loss": total_loss / num_batches}
 
     def get_embeddings(self, data: torch.Tensor, batch_size: int = 32) -> torch.Tensor:
         """
@@ -333,7 +346,7 @@ class ContrastiveLearningTrainer:
 
         with torch.no_grad():
             for i in range(0, len(data), batch_size):
-                batch = data[i:i+batch_size].to(self.device)
+                batch = data[i : i + batch_size].to(self.device)
                 emb = self.model.encode(batch)
                 embeddings.append(emb.cpu())
 
@@ -341,13 +354,16 @@ class ContrastiveLearningTrainer:
 
     def save_checkpoint(self, path: str):
         """Save model checkpoint"""
-        torch.save({
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+            },
+            path,
+        )
 
     def load_checkpoint(self, path: str):
         """Load model checkpoint"""
         checkpoint = torch.load(path)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])

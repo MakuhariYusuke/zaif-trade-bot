@@ -27,19 +27,17 @@ warnings.warn(
     "Please use ztb.trading.live_trader instead. "
     "The old module will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Re-export from new modules for backward compatibility
-from ztb.trading.live_trader.config import LiveTradingOptions, _build_argument_parser
-from ztb.trading.live_trader.live_trader import LiveTrader
 from ztb.trading.live_trader.main import main
-from ztb.trading.live_trader.utils import _configure_live_logging
 
 # Keep some constants for backward compatibility
 ACTION_HOLD = 0
 ACTION_BUY = 1
 ACTION_SELL = 2
+
 
 # For backward compatibility, keep the old main function
 def _deprecated_main():
@@ -47,6 +45,6 @@ def _deprecated_main():
     warnings.warn(
         "live_trade._deprecated_main() is deprecated. Use ztb.trading.live_trader.main.main() instead.",
         DeprecationWarning,
-        stacklevel=2
+        stacklevel=2,
     )
-    main() 
+    main()

@@ -18,38 +18,45 @@ from ..timeframe import Timeframe
 
 
 @FeatureRegistry.register("EMACross_Diff")
-def compute_ema_cross_diff(df: pd.DataFrame, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_ema_cross_diff(
+    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+) -> pd.Series:
     """EMA/SMA Cross Difference (normalized)"""
     feature = EMACross()
     if timeframe is not None:
         # Adjust periods based on timeframe
         from ..timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
         feature.default_params = {
             "fast_period": tf_params["short_period"] // 4,  # EMA period
-            "slow_period": tf_params["medium_period"] // 4  # SMA period
+            "slow_period": tf_params["medium_period"] // 4,  # SMA period
         }
     result_df = feature.compute(df)
     return result_df["ema_sma_cross"]
 
 
 @FeatureRegistry.register("EMACross_Signal")
-def compute_ema_cross_signal(df: pd.DataFrame, timeframe: Optional[Timeframe] = None) -> pd.Series:
+def compute_ema_cross_signal(
+    df: pd.DataFrame, timeframe: Optional[Timeframe] = None
+) -> pd.Series:
     """EMA/SMA Cross Signal (1 if EMA > SMA, 0 otherwise)"""
     feature = EMACross()
     if timeframe is not None:
         # Adjust periods based on timeframe
         from ..timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
         feature.default_params = {
             "fast_period": tf_params["short_period"] // 4,  # EMA period
-            "slow_period": tf_params["medium_period"] // 4  # SMA period
+            "slow_period": tf_params["medium_period"] // 4,  # SMA period
         }
     result_df = feature.compute(df)
     return result_df["ema_above_sma"]
 
 
 # === Multi-Timeframe EMACross Features ===
+
 
 @FeatureRegistry.register("EMACross_Diff_M1")
 def compute_ema_cross_diff_m1(df: pd.DataFrame) -> pd.Series:
@@ -160,10 +167,12 @@ class EMACross(ParameterizedFeature):
         # Only compute EMA/SMA if not already present, and avoid overwriting
         if fast_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
+
             talib = TaLibWrapper()
             df[fast_col] = talib.ema(df["close"].values.astype(np.float64), fast_period)
         if slow_col not in df.columns:
             from ztb.utils.talib_wrapper import TaLibWrapper
+
             talib = TaLibWrapper()
             df[slow_col] = talib.sma(df["close"].values.astype(np.float64), slow_period)
 

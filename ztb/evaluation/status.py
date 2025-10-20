@@ -160,9 +160,9 @@ class CoverageValidator:
         }
 
         # Track existing features by name
-        existing_features: Dict[str, Tuple[FeatureStatus, Optional[Dict[str, Any]]]] = (
-            {}
-        )
+        existing_features: Dict[
+            str, Tuple[FeatureStatus, Optional[Dict[str, Any]]]
+        ] = {}
         for status in FeatureStatus:
             status_key = status.value
             if status_key in target_current:
@@ -423,8 +423,8 @@ class CoverageValidator:
             # Other statuses are list of dicts with "name" key
             status_list: List[Dict[str, Any]] = target_current[status_key]  # type: ignore
             status_list[:] = [
-                item for item in status_list if item.get("name") != feature_name  # type: ignore
-            ]
+                item for item in status_list if item.get("name") != feature_name
+            ]  # type: ignore
 
     @staticmethod
     def validate_coverage_structure(coverage_data: Dict[str, Any]) -> List[str]:
