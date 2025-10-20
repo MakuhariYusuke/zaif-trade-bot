@@ -25,6 +25,7 @@ class BitflyerConfig(BaseExchangeConfig):
 # Create a singleton instance for backward compatibility
 _config = BitflyerConfig()
 
+
 # Backward compatibility functions
 def get_bitflyer_credentials():
     """Get bitFlyer API credentials (backward compatibility)."""

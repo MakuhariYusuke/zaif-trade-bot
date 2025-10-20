@@ -47,16 +47,14 @@ class TestQualityGates(unittest.TestCase):
         good_features = {
             "test_feature_1": pd.DataFrame(
                 {
-                    "col1": np.random.randn(100) * 0.1
-                    + self.ohlc_data["close"] * 0.05  # Correlated with close
-                },
+                    "col1": np.random.randn(100) * 0.1 + self.ohlc_data["close"] * 0.05
+                },  # Correlated with close
                 index=self.ohlc_data.index,
             ),
             "test_feature_2": pd.DataFrame(
                 {
-                    "col2": np.random.randn(100) * 0.05
-                    + self.ohlc_data["close"] * 0.03  # Correlated with close
-                },
+                    "col2": np.random.randn(100) * 0.05 + self.ohlc_data["close"] * 0.03
+                },  # Correlated with close
                 index=self.ohlc_data.index,
             ),
         }

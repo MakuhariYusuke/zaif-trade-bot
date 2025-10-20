@@ -1,6 +1,5 @@
 """Model loading implementation for live trading."""
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 from sb3_contrib import MaskablePPO
@@ -15,7 +14,7 @@ if TYPE_CHECKING:
 class ModelLoading:
     """Handles model loading and initialization for live trading."""
 
-    def __init__(self, live_trader: 'LiveTrader'):
+    def __init__(self, live_trader: "LiveTrader"):
         """Initialize model loading with reference to live trader."""
         self.live_trader = live_trader
         self.logger = get_logger(__name__)
@@ -29,18 +28,22 @@ class ModelLoading:
         Schema Integration: Load schema information for feature validation.
         """
         if not self.live_trader.model_path.exists():
-            raise FileNotFoundError(f"Model file not found: {self.live_trader.model_path}")
+            raise FileNotFoundError(
+                f"Model file not found: {self.live_trader.model_path}"
+            )
 
         logger = self.logger
-        
+
         # Determine algorithm from model path
         model_name = str(self.live_trader.model_path).lower()
         if "sac" in model_name:
             algorithm = "sac"
         else:
             algorithm = "ppo"
-        
-        logger.info(f"Loading {algorithm.upper()} model from {self.live_trader.model_path}")
+
+        logger.info(
+            f"Loading {algorithm.upper()} model from {self.live_trader.model_path}"
+        )
 
         if algorithm == "sac":
             model = SAC.load(str(self.live_trader.model_path))
@@ -72,18 +75,22 @@ class ModelLoading:
         # Check if action space is continuous
         try:
             import gymnasium as gym
+
             Box = gym.spaces.Box
             Discrete = gym.spaces.Discrete
         except ImportError:
             try:
                 import gym
+
                 Box = gym.spaces.Box
                 Discrete = gym.spaces.Discrete
             except ImportError:
                 # Fallback: check by type name
                 Box = type(None)
                 Discrete = type(None)
-                logger.warning("Could not import gym/gymnasium spaces, cannot detect action space type")
+                logger.warning(
+                    "Could not import gym/gymnasium spaces, cannot detect action space type"
+                )
 
         if isinstance(action_space, Box):
             self.live_trader.is_continuous_action = True
@@ -93,15 +100,21 @@ class ModelLoading:
             logger.info("Detected discrete action space")
         else:
             self.live_trader.is_continuous_action = False
-            logger.warning(f"Unknown action space type: {type(action_space)} - assuming discrete")
+            logger.warning(
+                f"Unknown action space type: {type(action_space)} - assuming discrete"
+            )
 
         # ========================================================================
         # Schema-based feature validation (Phase 3 Integration)
         # ========================================================================
         if not self.live_trader.dry_run:
             try:
-                from ztb.trading.environment.schema_env_factory import create_env_from_model_path
-                from ztb.training.core.feature_schema_manager import FeatureSchemaManager
+                from ztb.trading.environment.schema_env_factory import (
+                    create_env_from_model_path,
+                )
+                from ztb.training.core.feature_schema_manager import (
+                    FeatureSchemaManager,
+                )
 
                 # Load model schema
                 model_name = self.live_trader.model_path.stem
@@ -120,16 +133,22 @@ class ModelLoading:
                     self.live_trader.model_schema_hash = metadata.schema_hash
                     self.live_trader.schema_available = True
 
-                    logger.info(f"📋 Model feature requirements:")
-                    logger.info(f"   Total: {len(self.live_trader.feature_names)} features")
+                    logger.info("📋 Model feature requirements:")
+                    logger.info(
+                        f"   Total: {len(self.live_trader.feature_names)} features"
+                    )
                     logger.info(f"   First 5: {self.live_trader.feature_names[:5]}")
                     logger.info(f"   Last 5: {self.live_trader.feature_names[-5:]}")
 
                 except FileNotFoundError:
                     logger.warning(f"⚠️  Schema not found for model: {model_name}")
-                    logger.warning(f"   Schema file expected at: {self.live_trader.ztb_config.get_model_dir()}/schemas/{model_name}/")
-                    logger.warning(f"   Falling back to legacy validation")
-                    logger.warning(f"   Recommendation: Run migration if this is an old model")
+                    logger.warning(
+                        f"   Schema file expected at: {self.live_trader.ztb_config.get_model_dir()}/schemas/{model_name}/"
+                    )
+                    logger.warning("   Falling back to legacy validation")
+                    logger.warning(
+                        "   Recommendation: Run migration if this is an old model"
+                    )
 
                     self.live_trader.expected_features = None
                     self.live_trader.feature_names = None
@@ -156,12 +175,14 @@ class ModelLoading:
             # Temporarily initialize price history for feature checking
             if not hasattr(self.live_trader, "price_history"):
                 current_price = 1000000.0  # Dummy price for checking
-                self.live_trader.price_history = [current_price] * self.live_trader.config[
-                    "price_history_length"
-                ]
+                self.live_trader.price_history = [
+                    current_price
+                ] * self.live_trader.config["price_history_length"]
 
             # Skip feature validation during model loading - will be done after adapter initialization
-            logger.info("Feature validation deferred until after adapter initialization")
+            logger.info(
+                "Feature validation deferred until after adapter initialization"
+            )
 
         except Exception as e:
             logger.warning(f"Could not prepare for feature validation: {e}")
@@ -169,7 +190,9 @@ class ModelLoading:
         # Send model loaded notification (skip in dry-run)
         if not self.live_trader.dry_run:
             self.live_trader._send_notification(
-                "✅ Model Loaded Successfully", f"Model path: {self.live_trader.model_path}", "success"
+                "✅ Model Loaded Successfully",
+                f"Model path: {self.live_trader.model_path}",
+                "success",
             )
 
         return model

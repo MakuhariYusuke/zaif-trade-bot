@@ -8,23 +8,24 @@ Tests distributed training functionality including:
 - Checkpoint saving/loading
 """
 
+import os
+import tempfile
+from unittest.mock import patch
+
 import pytest
 import torch
 import torch.nn as nn
-import numpy as np
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
-import os
+
 from ztb.training.distributed.distributed_training import (
-    DistributedTrainingConfig,
     DistributedTrainer,
-    setup_distributed_training,
-    cleanup_distributed_training,
-    reduce_loss,
-    gather_tensor,
+    DistributedTrainingConfig,
     broadcast_tensor,
-    get_distributed_info,
+    cleanup_distributed_training,
     find_free_port,
+    gather_tensor,
+    get_distributed_info,
+    reduce_loss,
+    setup_distributed_training,
 )
 
 
@@ -50,7 +51,7 @@ class TestDistributedTrainingConfig:
             rank=1,
             master_addr="192.168.1.100",
             master_port="12345",
-            backend="nccl"
+            backend="nccl",
         )
 
         assert config.world_size == 4
@@ -61,20 +62,23 @@ class TestDistributedTrainingConfig:
 
     def test_config_from_env(self):
         """Test config creation from environment variables."""
-        with patch.dict(os.environ, {
-            'WORLD_SIZE': '2',
-            'RANK': '1',
-            'MASTER_ADDR': 'localhost',
-            'MASTER_PORT': '1234',
-            'DIST_BACKEND': 'gloo',
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "WORLD_SIZE": "2",
+                "RANK": "1",
+                "MASTER_ADDR": "localhost",
+                "MASTER_PORT": "1234",
+                "DIST_BACKEND": "gloo",
+            },
+        ):
             config = DistributedTrainingConfig.from_env()
 
             assert config.world_size == 2
             assert config.rank == 1
-            assert config.master_addr == 'localhost'
-            assert config.master_port == '1234'
-            assert config.backend == 'gloo'
+            assert config.master_addr == "localhost"
+            assert config.master_port == "1234"
+            assert config.backend == "gloo"
 
     def test_config_to_env(self):
         """Test config conversion to environment variables."""
@@ -83,16 +87,16 @@ class TestDistributedTrainingConfig:
             rank=2,
             master_addr="127.0.0.1",
             master_port="9999",
-            backend="gloo"
+            backend="gloo",
         )
 
         env_vars = config.to_env()
 
-        assert env_vars['WORLD_SIZE'] == '3'
-        assert env_vars['RANK'] == '2'
-        assert env_vars['MASTER_ADDR'] == '127.0.0.1'
-        assert env_vars['MASTER_PORT'] == '9999'
-        assert env_vars['DIST_BACKEND'] == 'gloo'
+        assert env_vars["WORLD_SIZE"] == "3"
+        assert env_vars["RANK"] == "2"
+        assert env_vars["MASTER_ADDR"] == "127.0.0.1"
+        assert env_vars["MASTER_PORT"] == "9999"
+        assert env_vars["DIST_BACKEND"] == "gloo"
 
 
 class TestDistributedTrainer:
@@ -111,15 +115,17 @@ class TestDistributedTrainer:
         assert trainer.get_rank() == 0
         assert trainer.is_master_process() == True
 
-    @patch('torch.cuda.is_available', return_value=False)
+    @patch("torch.cuda.is_available", return_value=False)
     def test_cpu_backend_fallback(self, mock_cuda):
         """Test fallback to Gloo backend when CUDA not available."""
         model = SimpleModel()
-        config = DistributedTrainingConfig(world_size=1, rank=0, backend='nccl')  # Single process to avoid DDP
+        config = DistributedTrainingConfig(
+            world_size=1, rank=0, backend="nccl"
+        )  # Single process to avoid DDP
 
         # Should not raise error, just log warning
         trainer = DistributedTrainer(model, config)
-        assert config.backend == 'nccl'  # Config unchanged, but would fallback in setup
+        assert config.backend == "nccl"  # Config unchanged, but would fallback in setup
 
     def test_data_parallel_initialization(self):
         """Test DataParallel initialization for multiple GPUs."""
@@ -128,9 +134,9 @@ class TestDistributedTrainer:
             pytest.skip("CUDA not available")
 
         model = SimpleModel()
-        config = DistributedTrainingConfig(world_size=1, rank=0, backend='nccl')
+        config = DistributedTrainingConfig(world_size=1, rank=0, backend="nccl")
 
-        with patch('torch.cuda.device_count', return_value=2):
+        with patch("torch.cuda.device_count", return_value=2):
             trainer = DistributedTrainer(model, config)
 
             # Should wrap with DataParallel
@@ -154,7 +160,7 @@ class TestDistributedTrainer:
 
         trainer = DistributedTrainer(model, config)
 
-        with tempfile.NamedTemporaryFile(suffix='.pth', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
             checkpoint_path = f.name
 
         try:
@@ -164,10 +170,10 @@ class TestDistributedTrainer:
             # Load checkpoint
             loaded_data = trainer.load_checkpoint(checkpoint_path)
 
-            assert loaded_data['epoch'] == 10
-            assert loaded_data['custom_data'] == "test"
-            assert 'model_state_dict' in loaded_data
-            assert 'distributed_config' in loaded_data
+            assert loaded_data["epoch"] == 10
+            assert loaded_data["custom_data"] == "test"
+            assert "model_state_dict" in loaded_data
+            assert "distributed_config" in loaded_data
 
         finally:
             if os.path.exists(checkpoint_path):
@@ -176,11 +182,13 @@ class TestDistributedTrainer:
     def test_non_master_checkpoint_save(self):
         """Test that non-master processes don't save checkpoints."""
         model = SimpleModel()
-        config = DistributedTrainingConfig(world_size=1, rank=0)  # Single process to avoid DDP
+        config = DistributedTrainingConfig(
+            world_size=1, rank=0
+        )  # Single process to avoid DDP
 
         trainer = DistributedTrainer(model, config)
 
-        with tempfile.NamedTemporaryFile(suffix='.pth', delete=False) as f:
+        with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as f:
             checkpoint_path = f.name
 
         try:
@@ -209,23 +217,25 @@ class TestDistributedUtilities:
         """Test getting distributed info for single process."""
         info = get_distributed_info()
 
-        assert info['is_distributed'] == False
-        assert info['world_size'] == 1
-        assert info['rank'] == 0
-        assert info['backend'] is None
+        assert info["is_distributed"] == False
+        assert info["world_size"] == 1
+        assert info["rank"] == 0
+        assert info["backend"] is None
 
-    @patch('torch.distributed.is_initialized', return_value=True)
-    @patch('torch.distributed.get_world_size', return_value=4)
-    @patch('torch.distributed.get_rank', return_value=2)
-    @patch('torch.distributed.get_backend', return_value='gloo')
-    def test_get_distributed_info_distributed(self, mock_backend, mock_rank, mock_world_size, mock_initialized):
+    @patch("torch.distributed.is_initialized", return_value=True)
+    @patch("torch.distributed.get_world_size", return_value=4)
+    @patch("torch.distributed.get_rank", return_value=2)
+    @patch("torch.distributed.get_backend", return_value="gloo")
+    def test_get_distributed_info_distributed(
+        self, mock_backend, mock_rank, mock_world_size, mock_initialized
+    ):
         """Test getting distributed info when distributed."""
         info = get_distributed_info()
 
-        assert info['is_distributed'] == True
-        assert info['world_size'] == 4
-        assert info['rank'] == 2
-        assert info['backend'] == 'gloo'
+        assert info["is_distributed"] == True
+        assert info["world_size"] == 4
+        assert info["rank"] == 2
+        assert info["backend"] == "gloo"
 
     def test_reduce_loss_single_process(self):
         """Test loss reduction for single process."""
@@ -260,8 +270,8 @@ class TestDistributedUtilities:
 class TestDistributedSetup:
     """Test distributed training setup and cleanup."""
 
-    @patch('torch.distributed.init_process_group')
-    @patch('torch.distributed.is_initialized', return_value=False)
+    @patch("torch.distributed.init_process_group")
+    @patch("torch.distributed.is_initialized", return_value=False)
     def test_setup_distributed_training_success(self, mock_is_initialized, mock_init):
         """Test successful distributed training setup."""
         config = DistributedTrainingConfig(world_size=2, rank=0)
@@ -271,8 +281,8 @@ class TestDistributedSetup:
         assert success == True
         mock_init.assert_called_once()
 
-    @patch('torch.distributed.init_process_group', side_effect=Exception("Init failed"))
-    @patch('torch.distributed.is_initialized', return_value=False)
+    @patch("torch.distributed.init_process_group", side_effect=Exception("Init failed"))
+    @patch("torch.distributed.is_initialized", return_value=False)
     def test_setup_distributed_training_failure(self, mock_is_initialized, mock_init):
         """Test failed distributed training setup."""
         config = DistributedTrainingConfig(world_size=2, rank=0)
@@ -289,16 +299,16 @@ class TestDistributedSetup:
 
         assert success == True
 
-    @patch('torch.distributed.is_initialized', return_value=True)
-    @patch('torch.distributed.destroy_process_group')
+    @patch("torch.distributed.is_initialized", return_value=True)
+    @patch("torch.distributed.destroy_process_group")
     def test_cleanup_distributed_training(self, mock_destroy, mock_is_initialized):
         """Test distributed training cleanup."""
         cleanup_distributed_training()
 
         mock_destroy.assert_called_once()
 
-    @patch('torch.distributed.is_initialized', return_value=False)
-    @patch('torch.distributed.destroy_process_group')
+    @patch("torch.distributed.is_initialized", return_value=False)
+    @patch("torch.distributed.destroy_process_group")
     def test_cleanup_when_not_initialized(self, mock_destroy, mock_is_initialized):
         """Test cleanup when distributed training not initialized."""
         cleanup_distributed_training()
@@ -306,5 +316,5 @@ class TestDistributedSetup:
         mock_destroy.assert_not_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pytest.main([__file__])

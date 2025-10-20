@@ -4,11 +4,12 @@ SHAPベースのモデル解釈性分析
 """
 
 import logging
+import os
 import time
 import uuid
-import os
-from typing import Dict, List, Optional, Any, Union, Tuple
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
 import pandas as pd
 import torch
@@ -16,33 +17,40 @@ import torch.nn as nn
 
 try:
     import shap
+
     SHAP_AVAILABLE = True
 except ImportError:
     SHAP_AVAILABLE = False
     shap = None
 
 try:
-    import matplotlib.pyplot as plt
     import matplotlib.patches as patches
+    import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
     plt = None
 
 try:
-    import plotly.graph_objects as go
     import plotly.express as px
+    import plotly.graph_objects as go
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
     go = None
     px = None
 
-from .config import ExplainabilityConfig, ExplanationMethod, ExplanationScope
+from .config import ExplainabilityConfig, ExplanationMethod
 from .types import (
-    ExplanationResult, FeatureImportance, DecisionExplanation,
-    ExplanationType, ExplanationCache, VisualizationResult
+    DecisionExplanation,
+    ExplanationCache,
+    ExplanationResult,
+    ExplanationType,
+    FeatureImportance,
+    VisualizationResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,11 +70,13 @@ class ExplainabilityAnalyzer:
             if config.explanation_method == ExplanationMethod.SHAP:
                 logger.warning("Falling back to basic feature importance analysis")
 
-    def explain_prediction(self,
-                          model: nn.Module,
-                          input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame],
-                          prediction: Any = None,
-                          background_data: Optional[Union[np.ndarray, torch.Tensor]] = None) -> ExplanationResult:
+    def explain_prediction(
+        self,
+        model: nn.Module,
+        input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame],
+        prediction: Any = None,
+        background_data: Optional[Union[np.ndarray, torch.Tensor]] = None,
+    ) -> ExplanationResult:
         """
         予測の説明を生成
 
@@ -100,12 +110,12 @@ class ExplainabilityAnalyzer:
             result = ExplanationResult(
                 explanation_id=explanation_id,
                 timestamp=datetime.now(),
-                model_version=getattr(model, '_version', 'unknown'),
+                model_version=getattr(model, "_version", "unknown"),
                 explanation_type=ExplanationType.FEATURE_IMPORTANCE,
                 target_prediction=prediction,
                 feature_importance=feature_importance,
                 decision_explanation=decision_explanation,
-                processing_time_seconds=time.time() - start_time
+                processing_time_seconds=time.time() - start_time,
             )
 
             # 可視化の生成（有効な場合）
@@ -126,15 +136,17 @@ class ExplainabilityAnalyzer:
             return ExplanationResult(
                 explanation_id=explanation_id,
                 timestamp=datetime.now(),
-                model_version=getattr(model, '_version', 'unknown'),
+                model_version=getattr(model, "_version", "unknown"),
                 explanation_type=ExplanationType.FEATURE_IMPORTANCE,
                 target_prediction=prediction,
                 feature_importance=[],
                 processing_time_seconds=time.time() - start_time,
-                metadata={"error": str(e)}
+                metadata={"error": str(e)},
             )
 
-    def _preprocess_input(self, input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame]) -> torch.Tensor:
+    def _preprocess_input(
+        self, input_data: Union[np.ndarray, torch.Tensor, pd.DataFrame]
+    ) -> torch.Tensor:
         """入力データの前処理"""
         if isinstance(input_data, pd.DataFrame):
             # DataFrameの場合、数値データのみを使用
@@ -147,20 +159,24 @@ class ExplainabilityAnalyzer:
         else:
             raise ValueError(f"Unsupported input data type: {type(input_data)}")
 
-    def _calculate_feature_importance(self,
-                                    model: nn.Module,
-                                    input_tensor: torch.Tensor,
-                                    background_data: Optional[torch.Tensor] = None) -> List[FeatureImportance]:
+    def _calculate_feature_importance(
+        self,
+        model: nn.Module,
+        input_tensor: torch.Tensor,
+        background_data: Optional[torch.Tensor] = None,
+    ) -> List[FeatureImportance]:
         """特徴量重要度の計算"""
         if self.config.explanation_method == ExplanationMethod.SHAP and SHAP_AVAILABLE:
             return self._calculate_shap_importance(model, input_tensor, background_data)
         else:
             return self._calculate_basic_importance(model, input_tensor)
 
-    def _calculate_shap_importance(self,
-                                 model: nn.Module,
-                                 input_tensor: torch.Tensor,
-                                 background_data: Optional[torch.Tensor] = None) -> List[FeatureImportance]:
+    def _calculate_shap_importance(
+        self,
+        model: nn.Module,
+        input_tensor: torch.Tensor,
+        background_data: Optional[torch.Tensor] = None,
+    ) -> List[FeatureImportance]:
         """SHAPベースの特徴量重要度計算"""
         try:
             # モデルを評価モードに
@@ -171,7 +187,7 @@ class ExplainabilityAnalyzer:
                 # デフォルトの背景データを生成
                 background_data = torch.randn(
                     min(self.config.shap_background_samples, input_tensor.shape[0]),
-                    input_tensor.shape[1]
+                    input_tensor.shape[1],
                 )
 
             # SHAP Explainerの作成
@@ -188,11 +204,12 @@ class ExplainabilityAnalyzer:
             explainer = shap.Explainer(model_predict, background_data.numpy())
 
             # SHAP値の計算
-            shap_values = explainer(input_tensor.numpy(),
-                                  max_evals=self.config.shap_max_evals)
+            shap_values = explainer(
+                input_tensor.numpy(), max_evals=self.config.shap_max_evals
+            )
 
             # 特徴量重要度の抽出
-            if hasattr(shap_values, 'values'):
+            if hasattr(shap_values, "values"):
                 if len(shap_values.values.shape) > 2:
                     # 多次元出力の場合、最初の次元を使用
                     importance_scores = np.abs(shap_values.values[0]).mean(axis=0)
@@ -205,26 +222,28 @@ class ExplainabilityAnalyzer:
             feature_importance = []
             for i, score in enumerate(importance_scores):
                 feature_name = self._get_feature_name(i)
-                feature_importance.append(FeatureImportance(
-                    feature_name=feature_name,
-                    importance_score=float(score),
-                    feature_category=self.feature_categories.get(feature_name),
-                    description=self._get_feature_description(feature_name),
-                    confidence=self._calculate_confidence(score, importance_scores)
-                ))
+                feature_importance.append(
+                    FeatureImportance(
+                        feature_name=feature_name,
+                        importance_score=float(score),
+                        feature_category=self.feature_categories.get(feature_name),
+                        description=self._get_feature_description(feature_name),
+                        confidence=self._calculate_confidence(score, importance_scores),
+                    )
+                )
 
             # 重要度でソート
             feature_importance.sort(key=lambda x: x.importance_score, reverse=True)
 
-            return feature_importance[:self.config.max_features_to_explain]
+            return feature_importance[: self.config.max_features_to_explain]
 
         except Exception as e:
             logger.error(f"SHAP calculation failed: {e}")
             return self._calculate_basic_importance(model, input_tensor)
 
-    def _calculate_basic_importance(self,
-                                  model: nn.Module,
-                                  input_tensor: torch.Tensor) -> List[FeatureImportance]:
+    def _calculate_basic_importance(
+        self, model: nn.Module, input_tensor: torch.Tensor
+    ) -> List[FeatureImportance]:
         """基本的な特徴量重要度計算（勾配ベース）"""
         try:
             model.eval()
@@ -247,25 +266,27 @@ class ExplainabilityAnalyzer:
             feature_importance = []
             for i, grad in enumerate(gradients):
                 feature_name = self._get_feature_name(i)
-                feature_importance.append(FeatureImportance(
-                    feature_name=feature_name,
-                    importance_score=float(grad),
-                    feature_category=self.feature_categories.get(feature_name),
-                    description=self._get_feature_description(feature_name)
-                ))
+                feature_importance.append(
+                    FeatureImportance(
+                        feature_name=feature_name,
+                        importance_score=float(grad),
+                        feature_category=self.feature_categories.get(feature_name),
+                        description=self._get_feature_description(feature_name),
+                    )
+                )
 
             # 重要度でソート
             feature_importance.sort(key=lambda x: x.importance_score, reverse=True)
 
-            return feature_importance[:self.config.max_features_to_explain]
+            return feature_importance[: self.config.max_features_to_explain]
 
         except Exception as e:
             logger.error(f"Basic importance calculation failed: {e}")
             return []
 
-    def _generate_decision_explanation(self,
-                                     feature_importance: List[FeatureImportance],
-                                     prediction: Any = None) -> Optional[DecisionExplanation]:
+    def _generate_decision_explanation(
+        self, feature_importance: List[FeatureImportance], prediction: Any = None
+    ) -> Optional[DecisionExplanation]:
         """決定説明の生成"""
         if not feature_importance or not self.config.generate_natural_language:
             return None
@@ -285,10 +306,12 @@ class ExplainabilityAnalyzer:
 
             return DecisionExplanation(
                 decision_type=decision_type,
-                confidence_score=self._calculate_decision_confidence(feature_importance),
+                confidence_score=self._calculate_decision_confidence(
+                    feature_importance
+                ),
                 primary_factors=primary_factors,
                 contributing_factors=contributing_factors,
-                natural_language_explanation=natural_language
+                natural_language_explanation=natural_language,
             )
 
         except Exception as e:
@@ -312,10 +335,12 @@ class ExplainabilityAnalyzer:
         else:
             return "UNKNOWN"
 
-    def _generate_natural_language_explanation(self,
-                                            decision_type: str,
-                                            primary_factors: List[FeatureImportance],
-                                            contributing_factors: List[FeatureImportance]) -> str:
+    def _generate_natural_language_explanation(
+        self,
+        decision_type: str,
+        primary_factors: List[FeatureImportance],
+        contributing_factors: List[FeatureImportance],
+    ) -> str:
         """自然言語説明の生成（高度化版）"""
         try:
             explanation_parts = []
@@ -325,21 +350,23 @@ class ExplainabilityAnalyzer:
                 "BUY": [
                     "強い買いシグナルが検知されました。市場は上昇トレンドを示唆しています。",
                     "購入機会が確認されました。現在の市場状況が有利です。",
-                    "買いポジションの確立を推奨します。複数の要因が上昇を示しています。"
+                    "買いポジションの確立を推奨します。複数の要因が上昇を示しています。",
                 ],
                 "SELL": [
                     "売りシグナルが検知されました。下落リスクが高まっています。",
                     "ポジションの整理を検討してください。市場の弱さが確認されます。",
-                    "売り圧力が強まっています。利益確定または損切りを検討してください。"
+                    "売り圧力が強まっています。利益確定または損切りを検討してください。",
                 ],
                 "HOLD": [
                     "現在のポジションを維持してください。明確なシグナルがありません。",
                     "市場の方向性が不明確です。追加の確認を待ってください。",
-                    "観察継続を推奨します。市場の変動が小さい状況です。"
-                ]
+                    "観察継続を推奨します。市場の変動が小さい状況です。",
+                ],
             }
 
-            templates = decision_templates.get(decision_type, ["取引シグナルが不明確です。"])
+            templates = decision_templates.get(
+                decision_type, ["取引シグナルが不明確です。"]
+            )
             explanation_parts.append(np.random.choice(templates))
 
             # 主な要因の詳細説明
@@ -361,12 +388,14 @@ class ExplainabilityAnalyzer:
                     "volatility": "ボラティリティ指標が{}を示しており、市場の変動性が変化しています。",
                     "volume": "出来高指標が{}を示しており、市場参加者の積極性を表しています。",
                     "momentum": "モメンタム指標が{}を示しており、市場の勢いが変化しています。",
-                    "テクニカル": "テクニカル指標が{}を示しており、市場の状態変化を表しています。"
+                    "テクニカル": "テクニカル指標が{}を示しており、市場の状態変化を表しています。",
                 }
 
                 factor_details = []
                 for category, factors in categories.items():
-                    template = category_explanations.get(category, category_explanations["テクニカル"])
+                    template = category_explanations.get(
+                        category, category_explanations["テクニカル"]
+                    )
                     factor_names = [f.feature_name for f in factors]
                     factor_details.append(template.format("、".join(factor_names)))
 
@@ -375,16 +404,24 @@ class ExplainabilityAnalyzer:
                 # 重要度の分析
                 total_importance = sum(f.importance_score for f in primary_factors)
                 if total_importance > 0.5:
-                    explanation_parts.append("これらの要因の重要度が高く、信頼性の高いシグナルです。")
+                    explanation_parts.append(
+                        "これらの要因の重要度が高く、信頼性の高いシグナルです。"
+                    )
                 elif total_importance > 0.3:
-                    explanation_parts.append("これらの要因の重要度は中程度です。追加の確認を推奨します。")
+                    explanation_parts.append(
+                        "これらの要因の重要度は中程度です。追加の確認を推奨します。"
+                    )
                 else:
-                    explanation_parts.append("これらの要因の重要度は低めです。慎重な判断が必要です。")
+                    explanation_parts.append(
+                        "これらの要因の重要度は低めです。慎重な判断が必要です。"
+                    )
 
             # 寄与要因の言及
             if contributing_factors:
                 contrib_names = [f.feature_name for f in contributing_factors[:3]]
-                explanation_parts.append(f"また、{'、'.join(contrib_names)}などの要因も判断に寄与しています。")
+                explanation_parts.append(
+                    f"また、{'、'.join(contrib_names)}などの要因も判断に寄与しています。"
+                )
 
             # 市場状況の総合評価
             market_context = self._analyze_market_context(primary_factors)
@@ -402,7 +439,9 @@ class ExplainabilityAnalyzer:
             logger.error(f"Enhanced natural language generation failed: {e}")
             return "説明の生成に失敗しました。"
 
-    def _analyze_market_context(self, primary_factors: List[FeatureImportance]) -> Optional[str]:
+    def _analyze_market_context(
+        self, primary_factors: List[FeatureImportance]
+    ) -> Optional[str]:
         """市場状況の分析"""
         try:
             if not primary_factors:
@@ -423,7 +462,7 @@ class ExplainabilityAnalyzer:
                 "volatility": "市場の変動性が変化しており、リスク管理を強化してください。",
                 "volume": "市場参加者の積極性が高まっています。取引量の変化に注意が必要です。",
                 "momentum": "市場の勢いが変化しています。モメンタムの方向性を確認してください。",
-                "unknown": "市場状況を総合的に分析した結果です。"
+                "unknown": "市場状況を総合的に分析した結果です。",
             }
 
             return context_templates.get(max_category, context_templates["unknown"])
@@ -432,7 +471,9 @@ class ExplainabilityAnalyzer:
             logger.error(f"Market context analysis failed: {e}")
             return None
 
-    def _generate_risk_warning(self, decision_type: str, primary_factors: List[FeatureImportance]) -> Optional[str]:
+    def _generate_risk_warning(
+        self, decision_type: str, primary_factors: List[FeatureImportance]
+    ) -> Optional[str]:
         """リスク警告の生成"""
         try:
             if not primary_factors:
@@ -446,18 +487,18 @@ class ExplainabilityAnalyzer:
                 "BUY": {
                     "high": "上昇余地はあるものの、利益確定のタイミングに注意してください。",
                     "medium": "買いシグナルは確認されましたが、市場の変動リスクを考慮してください。",
-                    "low": "買いシグナルが弱いため、少量からのポジション構築を推奨します。"
+                    "low": "買いシグナルが弱いため、少量からのポジション構築を推奨します。",
                 },
                 "SELL": {
                     "high": "下落リスクが高いため、損切りラインの設定を忘れずに。",
                     "medium": "売りシグナルは確認されましたが、反発リスクに注意してください。",
-                    "low": "売りシグナルが弱いため、様子見を推奨します。"
+                    "low": "売りシグナルが弱いため、様子見を推奨します。",
                 },
                 "HOLD": {
                     "high": "ポジション維持が適切ですが、市場の変化に警戒してください。",
                     "medium": "現在のポジションを維持してください。",
-                    "low": "明確なシグナルがないため、慎重な姿勢を保ってください。"
-                }
+                    "low": "明確なシグナルがないため、慎重な姿勢を保ってください。",
+                },
             }
 
             # 重要度に基づくリスクレベル判定
@@ -475,7 +516,9 @@ class ExplainabilityAnalyzer:
             logger.error(f"Risk warning generation failed: {e}")
             return None
 
-    def _calculate_decision_confidence(self, feature_importance: List[FeatureImportance]) -> float:
+    def _calculate_decision_confidence(
+        self, feature_importance: List[FeatureImportance]
+    ) -> float:
         """決定の信頼度計算"""
         if not feature_importance:
             return 0.0
@@ -506,10 +549,12 @@ class ExplainabilityAnalyzer:
 
         return float(confidence)
 
-    def _generate_visualizations(self,
-                               feature_importance: List[FeatureImportance],
-                               decision_explanation: Optional[DecisionExplanation],
-                               input_data: Any) -> Optional[VisualizationResult]:
+    def _generate_visualizations(
+        self,
+        feature_importance: List[FeatureImportance],
+        decision_explanation: Optional[DecisionExplanation],
+        input_data: Any,
+    ) -> Optional[VisualizationResult]:
         """可視化の生成"""
         if not self.config.enable_visualization:
             return None
@@ -519,37 +564,50 @@ class ExplainabilityAnalyzer:
 
             # 特徴量重要度の棒グラフ
             if feature_importance:
-                visualizations['feature_importance_plot'] = self._create_feature_importance_plot(feature_importance)
+                visualizations[
+                    "feature_importance_plot"
+                ] = self._create_feature_importance_plot(feature_importance)
 
             # 決定プロセスのフローチャート
             if decision_explanation:
-                visualizations['decision_flowchart'] = self._create_decision_flowchart(decision_explanation)
+                visualizations["decision_flowchart"] = self._create_decision_flowchart(
+                    decision_explanation
+                )
 
             # 特徴量分布の可視化
-            if hasattr(input_data, 'shape'):
-                visualizations['feature_distribution'] = self._create_feature_distribution_plot(input_data, feature_importance)
+            if hasattr(input_data, "shape"):
+                visualizations[
+                    "feature_distribution"
+                ] = self._create_feature_distribution_plot(
+                    input_data, feature_importance
+                )
 
             return VisualizationResult(
                 plots=visualizations,
                 timestamp=datetime.now(),
-                format=self.config.plot_format
+                format=self.config.plot_format,
             )
 
             return VisualizationResult(
                 plots=visualizations,
                 timestamp=datetime.now(),
-                format=self.config.plot_format
+                format=self.config.plot_format,
             )
 
         except Exception as e:
             logger.error(f"Visualization generation failed: {e}")
             return None
 
-    def _create_feature_importance_plot(self, feature_importance: List[FeatureImportance]) -> Dict[str, Any]:
+    def _create_feature_importance_plot(
+        self, feature_importance: List[FeatureImportance]
+    ) -> Dict[str, Any]:
         """特徴量重要度の棒グラフ作成"""
         try:
             if not MATPLOTLIB_AVAILABLE:
-                return {"type": "text", "content": "Matplotlib not available for plotting"}
+                return {
+                    "type": "text",
+                    "content": "Matplotlib not available for plotting",
+                }
 
             # データの準備
             top_features = feature_importance[:10]  # 上位10個
@@ -559,15 +617,18 @@ class ExplainabilityAnalyzer:
 
             # カテゴリ別の色設定
             category_colors = {
-                'trend': '#1f77b4',      # 青
-                'oscillator': '#ff7f0e', # オレンジ
-                'volume': '#2ca02c',     # 緑
-                'volatility': '#d62728', # 赤
-                'momentum': '#9467bd',   # 紫
-                'Unknown': '#7f7f7f'     # 灰
+                "trend": "#1f77b4",  # 青
+                "oscillator": "#ff7f0e",  # オレンジ
+                "volume": "#2ca02c",  # 緑
+                "volatility": "#d62728",  # 赤
+                "momentum": "#9467bd",  # 紫
+                "Unknown": "#7f7f7f",  # 灰
             }
 
-            colors = [category_colors.get(cat, category_colors['Unknown']) for cat in categories]
+            colors = [
+                category_colors.get(cat, category_colors["Unknown"])
+                for cat in categories
+            ]
 
             # プロットの作成
             fig, ax = plt.subplots(figsize=(12, 8))
@@ -576,25 +637,37 @@ class ExplainabilityAnalyzer:
             # ラベルの設定
             ax.set_yticks(range(len(feature_names)))
             ax.set_yticklabels(feature_names, fontsize=10)
-            ax.set_xlabel('Importance Score', fontsize=12)
-            ax.set_title('Feature Importance Analysis', fontsize=14, fontweight='bold')
+            ax.set_xlabel("Importance Score", fontsize=12)
+            ax.set_title("Feature Importance Analysis", fontsize=14, fontweight="bold")
 
             # 値の表示
             for i, (bar, score) in enumerate(zip(bars, importance_scores)):
-                ax.text(score + max(importance_scores) * 0.01, i,
-                       '.3f', ha='left', va='center', fontsize=9)
+                ax.text(
+                    score + max(importance_scores) * 0.01,
+                    i,
+                    ".3f",
+                    ha="left",
+                    va="center",
+                    fontsize=9,
+                )
 
             # 凡例の作成
-            legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color, label=cat)
-                             for cat, color in category_colors.items() if cat in categories]
-            ax.legend(handles=legend_elements, loc='lower right')
+            legend_elements = [
+                plt.Rectangle((0, 0), 1, 1, facecolor=color, label=cat)
+                for cat, color in category_colors.items()
+                if cat in categories
+            ]
+            ax.legend(handles=legend_elements, loc="lower right")
 
             plt.tight_layout()
 
             # 画像として保存
             import io
+
             buf = io.BytesIO()
-            fig.savefig(buf, format=self.config.plot_format, dpi=150, bbox_inches='tight')
+            fig.savefig(
+                buf, format=self.config.plot_format, dpi=150, bbox_inches="tight"
+            )
             buf.seek(0)
             image_data = buf.getvalue()
             buf.close()
@@ -604,55 +677,99 @@ class ExplainabilityAnalyzer:
                 "type": "image",
                 "format": self.config.plot_format,
                 "data": image_data,
-                "description": "特徴量重要度の棒グラフ"
+                "description": "特徴量重要度の棒グラフ",
             }
 
         except Exception as e:
             logger.error(f"Feature importance plot creation failed: {e}")
             return {"type": "error", "message": str(e)}
 
-    def _create_decision_flowchart(self, decision_explanation: DecisionExplanation) -> Dict[str, Any]:
+    def _create_decision_flowchart(
+        self, decision_explanation: DecisionExplanation
+    ) -> Dict[str, Any]:
         """決定プロセスのフローチャート作成"""
         try:
             if not MATPLOTLIB_AVAILABLE:
-                return {"type": "text", "content": "Matplotlib not available for plotting"}
+                return {
+                    "type": "text",
+                    "content": "Matplotlib not available for plotting",
+                }
 
             fig, ax = plt.subplots(figsize=(14, 10))
             ax.set_xlim(0, 10)
             ax.set_ylim(0, 10)
-            ax.axis('off')
+            ax.axis("off")
 
             # ノードの位置とサイズ
             nodes = [
-                {"text": "市場データ\n入力", "pos": (2, 8), "size": (2, 0.8), "color": "#e6f3ff"},
-                {"text": "特徴量\n抽出", "pos": (2, 6), "size": (2, 0.8), "color": "#fff2e6"},
-                {"text": "モデル\n予測", "pos": (5, 6), "size": (2, 0.8), "color": "#f0f9ff"},
-                {"text": f"決定:\n{decision_explanation.decision_type}", "pos": (5, 4), "size": (2, 0.8),
-                 "color": "#d4edda" if decision_explanation.decision_type == "BUY" else "#f8d7da" if decision_explanation.decision_type == "SELL" else "#fff3cd"},
+                {
+                    "text": "市場データ\n入力",
+                    "pos": (2, 8),
+                    "size": (2, 0.8),
+                    "color": "#e6f3ff",
+                },
+                {
+                    "text": "特徴量\n抽出",
+                    "pos": (2, 6),
+                    "size": (2, 0.8),
+                    "color": "#fff2e6",
+                },
+                {
+                    "text": "モデル\n予測",
+                    "pos": (5, 6),
+                    "size": (2, 0.8),
+                    "color": "#f0f9ff",
+                },
+                {
+                    "text": f"決定:\n{decision_explanation.decision_type}",
+                    "pos": (5, 4),
+                    "size": (2, 0.8),
+                    "color": "#d4edda"
+                    if decision_explanation.decision_type == "BUY"
+                    else "#f8d7da"
+                    if decision_explanation.decision_type == "SELL"
+                    else "#fff3cd",
+                },
             ]
 
             # 主な要因のノード
             primary_factors = decision_explanation.primary_factors[:3]
             for i, factor in enumerate(primary_factors):
-                nodes.append({
-                    "text": f"主要要因:\n{factor.feature_name}\n重要度: {factor.importance_score:.3f}",
-                    "pos": (7, 6 - i * 1.2), "size": (2.5, 0.8), "color": "#f8f9fa"
-                })
+                nodes.append(
+                    {
+                        "text": f"主要要因:\n{factor.feature_name}\n重要度: {factor.importance_score:.3f}",
+                        "pos": (7, 6 - i * 1.2),
+                        "size": (2.5, 0.8),
+                        "color": "#f8f9fa",
+                    }
+                )
 
             # ノードの描画
             for node in nodes:
                 x, y = node["pos"]
                 w, h = node["size"]
-                rect = FancyBboxPatch((x - w/2, y - h/2), w, h,
-                                    boxstyle="round,pad=0.1",
-                                    facecolor=node["color"],
-                                    edgecolor="#333333",
-                                    linewidth=1)
+                rect = FancyBboxPatch(
+                    (x - w / 2, y - h / 2),
+                    w,
+                    h,
+                    boxstyle="round,pad=0.1",
+                    facecolor=node["color"],
+                    edgecolor="#333333",
+                    linewidth=1,
+                )
                 ax.add_patch(rect)
 
                 # テキストの追加
-                ax.text(x, y, node["text"], ha='center', va='center',
-                       fontsize=9, fontweight='bold', wrap=True)
+                ax.text(
+                    x,
+                    y,
+                    node["text"],
+                    ha="center",
+                    va="center",
+                    fontsize=9,
+                    fontweight="bold",
+                    wrap=True,
+                )
 
             # 矢印の描画
             arrows = [
@@ -663,18 +780,33 @@ class ExplainabilityAnalyzer:
             ]
 
             for start, end in arrows:
-                ax.annotate("", xy=end, xytext=start,
-                          arrowprops=dict(arrowstyle="->", color="#666666", linewidth=2))
+                ax.annotate(
+                    "",
+                    xy=end,
+                    xytext=start,
+                    arrowprops=dict(arrowstyle="->", color="#666666", linewidth=2),
+                )
 
             # 信頼度の表示
             confidence_text = f"決定信頼度: {decision_explanation.confidence_score:.1%}"
-            ax.text(5, 2, confidence_text, ha='center', va='center',
-                   fontsize=12, fontweight='bold', bbox=dict(boxstyle="round,pad=0.3", facecolor="#e9ecef"))
+            ax.text(
+                5,
+                2,
+                confidence_text,
+                ha="center",
+                va="center",
+                fontsize=12,
+                fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.3", facecolor="#e9ecef"),
+            )
 
             # 画像として保存
             import io
+
             buf = io.BytesIO()
-            fig.savefig(buf, format=self.config.plot_format, dpi=150, bbox_inches='tight')
+            fig.savefig(
+                buf, format=self.config.plot_format, dpi=150, bbox_inches="tight"
+            )
             buf.seek(0)
             image_data = buf.getvalue()
             buf.close()
@@ -684,18 +816,23 @@ class ExplainabilityAnalyzer:
                 "type": "image",
                 "format": self.config.plot_format,
                 "data": image_data,
-                "description": "決定プロセスのフローチャート"
+                "description": "決定プロセスのフローチャート",
             }
 
         except Exception as e:
             logger.error(f"Decision flowchart creation failed: {e}")
             return {"type": "error", "message": str(e)}
 
-    def _create_feature_distribution_plot(self, input_data: Any, feature_importance: List[FeatureImportance]) -> Dict[str, Any]:
+    def _create_feature_distribution_plot(
+        self, input_data: Any, feature_importance: List[FeatureImportance]
+    ) -> Dict[str, Any]:
         """特徴量分布の可視化"""
         try:
             if not MATPLOTLIB_AVAILABLE:
-                return {"type": "text", "content": "Matplotlib not available for plotting"}
+                return {
+                    "type": "text",
+                    "content": "Matplotlib not available for plotting",
+                }
 
             # データをDataFrameに変換
             if isinstance(input_data, torch.Tensor):
@@ -705,7 +842,10 @@ class ExplainabilityAnalyzer:
             elif isinstance(input_data, pd.DataFrame):
                 data = input_data.copy()
             else:
-                return {"type": "text", "content": "Unsupported data format for distribution plot"}
+                return {
+                    "type": "text",
+                    "content": "Unsupported data format for distribution plot",
+                }
 
             # 上位の重要な特徴量を選択
             top_features = feature_importance[:6]  # 上位6個
@@ -727,14 +867,17 @@ class ExplainabilityAnalyzer:
                     continue
 
             if len(feature_indices) < 2:
-                return {"type": "text", "content": "Insufficient feature data for distribution plot"}
+                return {
+                    "type": "text",
+                    "content": "Insufficient feature data for distribution plot",
+                }
 
             # サブプロットの作成
             n_features = len(feature_indices)
             n_cols = min(3, n_features)
             n_rows = (n_features + n_cols - 1) // n_cols
 
-            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5*n_cols, 4*n_rows))
+            fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4 * n_rows))
             if n_rows == 1:
                 axes = [axes] if n_cols == 1 else axes
             else:
@@ -748,16 +891,25 @@ class ExplainabilityAnalyzer:
                 values = data.iloc[:, idx].values
 
                 # 分布のプロット
-                ax.hist(values, bins=30, alpha=0.7, color='#1f77b4', edgecolor='black', linewidth=0.5)
-                ax.set_title(f'{name} Distribution', fontsize=10, fontweight='bold')
-                ax.set_xlabel('Value', fontsize=8)
-                ax.set_ylabel('Frequency', fontsize=8)
+                ax.hist(
+                    values,
+                    bins=30,
+                    alpha=0.7,
+                    color="#1f77b4",
+                    edgecolor="black",
+                    linewidth=0.5,
+                )
+                ax.set_title(f"{name} Distribution", fontsize=10, fontweight="bold")
+                ax.set_xlabel("Value", fontsize=8)
+                ax.set_ylabel("Frequency", fontsize=8)
                 ax.grid(True, alpha=0.3)
 
                 # 統計情報の追加
                 mean_val = np.mean(values)
                 std_val = np.std(values)
-                ax.axvline(mean_val, color='red', linestyle='--', alpha=0.8, label='.2f')
+                ax.axvline(
+                    mean_val, color="red", linestyle="--", alpha=0.8, label=".2f"
+                )
                 ax.legend(fontsize=8)
 
             # 余分なサブプロットを非表示
@@ -768,8 +920,11 @@ class ExplainabilityAnalyzer:
 
             # 画像として保存
             import io
+
             buf = io.BytesIO()
-            fig.savefig(buf, format=self.config.plot_format, dpi=150, bbox_inches='tight')
+            fig.savefig(
+                buf, format=self.config.plot_format, dpi=150, bbox_inches="tight"
+            )
             buf.seek(0)
             image_data = buf.getvalue()
             buf.close()
@@ -779,7 +934,7 @@ class ExplainabilityAnalyzer:
                 "type": "image",
                 "format": self.config.plot_format,
                 "data": image_data,
-                "description": "特徴量分布のヒストグラム"
+                "description": "特徴量分布のヒストグラム",
             }
 
         except Exception as e:
@@ -805,7 +960,7 @@ class ExplainabilityAnalyzer:
             explanation_id=result.explanation_id,
             result=result,
             created_at=datetime.now(),
-            ttl_seconds=self.config.cache_ttl_seconds
+            ttl_seconds=self.config.cache_ttl_seconds,
         )
 
         self.cache[result.explanation_id] = cache_entry
@@ -813,11 +968,12 @@ class ExplainabilityAnalyzer:
         # キャッシュサイズの制限
         if len(self.cache) > self.config.max_cached_explanations:
             # 最も古いエントリを削除
-            oldest_key = min(self.cache.keys(),
-                           key=lambda k: self.cache[k].created_at)
+            oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k].created_at)
             del self.cache[oldest_key]
 
-    def get_cached_explanation(self, explanation_id: str) -> Optional[ExplanationResult]:
+    def get_cached_explanation(
+        self, explanation_id: str
+    ) -> Optional[ExplanationResult]:
         """キャッシュされた説明を取得"""
         if explanation_id not in self.cache:
             return None
@@ -832,8 +988,7 @@ class ExplainabilityAnalyzer:
     def clear_expired_cache(self) -> int:
         """期限切れのキャッシュをクリア"""
         expired_keys = [
-            key for key, cache_entry in self.cache.items()
-            if cache_entry.is_expired
+            key for key, cache_entry in self.cache.items() if cache_entry.is_expired
         ]
 
         for key in expired_keys:
@@ -841,8 +996,9 @@ class ExplainabilityAnalyzer:
 
         return len(expired_keys)
 
-    def get_feature_importance_summary(self,
-                                     explanations: List[ExplanationResult]) -> Dict[str, Any]:
+    def get_feature_importance_summary(
+        self, explanations: List[ExplanationResult]
+    ) -> Dict[str, Any]:
         """特徴量重要度のサマリーを取得"""
         if not explanations:
             return {}
@@ -857,7 +1013,7 @@ class ExplainabilityAnalyzer:
                         "total_importance": 0.0,
                         "count": 0,
                         "category": fi.feature_category,
-                        "description": fi.description
+                        "description": fi.description,
                     }
 
                 all_features[fi.feature_name]["total_importance"] += fi.importance_score
@@ -870,14 +1026,14 @@ class ExplainabilityAnalyzer:
                 "average_importance": data["total_importance"] / data["count"],
                 "frequency": data["count"] / total_explanations,
                 "category": data["category"],
-                "description": data["description"]
+                "description": data["description"],
             }
 
         return summary
 
-    def generate_explanation_report(self,
-                                  explanations: List[ExplanationResult],
-                                  output_path: Optional[str] = None) -> str:
+    def generate_explanation_report(
+        self, explanations: List[ExplanationResult], output_path: Optional[str] = None
+    ) -> str:
         """説明レポートの生成"""
         try:
             if not explanations:
@@ -892,17 +1048,17 @@ class ExplainabilityAnalyzer:
             # ファイル保存
             if output_path:
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                with open(output_path, 'w', encoding='utf-8') as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
                 return f"Report saved to: {output_path}"
             else:
                 # デフォルトのパスに保存
                 default_path = os.path.join(
                     self.config.report_path,
-                    f"explanation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+                    f"explanation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
                 )
                 os.makedirs(os.path.dirname(default_path), exist_ok=True)
-                with open(default_path, 'w', encoding='utf-8') as f:
+                with open(default_path, "w", encoding="utf-8") as f:
                     f.write(html_content)
                 return f"Report saved to: {default_path}"
 
@@ -910,12 +1066,16 @@ class ExplainabilityAnalyzer:
             logger.error(f"Report generation failed: {e}")
             return f"Report generation failed: {e}"
 
-    def _aggregate_explanation_data(self, explanations: List[ExplanationResult]) -> Dict[str, Any]:
+    def _aggregate_explanation_data(
+        self, explanations: List[ExplanationResult]
+    ) -> Dict[str, Any]:
         """説明データの集計"""
         try:
             # 基本統計
             total_explanations = len(explanations)
-            avg_processing_time = np.mean([e.processing_time_seconds for e in explanations])
+            avg_processing_time = np.mean(
+                [e.processing_time_seconds for e in explanations]
+            )
 
             # 決定タイプ別の集計
             decision_counts = {}
@@ -924,7 +1084,9 @@ class ExplainabilityAnalyzer:
             for exp in explanations:
                 if exp.decision_explanation:
                     decision_type = exp.decision_explanation.decision_type
-                    decision_counts[decision_type] = decision_counts.get(decision_type, 0) + 1
+                    decision_counts[decision_type] = (
+                        decision_counts.get(decision_type, 0) + 1
+                    )
                     confidence_scores.append(exp.decision_explanation.confidence_score)
 
             # 特徴量重要度の集計
@@ -939,17 +1101,21 @@ class ExplainabilityAnalyzer:
                 "total_explanations": total_explanations,
                 "avg_processing_time": avg_processing_time,
                 "decision_counts": decision_counts,
-                "avg_confidence": np.mean(confidence_scores) if confidence_scores else 0,
+                "avg_confidence": np.mean(confidence_scores)
+                if confidence_scores
+                else 0,
                 "feature_summary": feature_summary,
                 "time_range": time_range if timestamps else "N/A",
-                "generated_at": datetime.now()
+                "generated_at": datetime.now(),
             }
 
         except Exception as e:
             logger.error(f"Data aggregation failed: {e}")
             return {}
 
-    def _generate_html_report(self, report_data: Dict[str, Any], explanations: List[ExplanationResult]) -> str:
+    def _generate_html_report(
+        self, report_data: Dict[str, Any], explanations: List[ExplanationResult]
+    ) -> str:
         """HTMLレポートの生成"""
         try:
             html_template = f"""
@@ -1081,7 +1247,9 @@ class ExplainabilityAnalyzer:
 
         except Exception as e:
             logger.error(f"HTML report generation failed: {e}")
-            return f"<html><body><h1>Report Generation Failed</h1><p>{e}</p></body></html>"
+            return (
+                f"<html><body><h1>Report Generation Failed</h1><p>{e}</p></body></html>"
+            )
 
     def _generate_decision_chart_html(self, decision_counts: Dict[str, int]) -> str:
         """決定チャートのHTML生成"""
@@ -1121,11 +1289,16 @@ class ExplainabilityAnalyzer:
             """
         return rows
 
-    def _generate_explanation_samples_html(self, explanations: List[ExplanationResult]) -> str:
+    def _generate_explanation_samples_html(
+        self, explanations: List[ExplanationResult]
+    ) -> str:
         """説明サンプルのHTML生成"""
         html = ""
         for exp in explanations:
-            if exp.decision_explanation and exp.decision_explanation.natural_language_explanation:
+            if (
+                exp.decision_explanation
+                and exp.decision_explanation.natural_language_explanation
+            ):
                 html += f"""
                     <div class="explanation-sample">
                         <h4>決定: {exp.decision_explanation.decision_type} (信頼度: {exp.decision_explanation.confidence_score:.1%})</h4>

@@ -53,7 +53,9 @@ class IchimokuMomentumConfirmation(BaseFeature):
 
         # 3. Chikou slope (momentum strength)
         chikou_slope = chikou.diff(5)  # 5-period slope
-        chikou_slope_norm = chikou_slope / (current_price * 0.01)  # Normalize by 1% of price
+        chikou_slope_norm = chikou_slope / (
+            current_price * 0.01
+        )  # Normalize by 1% of price
 
         # 4. Chikou confirmation with Tenkan/Kijun
         chikou_tenkan_diff = chikou - tenkan
@@ -65,14 +67,20 @@ class IchimokuMomentumConfirmation(BaseFeature):
         chikou_momentum = chikou.pct_change(5)
 
         momentum_divergence = np.where(
-            (price_momentum > 0) & (chikou_momentum < 0), -1,  # Bearish divergence
-            np.where((price_momentum < 0) & (chikou_momentum > 0), 1, 0)  # Bullish divergence
+            (price_momentum > 0) & (chikou_momentum < 0),
+            -1,  # Bearish divergence
+            np.where(
+                (price_momentum < 0) & (chikou_momentum > 0), 1, 0
+            ),  # Bullish divergence
         )
 
         # 6. Chikou strength relative to ATR
         from ...volatility.atr import compute_atr_simplified
+
         atr_series = compute_atr_simplified(df)
-        chikou_strength = abs(chikou_slope) / (atr_series + 0.001)  # Avoid division by zero
+        chikou_strength = abs(chikou_slope) / (
+            atr_series + 0.001
+        )  # Avoid division by zero
 
         # 7. Multi-timeframe momentum confirmation
         # Short-term (5-period), medium-term (13-period), long-term (21-period)
@@ -95,12 +103,16 @@ class IchimokuMomentumConfirmation(BaseFeature):
 
         # Final momentum confirmation score
         momentum_confirmation_score = (
-            0.3 * position_score +      # Chikou position vs current price
-            0.2 * slope_score +         # Chikou slope strength
-            0.2 * alignment_score +     # Multi-timeframe alignment
-            0.2 * strength_score +      # Strength relative to volatility
-            0.1 * momentum_divergence   # Divergence detection
+            0.3 * position_score
+            + 0.2 * slope_score  # Chikou position vs current price
+            + 0.2 * alignment_score  # Chikou slope strength
+            + 0.2 * strength_score  # Multi-timeframe alignment
+            + 0.1
+            * momentum_divergence  # Strength relative to volatility  # Divergence detection
         )
 
-        result_df = pd.DataFrame({"ichimoku_momentum_confirmation": momentum_confirmation_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_momentum_confirmation": momentum_confirmation_score},
+            index=df.index,
+        )
         return result_df

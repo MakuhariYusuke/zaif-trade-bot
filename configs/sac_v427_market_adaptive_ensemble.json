@@ -1,0 +1,133 @@
+{
+  "model_name": "sac_v427_market_adaptive_ensemble",
+  "algorithm": "sac",
+  "total_timesteps": 20000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "data_config": {
+    "csv_path": "btc_jpy_real_dataset.csv",
+    "use_real_data": true
+  },
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -2.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "curriculum_stage": "strong_penalty_trading",
+    "continuous_to_discrete_threshold": 0.1,
+    "feature_set": "v427_adaptive",
+    "adaptive_feature_selection": {
+      "enabled": true,
+      "regime_classifier": {
+        "adx_threshold": 25.0,
+        "volatility_percentile": 70.0
+      },
+      "attention_layer": {
+        "enabled": true,
+        "hidden_dim": 128
+      },
+      "min_weight_threshold": 0.3
+    }
+  },
+  "reward_settings": {
+    "reward_scale": 500.0,
+    "reward_clip_min": -200.0,
+    "reward_clip_max": 200.0,
+    "use_simple_reward": false,
+    "eps": 1e-8,
+    "scale_adjustment_base": 1.0,
+    "forced_balance_scaling": 1.0,
+    "market_adaptive": {
+      "correlation_target": 0.2,
+      "regime_awareness": true,
+      "risk_adjustment": true,
+      "ensemble_bonus": true
+    },
+    "profit_bonuses": {
+      "base_profit_atr_coefficient": 1.5,
+      "base_profit_portfolio_coefficient": 1.2,
+      "profit_multipliers": [2.0, 0.6, 0.4],
+      "trading_bonus": 0.0,
+      "trading_bonus_multiplier": 1.0
+    },
+    "action_bonuses": {
+      "hold_penalty": 0.01,
+      "transaction_penalty": -0.1,
+      "diversity_bonus": 0.01
+    },
+    "risk_management": {
+      "max_drawdown_penalty": -0.1,
+      "volatility_penalty": -0.05,
+      "sharpe_ratio_bonus": 0.02
+    }
+  },
+  "v427_advanced_features": {
+    "meta_learning": {
+      "enabled": true,
+      "maml_enabled": true,
+      "reptile_enabled": false,
+      "adaptation_steps": 5,
+      "meta_lr": 0.001
+    },
+    "federated_learning": {
+      "enabled": true,
+      "clients": 5,
+      "rounds": 10,
+      "privacy_budget": 1.0,
+      "differential_privacy": true
+    },
+    "continual_learning": {
+      "enabled": true,
+      "ewc_lambda": 0.1,
+      "rehearsal_buffer_size": 1000,
+      "progressive_network": true
+    },
+    "ensemble_system": {
+      "enabled": true,
+      "members": 5,
+      "specializations": ["bull", "bear", "sideways", "high_vol", "low_vol"],
+      "voting_mechanism": "weighted_confidence",
+      "diversity_weight": 0.3
+    },
+    "market_regimes": {
+      "bull_high_vol": {"correlation_target": 0.3, "risk_multiplier": 1.2},
+      "bull_low_vol": {"correlation_target": 0.2, "risk_multiplier": 0.8},
+      "bear_high_vol": {"correlation_target": 0.25, "risk_multiplier": 1.5},
+      "bear_low_vol": {"correlation_target": 0.15, "risk_multiplier": 1.0},
+      "sideways": {"correlation_target": 0.05, "risk_multiplier": 0.7}
+    }
+  },
+  "logging": {
+    "log_interval": 500,
+    "eval_interval": 2500,
+    "save_interval": 2500,
+    "tensorboard_log": "./tensorboard/sac_v427",
+    "advanced_metrics": true,
+    "regime_tracking": true,
+    "ensemble_monitoring": true
+  },
+  "notes": "SAC v427: Market-adaptive ensemble system with meta-learning, federated learning, and continual learning integration. Focus on profitable trading through comprehensive market awareness and diversified strategies.",
+  "improvements_v427": {
+    "market_adaptation": "Advanced regime detection and correlation-aware rewards",
+    "ensemble_methods": "Multi-specialized model ensemble with confidence weighting",
+    "meta_learning": "MAML-based rapid adaptation to new market conditions",
+    "federated_learning": "Privacy-preserving strategy aggregation across market segments",
+    "continual_learning": "Knowledge retention and catastrophic forgetting prevention",
+    "reward_engineering": "Market-correlated reward functions with risk adjustment",
+    "expected_outcomes": "Target 15-25% annual returns with <15% max drawdown"
+  }
+}

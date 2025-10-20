@@ -1,11 +1,14 @@
 from runpy import run_path
 from typing import cast
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
+
 
 # Read version from package
 def get_version() -> str:
     namespace = run_path("ztb/__version__.py")
     return cast(str, namespace["__version__"])
+
 
 setup(
     name="zaif-trade-bot",

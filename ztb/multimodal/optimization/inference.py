@@ -3,15 +3,16 @@
 リアルタイム推論の高速化とメモリ最適化を提供。
 """
 
-import torch  # type: ignore
-import torch.nn as nn  # type: ignore
-from typing import Dict, Any, Optional, List, Tuple, Union
 import logging
 import threading
-import time
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple
+
+import torch  # type: ignore
+import torch.nn as nn  # type: ignore
 
 logger = logging.getLogger(__name__)
+
 
 class InferenceOptimizer:
     """推論最適化クラス
@@ -19,7 +20,7 @@ class InferenceOptimizer:
     モデル推論の高速化とメモリ最適化を行う。
     """
 
-    def __init__(self, model: nn.Module, device: str = 'auto'):
+    def __init__(self, model: nn.Module, device: str = "auto"):
         """
         Args:
             model: 最適化対象のモデル
@@ -45,19 +46,23 @@ class InferenceOptimizer:
 
     def _get_device(self, device: str) -> torch.device:
         """デバイスを取得"""
-        if device == 'auto':
-            return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if device == "auto":
+            return torch.device("cuda" if torch.cuda.is_available() else "cpu")
         return torch.device(device)
 
-    def enable_jit_compilation(self) -> 'InferenceOptimizer':
+    def enable_jit_compilation(self) -> "InferenceOptimizer":
         """JITコンパイルを有効化"""
         try:
             # ダミー入力でJITコンパイル（シーケンス対応）
-            dummy_price = torch.randn(1, 50, 156).to(self.device)  # [batch, seq_len, feature_dim]
+            dummy_price = torch.randn(1, 50, 156).to(
+                self.device
+            )  # [batch, seq_len, feature_dim]
             dummy_text = torch.randn(1, 50, 768).to(self.device)
             dummy_economic = torch.randn(1, 50, 20).to(self.device)
 
-            self.jit_model = torch.jit.trace(self.model, (dummy_price, dummy_text, dummy_economic))
+            self.jit_model = torch.jit.trace(
+                self.model, (dummy_price, dummy_text, dummy_economic)
+            )
             self.use_jit = True
 
             logger.info("JITコンパイル有効化完了")
@@ -67,7 +72,7 @@ class InferenceOptimizer:
 
         return self
 
-    def enable_onnx_optimization(self, onnx_path: str = None) -> 'InferenceOptimizer':
+    def enable_onnx_optimization(self, onnx_path: str = None) -> "InferenceOptimizer":
         """ONNX最適化を有効化"""
         try:
             import onnxruntime as ort
@@ -93,7 +98,9 @@ class InferenceOptimizer:
         """PyTorchモデルをONNXに変換"""
         import onnxruntime as ort
 
-        dummy_price = torch.randn(1, 50, 156).to(self.device)  # [batch, seq_len, feature_dim]
+        dummy_price = torch.randn(1, 50, 156).to(
+            self.device
+        )  # [batch, seq_len, feature_dim]
         dummy_text = torch.randn(1, 50, 768).to(self.device)
         dummy_economic = torch.randn(1, 50, 20).to(self.device)
 
@@ -103,23 +110,24 @@ class InferenceOptimizer:
             self.model,
             (dummy_price, dummy_text, dummy_economic),
             onnx_path,
-            input_names=['price', 'text', 'economic'],
-            output_names=['output'],
+            input_names=["price", "text", "economic"],
+            output_names=["output"],
             dynamic_axes={
-                'price': {0: 'batch_size', 1: 'seq_len'},
-                'text': {0: 'batch_size', 1: 'seq_len'},
-                'economic': {0: 'batch_size', 1: 'seq_len'},
-                'output': {0: 'batch_size', 1: 'seq_len'}
-            }
+                "price": {0: "batch_size", 1: "seq_len"},
+                "text": {0: "batch_size", 1: "seq_len"},
+                "economic": {0: "batch_size", 1: "seq_len"},
+                "output": {0: "batch_size", 1: "seq_len"},
+            },
         )
 
         self.onnx_session = ort.InferenceSession(onnx_path)
 
         # 一時ファイルを削除
         import os
+
         os.remove(onnx_path)
 
-    def enable_tensorrt(self) -> 'InferenceOptimizer':
+    def enable_tensorrt(self) -> "InferenceOptimizer":
         """TensorRT最適化を有効化（GPUのみ）"""
         if not torch.cuda.is_available():
             logger.warning("TensorRTはCUDA環境でのみ利用可能です")
@@ -136,7 +144,7 @@ class InferenceOptimizer:
 
         return self
 
-    def optimize_memory(self) -> 'InferenceOptimizer':
+    def optimize_memory(self) -> "InferenceOptimizer":
         """メモリ最適化を実行"""
         # 不要なグラフを削除
         torch.cuda.empty_cache() if torch.cuda.is_available() else None
@@ -150,14 +158,16 @@ class InferenceOptimizer:
     def predict(self, *inputs) -> torch.Tensor:
         """最適化された推論を実行"""
         # 入力をデバイスに移動
-        inputs = [x.to(self.device) if isinstance(x, torch.Tensor) else x for x in inputs]
+        inputs = [
+            x.to(self.device) if isinstance(x, torch.Tensor) else x for x in inputs
+        ]
 
         if self.use_onnx:
             # ONNX推論
             ort_inputs = {
-                'price': inputs[0].cpu().numpy(),
-                'text': inputs[1].cpu().numpy(),
-                'economic': inputs[2].cpu().numpy()
+                "price": inputs[0].cpu().numpy(),
+                "text": inputs[1].cpu().numpy(),
+                "economic": inputs[2].cpu().numpy(),
             }
             ort_outputs = self.onnx_session.run(None, ort_inputs)
             return torch.from_numpy(ort_outputs[0]).to(self.device)
@@ -172,16 +182,16 @@ class InferenceOptimizer:
             with torch.no_grad():
                 return self.model(*inputs)
 
+
 class BatchProcessor:
     """バッチ処理最適化クラス
 
     複数の推論リクエストを効率的に処理。
     """
 
-    def __init__(self,
-                 model: nn.Module,
-                 max_batch_size: int = 32,
-                 num_workers: int = 4):
+    def __init__(
+        self, model: nn.Module, max_batch_size: int = 32, num_workers: int = 4
+    ):
         """
         Args:
             model: 推論対象のモデル
@@ -226,8 +236,8 @@ class BatchProcessor:
                 return
 
             # キューからリクエストを取得
-            batch_requests = self.request_queue[:self.max_batch_size]
-            self.request_queue = self.request_queue[self.max_batch_size:]
+            batch_requests = self.request_queue[: self.max_batch_size]
+            self.request_queue = self.request_queue[self.max_batch_size :]
 
         # バッチを作成
         batch_inputs = self._collate_batch([req[1] for req in batch_requests])
@@ -243,7 +253,9 @@ class BatchProcessor:
         except Exception as e:
             logger.error(f"バッチ処理エラー: {e}")
 
-    def _collate_batch(self, inputs_list: List[Tuple[torch.Tensor, ...]]) -> Tuple[torch.Tensor, ...]:
+    def _collate_batch(
+        self, inputs_list: List[Tuple[torch.Tensor, ...]]
+    ) -> Tuple[torch.Tensor, ...]:
         """入力をバッチ化"""
         if not inputs_list:
             return ()
@@ -256,6 +268,7 @@ class BatchProcessor:
             batched_inputs.append(batched)
 
         return tuple(batched_inputs)
+
 
 class MemoryManager:
     """メモリ管理クラス
@@ -275,18 +288,18 @@ class MemoryManager:
         """メモリ使用量を監視"""
         if torch.cuda.is_available():
             allocated = torch.cuda.memory_allocated() / 1024 / 1024 / 1024  # GB
-            reserved = torch.cuda.memory_reserved() / 1024 / 1024 / 1024   # GB
+            reserved = torch.cuda.memory_reserved() / 1024 / 1024 / 1024  # GB
 
             memory_info = {
-                'allocated_gb': allocated,
-                'reserved_gb': reserved,
-                'utilization_percent': (allocated / self.max_memory_gb) * 100
+                "allocated_gb": allocated,
+                "reserved_gb": reserved,
+                "utilization_percent": (allocated / self.max_memory_gb) * 100,
             }
         else:
             memory_info = {
-                'allocated_gb': 0.0,
-                'reserved_gb': 0.0,
-                'utilization_percent': 0.0
+                "allocated_gb": 0.0,
+                "reserved_gb": 0.0,
+                "utilization_percent": 0.0,
             }
 
         self.memory_history.append(memory_info)
@@ -309,13 +322,19 @@ class MemoryManager:
         recent_memory = self.memory_history[-10:]  # 最近10件
 
         return {
-            'current': self.memory_history[-1],
-            'average': {
-                'allocated_gb': sum(m['allocated_gb'] for m in recent_memory) / len(recent_memory),
-                'utilization_percent': sum(m['utilization_percent'] for m in recent_memory) / len(recent_memory)
+            "current": self.memory_history[-1],
+            "average": {
+                "allocated_gb": sum(m["allocated_gb"] for m in recent_memory)
+                / len(recent_memory),
+                "utilization_percent": sum(
+                    m["utilization_percent"] for m in recent_memory
+                )
+                / len(recent_memory),
             },
-            'peak': {
-                'allocated_gb': max(m['allocated_gb'] for m in self.memory_history),
-                'utilization_percent': max(m['utilization_percent'] for m in self.memory_history)
-            }
+            "peak": {
+                "allocated_gb": max(m["allocated_gb"] for m in self.memory_history),
+                "utilization_percent": max(
+                    m["utilization_percent"] for m in self.memory_history
+                ),
+            },
         }

@@ -78,9 +78,9 @@ class DataLoadingValidator:
         # Scenario 4: Weekend gaps (simulate exchange closures)
         data4 = base_data.copy()
         weekend_mask = data4["timestamp"].dt.dayofweek >= 5  # Saturday/Sunday
-        data4.loc[weekend_mask, ["close", "volume"]] = (
-            np.nan
-        )  # Only price/volume missing on weekends
+        data4.loc[
+            weekend_mask, ["close", "volume"]
+        ] = np.nan  # Only price/volume missing on weekends
         scenarios.append(("weekend_gaps", data4))
 
         return scenarios

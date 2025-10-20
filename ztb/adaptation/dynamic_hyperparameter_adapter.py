@@ -6,26 +6,25 @@ Dynamic Hyperparameter Adaptation System
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple, Union
-from datetime import datetime, timedelta
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 from scipy.optimize import minimize_scalar
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import cross_val_score
 
-from .online_learning.pipeline import OnlineLearningPipeline
 from .monitoring.evaluation_manager import ContinuousEvaluationManager
-
+from .online_learning.pipeline import OnlineLearningPipeline
 
 logger = logging.getLogger(__name__)
 
 
 class HyperparameterType(Enum):
     """ハイパーパラメータタイプ"""
+
     LEARNING_RATE = "learning_rate"  # 学習率
     BATCH_SIZE = "batch_size"  # バッチサイズ
     REGULARIZATION_STRENGTH = "regularization_strength"  # 正則化強度
@@ -36,6 +35,7 @@ class HyperparameterType(Enum):
 
 class AdaptationStrategy(Enum):
     """適応戦略"""
+
     PERFORMANCE_BASED = "performance_based"  # パフォーマンスベース
     VOLATILITY_BASED = "volatility_based"  # ボラティリティベース
     GRADIENT_BASED = "gradient_based"  # 勾配ベース
@@ -48,27 +48,33 @@ class HyperparameterConfig:
     """ハイパーパラメータ設定"""
 
     # 適応対象パラメータ
-    enabled_parameters: List[HyperparameterType] = field(default_factory=lambda: [
-        HyperparameterType.LEARNING_RATE,
-        HyperparameterType.BATCH_SIZE,
-        HyperparameterType.REGULARIZATION_STRENGTH
-    ])
+    enabled_parameters: List[HyperparameterType] = field(
+        default_factory=lambda: [
+            HyperparameterType.LEARNING_RATE,
+            HyperparameterType.BATCH_SIZE,
+            HyperparameterType.REGULARIZATION_STRENGTH,
+        ]
+    )
 
     # 適応戦略
-    enabled_strategies: List[AdaptationStrategy] = field(default_factory=lambda: [
-        AdaptationStrategy.PERFORMANCE_BASED,
-        AdaptationStrategy.VOLATILITY_BASED
-    ])
+    enabled_strategies: List[AdaptationStrategy] = field(
+        default_factory=lambda: [
+            AdaptationStrategy.PERFORMANCE_BASED,
+            AdaptationStrategy.VOLATILITY_BASED,
+        ]
+    )
 
     # パラメータ範囲設定
-    parameter_ranges: Dict[HyperparameterType, Tuple[float, float]] = field(default_factory=lambda: {
-        HyperparameterType.LEARNING_RATE: (1e-6, 1e-2),
-        HyperparameterType.BATCH_SIZE: (16, 512),
-        HyperparameterType.REGULARIZATION_STRENGTH: (1e-6, 1e-2),
-        HyperparameterType.DROPOUT_RATE: (0.0, 0.5),
-        HyperparameterType.GRADIENT_CLIP_VALUE: (0.1, 10.0),
-        HyperparameterType.WEIGHT_DECAY: (1e-6, 1e-3)
-    })
+    parameter_ranges: Dict[HyperparameterType, Tuple[float, float]] = field(
+        default_factory=lambda: {
+            HyperparameterType.LEARNING_RATE: (1e-6, 1e-2),
+            HyperparameterType.BATCH_SIZE: (16, 512),
+            HyperparameterType.REGULARIZATION_STRENGTH: (1e-6, 1e-2),
+            HyperparameterType.DROPOUT_RATE: (0.0, 0.5),
+            HyperparameterType.GRADIENT_CLIP_VALUE: (0.1, 10.0),
+            HyperparameterType.WEIGHT_DECAY: (1e-6, 1e-3),
+        }
+    )
 
     # 適応間隔設定
     adaptation_interval_minutes: int = 30  # 適応間隔
@@ -123,10 +129,12 @@ class AdaptationResult:
 class DynamicHyperparameterAdapter:
     """動的ハイパーパラメータ適応マネージャー"""
 
-    def __init__(self,
-                 online_learning_pipeline: OnlineLearningPipeline,
-                 evaluation_manager: ContinuousEvaluationManager,
-                 config: Optional[HyperparameterConfig] = None):
+    def __init__(
+        self,
+        online_learning_pipeline: OnlineLearningPipeline,
+        evaluation_manager: ContinuousEvaluationManager,
+        config: Optional[HyperparameterConfig] = None,
+    ):
         self.online_learning = online_learning_pipeline
         self.evaluation_manager = evaluation_manager
         self.config = config or HyperparameterConfig()
@@ -137,9 +145,9 @@ class DynamicHyperparameterAdapter:
 
         # パフォーマンス履歴
         self.performance_history: List[Tuple[datetime, float]] = []
-        self.parameter_history: Dict[HyperparameterType, List[Tuple[datetime, float]]] = {
-            param: [] for param in HyperparameterType
-        }
+        self.parameter_history: Dict[
+            HyperparameterType, List[Tuple[datetime, float]]
+        ] = {param: [] for param in HyperparameterType}
 
         # 適応履歴
         self.adaptation_history: List[AdaptationResult] = []
@@ -173,7 +181,7 @@ class DynamicHyperparameterAdapter:
                 HyperparameterType.REGULARIZATION_STRENGTH: 1e-5,
                 HyperparameterType.DROPOUT_RATE: 0.1,
                 HyperparameterType.GRADIENT_CLIP_VALUE: 1.0,
-                HyperparameterType.WEIGHT_DECAY: 1e-4
+                HyperparameterType.WEIGHT_DECAY: 1e-4,
             }
 
             logger.info(f"Initialized current parameters: {self.current_parameters}")
@@ -206,8 +214,7 @@ class DynamicHyperparameterAdapter:
 
             self.is_active = True
             self.adaptation_thread = threading.Thread(
-                target=self._adaptation_worker,
-                daemon=True
+                target=self._adaptation_worker, daemon=True
             )
             self.adaptation_thread.start()
 
@@ -225,7 +232,9 @@ class DynamicHyperparameterAdapter:
             self.adaptation_thread.join(timeout=5.0)
         logger.info("Dynamic hyperparameter adaptation stopped")
 
-    def adapt_hyperparameters(self, market_data: Optional[pd.DataFrame] = None) -> AdaptationResult:
+    def adapt_hyperparameters(
+        self, market_data: Optional[pd.DataFrame] = None
+    ) -> AdaptationResult:
         """ハイパーパラメータを適応"""
         try:
             current_time = datetime.now()
@@ -249,15 +258,19 @@ class DynamicHyperparameterAdapter:
             applied_adaptations = self._apply_adaptations(final_adaptations)
 
             # パフォーマンスを評価
-            performance_improvement = self._evaluate_adaptation_performance(applied_adaptations)
+            performance_improvement = self._evaluate_adaptation_performance(
+                applied_adaptations
+            )
 
             # 結果を作成
             result = AdaptationResult(
                 adaptations=applied_adaptations,
                 overall_performance_improvement=performance_improvement,
-                adaptation_confidence=self._calculate_adaptation_confidence(applied_adaptations),
+                adaptation_confidence=self._calculate_adaptation_confidence(
+                    applied_adaptations
+                ),
                 timestamp=current_time,
-                market_conditions=market_conditions
+                market_conditions=market_conditions,
             )
 
             # 履歴に追加
@@ -268,7 +281,9 @@ class DynamicHyperparameterAdapter:
             # コールバックを実行
             self._trigger_adaptation_callbacks(result)
 
-            logger.info(f"Adapted {len(applied_adaptations)} hyperparameters with {performance_improvement:.4f} performance improvement")
+            logger.info(
+                f"Adapted {len(applied_adaptations)} hyperparameters with {performance_improvement:.4f} performance improvement"
+            )
             return result
 
         except Exception as e:
@@ -278,50 +293,56 @@ class DynamicHyperparameterAdapter:
                 overall_performance_improvement=0.0,
                 adaptation_confidence=0.0,
                 timestamp=datetime.now(),
-                reason="Adaptation failed due to error"
+                reason="Adaptation failed due to error",
             )
 
-    def _evaluate_market_conditions(self, market_data: Optional[pd.DataFrame]) -> Dict[str, float]:
+    def _evaluate_market_conditions(
+        self, market_data: Optional[pd.DataFrame]
+    ) -> Dict[str, float]:
         """市場条件を評価"""
         try:
             conditions = {}
 
             if market_data is not None and len(market_data) > 10:
                 # 価格データからボラティリティを計算
-                if 'close' in market_data.columns:
-                    prices = market_data['close'].values
+                if "close" in market_data.columns:
+                    prices = market_data["close"].values
                     returns = np.diff(prices) / prices[:-1]
                     volatility = np.std(returns)
-                    conditions['volatility'] = float(volatility)
+                    conditions["volatility"] = float(volatility)
                 else:
-                    conditions['volatility'] = 0.02  # デフォルト値
+                    conditions["volatility"] = 0.02  # デフォルト値
 
                 # トレンド強度を計算
                 if len(prices) > 20:
                     sma_short = pd.Series(prices).rolling(10).mean()
                     sma_long = pd.Series(prices).rolling(20).mean()
-                    trend_strength = abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
-                    conditions['trend_strength'] = float(trend_strength)
+                    trend_strength = (
+                        abs(sma_short.iloc[-1] - sma_long.iloc[-1]) / sma_long.iloc[-1]
+                    )
+                    conditions["trend_strength"] = float(trend_strength)
                 else:
-                    conditions['trend_strength'] = 0.0
+                    conditions["trend_strength"] = 0.0
 
                 # 市場状態を分類
-                volatility = conditions['volatility']
+                volatility = conditions["volatility"]
                 if volatility > self.config.high_volatility_threshold:
-                    conditions['market_state'] = 2.0  # 高ボラティリティ
+                    conditions["market_state"] = 2.0  # 高ボラティリティ
                 elif volatility < self.config.low_volatility_threshold:
-                    conditions['market_state'] = 0.0  # 低ボラティリティ
+                    conditions["market_state"] = 0.0  # 低ボラティリティ
                 else:
-                    conditions['market_state'] = 1.0  # 中ボラティリティ
+                    conditions["market_state"] = 1.0  # 中ボラティリティ
 
             else:
                 # デフォルト値
-                conditions['volatility'] = 0.02
-                conditions['trend_strength'] = 0.0
-                conditions['market_state'] = 1.0
+                conditions["volatility"] = 0.02
+                conditions["trend_strength"] = 0.0
+                conditions["market_state"] = 1.0
 
             # 履歴に追加
-            self.market_volatility_history.append((datetime.now(), conditions['volatility']))
+            self.market_volatility_history.append(
+                (datetime.now(), conditions["volatility"])
+            )
             if len(self.market_volatility_history) > 1000:
                 self.market_volatility_history = self.market_volatility_history[-1000:]
 
@@ -329,11 +350,11 @@ class DynamicHyperparameterAdapter:
 
         except Exception as e:
             logger.error(f"Failed to evaluate market conditions: {e}")
-            return {'volatility': 0.02, 'trend_strength': 0.0, 'market_state': 1.0}
+            return {"volatility": 0.02, "trend_strength": 0.0, "market_state": 1.0}
 
-    def _adapt_with_strategy(self,
-                           strategy: AdaptationStrategy,
-                           market_conditions: Dict[str, float]) -> List[HyperparameterAdaptation]:
+    def _adapt_with_strategy(
+        self, strategy: AdaptationStrategy, market_conditions: Dict[str, float]
+    ) -> List[HyperparameterAdaptation]:
         """指定された戦略で適応"""
         try:
             if strategy == AdaptationStrategy.PERFORMANCE_BASED:
@@ -351,13 +372,17 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Error in {strategy.value} adaptation: {e}")
             return []
 
-    def _performance_based_adaptation(self, market_conditions: Dict[str, float]) -> List[HyperparameterAdaptation]:
+    def _performance_based_adaptation(
+        self, market_conditions: Dict[str, float]
+    ) -> List[HyperparameterAdaptation]:
         """パフォーマンスベース適応"""
         adaptations = []
 
         try:
             # 最近のパフォーマンスを取得
-            recent_performance = self._get_recent_performance(window_size=self.config.performance_window_size)
+            recent_performance = self._get_recent_performance(
+                window_size=self.config.performance_window_size
+            )
 
             if len(recent_performance) < 10:
                 return adaptations
@@ -374,16 +399,21 @@ class DynamicHyperparameterAdapter:
 
                     if optimal_value is not None:
                         current_value = self.current_parameters[param_type]
-                        if abs(optimal_value - current_value) / current_value > self.config.performance_improvement_threshold:
+                        if (
+                            abs(optimal_value - current_value) / current_value
+                            > self.config.performance_improvement_threshold
+                        ):
                             adaptation = HyperparameterAdaptation(
                                 parameter_type=param_type,
                                 old_value=current_value,
                                 new_value=optimal_value,
                                 adaptation_strategy=AdaptationStrategy.PERFORMANCE_BASED,
                                 performance_score=performance_trend,
-                                volatility_score=market_conditions.get('volatility', 0.0),
+                                volatility_score=market_conditions.get(
+                                    "volatility", 0.0
+                                ),
                                 timestamp=datetime.now(),
-                                reason=f"Performance-based optimization: trend={performance_trend:.4f}"
+                                reason=f"Performance-based optimization: trend={performance_trend:.4f}",
                             )
                             adaptations.append(adaptation)
 
@@ -396,22 +426,28 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Performance-based adaptation failed: {e}")
             return []
 
-    def _volatility_based_adaptation(self, market_conditions: Dict[str, float]) -> List[HyperparameterAdaptation]:
+    def _volatility_based_adaptation(
+        self, market_conditions: Dict[str, float]
+    ) -> List[HyperparameterAdaptation]:
         """ボラティリティベース適応"""
         adaptations = []
 
         try:
-            volatility = market_conditions.get('volatility', 0.02)
-            market_state = market_conditions.get('market_state', 1.0)
+            volatility = market_conditions.get("volatility", 0.02)
+            market_state = market_conditions.get("market_state", 1.0)
 
             for param_type in self.config.enabled_parameters:
                 try:
                     # ボラティリティに応じたパラメータ調整
-                    new_value = self._adjust_parameter_for_volatility(param_type, volatility, market_state)
+                    new_value = self._adjust_parameter_for_volatility(
+                        param_type, volatility, market_state
+                    )
 
                     if new_value is not None:
                         current_value = self.current_parameters[param_type]
-                        change_rate = abs(new_value - current_value) / max(current_value, 1e-10)
+                        change_rate = abs(new_value - current_value) / max(
+                            current_value, 1e-10
+                        )
 
                         if change_rate > self.config.performance_improvement_threshold:
                             adaptation = HyperparameterAdaptation(
@@ -422,12 +458,14 @@ class DynamicHyperparameterAdapter:
                                 performance_score=0.0,  # パフォーマンスベースではない
                                 volatility_score=volatility,
                                 timestamp=datetime.now(),
-                                reason=f"Volatility-based adaptation: volatility={volatility:.4f}"
+                                reason=f"Volatility-based adaptation: volatility={volatility:.4f}",
                             )
                             adaptations.append(adaptation)
 
                 except Exception as e:
-                    logger.error(f"Error adapting {param_type.value} for volatility: {e}")
+                    logger.error(
+                        f"Error adapting {param_type.value} for volatility: {e}"
+                    )
 
             return adaptations
 
@@ -435,7 +473,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Volatility-based adaptation failed: {e}")
             return []
 
-    def _gradient_based_adaptation(self, market_conditions: Dict[str, float]) -> List[HyperparameterAdaptation]:
+    def _gradient_based_adaptation(
+        self, market_conditions: Dict[str, float]
+    ) -> List[HyperparameterAdaptation]:
         """勾配ベース適応"""
         adaptations = []
 
@@ -443,28 +483,39 @@ class DynamicHyperparameterAdapter:
             # 勾配情報を取得（実際の実装ではモデルから取得）
             gradient_stats = self._get_gradient_statistics()
 
-            for param_type in [HyperparameterType.LEARNING_RATE, HyperparameterType.GRADIENT_CLIP_VALUE]:
+            for param_type in [
+                HyperparameterType.LEARNING_RATE,
+                HyperparameterType.GRADIENT_CLIP_VALUE,
+            ]:
                 try:
                     if param_type in self.config.enabled_parameters:
-                        new_value = self._adjust_parameter_for_gradients(param_type, gradient_stats)
+                        new_value = self._adjust_parameter_for_gradients(
+                            param_type, gradient_stats
+                        )
 
                         if new_value is not None:
                             current_value = self.current_parameters[param_type]
-                            if abs(new_value - current_value) / current_value > 0.05:  # 5%以上の変更
+                            if (
+                                abs(new_value - current_value) / current_value > 0.05
+                            ):  # 5%以上の変更
                                 adaptation = HyperparameterAdaptation(
                                     parameter_type=param_type,
                                     old_value=current_value,
                                     new_value=new_value,
                                     adaptation_strategy=AdaptationStrategy.GRADIENT_BASED,
                                     performance_score=0.0,
-                                    volatility_score=market_conditions.get('volatility', 0.0),
+                                    volatility_score=market_conditions.get(
+                                        "volatility", 0.0
+                                    ),
                                     timestamp=datetime.now(),
-                                    reason="Gradient-based adaptation"
+                                    reason="Gradient-based adaptation",
                                 )
                                 adaptations.append(adaptation)
 
                 except Exception as e:
-                    logger.error(f"Error adapting {param_type.value} for gradients: {e}")
+                    logger.error(
+                        f"Error adapting {param_type.value} for gradients: {e}"
+                    )
 
             return adaptations
 
@@ -472,7 +523,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Gradient-based adaptation failed: {e}")
             return []
 
-    def _curriculum_based_adaptation(self, market_conditions: Dict[str, float]) -> List[HyperparameterAdaptation]:
+    def _curriculum_based_adaptation(
+        self, market_conditions: Dict[str, float]
+    ) -> List[HyperparameterAdaptation]:
         """カリキュラムベース適応"""
         adaptations = []
 
@@ -482,25 +535,33 @@ class DynamicHyperparameterAdapter:
 
             for param_type in self.config.enabled_parameters:
                 try:
-                    new_value = self._adjust_parameter_for_curriculum(param_type, training_progress)
+                    new_value = self._adjust_parameter_for_curriculum(
+                        param_type, training_progress
+                    )
 
                     if new_value is not None:
                         current_value = self.current_parameters[param_type]
-                        if abs(new_value - current_value) / current_value > 0.1:  # 10%以上の変更
+                        if (
+                            abs(new_value - current_value) / current_value > 0.1
+                        ):  # 10%以上の変更
                             adaptation = HyperparameterAdaptation(
                                 parameter_type=param_type,
                                 old_value=current_value,
                                 new_value=new_value,
                                 adaptation_strategy=AdaptationStrategy.CURRICULUM_BASED,
                                 performance_score=0.0,
-                                volatility_score=market_conditions.get('volatility', 0.0),
+                                volatility_score=market_conditions.get(
+                                    "volatility", 0.0
+                                ),
                                 timestamp=datetime.now(),
-                                reason=f"Curriculum-based adaptation: progress={training_progress:.2f}"
+                                reason=f"Curriculum-based adaptation: progress={training_progress:.2f}",
                             )
                             adaptations.append(adaptation)
 
                 except Exception as e:
-                    logger.error(f"Error adapting {param_type.value} for curriculum: {e}")
+                    logger.error(
+                        f"Error adapting {param_type.value} for curriculum: {e}"
+                    )
 
             return adaptations
 
@@ -508,10 +569,12 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Curriculum-based adaptation failed: {e}")
             return []
 
-    def _optimize_parameter_for_performance(self,
-                                          param_type: HyperparameterType,
-                                          performance_trend: float,
-                                          market_conditions: Dict[str, float]) -> Optional[float]:
+    def _optimize_parameter_for_performance(
+        self,
+        param_type: HyperparameterType,
+        performance_trend: float,
+        market_conditions: Dict[str, float],
+    ) -> Optional[float]:
         """パフォーマンスのためのパラメータ最適化"""
         try:
             current_value = self.current_parameters[param_type]
@@ -531,9 +594,7 @@ class DynamicHyperparameterAdapter:
 
             # 最適化を実行
             result = minimize_scalar(
-                objective_function,
-                bounds=param_range,
-                method='bounded'
+                objective_function, bounds=param_range, method="bounded"
             )
 
             if result.success:
@@ -541,7 +602,11 @@ class DynamicHyperparameterAdapter:
 
                 # 安全マージンを適用
                 max_change = current_value * self.config.max_parameter_change_rate
-                optimal_value = np.clip(optimal_value, current_value - max_change, current_value + max_change)
+                optimal_value = np.clip(
+                    optimal_value,
+                    current_value - max_change,
+                    current_value + max_change,
+                )
 
                 return optimal_value
 
@@ -551,10 +616,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Parameter optimization failed for {param_type.value}: {e}")
             return None
 
-    def _adjust_parameter_for_volatility(self,
-                                       param_type: HyperparameterType,
-                                       volatility: float,
-                                       market_state: float) -> Optional[float]:
+    def _adjust_parameter_for_volatility(
+        self, param_type: HyperparameterType, volatility: float, market_state: float
+    ) -> Optional[float]:
         """ボラティリティに応じたパラメータ調整"""
         try:
             current_value = self.current_parameters[param_type]
@@ -601,7 +665,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Volatility adjustment failed for {param_type.value}: {e}")
             return None
 
-    def _combine_adaptations(self, adaptations: List[HyperparameterAdaptation]) -> List[HyperparameterAdaptation]:
+    def _combine_adaptations(
+        self, adaptations: List[HyperparameterAdaptation]
+    ) -> List[HyperparameterAdaptation]:
         """適応を統合"""
         try:
             # パラメータタイプごとに統合
@@ -610,7 +676,7 @@ class DynamicHyperparameterAdapter:
                 AdaptationStrategy.PERFORMANCE_BASED: 0.5,
                 AdaptationStrategy.VOLATILITY_BASED: 0.3,
                 AdaptationStrategy.GRADIENT_BASED: 0.1,
-                AdaptationStrategy.CURRICULUM_BASED: 0.1
+                AdaptationStrategy.CURRICULUM_BASED: 0.1,
             }
 
             for adaptation in adaptations:
@@ -618,28 +684,30 @@ class DynamicHyperparameterAdapter:
 
                 if param_type not in combined_adaptations:
                     combined_adaptations[param_type] = {
-                        'values': [],
-                        'weights': [],
-                        'strategies': []
+                        "values": [],
+                        "weights": [],
+                        "strategies": [],
                     }
 
-                combined_adaptations[param_type]['values'].append(adaptation.new_value)
-                combined_adaptations[param_type]['weights'].append(
+                combined_adaptations[param_type]["values"].append(adaptation.new_value)
+                combined_adaptations[param_type]["weights"].append(
                     strategy_weights.get(adaptation.adaptation_strategy, 0.1)
                 )
-                combined_adaptations[param_type]['strategies'].append(adaptation.adaptation_strategy)
+                combined_adaptations[param_type]["strategies"].append(
+                    adaptation.adaptation_strategy
+                )
 
             # 重み付き平均を計算
             final_adaptations = []
             for param_type, data in combined_adaptations.items():
-                if data['values']:
-                    weights = np.array(data['weights'])
+                if data["values"]:
+                    weights = np.array(data["weights"])
                     weights = weights / np.sum(weights)  # 正規化
 
-                    combined_value = np.average(data['values'], weights=weights)
+                    combined_value = np.average(data["values"], weights=weights)
 
                     # 主要な戦略を選択
-                    main_strategy = data['strategies'][np.argmax(weights)]
+                    main_strategy = data["strategies"][np.argmax(weights)]
 
                     final_adaptation = HyperparameterAdaptation(
                         parameter_type=param_type,
@@ -649,7 +717,7 @@ class DynamicHyperparameterAdapter:
                         performance_score=0.0,
                         volatility_score=0.0,
                         timestamp=datetime.now(),
-                        reason=f"Combined adaptation from {len(data['strategies'])} strategies"
+                        reason=f"Combined adaptation from {len(data['strategies'])} strategies",
                     )
                     final_adaptations.append(final_adaptation)
 
@@ -659,7 +727,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Failed to combine adaptations: {e}")
             return adaptations
 
-    def _apply_adaptations(self, adaptations: List[HyperparameterAdaptation]) -> List[HyperparameterAdaptation]:
+    def _apply_adaptations(
+        self, adaptations: List[HyperparameterAdaptation]
+    ) -> List[HyperparameterAdaptation]:
         """適応を適用"""
         applied_adaptations = []
 
@@ -668,7 +738,9 @@ class DynamicHyperparameterAdapter:
                 # 安全チェック
                 if self._is_adaptation_safe(adaptation):
                     # パラメータを更新
-                    self.current_parameters[adaptation.parameter_type] = adaptation.new_value
+                    self.current_parameters[
+                        adaptation.parameter_type
+                    ] = adaptation.new_value
 
                     # 履歴に記録
                     current_time = datetime.now()
@@ -681,7 +753,9 @@ class DynamicHyperparameterAdapter:
                     # オンライン学習パイプラインに適用
                     self._apply_to_pipeline(adaptation)
 
-                    logger.info(f"Applied adaptation: {adaptation.parameter_type.value} = {adaptation.new_value}")
+                    logger.info(
+                        f"Applied adaptation: {adaptation.parameter_type.value} = {adaptation.new_value}"
+                    )
 
         except Exception as e:
             logger.error(f"Failed to apply adaptations: {e}")
@@ -723,13 +797,15 @@ class DynamicHyperparameterAdapter:
             param_value = adaptation.new_value
 
             # パイプラインの設定を更新
-            if hasattr(self.online_learning, 'update_hyperparameter'):
+            if hasattr(self.online_learning, "update_hyperparameter"):
                 self.online_learning.update_hyperparameter(param_name, param_value)
 
         except Exception as e:
             logger.error(f"Failed to apply adaptation to pipeline: {e}")
 
-    def _evaluate_adaptation_performance(self, adaptations: List[HyperparameterAdaptation]) -> float:
+    def _evaluate_adaptation_performance(
+        self, adaptations: List[HyperparameterAdaptation]
+    ) -> float:
         """適応のパフォーマンスを評価"""
         try:
             if not adaptations:
@@ -756,7 +832,9 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Failed to evaluate adaptation performance: {e}")
             return 0.0
 
-    def _calculate_adaptation_confidence(self, adaptations: List[HyperparameterAdaptation]) -> float:
+    def _calculate_adaptation_confidence(
+        self, adaptations: List[HyperparameterAdaptation]
+    ) -> float:
         """適応の確信度を計算"""
         try:
             if not adaptations:
@@ -764,20 +842,26 @@ class DynamicHyperparameterAdapter:
 
             # 適応の数と変更率に基づいて確信度を計算
             num_adaptations = len(adaptations)
-            avg_change_rate = np.mean([
-                abs(a.new_value - a.old_value) / max(a.old_value, 1e-10)
-                for a in adaptations
-            ])
+            avg_change_rate = np.mean(
+                [
+                    abs(a.new_value - a.old_value) / max(a.old_value, 1e-10)
+                    for a in adaptations
+                ]
+            )
 
             # 適応数が多いほど、変更率が小さいほど確信度が高い
-            confidence = min(num_adaptations / 5.0, 1.0) * (1.0 - min(avg_change_rate / 0.5, 1.0))
+            confidence = min(num_adaptations / 5.0, 1.0) * (
+                1.0 - min(avg_change_rate / 0.5, 1.0)
+            )
 
             return float(confidence)
 
         except Exception:
             return 0.5
 
-    def _get_recent_performance(self, window_size: int = 100) -> List[Tuple[datetime, float]]:
+    def _get_recent_performance(
+        self, window_size: int = 100
+    ) -> List[Tuple[datetime, float]]:
         """最近のパフォーマンスを取得"""
         try:
             if len(self.performance_history) < window_size:
@@ -792,7 +876,7 @@ class DynamicHyperparameterAdapter:
         """現在のパフォーマンスを評価"""
         try:
             # 評価マネージャーからパフォーマンスを取得
-            if hasattr(self.evaluation_manager, 'get_current_performance'):
+            if hasattr(self.evaluation_manager, "get_current_performance"):
                 return self.evaluation_manager.get_current_performance()
 
             # デフォルト値
@@ -802,14 +886,21 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Failed to evaluate current performance: {e}")
             return None
 
-    def _calculate_performance_trend(self, performance_data: List[Tuple[datetime, float]]) -> float:
+    def _calculate_performance_trend(
+        self, performance_data: List[Tuple[datetime, float]]
+    ) -> float:
         """パフォーマンストレンドを計算"""
         try:
             if len(performance_data) < 5:
                 return 0.0
 
             # 線形回帰でトレンドを計算
-            times = np.array([(t - performance_data[0][0]).total_seconds() for t, _ in performance_data])
+            times = np.array(
+                [
+                    (t - performance_data[0][0]).total_seconds()
+                    for t, _ in performance_data
+                ]
+            )
             performances = np.array([p for _, p in performance_data])
 
             slope, _, _, _, _ = stats.linregress(times, performances)
@@ -823,13 +914,17 @@ class DynamicHyperparameterAdapter:
         try:
             # 実際の実装ではモデルから勾配情報を取得
             return {
-                'gradient_norm': 1.0,
-                'gradient_variance': 0.1,
-                'gradient_exploding': False
+                "gradient_norm": 1.0,
+                "gradient_variance": 0.1,
+                "gradient_exploding": False,
             }
 
         except Exception:
-            return {'gradient_norm': 1.0, 'gradient_variance': 0.1, 'gradient_exploding': False}
+            return {
+                "gradient_norm": 1.0,
+                "gradient_variance": 0.1,
+                "gradient_exploding": False,
+            }
 
     def _get_training_progress(self) -> float:
         """学習進捗を取得"""
@@ -840,13 +935,15 @@ class DynamicHyperparameterAdapter:
         except Exception:
             return 0.5
 
-    def _adjust_parameter_for_gradients(self, param_type: HyperparameterType, gradient_stats: Dict[str, float]) -> Optional[float]:
+    def _adjust_parameter_for_gradients(
+        self, param_type: HyperparameterType, gradient_stats: Dict[str, float]
+    ) -> Optional[float]:
         """勾配に応じたパラメータ調整"""
         try:
             current_value = self.current_parameters[param_type]
 
             if param_type == HyperparameterType.LEARNING_RATE:
-                gradient_norm = gradient_stats.get('gradient_norm', 1.0)
+                gradient_norm = gradient_stats.get("gradient_norm", 1.0)
                 # 勾配が大きい場合は学習率を下げる
                 if gradient_norm > 2.0:
                     return current_value * 0.9
@@ -854,7 +951,7 @@ class DynamicHyperparameterAdapter:
                     return current_value * 1.1
 
             elif param_type == HyperparameterType.GRADIENT_CLIP_VALUE:
-                gradient_norm = gradient_stats.get('gradient_norm', 1.0)
+                gradient_norm = gradient_stats.get("gradient_norm", 1.0)
                 # 勾配クリッピング値を適応
                 return min(max(gradient_norm * 0.5, 0.1), 10.0)
 
@@ -863,7 +960,9 @@ class DynamicHyperparameterAdapter:
         except Exception:
             return None
 
-    def _adjust_parameter_for_curriculum(self, param_type: HyperparameterType, progress: float) -> Optional[float]:
+    def _adjust_parameter_for_curriculum(
+        self, param_type: HyperparameterType, progress: float
+    ) -> Optional[float]:
         """カリキュラムに応じたパラメータ調整"""
         try:
             current_value = self.current_parameters[param_type]
@@ -892,9 +991,11 @@ class DynamicHyperparameterAdapter:
                 current_time = datetime.now()
 
                 # 適応間隔をチェック
-                if (self.last_adaptation_time is None or
-                    (current_time - self.last_adaptation_time).total_seconds() >= self.config.adaptation_interval_minutes * 60):
-
+                if (
+                    self.last_adaptation_time is None
+                    or (current_time - self.last_adaptation_time).total_seconds()
+                    >= self.config.adaptation_interval_minutes * 60
+                ):
                     # 適応を実行
                     self.adapt_hyperparameters()
                     self.last_adaptation_time = current_time
@@ -905,7 +1006,9 @@ class DynamicHyperparameterAdapter:
                 logger.error(f"Adaptation worker error: {e}")
                 time.sleep(300)  # エラー時は5分待機
 
-    def add_adaptation_callback(self, callback: Callable[[AdaptationResult], None]) -> None:
+    def add_adaptation_callback(
+        self, callback: Callable[[AdaptationResult], None]
+    ) -> None:
         """適応コールバックを追加"""
         self.adaptation_callbacks.append(callback)
 
@@ -922,8 +1025,7 @@ class DynamicHyperparameterAdapter:
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_adaptations = [
-                a for a in self.adaptation_history
-                if a.timestamp > cutoff_time
+                a for a in self.adaptation_history if a.timestamp > cutoff_time
             ]
 
             return [
@@ -932,7 +1034,7 @@ class DynamicHyperparameterAdapter:
                     "num_adaptations": len(a.adaptations),
                     "performance_improvement": a.overall_performance_improvement,
                     "confidence": a.adaptation_confidence,
-                    "market_conditions": a.market_conditions
+                    "market_conditions": a.market_conditions,
                 }
                 for a in recent_adaptations
             ]
@@ -941,22 +1043,17 @@ class DynamicHyperparameterAdapter:
             logger.error(f"Failed to get adaptation history: {e}")
             return []
 
-    def get_parameter_history(self, param_type: HyperparameterType, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_parameter_history(
+        self, param_type: HyperparameterType, hours: int = 24
+    ) -> List[Dict[str, Any]]:
         """パラメータ履歴を取得"""
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_history = [
-                (t, v) for t, v in self.parameter_history[param_type]
-                if t > cutoff_time
+                (t, v) for t, v in self.parameter_history[param_type] if t > cutoff_time
             ]
 
-            return [
-                {
-                    "timestamp": t.isoformat(),
-                    "value": v
-                }
-                for t, v in recent_history
-            ]
+            return [{"timestamp": t.isoformat(), "value": v} for t, v in recent_history]
 
         except Exception as e:
             logger.error(f"Failed to get parameter history: {e}")

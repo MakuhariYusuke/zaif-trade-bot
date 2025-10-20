@@ -44,7 +44,7 @@ class BaseExchangeConfig(ABC):
             ValueError: If credentials are not found or empty
         """
         api_key_env, api_secret_env = self._get_env_vars()
-        exchange_name = self.__class__.__name__.replace('Config', '').lower()
+        exchange_name = self.__class__.__name__.replace("Config", "").lower()
 
         api_key = os.getenv(api_key_env, "").strip()
         api_secret = os.getenv(api_secret_env, "").strip()

@@ -32,7 +32,9 @@ class IterativeAlgorithmTrainer:
         self.config_manager = config_manager
         self.logger = get_logger(__name__)
 
-    def _apply_trading_mode_presets(self, unified_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_trading_mode_presets(
+        self, unified_config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Apply trading mode presets to config.
 
@@ -59,14 +61,16 @@ class IterativeAlgorithmTrainer:
                 unified_config.setdefault(key, value)
             # Update session IDs for scalping
             if "scalping" not in self.config_manager.config.get("session_id", ""):
-                self.config_manager.config["session_id"] = (
-                    f"scalping_{self.config_manager.config.get('session_id', 'session')}"
-                )
-                self.config_manager.config["correlation_id"] = (
-                    f"scalping_{self.config_manager.config.get('correlation_id', 'correlation')}"
-                )
+                self.config_manager.config[
+                    "session_id"
+                ] = f"scalping_{self.config_manager.config.get('session_id', 'session')}"
+                self.config_manager.config[
+                    "correlation_id"
+                ] = f"scalping_{self.config_manager.config.get('correlation_id', 'correlation')}"
                 unified_config["session_id"] = self.config_manager.config["session_id"]
-                unified_config["correlation_id"] = self.config_manager.config["correlation_id"]
+                unified_config["correlation_id"] = self.config_manager.config[
+                    "correlation_id"
+                ]
         else:
             # Normal trading mode presets
             normal_defaults = {
@@ -141,23 +145,23 @@ class IterativeAlgorithmTrainer:
         if unified_config.get("force", False):
             args.append("--force")
         if unified_config.get("enable_streaming", False):
-            args.extend([
-                "--enable-streaming",
-                "--stream-batch-size",
-                str(unified_config.get("stream_batch_size", 256)),
-            ])
+            args.extend(
+                [
+                    "--enable-streaming",
+                    "--stream-batch-size",
+                    str(unified_config.get("stream_batch_size", 256)),
+                ]
+            )
 
-        max_features = (
-            unified_config.get("max_features") or
-            (unified_config.get("memory_optimization", {}) or {}).get("max_features")
-        )
+        max_features = unified_config.get("max_features") or (
+            unified_config.get("memory_optimization", {}) or {}
+        ).get("max_features")
         if max_features is not None:
             args.extend(["--max-features", str(max_features)])
 
-        data_rows_limit = (
-            unified_config.get("data_rows_limit") or
-            (unified_config.get("memory_optimization", {}) or {}).get("data_rows_limit")
-        )
+        data_rows_limit = unified_config.get("data_rows_limit") or (
+            unified_config.get("memory_optimization", {}) or {}
+        ).get("data_rows_limit")
         if data_rows_limit is not None:
             args.extend(["--data-rows-limit", str(data_rows_limit)])
 

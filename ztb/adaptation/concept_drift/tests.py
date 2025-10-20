@@ -3,20 +3,20 @@ Unit tests for Concept Drift Detection Module
 """
 
 import unittest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
 
+from ztb.adaptation.concept_drift.config import ConceptDriftConfig
 from ztb.adaptation.concept_drift.detector import (
-    KolmogorovSmirnovDetector,
     ADWINDetector,
     DDMDetector,
-    EDDMDetector
+    EDDMDetector,
+    KolmogorovSmirnovDetector,
 )
+from ztb.adaptation.concept_drift.drift_types import DriftSeverity, DriftType
 from ztb.adaptation.concept_drift.manager import ConceptDriftManager
-from ztb.adaptation.concept_drift.config import ConceptDriftConfig
-from ztb.adaptation.concept_drift.drift_types import DriftType, DriftSeverity
 
 
 class TestKolmogorovSmirnovDetector(unittest.TestCase):
@@ -82,7 +82,7 @@ class TestADWINDetector(unittest.TestCase):
 
         drift_count = 0
         for i in range(0, len(data), 50):
-            batch = data[i:i+50]
+            batch = data[i : i + 50]
             result = self.detector.detect_drift(batch)
             if result.drift_detected:
                 drift_count += 1
@@ -102,7 +102,7 @@ class TestADWINDetector(unittest.TestCase):
 
         drift_detected = False
         for i in range(0, len(data), 50):
-            batch = data[i:i+50]
+            batch = data[i : i + 50]
             result = self.detector.detect_drift(batch)
             if result.drift_detected:
                 drift_detected = True
@@ -171,7 +171,7 @@ class TestConceptDriftManager(unittest.TestCase):
         """初期化テスト"""
         self.assertIsInstance(self.manager.detectors, dict)
         self.assertGreater(len(self.manager.detectors), 0)
-        self.assertIn('ks_test', self.manager.detectors)
+        self.assertIn("ks_test", self.manager.detectors)
 
     def test_detect_drift_no_drift(self):
         """ドリフトなしの検知テスト"""
@@ -200,11 +200,13 @@ class TestConceptDriftManager(unittest.TestCase):
     def test_dataframe_input(self):
         """DataFrame入力のテスト"""
         np.random.seed(42)
-        df = pd.DataFrame({
-            'feature1': np.random.normal(0, 1, 100),
-            'feature2': np.random.normal(1, 2, 100),
-            'category': ['A'] * 50 + ['B'] * 50
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": np.random.normal(0, 1, 100),
+                "feature2": np.random.normal(1, 2, 100),
+                "category": ["A"] * 50 + ["B"] * 50,
+            }
+        )
 
         result = self.manager.detect_drift(df)
 
@@ -229,8 +231,9 @@ class TestConceptDriftManager(unittest.TestCase):
         result_parallel = self.manager.detect_drift(data, parallel=True)
 
         # 結果は同じタイプであるべき
-        self.assertEqual(type(result_sequential.drift_detected),
-                        type(result_parallel.drift_detected))
+        self.assertEqual(
+            type(result_sequential.drift_detected), type(result_parallel.drift_detected)
+        )
 
     def test_history_management(self):
         """履歴管理のテスト"""
@@ -263,8 +266,8 @@ class TestConceptDriftManager(unittest.TestCase):
         self.assertGreater(len(stats), 0)
 
         for detector_name, detector_stats in stats.items():
-            self.assertIn('total_detections', detector_stats)
-            self.assertIn('avg_score', detector_stats)
+            self.assertIn("total_detections", detector_stats)
+            self.assertIn("avg_score", detector_stats)
 
     def test_reset_functionality(self):
         """リセット機能のテスト"""
@@ -286,18 +289,22 @@ class TestConceptDriftManager(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.manager.detect_drift(np.array([]))
 
-    @patch('ztb.adaptation.concept_drift.manager.ThreadPoolExecutor')
+    @patch("ztb.adaptation.concept_drift.manager.ThreadPoolExecutor")
     def test_parallel_error_handling(self, mock_executor):
         """並列実行時のエラーハンドリングテスト"""
         # モックでエラーをシミュレート
         mock_future = MagicMock()
         mock_future.result.side_effect = Exception("Test error")
-        mock_executor.return_value.__enter__.return_value.submit.return_value = mock_future
+        mock_executor.return_value.__enter__.return_value.submit.return_value = (
+            mock_future
+        )
 
         # as_completedを適切にモック化
         mock_completed = MagicMock()
         mock_completed.__iter__.return_value = [mock_future]
-        mock_executor.return_value.__enter__.return_value.as_completed.return_value = mock_completed
+        mock_executor.return_value.__enter__.return_value.as_completed.return_value = (
+            mock_completed
+        )
 
         data = np.random.normal(0, 1, 100)
         result = self.manager.detect_drift(data, parallel=True)
@@ -306,5 +313,5 @@ class TestConceptDriftManager(unittest.TestCase):
         self.assertIsInstance(result, object)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

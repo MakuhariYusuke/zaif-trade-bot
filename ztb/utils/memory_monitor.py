@@ -5,10 +5,11 @@ Memory monitoring utilities for development and testing
 """
 
 import logging
-import time
 import threading
+import time
 from collections import deque
-from typing import cast, Dict, List, Optional, Any
+from typing import Any, Dict, Optional, cast
+
 import psutil
 
 from ztb.utils.config import ZTBConfig
@@ -23,8 +24,12 @@ class MemoryMonitor:
         self.config = config or ZTBConfig()
         self.history_size = self.config.get_int("ZTB_MEMORY_HISTORY_SIZE", 100)
         self.memory_history: deque = deque(maxlen=self.history_size)
-        self.alert_threshold_mb = self.config.get_int("ZTB_MEMORY_ALERT_THRESHOLD_MB", 1000)
-        self.warning_threshold_mb = self.config.get_int("ZTB_MEMORY_WARNING_THRESHOLD_MB", 500)
+        self.alert_threshold_mb = self.config.get_int(
+            "ZTB_MEMORY_ALERT_THRESHOLD_MB", 1000
+        )
+        self.warning_threshold_mb = self.config.get_int(
+            "ZTB_MEMORY_WARNING_THRESHOLD_MB", 500
+        )
         self.monitoring_active = False
         self.monitor_thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
@@ -41,9 +46,7 @@ class MemoryMonitor:
 
         self.monitoring_active = True
         self.monitor_thread = threading.Thread(
-            target=self._monitor_loop,
-            args=(interval_seconds,),
-            daemon=True
+            target=self._monitor_loop, args=(interval_seconds,), daemon=True
         )
         self.monitor_thread.start()
         logger.info("Memory monitoring started")
@@ -77,10 +80,7 @@ class MemoryMonitor:
         timestamp = time.time()
 
         with self._lock:
-            self.memory_history.append({
-                'timestamp': timestamp,
-                'memory_mb': memory_mb
-            })
+            self.memory_history.append({"timestamp": timestamp, "memory_mb": memory_mb})
 
         return memory_mb
 
@@ -89,7 +89,7 @@ class MemoryMonitor:
         if not self.memory_history:
             return
 
-        current_memory = self.memory_history[-1]['memory_mb']
+        current_memory = self.memory_history[-1]["memory_mb"]
 
         if current_memory > self.alert_threshold_mb:
             logger.error(
@@ -110,21 +110,16 @@ class MemoryMonitor:
             Dictionary with memory statistics
         """
         if not self.memory_history:
-            return {
-                'current_mb': 0.0,
-                'average_mb': 0.0,
-                'peak_mb': 0.0,
-                'samples': 0
-            }
+            return {"current_mb": 0.0, "average_mb": 0.0, "peak_mb": 0.0, "samples": 0}
 
         with self._lock:
-            memories = [entry['memory_mb'] for entry in self.memory_history]
+            memories = [entry["memory_mb"] for entry in self.memory_history]
 
         return {
-            'current_mb': memories[-1],
-            'average_mb': sum(memories) / len(memories),
-            'peak_mb': max(memories),
-            'samples': len(memories)
+            "current_mb": memories[-1],
+            "average_mb": sum(memories) / len(memories),
+            "peak_mb": max(memories),
+            "samples": len(memories),
         }
 
     def get_memory_trend(self) -> str:
@@ -144,8 +139,8 @@ class MemoryMonitor:
             return "insufficient_data"
 
         # Simple linear trend
-        start_memory = recent[0]['memory_mb']
-        end_memory = recent[-1]['memory_mb']
+        start_memory = recent[0]["memory_mb"]
+        end_memory = recent[-1]["memory_mb"]
         change = end_memory - start_memory
 
         if change > 10:  # 10MB increase

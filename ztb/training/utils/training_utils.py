@@ -5,28 +5,29 @@ Common training utilities for reducing code duplication across training scripts
 
 import sys
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
-from typing import Dict, Any, Optional, Tuple
 import pandas as pd
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
 from ztb.trading.environment.environment import HeavyTradingEnv
-from ztb.training.config.ppo_config import get_ppo_config, PPOConfig
+from ztb.training.config.ppo_config import PPOConfig, get_ppo_config
 
 
 def setup_project_path() -> Path:
     """Add project root to Python path and return project root path"""
-    project_root = Path(__file__).parent.parent.parent  # ztb/training -> ztb -> project_root
+    project_root = Path(
+        __file__
+    ).parent.parent.parent  # ztb/training -> ztb -> project_root
     if str(project_root) not in sys.path:
         sys.path.insert(0, str(project_root))
     return project_root
 
 
 def create_trading_env(
-    df: pd.DataFrame,
-    config: Dict[str, Any],
-    vec_env: bool = True
+    df: pd.DataFrame, config: Dict[str, Any], vec_env: bool = True
 ) -> HeavyTradingEnv | DummyVecEnv:
     """Create trading environment with common configuration"""
     env = HeavyTradingEnv(df=df, config=config)
@@ -38,7 +39,7 @@ def create_trading_env(
 def create_ppo_model(
     env: Any,
     config_override: Optional[Dict[str, Any]] = None,
-    tensorboard_log: str = "./tensorboard"
+    tensorboard_log: str = "./tensorboard",
 ) -> PPO:
     """Create PPO model with common configuration"""
     ppo_config: PPOConfig = get_ppo_config()
@@ -71,6 +72,7 @@ def create_ppo_model(
 def save_model_with_path(model: PPO, model_name: str, base_dir: str = "models") -> str:
     """Save model to a standardized path and return the path"""
     from pathlib import Path
+
     model_path = Path(base_dir) / f"{model_name}.zip"
     model_path.parent.mkdir(exist_ok=True)
     model.save(str(model_path))
@@ -78,10 +80,7 @@ def save_model_with_path(model: PPO, model_name: str, base_dir: str = "models") 
 
 
 def evaluate_model(
-    model: PPO,
-    env: Any,
-    max_steps: int = 1000,
-    deterministic: bool = True
+    model: PPO, env: Any, max_steps: int = 1000, deterministic: bool = True
 ) -> Tuple[float, int]:
     """Evaluate a trained model and return episode reward and step count"""
     obs = env.reset()
@@ -102,8 +101,7 @@ def evaluate_model(
 
 
 def print_training_results(
-    episode_rewards: list[float],
-    title: str = "Training Results"
+    episode_rewards: list[float], title: str = "Training Results"
 ) -> None:
     """Print standardized training results"""
     print(f"\n=== {title} ===")
@@ -119,7 +117,7 @@ def print_training_start(
     reward_scaling: float,
     entropy_coef: float,
     learning_rate: float,
-    total_steps: int = 100000
+    total_steps: int = 100000,
 ) -> None:
     """Print standardized training start message"""
     print(f"Starting training with config: {config_name}")

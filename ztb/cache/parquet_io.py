@@ -5,7 +5,6 @@ Parquet I/O abstraction with configuration-driven compression, chunking, and col
 """
 
 import os
-import asyncio
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, cast
 
@@ -14,8 +13,8 @@ import psutil
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.cache_utils import cached_with_ttl
+from ztb.utils.config_loader import ConfigLoader
 
 
 def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
@@ -26,7 +25,9 @@ def load_config(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
     return ConfigLoader.load(config_path)
 
 
-async def load_config_async(config_path: Path = Path("configs/io.yaml")) -> Dict[str, Any]:
+async def load_config_async(
+    config_path: Path = Path("configs/io.yaml"),
+) -> Dict[str, Any]:
     """Asynchronously load I/O configuration"""
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
@@ -45,7 +46,9 @@ def load_features_config(features_config_path: Optional[Path] = None) -> Dict[st
     return ConfigLoader.load(features_config_path)
 
 
-async def load_features_config_async(features_config_path: Optional[Path] = None) -> Dict[str, Any]:
+async def load_features_config_async(
+    features_config_path: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Asynchronously load features configuration for dependency analysis"""
     if features_config_path is None:
         features_config_path = Path("configs/features.yaml")

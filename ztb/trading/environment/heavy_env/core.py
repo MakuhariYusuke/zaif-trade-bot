@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import gc
 from collections import deque
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
 import pandas as pd
 import psutil
-from gymnasium import spaces
 from numpy.typing import NDArray
 
 from ztb.trading.constants import ACTION_BUY, ACTION_SELL
@@ -54,15 +53,16 @@ from ztb.utils.type_validation import TypeValidator
 
 if TYPE_CHECKING:
     from ztb.data.streaming_pipeline import StreamingPipeline
+    from ztb.features.adaptive_selection import AdaptiveFeatureSelector
     from ztb.trading.environment.components.action_validator import ActionValidator
     from ztb.trading.environment.components.data_processor import DataProcessor
     from ztb.trading.environment.components.memory_manager import MemoryManager
-    from ztb.trading.environment.components.observation_builder import ObservationBuilder
+    from ztb.trading.environment.components.observation_builder import (
+        ObservationBuilder,
+    )
     from ztb.trading.environment.components.position_manager import PositionManager
     from ztb.trading.environment.components.reward_calculator import RewardCalculator
     from ztb.trading.environment.components.streaming_handler import StreamingHandler
-    from ztb.data.streaming_pipeline import StreamingPipeline
-    from ztb.features.adaptive_selection import AdaptiveFeatureSelector
     from ztb.trading.live.data.stream_to_bars import StreamToBarsConverter
 
 logger = get_logger(__name__)
@@ -96,7 +96,7 @@ class HeavyTradingEnv(
     observation_builder: "ObservationBuilder"
     action_validator: "ActionValidator"
     adaptive_feature_selector: Optional["AdaptiveFeatureSelector"]
-    
+
     # Data attributes
     df: pd.DataFrame
     features: List[str]
@@ -208,14 +208,15 @@ class HeavyTradingEnv(
             self.config = EnvironmentConfig.from_dict(config)
 
         self.random_start = random_start
-        
+
         # Get continuous-to-discrete action conversion threshold from config
         # Default to environment constant if not specified in config
         from ztb.trading.environment.constants import CONTINUOUS_TO_DISCRETE_THRESHOLD
+
         self.action_threshold = getattr(
-            self.config, 
-            "continuous_to_discrete_threshold", 
-            CONTINUOUS_TO_DISCRETE_THRESHOLD
+            self.config,
+            "continuous_to_discrete_threshold",
+            CONTINUOUS_TO_DISCRETE_THRESHOLD,
         )
 
         self._process = psutil.Process()
@@ -236,29 +237,43 @@ class HeavyTradingEnv(
             "volatility_window": self.config.reward_volatility_window,
             "volatility_penalty_scale": self.config.reward_volatility_penalty_scale,
             "sharpe_bonus_scale": self.config.reward_sharpe_bonus_scale,
-            "sortino_bonus_scale": getattr(self.config, "reward_sortino_bonus_scale", 0.01),
-            "calmar_bonus_scale": getattr(self.config, "reward_calmar_bonus_scale", 0.005),
+            "sortino_bonus_scale": getattr(
+                self.config, "reward_sortino_bonus_scale", 0.01
+            ),
+            "calmar_bonus_scale": getattr(
+                self.config, "reward_calmar_bonus_scale", 0.005
+            ),
             "reward_clip_value": self.config.reward_clip_value,
             "profit_bonus_multipliers": self.config.reward_profit_bonus_multipliers,
             "enable_forced_diversity": self.config.enable_forced_diversity,
         }
 
         if getattr(self.config, "reward_settings", None):
-            merged: RewardSettings = {**self.reward_settings, **self.config.reward_settings}  # type: ignore[typeddict-item]
+            merged: RewardSettings = {
+                **self.reward_settings,
+                **self.config.reward_settings,
+            }  # type: ignore[typeddict-item]
             self.reward_settings = merged
 
         self.fee_model = ExchangeFeeModel()
         self.fee_model.set_exchange(self.config.exchange)
-        
+
         # 🔧 CRITICAL FIX: 訓練時のtransaction_costを尊重
         # 訓練時に明示的にtransaction_costが設定されている場合、それを優先
         # fee_modelのデフォルト値で上書きしない
-        if not hasattr(self.config, 'transaction_cost') or self.config.transaction_cost == 0.0:
+        if (
+            not hasattr(self.config, "transaction_cost")
+            or self.config.transaction_cost == 0.0
+        ):
             # transaction_costが未設定またはデフォルト値(0.0)の場合のみ、fee_modelから取得
             self.config.transaction_cost = self.fee_model.get_fee_rate("buy")
-            logger.info(f"Using fee_model transaction_cost: {self.config.transaction_cost}")
+            logger.info(
+                f"Using fee_model transaction_cost: {self.config.transaction_cost}"
+            )
         else:
-            logger.info(f"Using configured transaction_cost: {self.config.transaction_cost} (not overriding with fee_model)")
+            logger.info(
+                f"Using configured transaction_cost: {self.config.transaction_cost} (not overriding with fee_model)"
+            )
 
         self.initial_portfolio_value = float(self.config.initial_portfolio_value)
         self.portfolio_value = self.initial_portfolio_value
@@ -272,27 +287,29 @@ class HeavyTradingEnv(
         self.schema_hash = getattr(self.config, "schema_hash", None)
         self.model_name = getattr(self.config, "model_name", None)
         self.feature_names = getattr(self.config, "feature_names", None)
-        
+
         if self.feature_names:
             logger.info(f"Using schema-defined features: {len(self.feature_names)}")
 
         self._initialize_components(streaming_pipeline, stream_batch_size, df)
         self._initialize_data_structures()
-        
+
         # Initialize adaptive feature selector (will be set during feature initialization if enabled)
         self.adaptive_feature_selector = None
         self._initialize_data(df)
         self._initialize_features_and_spaces(max_features)
         self._setup_scaler()
-        
+
         # use_standardized_observationsがTrueで、スケーラーがまだ設定されていない場合は計算
         if getattr(self.config, "use_standardized_observations", True):
             scaler_mean = getattr(self, "scaler_mean", None)
             scaler_std = getattr(self, "scaler_std", None)
             if scaler_mean is None or scaler_std is None:
-                logger.info("Computing scaler from data (use_standardized_observations=True)")
+                logger.info(
+                    "Computing scaler from data (use_standardized_observations=True)"
+                )
                 self._compute_scaler_from_data()
-        
+
         self._initialize_remaining_components()
 
         self.portfolio_value_history = deque(maxlen=self.DEFAULT_MAX_HISTORY_LENGTH)
@@ -306,12 +323,17 @@ class HeavyTradingEnv(
     ) -> Tuple[NDArray[np.float32], Dict[str, Any]]:
         super().reset(seed=seed)
 
-        random_start = (options and options.get("random_start", False)) or self.random_start
+        random_start = (
+            options and options.get("random_start", False)
+        ) or self.random_start
 
         # 🔧 DEBUG: random_start が False になる原因を特定
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.debug(f"reset() called: options={options}, self.random_start={self.random_start}, random_start={random_start}")
+        logger.debug(
+            f"reset() called: options={options}, self.random_start={self.random_start}, random_start={random_start}"
+        )
 
         if random_start:
             min_start = 0
@@ -322,10 +344,12 @@ class HeavyTradingEnv(
             buffer = max(10, min(100, int(self.n_steps * 0.1)))
             max_start = max(0, self.n_steps - buffer)
             self.current_step = np.random.randint(min_start, max_start + 1)
-            logger.debug(f"Random start: current_step={self.current_step}, range=[{min_start}, {max_start}], buffer={buffer}, n_steps={self.n_steps}")
+            logger.debug(
+                f"Random start: current_step={self.current_step}, range=[{min_start}, {max_start}], buffer={buffer}, n_steps={self.n_steps}"
+            )
         else:
             self.current_step = 0
-            logger.debug(f"Fixed start: current_step=0")
+            logger.debug("Fixed start: current_step=0")
 
         self.position_manager.reset()
         self.reward_calculator.reset()
@@ -387,16 +411,20 @@ class HeavyTradingEnv(
 
     def step(
         self,
-        action: Union[int, np.ndarray],  # Can be int (discrete) or np.ndarray (continuous)
+        action: Union[
+            int, np.ndarray
+        ],  # Can be int (discrete) or np.ndarray (continuous)
     ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         # Convert continuous action to discrete if necessary
-        from ztb.trading.constants import ACTION_HOLD, ACTION_BUY, ACTION_SELL
+        from ztb.trading.constants import ACTION_BUY, ACTION_HOLD, ACTION_SELL
         from ztb.trading.environment.constants import continuous_to_discrete_action
-        
+
         if isinstance(action, np.ndarray):
             # Continuous action from SAC: convert to discrete using configured threshold
             continuous_value = float(action[0])
-            discrete_action = continuous_to_discrete_action(continuous_value, threshold=self.action_threshold)
+            discrete_action = continuous_to_discrete_action(
+                continuous_value, threshold=self.action_threshold
+            )
             # Store both for reward calculation
             actual_action = discrete_action
             continuous_action_value = continuous_value
@@ -417,10 +445,12 @@ class HeavyTradingEnv(
             else:
                 raise ValueError(f"Invalid action: {action_int}")
             continuous_action_value = None
-        
+
         old_position = self.position_manager.position
         min_holding_period = getattr(self.config, "min_holding_period", 0)
-        trade_pnl = self.position_manager.execute_action(actual_action, self.current_step, min_holding_period)
+        trade_pnl = self.position_manager.execute_action(
+            actual_action, self.current_step, min_holding_period
+        )
 
         self._sync_from_position_manager()
 
@@ -430,13 +460,17 @@ class HeavyTradingEnv(
             if self.position > 0:
                 loss_ratio = (self.entry_price - current_price) / self.entry_price
                 if loss_ratio > stop_loss_threshold:
-                    forced_close_pnl = self.position_manager.close_position(self.current_step)
+                    forced_close_pnl = self.position_manager.close_position(
+                        self.current_step
+                    )
                     trade_pnl += forced_close_pnl
                     self._sync_from_position_manager()
             elif self.position < 0:
                 loss_ratio = (current_price - self.entry_price) / self.entry_price
                 if loss_ratio > stop_loss_threshold:
-                    forced_close_pnl = self.position_manager.close_position(self.current_step)
+                    forced_close_pnl = self.position_manager.close_position(
+                        self.current_step
+                    )
                     trade_pnl += forced_close_pnl
                     self._sync_from_position_manager()
 
@@ -445,7 +479,9 @@ class HeavyTradingEnv(
         self.action_history.append(actual_action)
 
         unrealized_pnl = self.position_manager.calculate_unrealized_pnl()
-        portfolio_value = self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
+        portfolio_value = (
+            self.initial_portfolio_value + self.realized_pnl + unrealized_pnl
+        )
         self.portfolio_value = portfolio_value
 
         pnl = trade_pnl
@@ -489,7 +525,9 @@ class HeavyTradingEnv(
         next_obs = self._get_observation()
 
         info = self._get_info()
-        position_utilisation = abs(self.position) / max(1e-8, self.config.max_position_size)
+        position_utilisation = abs(self.position) / max(
+            1e-8, self.config.max_position_size
+        )
         info.update(
             {
                 "pnl": pnl,
@@ -582,7 +620,9 @@ class HeavyTradingEnv(
             "sharpe_ratio": float(np.mean(rewards) / (np.std(rewards) + EPSILON)),
             "max_reward": float(np.max(rewards)),
             "total_trades": self.trades_count,
-            "win_rate": float(np.count_nonzero(rewards > 0) / len(rewards)) if len(rewards) > 0 else 0.0,
+            "win_rate": float(np.count_nonzero(rewards > 0) / len(rewards))
+            if len(rewards) > 0
+            else 0.0,
         }
 
     def get_trades_per_1k(self) -> float:
@@ -633,7 +673,9 @@ class FlipHeavyTradingEnv(HeavyTradingEnv):
 
         return flipped_obs
 
-    def step(self, action: Union[int, np.ndarray]) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
+    def step(
+        self, action: Union[int, np.ndarray]
+    ) -> Tuple[NDArray[np.float32], float, bool, bool, Dict[str, Any]]:
         flipped_action = action
         if action == ACTION_BUY:
             flipped_action = ACTION_SELL

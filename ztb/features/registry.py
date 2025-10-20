@@ -518,7 +518,9 @@ class FeatureRegistry(FeatureRegistryProtocol):
                 feature_func = cls.get(feature_name)
                 feature_series = feature_func(df)
                 if coerce_feature_floats and ptypes.is_float_dtype(feature_series):
-                    feature_series = feature_series.astype(target_float_dtype, copy=False)  # type: ignore
+                    feature_series = feature_series.astype(
+                        target_float_dtype, copy=False
+                    )  # type: ignore
                 nan_rate = feature_series.isna().mean()
                 return (
                     feature_name,

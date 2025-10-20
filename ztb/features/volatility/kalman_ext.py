@@ -386,7 +386,7 @@ def print_signal_info(signals: pd.DataFrame) -> None:
 
 def print_residual_analysis(extended_features: pd.DataFrame) -> None:
     residuals = extended_features["kalman_residual"].dropna()
-    print(f"\nResidual analysis:")
+    print("\nResidual analysis:")
     print(f"  Mean: {residuals.mean():.6f}")
     print(f"  Std: {residuals.std():.6f}")
     print(f"  Skewness: {residuals.skew():.4f}")  # type: ignore[str-bytes-safe]

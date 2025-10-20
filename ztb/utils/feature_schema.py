@@ -15,7 +15,7 @@ Usage:
     # During training
     schema = FeaturesSchema.from_dataframe(training_df, feature_columns)
     schema.save(model_dir / "features_schema.json")
-    
+
     # During evaluation
     schema = FeaturesSchema.load(model_dir / "features_schema.json")
     schema.validate_dataframe(eval_df, feature_columns, strict=True)
@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 
 
@@ -64,7 +63,15 @@ class FeaturesSchema:
         """
         if feature_columns is None:
             # Auto-detect numeric feature columns
-            exclude = {"ts", "timestamp", "exchange", "pair", "episode_id", "side", "source"}
+            exclude = {
+                "ts",
+                "timestamp",
+                "exchange",
+                "pair",
+                "episode_id",
+                "side",
+                "source",
+            }
             feature_columns = [
                 col
                 for col in df.columns
@@ -156,13 +163,19 @@ class FeaturesSchema:
         if missing:
             errors.append(f"Missing columns: {missing}")
 
-        extra = [col for col in df.columns if col in feature_columns and col not in self.columns]
+        extra = [
+            col
+            for col in df.columns
+            if col in feature_columns and col not in self.columns
+        ]
         if extra:
             errors.append(f"Extra columns (not in schema): {extra}")
 
         # Check column order (only if all columns are present)
         present_cols = [col for col in feature_columns if col in df.columns]
-        if len(present_cols) == len(self.columns) and set(present_cols) == set(self.columns):
+        if len(present_cols) == len(self.columns) and set(present_cols) == set(
+            self.columns
+        ):
             # All columns present, check order
             if present_cols != self.columns:
                 errors.append(
@@ -186,7 +199,7 @@ class FeaturesSchema:
             for col in present_cols:
                 if col not in self.statistics:
                     continue
-                
+
                 series = df[col].dropna()
                 if len(series) == 0:
                     continue

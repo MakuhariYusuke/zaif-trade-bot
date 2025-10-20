@@ -3,8 +3,16 @@ Configuration management for Scalability and Operations
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import ScalingStrategy, ScalingThreshold, LoadBalancerConfig, CostOptimizationRule, BackupConfig, ScalingDecision
+from typing import Any, Dict, List
+
+from .types import (
+    BackupConfig,
+    CostOptimizationRule,
+    LoadBalancerConfig,
+    ScalingDecision,
+    ScalingStrategy,
+    ScalingThreshold,
+)
 
 
 @dataclass
@@ -42,12 +50,14 @@ class IntegratedOperationsConfig:
 
     # パフォーマンス監視設定
     performance_monitoring_enabled: bool = True
-    performance_alert_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        "cpu_usage_percent": 85.0,
-        "memory_usage_percent": 90.0,
-        "response_time_ms": 5000.0,
-        "error_rate_percent": 5.0
-    })
+    performance_alert_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "cpu_usage_percent": 85.0,
+            "memory_usage_percent": 90.0,
+            "response_time_ms": 5000.0,
+            "error_rate_percent": 5.0,
+        }
+    )
 
     # 自動回復設定
     auto_recovery_enabled: bool = True
@@ -74,7 +84,9 @@ class OperationsConfig:
     min_instances: int = 1
 
     # 統合運用管理設定
-    integrated_config: IntegratedOperationsConfig = field(default_factory=IntegratedOperationsConfig)
+    integrated_config: IntegratedOperationsConfig = field(
+        default_factory=IntegratedOperationsConfig
+    )
 
     # 基本設定
     operations_enabled: bool = True
@@ -94,13 +106,15 @@ class OperationsConfig:
     prediction_interval_minutes: int = 15
 
     # ロードバランサー設定
-    load_balancer_config: LoadBalancerConfig = field(default_factory=lambda: LoadBalancerConfig(
-        algorithm="least_connections",
-        health_check_interval=30,
-        health_check_timeout=5,
-        unhealthy_threshold=2,
-        healthy_threshold=2
-    ))
+    load_balancer_config: LoadBalancerConfig = field(
+        default_factory=lambda: LoadBalancerConfig(
+            algorithm="least_connections",
+            health_check_interval=30,
+            health_check_timeout=5,
+            unhealthy_threshold=2,
+            healthy_threshold=2,
+        )
+    )
 
     # コスト最適化設定
     cost_optimization_enabled: bool = True
@@ -108,39 +122,50 @@ class OperationsConfig:
     target_utilization_percent: float = 70.0
 
     # バックアップ設定
-    backup_config: BackupConfig = field(default_factory=lambda: BackupConfig(
-        backup_interval_hours=24,
-        retention_period_days=30,
-        backup_storage_path="backups/operations",
-        compression_enabled=True,
-        encryption_enabled=True
-    ))
+    backup_config: BackupConfig = field(
+        default_factory=lambda: BackupConfig(
+            backup_interval_hours=24,
+            retention_period_days=30,
+            backup_storage_path="backups/operations",
+            compression_enabled=True,
+            encryption_enabled=True,
+        )
+    )
 
     # メンテナンス設定
     maintenance_windows: List[Dict[str, Any]] = field(default_factory=list)
     emergency_maintenance_allowed: bool = False
 
     # リソース制限
-    resource_limits: Dict[str, Dict[str, float]] = field(default_factory=lambda: {
-        "cpu": {"max_percent": 80.0, "min_percent": 20.0},
-        "memory": {"max_percent": 85.0, "min_percent": 30.0},
-        "gpu": {"max_percent": 90.0, "min_percent": 10.0}
-    })
+    resource_limits: Dict[str, Dict[str, float]] = field(
+        default_factory=lambda: {
+            "cpu": {"max_percent": 80.0, "min_percent": 20.0},
+            "memory": {"max_percent": 85.0, "min_percent": 30.0},
+            "gpu": {"max_percent": 90.0, "min_percent": 10.0},
+        }
+    )
 
     # 通知設定
     notification_channels: List[str] = field(default_factory=lambda: ["log", "email"])
-    alert_thresholds: Dict[str, float] = field(default_factory=lambda: {
-        "scaling_failure_rate": 0.1,
-        "cost_overrun_percent": 20.0,
-        "instance_downtime_percent": 5.0
-    })
+    alert_thresholds: Dict[str, float] = field(
+        default_factory=lambda: {
+            "scaling_failure_rate": 0.1,
+            "cost_overrun_percent": 20.0,
+            "instance_downtime_percent": 5.0,
+        }
+    )
 
     def __post_init__(self):
         """設定の検証と初期化"""
         if self.max_instances < self.min_instances:
-            raise ValueError("max_instances must be greater than or equal to min_instances")
+            raise ValueError(
+                "max_instances must be greater than or equal to min_instances"
+            )
 
-        if self.target_utilization_percent <= 0 or self.target_utilization_percent > 100:
+        if (
+            self.target_utilization_percent <= 0
+            or self.target_utilization_percent > 100
+        ):
             raise ValueError("target_utilization_percent must be between 0 and 100")
 
         # デフォルトのスケーリング閾値を設定
@@ -150,14 +175,14 @@ class OperationsConfig:
                     resource_type="cpu",
                     scale_up_threshold=75.0,
                     scale_down_threshold=30.0,
-                    cooldown_period_seconds=300
+                    cooldown_period_seconds=300,
                 ),
                 ScalingThreshold(
                     resource_type="memory",
                     scale_up_threshold=80.0,
                     scale_down_threshold=40.0,
-                    cooldown_period_seconds=300
-                )
+                    cooldown_period_seconds=300,
+                ),
             ]
 
         # デフォルトのコスト最適化ルールを設定
@@ -169,7 +194,7 @@ class OperationsConfig:
                     action="scale_down_to_minimum",
                     priority=1,
                     enabled=True,
-                    last_applied=None
+                    last_applied=None,
                 ),
                 CostOptimizationRule(
                     rule_name="high_cost_alert",
@@ -177,8 +202,8 @@ class OperationsConfig:
                     action="send_alert_and_scale_down",
                     priority=2,
                     enabled=True,
-                    last_applied=None
-                )
+                    last_applied=None,
+                ),
             ]
 
         # デフォルトのメンテナンスウィンドウを設定
@@ -189,7 +214,7 @@ class OperationsConfig:
                     "day_of_week": "sunday",
                     "start_hour": 2,
                     "duration_hours": 4,
-                    "description": "Weekly system maintenance and updates"
+                    "description": "Weekly system maintenance and updates",
                 }
             ]
 
@@ -209,8 +234,9 @@ class ScalingPolicy:
         """ポリシーに基づいてスケーリング決定を評価"""
         # 実際の実装ではメトリクスに基づいてスケーリング決定を行う
         # ここではダミーの実装
-        from .types import ScalingDecision, ScalingDirection
         import datetime
+
+        from .types import ScalingDecision, ScalingDirection
 
         return ScalingDecision(
             direction=ScalingDirection.NONE,
@@ -219,5 +245,5 @@ class ScalingPolicy:
             current_instances=1,
             confidence_score=0.5,
             estimated_cost_impact=0.0,
-            timestamp=datetime.datetime.now()
+            timestamp=datetime.datetime.now(),
         )

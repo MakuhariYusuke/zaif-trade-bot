@@ -41,18 +41,18 @@ class NormalizeAdvantageOptimizer(HyperparameterOptimizer):
         Override binary search to test both True and False values.
         Returns (best_value, best_score).
         """
-        print(f"\n=== Testing normalize_advantage parameter ===")
+        print("\n=== Testing normalize_advantage parameter ===")
         print("Testing both True and False values...")
 
         best_value = False
         best_score = float("-inf")
 
         # Test False
-        print(f"\nTesting normalize_advantage=False")
+        print("\nTesting normalize_advantage=False")
         score_false = self.run_single_test(False, total_timesteps)
 
         # Test True
-        print(f"\nTesting normalize_advantage=True")
+        print("\nTesting normalize_advantage=True")
         score_true = self.run_single_test(True, total_timesteps)
 
         # Compare results

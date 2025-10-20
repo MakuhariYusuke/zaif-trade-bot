@@ -3,18 +3,17 @@ Online Learning SAC Trainer
 リアルタイム適応機能を統合したSACトレーナー
 """
 
-import logging
-import torch
-import torch.nn as nn
-from typing import Dict, List, Optional, Any, Iterator
-from datetime import datetime
 import threading
 import time
+from datetime import datetime
+from typing import Any, Dict, Iterator, Optional
 
-from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
-from ztb.adaptation.online_learning.pipeline import OnlineLearningPipeline
+import torch
+
 from ztb.adaptation.online_learning.config import OnlineLearningConfig
+from ztb.adaptation.online_learning.pipeline import OnlineLearningPipeline
 from ztb.adaptation.online_learning.types import DataBatch, LearningState
+from ztb.training.trainers.sac_trainer import SACAlgorithmTrainer
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -26,10 +25,12 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
     リアルタイムでデータを処理し、モデルを適応的に更新
     """
 
-    def __init__(self,
-                 online_config: OnlineLearningConfig,
-                 sac_config: Dict[str, Any],
-                 env_config: Dict[str, Any]):
+    def __init__(
+        self,
+        online_config: OnlineLearningConfig,
+        sac_config: Dict[str, Any],
+        env_config: Dict[str, Any],
+    ):
         # SACAlgorithmTrainerの初期化をスキップ
         self.online_config = online_config
         self.sac_config = sac_config
@@ -40,8 +41,7 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
         # 仮のモデルを作成（TODO: 実際のSACモデルと統合）
         dummy_model = torch.nn.Linear(10, 1)  # 仮モデル
         self.online_pipeline = OnlineLearningPipeline(
-            config=online_config,
-            model=dummy_model
+            config=online_config, model=dummy_model
         )
 
         # ストリーミング制御
@@ -67,8 +67,7 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
 
         # オンライン学習スレッドを開始
         self.online_thread = threading.Thread(
-            target=self._online_learning_worker,
-            daemon=True
+            target=self._online_learning_worker, daemon=True
         )
         self.online_thread.start()
 
@@ -112,14 +111,19 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
         if len(learning_state.loss_history) >= 10:
             recent_losses = learning_state.loss_history[-10:]
             avg_recent = sum(recent_losses) / len(recent_losses)
-            avg_overall = sum(learning_state.loss_history) / len(learning_state.loss_history)
+            avg_overall = sum(learning_state.loss_history) / len(
+                learning_state.loss_history
+            )
 
             # 最近の損失が全体平均の150%以上になった場合
             if avg_recent > avg_overall * 1.5:
                 return True
 
         # メモリ使用量のチェック
-        if learning_state.memory_usage_mb > self.online_config.max_memory_usage_mb * 0.9:
+        if (
+            learning_state.memory_usage_mb
+            > self.online_config.max_memory_usage_mb * 0.9
+        ):
             return True
 
         return False
@@ -135,7 +139,7 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
 
             # オプティマイザの学習率更新
             for param_group in self.online_pipeline.optimizer.param_groups:
-                param_group['lr'] = new_lr
+                param_group["lr"] = new_lr
 
             self.online_pipeline.learning_state.current_learning_rate = new_lr
 
@@ -148,9 +152,9 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
         except Exception as e:
             logger.error(f"Adaptation failed: {e}")
 
-    def train_with_online_adaptation(self,
-                                   total_timesteps: int,
-                                   data_stream: Optional[Iterator[DataBatch]] = None) -> Dict[str, Any]:
+    def train_with_online_adaptation(
+        self, total_timesteps: int, data_stream: Optional[Iterator[DataBatch]] = None
+    ) -> Dict[str, Any]:
         """
         オンライン適応を伴う学習を実行
 
@@ -177,7 +181,7 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
             result = {
                 **training_result,
                 "online_metrics": online_metrics,
-                "training_type": "online_adaptive_sac"
+                "training_type": "online_adaptive_sac",
             }
 
             logger.info("Training with online adaptation completed")
@@ -199,7 +203,7 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
             "memory_usage_mb": learning_state.memory_usage_mb,
             "gpu_memory_usage_mb": learning_state.gpu_memory_usage_mb,
             "last_update_time": learning_state.last_update_time.isoformat(),
-            "online_learning_active": self.is_online_learning_active
+            "online_learning_active": self.is_online_learning_active,
         }
 
     def get_adaptation_status(self) -> Dict[str, Any]:
@@ -210,23 +214,26 @@ class OnlineLearningSACTrainer(SACAlgorithmTrainer):
             "pipeline_status": {
                 "is_streaming": self.online_pipeline.is_streaming,
                 "streaming_buffer_size": len(self.online_pipeline.streaming_buffer),
-                "memory_buffer_size": len(self.online_pipeline.memory_buffer)
-            }
+                "memory_buffer_size": len(self.online_pipeline.memory_buffer),
+            },
         }
 
     def save_online_model(self, path: str) -> None:
         """オンライン学習モデルを保存"""
-        torch.save({
-            'model_state_dict': self.algorithm.model.state_dict(),
-            'online_config': self.online_config,
-            'learning_state': self.online_pipeline.learning_state,
-            'timestamp': datetime.now().isoformat()
-        }, path)
+        torch.save(
+            {
+                "model_state_dict": self.algorithm.model.state_dict(),
+                "online_config": self.online_config,
+                "learning_state": self.online_pipeline.learning_state,
+                "timestamp": datetime.now().isoformat(),
+            },
+            path,
+        )
         logger.info(f"Online learning model saved to {path}")
 
     def load_online_model(self, path: str) -> None:
         """オンライン学習モデルを読み込み"""
         checkpoint = torch.load(path)
         # self.algorithm.model.load_state_dict(checkpoint['model_state_dict'])  # TODO: algorithm統合
-        self.online_pipeline.learning_state = checkpoint['learning_state']
+        self.online_pipeline.learning_state = checkpoint["learning_state"]
         logger.info(f"Online learning model loaded from {path}")

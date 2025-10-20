@@ -3,8 +3,17 @@ Configuration management for Safety Mechanisms and Fallback
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from .types import SafetyLevel, FallbackStrategy, SafetyThreshold, CircuitBreakerConfig, FallbackAction, DeploymentStage, DeploymentPhase
+from typing import Dict, List, Optional
+
+from .types import (
+    CircuitBreakerConfig,
+    DeploymentPhase,
+    DeploymentStage,
+    FallbackAction,
+    FallbackStrategy,
+    SafetyLevel,
+    SafetyThreshold,
+)
 
 
 @dataclass
@@ -34,11 +43,13 @@ class SafetyConfig:
     # リスク管理設定
     risk_assessment_interval_hours: int = 6
     acceptable_risk_threshold: float = 0.7
-    risk_factors_weights: Dict[str, float] = field(default_factory=lambda: {
-        "market_volatility": 0.3,
-        "model_performance": 0.4,
-        "system_stability": 0.3
-    })
+    risk_factors_weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "market_volatility": 0.3,
+            "model_performance": 0.4,
+            "system_stability": 0.3,
+        }
+    )
 
     # 異常検知設定
     anomaly_detection_enabled: bool = True
@@ -65,29 +76,29 @@ class SafetyConfig:
                     threshold_value=0.20,
                     comparison="gte",
                     safety_level=SafetyLevel.CRITICAL,
-                    description="Maximum drawdown exceeded 20%"
+                    description="Maximum drawdown exceeded 20%",
                 ),
                 SafetyThreshold(
                     metric_name="daily_pnl",
                     threshold_value=-0.15,
                     comparison="lte",
                     safety_level=SafetyLevel.HIGH,
-                    description="Daily P&L dropped below -15%"
+                    description="Daily P&L dropped below -15%",
                 ),
                 SafetyThreshold(
                     metric_name="win_rate",
                     threshold_value=0.35,
                     comparison="lte",
                     safety_level=SafetyLevel.MEDIUM,
-                    description="Win rate dropped below 35%"
+                    description="Win rate dropped below 35%",
                 ),
                 SafetyThreshold(
                     metric_name="api_error_rate",
                     threshold_value=0.10,
                     comparison="gte",
                     safety_level=SafetyLevel.HIGH,
-                    description="API error rate exceeded 10%"
-                )
+                    description="API error rate exceeded 10%",
+                ),
             ]
 
         # デフォルトのサーキットブレーカーを設定
@@ -98,15 +109,15 @@ class SafetyConfig:
                     recovery_timeout_seconds=300,
                     monitoring_window_seconds=600,
                     success_threshold=3,
-                    name="trading_circuit_breaker"
+                    name="trading_circuit_breaker",
                 ),
                 CircuitBreakerConfig(
                     failure_threshold=10,
                     recovery_timeout_seconds=600,
                     monitoring_window_seconds=1800,
                     success_threshold=5,
-                    name="api_circuit_breaker"
-                )
+                    name="api_circuit_breaker",
+                ),
             ]
 
         # デフォルトのフォールバックアクションを設定
@@ -115,33 +126,51 @@ class SafetyConfig:
                 FallbackAction(
                     strategy=FallbackStrategy.REDUCE_POSITION_SIZE,
                     trigger_conditions=[
-                        SafetyThreshold("daily_pnl", -0.10, "lte", SafetyLevel.MEDIUM, "Daily P&L warning")
+                        SafetyThreshold(
+                            "daily_pnl",
+                            -0.10,
+                            "lte",
+                            SafetyLevel.MEDIUM,
+                            "Daily P&L warning",
+                        )
                     ],
                     execution_order=1,
                     requires_approval=False,
                     description="Reduce position size by 50% when daily P&L drops below -10%",
-                    rollback_model_path=None
+                    rollback_model_path=None,
                 ),
                 FallbackAction(
                     strategy=FallbackStrategy.ROLLBACK_TO_PREVIOUS,
                     trigger_conditions=[
-                        SafetyThreshold("max_drawdown", 0.15, "gte", SafetyLevel.HIGH, "High drawdown")
+                        SafetyThreshold(
+                            "max_drawdown",
+                            0.15,
+                            "gte",
+                            SafetyLevel.HIGH,
+                            "High drawdown",
+                        )
                     ],
                     execution_order=2,
                     requires_approval=True,
                     description="Rollback to previous model version when drawdown exceeds 15%",
-                    rollback_model_path="models/previous_version"
+                    rollback_model_path="models/previous_version",
                 ),
                 FallbackAction(
                     strategy=FallbackStrategy.STOP_TRADING,
                     trigger_conditions=[
-                        SafetyThreshold("max_drawdown", 0.25, "gte", SafetyLevel.CRITICAL, "Critical drawdown")
+                        SafetyThreshold(
+                            "max_drawdown",
+                            0.25,
+                            "gte",
+                            SafetyLevel.CRITICAL,
+                            "Critical drawdown",
+                        )
                     ],
                     execution_order=3,
                     requires_approval=True,
                     description="Stop all trading when drawdown exceeds 25%",
-                    rollback_model_path=None
-                )
+                    rollback_model_path=None,
+                ),
             ]
 
         # デフォルトのデプロイメントステージを設定
@@ -152,23 +181,47 @@ class SafetyConfig:
                     traffic_percentage=0.1,
                     duration_hours=24,
                     success_criteria=[
-                        SafetyThreshold("win_rate", 0.40, "gte", SafetyLevel.MEDIUM, "Minimum win rate")
+                        SafetyThreshold(
+                            "win_rate",
+                            0.40,
+                            "gte",
+                            SafetyLevel.MEDIUM,
+                            "Minimum win rate",
+                        )
                     ],
                     rollback_triggers=[
-                        SafetyThreshold("max_drawdown", 0.05, "gte", SafetyLevel.HIGH, "Staging drawdown limit")
-                    ]
+                        SafetyThreshold(
+                            "max_drawdown",
+                            0.05,
+                            "gte",
+                            SafetyLevel.HIGH,
+                            "Staging drawdown limit",
+                        )
+                    ],
                 ),
                 DeploymentStage(
                     phase=DeploymentPhase.PRODUCTION,
                     traffic_percentage=1.0,
                     duration_hours=168,  # 1週間
                     success_criteria=[
-                        SafetyThreshold("sharpe_ratio", 1.0, "gte", SafetyLevel.MEDIUM, "Minimum Sharpe ratio")
+                        SafetyThreshold(
+                            "sharpe_ratio",
+                            1.0,
+                            "gte",
+                            SafetyLevel.MEDIUM,
+                            "Minimum Sharpe ratio",
+                        )
                     ],
                     rollback_triggers=[
-                        SafetyThreshold("max_drawdown", 0.10, "gte", SafetyLevel.CRITICAL, "Production drawdown limit")
-                    ]
-                )
+                        SafetyThreshold(
+                            "max_drawdown",
+                            0.10,
+                            "gte",
+                            SafetyLevel.CRITICAL,
+                            "Production drawdown limit",
+                        )
+                    ],
+                ),
             ]
 
 

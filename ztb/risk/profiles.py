@@ -116,14 +116,24 @@ def create_custom_risk_profile(**kwargs: Any) -> RiskLimits:
     config = {**defaults, **kwargs}
 
     return RiskLimits(
-        max_position_notional=get_config_value(config, "max_position_notional", float, 100000.0),
-        max_single_trade_pct=get_config_value(config, "max_single_trade_pct", float, 0.05),
-        daily_loss_limit_pct=get_config_value(config, "daily_loss_limit_pct", float, 0.05),
+        max_position_notional=get_config_value(
+            config, "max_position_notional", float, 100000.0
+        ),
+        max_single_trade_pct=get_config_value(
+            config, "max_single_trade_pct", float, 0.05
+        ),
+        daily_loss_limit_pct=get_config_value(
+            config, "daily_loss_limit_pct", float, 0.05
+        ),
         max_drawdown_pct=get_config_value(config, "max_drawdown_pct", float, 0.10),
         max_trades_per_hour=get_config_value(config, "max_trades_per_hour", int, 5),
-        min_trade_interval_sec=get_config_value(config, "min_trade_interval_sec", int, 600),
+        min_trade_interval_sec=get_config_value(
+            config, "min_trade_interval_sec", int, 600
+        ),
         max_volatility_pct=get_config_value(config, "max_volatility_pct", float, 0.15),
-        required_sharpe_ratio=get_config_value(config, "required_sharpe_ratio", float, 1.0),
+        required_sharpe_ratio=get_config_value(
+            config, "required_sharpe_ratio", float, 1.0
+        ),
         stop_loss_pct=get_config_value(config, "stop_loss_pct", float, 0.03),
         take_profit_pct=get_config_value(config, "take_profit_pct", float, 0.08),
     )

@@ -4,14 +4,16 @@ Unit tests for talib_wrapper.py TaLibWrapper class.
 Tests cover technical analysis indicators, caching, validation, and error handling.
 """
 
-import pytest
+
 import numpy as np
 import pandas as pd
-from unittest.mock import patch, MagicMock
+import pytest
+
 
 # Create a simplified version of TaLibWrapper for testing
 class TaLibError(Exception):
     """Custom exception for Ta-Lib related errors."""
+
     pass
 
 
@@ -50,7 +52,7 @@ class TaLibWrapper:
         if isinstance(data, pd.Series):
             data = data.values
         if not isinstance(data, np.ndarray):
-            raise TaLibError(f"Input data must be numpy array or pandas Series")
+            raise TaLibError("Input data must be numpy array or pandas Series")
         if len(data) == 0:
             raise TaLibError("Input data cannot be empty")
         return data.astype(np.float64)
@@ -63,7 +65,11 @@ class TaLibWrapper:
 
     def _get_cache_key(self, func_name, *args, **kwargs):
         """Generate cache key."""
-        key_parts = [func_name] + [str(arg) for arg in args] + [f"{k}={v}" for k, v in kwargs.items()]
+        key_parts = (
+            [func_name]
+            + [str(arg) for arg in args]
+            + [f"{k}={v}" for k, v in kwargs.items()]
+        )
         return "_".join(key_parts)
 
     def sma(self, data, period=30):
@@ -75,7 +81,7 @@ class TaLibWrapper:
             raise TaLibError("Insufficient data for SMA calculation")
 
         # Simple SMA implementation
-        result = np.convolve(data, np.ones(period), 'valid') / period
+        result = np.convolve(data, np.ones(period), "valid") / period
         # Pad with NaN to match input length
         padding = np.full(len(data) - len(result), np.nan)
         return np.concatenate([padding, result])
@@ -94,7 +100,7 @@ class TaLibWrapper:
         result[0] = data[0]
 
         for i in range(1, len(data)):
-            result[i] = alpha * data[i] + (1 - alpha) * result[i-1]
+            result[i] = alpha * data[i] + (1 - alpha) * result[i - 1]
 
         return result
 
@@ -112,8 +118,8 @@ class TaLibWrapper:
         loss = np.where(delta < 0, -delta, 0)
 
         # Calculate average gain and loss
-        avg_gain = np.convolve(gain, np.ones(period), 'valid') / period
-        avg_loss = np.convolve(loss, np.ones(period), 'valid') / period
+        avg_gain = np.convolve(gain, np.ones(period), "valid") / period
+        avg_loss = np.convolve(loss, np.ones(period), "valid") / period
 
         # Calculate RS and RSI
         rs = avg_gain / (avg_loss + 1e-10)  # Avoid division by zero
@@ -148,11 +154,44 @@ class TestTaLibWrapper:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.wrapper = TaLibWrapper(enable_cache=True, cache_size=128, strict_validation=True)
+        self.wrapper = TaLibWrapper(
+            enable_cache=True, cache_size=128, strict_validation=True
+        )
         # Use longer test data for indicators that need more data
-        self.test_data = np.array([10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
-                                  20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0, 27.0, 28.0, 29.0,
-                                  30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0])
+        self.test_data = np.array(
+            [
+                10.0,
+                11.0,
+                12.0,
+                13.0,
+                14.0,
+                15.0,
+                16.0,
+                17.0,
+                18.0,
+                19.0,
+                20.0,
+                21.0,
+                22.0,
+                23.0,
+                24.0,
+                25.0,
+                26.0,
+                27.0,
+                28.0,
+                29.0,
+                30.0,
+                31.0,
+                32.0,
+                33.0,
+                34.0,
+                35.0,
+                36.0,
+                37.0,
+                38.0,
+                39.0,
+            ]
+        )
         self.test_series = pd.Series(self.test_data)
 
     def test_init_default_params(self):
@@ -168,9 +207,7 @@ class TestTaLibWrapper:
     def test_init_custom_params(self):
         """Test TaLibWrapper initialization with custom parameters."""
         wrapper = TaLibWrapper(
-            enable_cache=False,
-            cache_size=64,
-            strict_validation=False
+            enable_cache=False, cache_size=64, strict_validation=False
         )
 
         assert wrapper.enable_cache is False
@@ -199,7 +236,9 @@ class TestTaLibWrapper:
 
     def test_validate_input_data_invalid_type(self):
         """Test input data validation with invalid type."""
-        with pytest.raises(TaLibError, match="Input data must be numpy array or pandas Series"):
+        with pytest.raises(
+            TaLibError, match="Input data must be numpy array or pandas Series"
+        ):
             self.wrapper._validate_input_data([1, 2, 3], "invalid_data")
 
     def test_validate_input_data_empty_array(self):

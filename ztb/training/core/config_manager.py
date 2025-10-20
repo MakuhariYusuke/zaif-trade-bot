@@ -9,7 +9,8 @@ Handles all configuration-related operations including:
 - Feature configuration
 """
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List, Optional
+
 from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -30,7 +31,9 @@ class ConfigManager:
         self.config = config
         self.logger = get_logger(__name__)
 
-    def _get_config_value(self, key: str, sections: Optional[List[str]] = None, default: Any = None) -> Any:
+    def _get_config_value(
+        self, key: str, sections: Optional[List[str]] = None, default: Any = None
+    ) -> Any:
         """
         Get configuration value with priority order.
 
@@ -76,10 +79,26 @@ class ConfigManager:
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
         return {
-            "max_position_size": self._get_config_value("max_position_size", ["environment"], DEFAULT_PPO_CONFIG.get("max_position_size", 1.0)),
-            "initial_balance": self._get_config_value("initial_balance", ["environment"], DEFAULT_PPO_CONFIG.get("initial_balance", 1000000)),
-            "transaction_cost": self._get_config_value("transaction_cost", ["environment"], DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001)),
-            "reward_scaling": self._get_config_value("reward_scaling", ["environment"], DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0)),
+            "max_position_size": self._get_config_value(
+                "max_position_size",
+                ["environment"],
+                DEFAULT_PPO_CONFIG.get("max_position_size", 1.0),
+            ),
+            "initial_balance": self._get_config_value(
+                "initial_balance",
+                ["environment"],
+                DEFAULT_PPO_CONFIG.get("initial_balance", 1000000),
+            ),
+            "transaction_cost": self._get_config_value(
+                "transaction_cost",
+                ["environment"],
+                DEFAULT_PPO_CONFIG.get("transaction_cost", 0.001),
+            ),
+            "reward_scaling": self._get_config_value(
+                "reward_scaling",
+                ["environment"],
+                DEFAULT_PPO_CONFIG.get("reward_scaling", 1.0),
+            ),
         }
 
     def get_ppo_core_config(self) -> Dict[str, Any]:
@@ -92,22 +111,82 @@ class ConfigManager:
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
 
         return {
-            "learning_rate": self._get_config_value("learning_rate", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("learning_rate", 3e-4)),
-            "n_steps": self._get_config_value("n_steps", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("n_steps", 1024)),
-            "batch_size": self._get_config_value("batch_size", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("batch_size", 32)),
-            "n_epochs": self._get_config_value("n_epochs", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("n_epochs", 10)),
-            "gamma": self._get_config_value("gamma", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("gamma", 0.99)),
-            "gae_lambda": self._get_config_value("gae_lambda", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("gae_lambda", 0.95)),
-            "clip_range": self._get_config_value("clip_range", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("clip_range", 0.2)),
-            "clip_range_vf": self._get_config_value("clip_range_vf", ["ppo_hyperparameters", "ppo"]),
-            "normalize_advantage": self._get_config_value("normalize_advantage", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("normalize_advantage", True)),
-            "ent_coef": self._get_config_value("ent_coef", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("ent_coef", 0.0)),
-            "vf_coef": self._get_config_value("vf_coef", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("vf_coef", 0.5)),
-            "max_grad_norm": self._get_config_value("max_grad_norm", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("max_grad_norm", 0.5)),
-            "use_sde": self._get_config_value("use_sde", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("use_sde", False)),
-            "sde_sample_freq": self._get_config_value("sde_sample_freq", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("sde_sample_freq", -1)),
-            "target_kl": self._get_config_value("target_kl", ["ppo_hyperparameters", "ppo"]),
-            "verbose": self._get_config_value("verbose", ["ppo_hyperparameters", "ppo"], DEFAULT_PPO_CONFIG.get("verbose", 1)),
+            "learning_rate": self._get_config_value(
+                "learning_rate",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("learning_rate", 3e-4),
+            ),
+            "n_steps": self._get_config_value(
+                "n_steps",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("n_steps", 1024),
+            ),
+            "batch_size": self._get_config_value(
+                "batch_size",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("batch_size", 32),
+            ),
+            "n_epochs": self._get_config_value(
+                "n_epochs",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("n_epochs", 10),
+            ),
+            "gamma": self._get_config_value(
+                "gamma",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("gamma", 0.99),
+            ),
+            "gae_lambda": self._get_config_value(
+                "gae_lambda",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("gae_lambda", 0.95),
+            ),
+            "clip_range": self._get_config_value(
+                "clip_range",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("clip_range", 0.2),
+            ),
+            "clip_range_vf": self._get_config_value(
+                "clip_range_vf", ["ppo_hyperparameters", "ppo"]
+            ),
+            "normalize_advantage": self._get_config_value(
+                "normalize_advantage",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("normalize_advantage", True),
+            ),
+            "ent_coef": self._get_config_value(
+                "ent_coef",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("ent_coef", 0.0),
+            ),
+            "vf_coef": self._get_config_value(
+                "vf_coef",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("vf_coef", 0.5),
+            ),
+            "max_grad_norm": self._get_config_value(
+                "max_grad_norm",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("max_grad_norm", 0.5),
+            ),
+            "use_sde": self._get_config_value(
+                "use_sde",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("use_sde", False),
+            ),
+            "sde_sample_freq": self._get_config_value(
+                "sde_sample_freq",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("sde_sample_freq", -1),
+            ),
+            "target_kl": self._get_config_value(
+                "target_kl", ["ppo_hyperparameters", "ppo"]
+            ),
+            "verbose": self._get_config_value(
+                "verbose",
+                ["ppo_hyperparameters", "ppo"],
+                DEFAULT_PPO_CONFIG.get("verbose", 1),
+            ),
         }
 
     def get_feature_config(self) -> Dict[str, Any]:
@@ -128,7 +207,7 @@ class ConfigManager:
         self,
         enable_streaming: bool = False,
         stream_batch_size: int = 256,
-        total_timesteps_override: Optional[int] = None
+        total_timesteps_override: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Build a unified configuration dict with all settings properly organized.
@@ -158,11 +237,11 @@ class ConfigManager:
         # Extract total_timesteps from multiple possible locations
         # Priority: override > top-level > training section > ppo section > default
         total_timesteps = (
-            total_timesteps_override or
-            self.config.get("total_timesteps") or
-            (self.config.get("training", {}) or {}).get("total_timesteps") or
-            (self.config.get("ppo", {}) or {}).get("total_timesteps") or
-            DEFAULT_PPO_CONFIG.get("total_timesteps", 100000)
+            total_timesteps_override
+            or self.config.get("total_timesteps")
+            or (self.config.get("training", {}) or {}).get("total_timesteps")
+            or (self.config.get("ppo", {}) or {}).get("total_timesteps")
+            or DEFAULT_PPO_CONFIG.get("total_timesteps", 100000)
         )
 
         # Build base unified structure first
@@ -179,8 +258,12 @@ class ConfigManager:
             # Performance settings
             "enable_streaming": enable_streaming,
             "stream_batch_size": stream_batch_size,
-            "aggressive_memory_management": self.config.get("aggressive_memory_management", False),
-            "enable_cuda_optimizations": self.config.get("enable_cuda_optimizations", True),
+            "aggressive_memory_management": self.config.get(
+                "aggressive_memory_management", False
+            ),
+            "enable_cuda_optimizations": self.config.get(
+                "enable_cuda_optimizations", True
+            ),
         }
 
         # Merge with original config (for backward compatibility)

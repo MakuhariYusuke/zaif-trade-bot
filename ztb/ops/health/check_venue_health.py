@@ -138,7 +138,7 @@ class VenueHealthChecker:
                 ping_msg = {
                     "jsonrpc": "2.0",
                     "method": "subscribe",
-                    "params": {"channel": f"btc_jpy-ticker"},
+                    "params": {"channel": "btc_jpy-ticker"},
                     "id": 1,
                 }
             elif self.venue == "bitflyer":
@@ -158,13 +158,11 @@ class VenueHealthChecker:
                 ping_msg = {
                     "jsonrpc": "2.0",
                     "method": "subscribe",
-                    "params": {"channel": f"btc_jpy-ticker"},
+                    "params": {"channel": "btc_jpy-ticker"},
                     "id": 1,
                 }
 
-            async with websockets.connect(
-                self.ws_url
-            ) as websocket:
+            async with websockets.connect(self.ws_url) as websocket:
                 connect_time = (time.time() - start_time) * 1000
 
                 await websocket.send(json.dumps(ping_msg))

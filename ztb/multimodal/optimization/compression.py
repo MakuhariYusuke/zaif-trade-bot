@@ -3,12 +3,14 @@
 知識蒸留、プルーニング、モデル圧縮手法を提供。
 """
 
+import logging
+from typing import Any, Dict, Optional
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import Dict, Any, Optional, List, Tuple
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class KnowledgeDistillation:
     """知識蒸留クラス
@@ -16,10 +18,12 @@ class KnowledgeDistillation:
     大規模な教師モデルから小型の生徒モデルへ知識を転移。
     """
 
-    def __init__(self,
-                 temperature: float = 2.0,
-                 alpha: float = 0.5,
-                 distillation_loss: str = "kl"):
+    def __init__(
+        self,
+        temperature: float = 2.0,
+        alpha: float = 0.5,
+        distillation_loss: str = "kl",
+    ):
         """
         Args:
             temperature: 蒸留温度
@@ -31,17 +35,19 @@ class KnowledgeDistillation:
         self.distillation_loss = distillation_loss
 
         if distillation_loss == "kl":
-            self.distill_criterion = nn.KLDivLoss(reduction='batchmean')
+            self.distill_criterion = nn.KLDivLoss(reduction="batchmean")
         elif distillation_loss == "mse":
             self.distill_criterion = nn.MSELoss()
         else:
             raise ValueError(f"Unsupported distillation loss: {distillation_loss}")
 
-    def compute_distillation_loss(self,
-                                  student_logits: torch.Tensor,
-                                  teacher_logits: torch.Tensor,
-                                  hard_targets: Optional[torch.Tensor] = None,
-                                  labels: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def compute_distillation_loss(
+        self,
+        student_logits: torch.Tensor,
+        teacher_logits: torch.Tensor,
+        hard_targets: Optional[torch.Tensor] = None,
+        labels: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """蒸留損失の計算
 
         Args:
@@ -60,7 +66,9 @@ class KnowledgeDistillation:
         student_soft = torch.log_softmax(student_logits / self.temperature, dim=-1)
 
         # 蒸留損失
-        distill_loss = self.distill_criterion(student_soft, teacher_soft) * (self.temperature ** 2)
+        distill_loss = self.distill_criterion(student_soft, teacher_soft) * (
+            self.temperature**2
+        )
 
         total_loss = distill_loss
 
@@ -70,6 +78,7 @@ class KnowledgeDistillation:
             total_loss = self.alpha * distill_loss + (1 - self.alpha) * hard_loss
 
         return total_loss
+
 
 class ModelPruning:
     """モデルプルーニングクラス
@@ -126,15 +135,18 @@ class ModelPruning:
 
         return zero_params / total_params if total_params > 0 else 0.0
 
+
 class ModelCompression:
     """モデル圧縮統合クラス
 
     蒸留、プルーニング、量子化を統合した圧縮パイプライン。
     """
 
-    def __init__(self,
-                 teacher_model: Optional[nn.Module] = None,
-                 student_model: Optional[nn.Module] = None):
+    def __init__(
+        self,
+        teacher_model: Optional[nn.Module] = None,
+        student_model: Optional[nn.Module] = None,
+    ):
         """
         Args:
             teacher_model: 教師モデル（蒸留用）
@@ -142,11 +154,14 @@ class ModelCompression:
         """
         self.teacher_model = teacher_model
         self.student_model = student_model
-        self.distillation = KnowledgeDistillation() if teacher_model is not None else None
-        self.pruning = ModelPruning(student_model) if student_model is not None else None
+        self.distillation = (
+            KnowledgeDistillation() if teacher_model is not None else None
+        )
+        self.pruning = (
+            ModelPruning(student_model) if student_model is not None else None
+        )
 
-    def compress_model(self,
-                      compression_config: Dict[str, Any]) -> nn.Module:
+    def compress_model(self, compression_config: Dict[str, Any]) -> nn.Module:
         """モデル圧縮パイプライン
 
         Args:
@@ -161,7 +176,7 @@ class ModelCompression:
         Returns:
             圧縮されたモデル
         """
-        method = compression_config.get('method', 'pruning')
+        method = compression_config.get("method", "pruning")
         model = self.student_model or self.teacher_model
 
         if model is None:
@@ -170,8 +185,8 @@ class ModelCompression:
         logger.info(f"モデル圧縮を開始: method={method}")
 
         # プルーニング
-        if method in ['pruning', 'combined']:
-            pruning_ratio = compression_config.get('pruning_ratio', 0.3)
+        if method in ["pruning", "combined"]:
+            pruning_ratio = compression_config.get("pruning_ratio", 0.3)
             self.pruning = ModelPruning(model, pruning_ratio)
             self.pruning.prune_model()
 
@@ -179,15 +194,18 @@ class ModelCompression:
             logger.info(f"プルーニング完了: sparsity={sparsity:.3f}")
 
         # 蒸留（教師モデルがある場合）
-        if method in ['distillation', 'combined'] and self.teacher_model is not None:
+        if method in ["distillation", "combined"] and self.teacher_model is not None:
             logger.info("知識蒸留を開始")
             # 蒸留トレーニングは別途実行する必要がある
-            logger.info("蒸留トレーニングが必要: distillation.train() を実行してください")
+            logger.info(
+                "蒸留トレーニングが必要: distillation.train() を実行してください"
+            )
 
         # 量子化
-        quantization = compression_config.get('quantization')
+        quantization = compression_config.get("quantization")
         if quantization:
             from .quantization import DynamicQuantization
+
             quantizer = DynamicQuantization()
             model = quantizer.quantize_model(model)
             logger.info(f"量子化完了: method={quantization}")
@@ -199,11 +217,11 @@ class ModelCompression:
         stats = {}
 
         if self.pruning:
-            stats['sparsity'] = self.pruning.get_sparsity()
+            stats["sparsity"] = self.pruning.get_sparsity()
 
         # パラメータ数計算
         if self.student_model:
             total_params = sum(p.numel() for p in self.student_model.parameters())
-            stats['total_parameters'] = total_params
+            stats["total_parameters"] = total_params
 
         return stats

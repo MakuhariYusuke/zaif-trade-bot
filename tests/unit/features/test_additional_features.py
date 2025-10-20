@@ -6,14 +6,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ztb.features.time.time_features import (
+    calculate_time_features_extended,
+    compute_time_monthly_cycle,
+    compute_time_quarterly_cycle,
+)
 from ztb.features.volatility.normalized_atr import compute_normalized_atr
 from ztb.features.volume.chaikin_ad import compute_chaikin_ad
 from ztb.features.volume.chaikin_ad_oscillator import compute_chaikin_ad_oscillator
-from ztb.features.time.time_features import (
-    compute_time_monthly_cycle,
-    compute_time_quarterly_cycle,
-    calculate_time_features_extended
-)
 
 
 class TestAdditionalFeatures:
@@ -32,14 +32,11 @@ class TestAdditionalFeatures:
         volume = np.random.uniform(1000, 5000, n)
 
         # Create datetime index for time features
-        dates = pd.date_range('2023-01-01', periods=n, freq='D')
+        dates = pd.date_range("2023-01-01", periods=n, freq="D")
 
-        df = pd.DataFrame({
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': volume
-        }, index=dates)
+        df = pd.DataFrame(
+            {"high": high, "low": low, "close": close, "volume": volume}, index=dates
+        )
 
         return df
 
@@ -99,10 +96,17 @@ class TestAdditionalFeatures:
         time_features = calculate_time_features_extended(sample_data)
 
         expected_columns = [
-            'time_day_of_week', 'time_hour_of_day', 'time_session',
-            'time_volatility_adjustment', 'time_month', 'time_quarter',
-            'time_monthly_cycle', 'time_quarterly_cycle', 'time_is_weekend',
-            'time_is_business_day', 'time_session_progress'
+            "time_day_of_week",
+            "time_hour_of_day",
+            "time_session",
+            "time_volatility_adjustment",
+            "time_month",
+            "time_quarter",
+            "time_monthly_cycle",
+            "time_quarterly_cycle",
+            "time_is_weekend",
+            "time_is_business_day",
+            "time_session_progress",
         ]
 
         for col in expected_columns:
@@ -111,11 +115,13 @@ class TestAdditionalFeatures:
         assert len(time_features) == len(sample_data)
 
         # Check value ranges
-        assert time_features['time_day_of_week'].isin(range(7)).all()  # 0-6
-        assert time_features['time_hour_of_day'].isin(range(24)).all()  # 0-23
-        assert time_features['time_session'].isin([0, 1, 2]).all()  # Pre-market, Regular, After-hours
-        assert time_features['time_month'].isin(range(1, 13)).all()  # 1-12
-        assert time_features['time_quarter'].isin(range(1, 5)).all()  # 1-4
+        assert time_features["time_day_of_week"].isin(range(7)).all()  # 0-6
+        assert time_features["time_hour_of_day"].isin(range(24)).all()  # 0-23
+        assert (
+            time_features["time_session"].isin([0, 1, 2]).all()
+        )  # Pre-market, Regular, After-hours
+        assert time_features["time_month"].isin(range(1, 13)).all()  # 1-12
+        assert time_features["time_quarter"].isin(range(1, 5)).all()  # 1-4
 
     def test_feature_integration(self, sample_data):
         """Test that all features can be computed together"""
@@ -123,11 +129,11 @@ class TestAdditionalFeatures:
 
         # Test a few key features
         features_to_test = [
-            'Normalized_ATR',
-            'Chaikin_AD',
-            'Chaikin_AD_Oscillator',
-            'Time_Monthly_Cycle',
-            'Time_Quarterly_Cycle'
+            "Normalized_ATR",
+            "Chaikin_AD",
+            "Chaikin_AD_Oscillator",
+            "Time_Monthly_Cycle",
+            "Time_Quarterly_Cycle",
         ]
 
         for feature_name in features_to_test:
@@ -149,12 +155,14 @@ class TestAdditionalFeatures:
             pass
 
         # Test with constant prices
-        constant_data = pd.DataFrame({
-            'high': [100] * 50,
-            'low': [100] * 50,
-            'close': [100] * 50,
-            'volume': [1000] * 50
-        })
+        constant_data = pd.DataFrame(
+            {
+                "high": [100] * 50,
+                "low": [100] * 50,
+                "close": [100] * 50,
+                "volume": [1000] * 50,
+            }
+        )
 
         # ATR should be 0 for constant prices
         normalized_atr = compute_normalized_atr(constant_data)
@@ -169,7 +177,7 @@ class TestAdditionalFeatures:
         """Test NaN handling in new features"""
         # Add some NaN values
         data_with_nan = sample_data.copy()
-        data_with_nan.loc[10:15, ['high', 'low', 'close']] = np.nan
+        data_with_nan.loc[10:15, ["high", "low", "close"]] = np.nan
 
         # Features should handle NaN gracefully
         try:
@@ -187,9 +195,9 @@ class TestAdditionalFeatures:
         large_data = pd.concat([sample_data] * 5, ignore_index=True)
 
         features_to_test = [
-            ('Normalized_ATR', compute_normalized_atr),
-            ('Chaikin_AD', compute_chaikin_ad),
-            ('Chaikin_AD_Oscillator', compute_chaikin_ad_oscillator),
+            ("Normalized_ATR", compute_normalized_atr),
+            ("Chaikin_AD", compute_chaikin_ad),
+            ("Chaikin_AD_Oscillator", compute_chaikin_ad_oscillator),
         ]
 
         for feature_name, compute_func in features_to_test:

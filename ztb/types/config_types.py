@@ -6,8 +6,7 @@ validation and IDE support.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
-from ztb.types.generics import ConfigDict
+from typing import Any, Dict, List, Optional
 
 
 @dataclass

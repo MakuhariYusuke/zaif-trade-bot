@@ -3,7 +3,6 @@ Unit tests for ztb.analysis.wave3_diag module.
 """
 
 import pandas as pd
-import pytest
 
 from ztb.analysis.wave3_diag import (
     calculate_correlations,
@@ -32,14 +31,16 @@ class TestWave3Diag:
 
     def test_calculate_correlations_normal(self):
         """Test normal correlation calculation."""
-        df = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [2, 4, 6, 8, 10],
-            "feature3": [1, 3, 5, 7, 9],
-        })
-        
+        df = pd.DataFrame(
+            {
+                "feature1": [1, 2, 3, 4, 5],
+                "feature2": [2, 4, 6, 8, 10],
+                "feature3": [1, 3, 5, 7, 9],
+            }
+        )
+
         result = calculate_correlations(df)
-        
+
         assert isinstance(result, dict)
         assert "pearson" in result
         assert "spearman" in result
@@ -59,11 +60,13 @@ class TestWave3Diag:
 
     def test_calculate_vif_normal(self):
         """Test normal VIF calculation."""
-        df = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [2, 4, 6, 8, 10],
-            "feature3": [1, 3, 5, 7, 9],
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": [1, 2, 3, 4, 5],
+                "feature2": [2, 4, 6, 8, 10],
+                "feature3": [1, 3, 5, 7, 9],
+            }
+        )
 
         result = calculate_vif(df)
 
@@ -73,9 +76,11 @@ class TestWave3Diag:
 
     def test_calculate_vif_insufficient_features(self):
         """Test VIF calculation with insufficient features."""
-        df = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5],
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": [1, 2, 3, 4, 5],
+            }
+        )
 
         result = calculate_vif(df)
 
@@ -85,14 +90,16 @@ class TestWave3Diag:
 
     def test_calculate_mutual_info_normal(self):
         """Test normal mutual information calculation."""
-        df = pd.DataFrame({
-            "close": [100, 102, 101, 103, 105],
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [2, 4, 6, 8, 10],
-        })
-        
+        df = pd.DataFrame(
+            {
+                "close": [100, 102, 101, 103, 105],
+                "feature1": [1, 2, 3, 4, 5],
+                "feature2": [2, 4, 6, 8, 10],
+            }
+        )
+
         result = calculate_mutual_info(df, [1])
-        
+
         assert isinstance(result, dict)
         assert "h1" in result
         assert isinstance(result["h1"], pd.DataFrame)
@@ -100,23 +107,27 @@ class TestWave3Diag:
 
     def test_calculate_mutual_info_no_horizons(self):
         """Test mutual information calculation with empty horizons."""
-        df = pd.DataFrame({
-            "close": [100, 102, 101, 103, 105],
-            "feature1": [1, 2, 3, 4, 5],
-        })
-        
+        df = pd.DataFrame(
+            {
+                "close": [100, 102, 101, 103, 105],
+                "feature1": [1, 2, 3, 4, 5],
+            }
+        )
+
         result = calculate_mutual_info(df, [])
-        
+
         assert result == {}
 
     def test_check_leaks_normal(self):
         """Test normal leak checking."""
-        df = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [2, 4, 6, 8, 10],
-            "close": [100, 102, 101, 103, 105],
-            "return": [0, 1, 0, 1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": [1, 2, 3, 4, 5],
+                "feature2": [2, 4, 6, 8, 10],
+                "close": [100, 102, 101, 103, 105],
+                "return": [0, 1, 0, 1, 0],
+            }
+        )
 
         result = check_leaks(df)
 
@@ -127,10 +138,12 @@ class TestWave3Diag:
 
     def test_check_leaks_no_target(self):
         """Test leak checking without target column."""
-        df = pd.DataFrame({
-            "feature1": [1, 2, 3, 4, 5],
-            "feature2": [2, 4, 6, 8, 10],
-        })
+        df = pd.DataFrame(
+            {
+                "feature1": [1, 2, 3, 4, 5],
+                "feature2": [2, 4, 6, 8, 10],
+            }
+        )
 
         result = check_leaks(df)
 

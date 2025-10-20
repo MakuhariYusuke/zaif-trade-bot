@@ -4,13 +4,12 @@ config.py
 Central configuration management for ZTB system
 """
 
-import json
-import logging
 import os
-from typing import Any, Optional, TypeVar, Dict, List, cast
+from typing import Any, Dict, List, Optional, TypeVar, cast
 
 try:
     import jsonschema
+
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
@@ -19,7 +18,7 @@ from ztb.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ZTBConfig:
@@ -31,7 +30,9 @@ class ZTBConfig:
         "properties": {
             "ZTB_MEM_PROFILE": {"type": "boolean"},
             "ZTB_CUDA_WARN_GB": {"type": "number", "minimum": 0},
-            "ZTB_LOG_LEVEL": {"enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]},
+            "ZTB_LOG_LEVEL": {
+                "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+            },
             "ZTB_CHECKPOINT_INTERVAL": {"type": "integer", "minimum": 1},
             "ZTB_MAX_MEMORY_GB": {"type": "number", "minimum": 0},
             "ZTB_TEST_ISOLATION": {"type": "boolean"},
@@ -40,7 +41,7 @@ class ZTBConfig:
             "ZTB_CACHE_SIZE": {"type": "integer", "minimum": 1},
             "ZTB_ENABLE_PROFILING": {"type": "boolean"},
         },
-        "additionalProperties": True
+        "additionalProperties": True,
     }
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -105,7 +106,9 @@ class ZTBConfig:
             True if configuration is valid, False otherwise
         """
         if not JSONSCHEMA_AVAILABLE:
-            logger.warning("jsonschema not available, skipping configuration validation")
+            logger.warning(
+                "jsonschema not available, skipping configuration validation"
+            )
             return True
 
         # Collect current configuration
@@ -114,9 +117,17 @@ class ZTBConfig:
             value = os.getenv(key)
             if value is not None:
                 # Convert string values to appropriate types
-                if key in ["ZTB_MEM_PROFILE", "ZTB_TEST_ISOLATION", "ZTB_ENABLE_PROFILING"]:
+                if key in [
+                    "ZTB_MEM_PROFILE",
+                    "ZTB_TEST_ISOLATION",
+                    "ZTB_ENABLE_PROFILING",
+                ]:
                     config_dict[key] = value.lower() in ("true", "1", "yes", "on")
-                elif key in ["ZTB_CUDA_WARN_GB", "ZTB_MAX_MEMORY_GB", "ZTB_FLOAT_TOLERANCE"]:
+                elif key in [
+                    "ZTB_CUDA_WARN_GB",
+                    "ZTB_MAX_MEMORY_GB",
+                    "ZTB_FLOAT_TOLERANCE",
+                ]:
                     try:
                         config_dict[key] = float(value)
                     except ValueError:
@@ -200,17 +211,21 @@ class ZTBConfig:
 
         # Environment-specific overrides
         if env == "testing":
-            config.update({
-                "cache_size": 64,  # Smaller cache for testing
-                "max_memory_gb": 2.0,  # Lower memory limit for testing
-                "test_isolation": True,
-            })
+            config.update(
+                {
+                    "cache_size": 64,  # Smaller cache for testing
+                    "max_memory_gb": 2.0,  # Lower memory limit for testing
+                    "test_isolation": True,
+                }
+            )
         elif env == "production":
-            config.update({
-                "cache_size": 512,  # Larger cache for production
-                "max_memory_gb": 16.0,  # Higher memory limit for production
-                "enable_profiling": False,  # Disable profiling in production
-            })
+            config.update(
+                {
+                    "cache_size": 512,  # Larger cache for production
+                    "max_memory_gb": 16.0,  # Higher memory limit for production
+                    "enable_profiling": False,  # Disable profiling in production
+                }
+            )
 
         return config
 
@@ -251,8 +266,8 @@ def get_config_value(
             return (
                 float(raw_value)
                 if isinstance(raw_value, (int, float, str))
-                else default  # type: ignore
-            )
+                else default
+            )  # type: ignore
         elif expected_type == bool:
             if isinstance(raw_value, bool):
                 return raw_value  # type: ignore
@@ -410,8 +425,8 @@ class TypedConfig:
         """型安全な設定の初期化"""
         super().__init__()
         for key, value in kwargs.items():
-            if hasattr(self, f'_validate_{key}'):
-                validator = getattr(self, f'_validate_{key}')
+            if hasattr(self, f"_validate_{key}"):
+                validator = getattr(self, f"_validate_{key}")
                 if not validator(value):
                     raise ValueError(f"Invalid value for {key}: {value}")
             setattr(self, key, value)
@@ -437,7 +452,9 @@ class TypedConfig:
         # Default model configurations - can be overridden by config files
         return [
             {
-                "path": self.__dict__.get("default_model_path", "models/trading_optimized_reward_v2_final.zip"),
+                "path": self.__dict__.get(
+                    "default_model_path", "models/trading_optimized_reward_v2_final.zip"
+                ),
                 "weight": self.__dict__.get("default_model_weight", 1.0),
                 "feature_set": self.__dict__.get("default_feature_set", "full"),
             }
@@ -453,7 +470,7 @@ class TypedConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         """設定を辞書形式に変換"""
-        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TypedConfig":
@@ -473,9 +490,9 @@ class ValidatedConfig(TypedConfig):
             "total_timesteps": {"type": "integer", "minimum": 1},
             "default_model_path": {"type": "string"},
             "default_model_weight": {"type": "number", "minimum": 0},
-            "default_feature_set": {"type": "string"}
+            "default_feature_set": {"type": "string"},
         },
-        "additionalProperties": True
+        "additionalProperties": True,
     }
 
     def __init__(self, **kwargs: Any):
@@ -487,6 +504,7 @@ class ValidatedConfig(TypedConfig):
         """JSON Schemaを使って設定を検証"""
         try:
             import jsonschema
+
             config_dict = self.to_dict()
             jsonschema.validate(config_dict, self.SCHEMA)
         except ImportError:
@@ -499,6 +517,7 @@ class ValidatedConfig(TypedConfig):
     def from_json_file(cls, file_path: str) -> "ValidatedConfig":
         """JSONファイルから設定を読み込み検証"""
         import json
-        with open(file_path, 'r') as f:
+
+        with open(file_path, "r") as f:
             data = json.load(f)
         return cls(**data)

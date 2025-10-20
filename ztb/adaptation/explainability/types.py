@@ -4,13 +4,14 @@ Type definitions for Explainability Module
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class ExplanationType(Enum):
     """説明タイプ"""
+
     FEATURE_IMPORTANCE = "feature_importance"
     DECISION_REASON = "decision_reason"
     CONTRIBUTION_BREAKDOWN = "contribution_breakdown"
@@ -20,6 +21,7 @@ class ExplanationType(Enum):
 @dataclass
 class FeatureImportance:
     """特徴量重要度"""
+
     feature_name: str
     importance_score: float
     feature_category: Optional[str] = None
@@ -30,6 +32,7 @@ class FeatureImportance:
 @dataclass
 class DecisionExplanation:
     """決定説明"""
+
     decision_type: str  # BUY, SELL, HOLD
     confidence_score: float
     primary_factors: List[FeatureImportance]
@@ -41,6 +44,7 @@ class DecisionExplanation:
 @dataclass
 class VisualizationResult:
     """可視化結果"""
+
     plots: Dict[str, Any]  # プロット名 -> プロットデータ
     timestamp: datetime
     format: str  # png, svg, htmlなど
@@ -50,13 +54,14 @@ class VisualizationResult:
         return {
             "plots": self.plots,
             "timestamp": self.timestamp.isoformat(),
-            "format": self.format
+            "format": self.format,
         }
 
 
 @dataclass
 class ExplanationResult:
     """説明結果"""
+
     explanation_id: str
     timestamp: datetime
     model_version: str
@@ -82,18 +87,22 @@ class ExplanationResult:
                     "importance_score": fi.importance_score,
                     "feature_category": fi.feature_category,
                     "description": fi.description,
-                    "confidence": fi.confidence
-                } for fi in self.feature_importance
+                    "confidence": fi.confidence,
+                }
+                for fi in self.feature_importance
             ],
-            "decision_explanation": self.decision_explanation.__dict__ if self.decision_explanation else None,
+            "decision_explanation": self.decision_explanation.__dict__
+            if self.decision_explanation
+            else None,
             "metadata": self.metadata,
-            "processing_time_seconds": self.processing_time_seconds
+            "processing_time_seconds": self.processing_time_seconds,
         }
 
 
 @dataclass
 class ExplanationCache:
     """説明キャッシュ"""
+
     explanation_id: str
     result: ExplanationResult
     created_at: datetime
@@ -103,12 +112,14 @@ class ExplanationCache:
     def is_expired(self) -> bool:
         """キャッシュが期限切れかどうか"""
         from datetime import timedelta
+
         return datetime.now() - self.created_at > timedelta(seconds=self.ttl_seconds)
 
 
 @dataclass
 class ExplanationReport:
     """可視化結果"""
+
     plots: Dict[str, Any]  # プロット名 -> プロットデータ
     timestamp: datetime
     format: str  # png, svg, htmlなど
@@ -118,8 +129,9 @@ class ExplanationReport:
         return {
             "plots": self.plots,
             "timestamp": self.timestamp.isoformat(),
-            "format": self.format
+            "format": self.format,
         }
+
     """説明キャッシュ"""
     explanation_id: str
     result: ExplanationResult
@@ -130,12 +142,14 @@ class ExplanationReport:
     def is_expired(self) -> bool:
         """キャッシュが期限切れかどうか"""
         from datetime import timedelta
+
         return datetime.now() - self.created_at > timedelta(seconds=self.ttl_seconds)
 
 
 @dataclass
 class ExplanationReport:
     """説明レポート"""
+
     report_id: str
     generated_at: datetime
     period_start: datetime
@@ -159,9 +173,10 @@ class ExplanationReport:
                 {
                     "feature_name": tf.feature_name,
                     "importance_score": tf.importance_score,
-                    "feature_category": tf.feature_category
-                } for tf in self.top_features
+                    "feature_category": tf.feature_category,
+                }
+                for tf in self.top_features
             ],
             "model_performance_insights": self.model_performance_insights,
-            "recommendations": self.recommendations
+            "recommendations": self.recommendations,
         }

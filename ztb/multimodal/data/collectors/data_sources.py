@@ -3,16 +3,17 @@
 無料/公開データセットの調査と統合
 """
 
-import requests
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 import logging
 import time
-import json
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 class FreeDataSourceManager:
     """
@@ -26,9 +27,9 @@ class FreeDataSourceManager:
 
         # APIレート制限管理
         self.rate_limits = {
-            'fred': {'requests_per_minute': 120, 'last_request': None},
-            'newsapi': {'requests_per_minute': 100, 'last_request': None},
-            'alphavantage': {'requests_per_minute': 5, 'last_request': None}
+            "fred": {"requests_per_minute": 120, "last_request": None},
+            "newsapi": {"requests_per_minute": 100, "last_request": None},
+            "alphavantage": {"requests_per_minute": 5, "last_request": None},
         }
 
     def _check_rate_limit(self, source: str) -> bool:
@@ -37,23 +38,25 @@ class FreeDataSourceManager:
             return True
 
         limit_info = self.rate_limits[source]
-        if limit_info['last_request'] is None:
+        if limit_info["last_request"] is None:
             return True
 
-        elapsed = (datetime.now() - limit_info['last_request']).seconds
-        min_interval = 60 / limit_info['requests_per_minute']
+        elapsed = (datetime.now() - limit_info["last_request"]).seconds
+        min_interval = 60 / limit_info["requests_per_minute"]
 
         return elapsed >= min_interval
 
     def _update_rate_limit(self, source: str):
         """レート制限更新"""
         if source in self.rate_limits:
-            self.rate_limits[source]['last_request'] = datetime.now()
+            self.rate_limits[source]["last_request"] = datetime.now()
 
-    def fetch_fred_economic_data(self,
-                                series_ids: List[str],
-                                start_date: str = "2020-01-01",
-                                end_date: str = None) -> pd.DataFrame:
+    def fetch_fred_economic_data(
+        self,
+        series_ids: List[str],
+        start_date: str = "2020-01-01",
+        end_date: str = None,
+    ) -> pd.DataFrame:
         """
         FRED (Federal Reserve Economic Data) から経済指標を取得
         完全に無料で利用可能
@@ -70,19 +73,15 @@ class FreeDataSourceManager:
         if end_date is None:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
-        if not self._check_rate_limit('fred'):
+        if not self._check_rate_limit("fred"):
             logger.warning("FRED API rate limit exceeded, using cached data")
-            return self.cache.get('fred', pd.DataFrame())
+            return self.cache.get("fred", pd.DataFrame())
 
         base_url = "https://fred.stlouisfed.org/graph/fredgraph.csv"
 
         all_data = {}
         for series_id in series_ids:
-            params = {
-                'id': series_id,
-                'cosd': start_date,
-                'coed': end_date
-            }
+            params = {"id": series_id, "cosd": start_date, "coed": end_date}
 
             try:
                 response = requests.get(base_url, params=params, timeout=10)
@@ -90,12 +89,12 @@ class FreeDataSourceManager:
 
                 # CSVデータをDataFrameに変換
                 df = pd.read_csv(pd.io.common.StringIO(response.text))
-                df['DATE'] = pd.to_datetime(df['DATE'])
-                df.set_index('DATE', inplace=True)
+                df["DATE"] = pd.to_datetime(df["DATE"])
+                df.set_index("DATE", inplace=True)
 
                 all_data[series_id] = df[series_id]
 
-                self._update_rate_limit('fred')
+                self._update_rate_limit("fred")
                 time.sleep(0.1)  # 礼儀的な遅延
 
             except Exception as e:
@@ -104,15 +103,17 @@ class FreeDataSourceManager:
 
         if all_data:
             result_df = pd.DataFrame(all_data)
-            self.cache['fred'] = result_df
+            self.cache["fred"] = result_df
             return result_df
 
         return pd.DataFrame()
 
-    def fetch_newsapi_data(self,
-                          query: str = "cryptocurrency OR bitcoin OR ethereum",
-                          language: str = "en",
-                          days_back: int = 7) -> List[Dict]:
+    def fetch_newsapi_data(
+        self,
+        query: str = "cryptocurrency OR bitcoin OR ethereum",
+        language: str = "en",
+        days_back: int = 7,
+    ) -> List[Dict]:
         """
         NewsAPIからニュースデータを取得
         無料枠：1日100リクエストまで
@@ -132,9 +133,9 @@ class FreeDataSourceManager:
             logger.warning("NewsAPI key not found, returning empty data")
             return []
 
-        if not self._check_rate_limit('newsapi'):
+        if not self._check_rate_limit("newsapi"):
             logger.warning("NewsAPI rate limit exceeded")
-            return self.cache.get('newsapi', [])
+            return self.cache.get("newsapi", [])
 
         base_url = "https://newsapi.org/v2/everything"
 
@@ -142,12 +143,12 @@ class FreeDataSourceManager:
         start_date = end_date - timedelta(days=days_back)
 
         params = {
-            'q': query,
-            'from': start_date.strftime("%Y-%m-%d"),
-            'to': end_date.strftime("%Y-%m-%d"),
-            'language': language,
-            'sortBy': 'relevancy',
-            'apiKey': api_key
+            "q": query,
+            "from": start_date.strftime("%Y-%m-%d"),
+            "to": end_date.strftime("%Y-%m-%d"),
+            "language": language,
+            "sortBy": "relevancy",
+            "apiKey": api_key,
         }
 
         try:
@@ -155,22 +156,24 @@ class FreeDataSourceManager:
             response.raise_for_status()
 
             data = response.json()
-            articles = data.get('articles', [])
+            articles = data.get("articles", [])
 
             # 必要な情報のみ抽出
             processed_articles = []
             for article in articles:
-                processed_articles.append({
-                    'title': article.get('title', ''),
-                    'description': article.get('description', ''),
-                    'content': article.get('content', ''),
-                    'publishedAt': article.get('publishedAt', ''),
-                    'source': article.get('source', {}).get('name', ''),
-                    'url': article.get('url', '')
-                })
+                processed_articles.append(
+                    {
+                        "title": article.get("title", ""),
+                        "description": article.get("description", ""),
+                        "content": article.get("content", ""),
+                        "publishedAt": article.get("publishedAt", ""),
+                        "source": article.get("source", {}).get("name", ""),
+                        "url": article.get("url", ""),
+                    }
+                )
 
-            self.cache['newsapi'] = processed_articles
-            self._update_rate_limit('newsapi')
+            self.cache["newsapi"] = processed_articles
+            self._update_rate_limit("newsapi")
 
             return processed_articles
 
@@ -178,10 +181,9 @@ class FreeDataSourceManager:
             logger.error(f"Failed to fetch NewsAPI data: {e}")
             return []
 
-    def fetch_alpha_vantage_crypto(self,
-                                  symbol: str = "BTC",
-                                  market: str = "USD",
-                                  outputsize: str = "compact") -> pd.DataFrame:
+    def fetch_alpha_vantage_crypto(
+        self, symbol: str = "BTC", market: str = "USD", outputsize: str = "compact"
+    ) -> pd.DataFrame:
         """
         Alpha Vantageから暗号通貨データを取得
         無料枠：1日5リクエストまで
@@ -200,18 +202,18 @@ class FreeDataSourceManager:
             logger.warning("Alpha Vantage key not found")
             return pd.DataFrame()
 
-        if not self._check_rate_limit('alphavantage'):
+        if not self._check_rate_limit("alphavantage"):
             logger.warning("Alpha Vantage rate limit exceeded")
-            return self.cache.get('alphavantage', pd.DataFrame())
+            return self.cache.get("alphavantage", pd.DataFrame())
 
         base_url = "https://www.alphavantage.co/query"
 
         params = {
-            'function': 'DIGITAL_CURRENCY_DAILY',
-            'symbol': symbol,
-            'market': market,
-            'apikey': api_key,
-            'outputsize': outputsize
+            "function": "DIGITAL_CURRENCY_DAILY",
+            "symbol": symbol,
+            "market": market,
+            "apikey": api_key,
+            "outputsize": outputsize,
         }
 
         try:
@@ -220,32 +222,32 @@ class FreeDataSourceManager:
 
             data = response.json()
 
-            if 'Time Series (Digital Currency Daily)' not in data:
+            if "Time Series (Digital Currency Daily)" not in data:
                 logger.error(f"Invalid response from Alpha Vantage: {data}")
                 return pd.DataFrame()
 
-            time_series = data['Time Series (Digital Currency Daily)']
+            time_series = data["Time Series (Digital Currency Daily)"]
 
             # データ整形
             records = []
             for date, values in time_series.items():
                 record = {
-                    'date': date,
-                    'open': float(values['1a. open (USD)']),
-                    'high': float(values['2a. high (USD)']),
-                    'low': float(values['3a. low (USD)']),
-                    'close': float(values['4a. close (USD)']),
-                    'volume': float(values['5. volume'])
+                    "date": date,
+                    "open": float(values["1a. open (USD)"]),
+                    "high": float(values["2a. high (USD)"]),
+                    "low": float(values["3a. low (USD)"]),
+                    "close": float(values["4a. close (USD)"]),
+                    "volume": float(values["5. volume"]),
                 }
                 records.append(record)
 
             df = pd.DataFrame(records)
-            df['date'] = pd.to_datetime(df['date'])
-            df.set_index('date', inplace=True)
+            df["date"] = pd.to_datetime(df["date"])
+            df.set_index("date", inplace=True)
             df.sort_index(inplace=True)
 
-            self.cache['alphavantage'] = df
-            self._update_rate_limit('alphavantage')
+            self.cache["alphavantage"] = df
+            self._update_rate_limit("alphavantage")
 
             return df
 
@@ -273,28 +275,26 @@ class FreeDataSourceManager:
         """
         return {
             # 主要経済指標
-            'GDP': 'Gross Domestic Product',
-            'UNRATE': 'Unemployment Rate',
-            'FEDFUNDS': 'Federal Funds Rate',
-            'CPIAUCSL': 'Consumer Price Index',
-            'DEXUSEU': 'USD/EUR Exchange Rate',
-            'DEXJPUS': 'USD/JPY Exchange Rate',
-
+            "GDP": "Gross Domestic Product",
+            "UNRATE": "Unemployment Rate",
+            "FEDFUNDS": "Federal Funds Rate",
+            "CPIAUCSL": "Consumer Price Index",
+            "DEXUSEU": "USD/EUR Exchange Rate",
+            "DEXJPUS": "USD/JPY Exchange Rate",
             # 株式市場指標
-            'SP500': 'S&P 500 Index',
-            'NASDAQCOM': 'NASDAQ Composite',
-            'DJIA': 'Dow Jones Industrial Average',
-
+            "SP500": "S&P 500 Index",
+            "NASDAQCOM": "NASDAQ Composite",
+            "DJIA": "Dow Jones Industrial Average",
             # 債券市場
-            'DGS10': '10-Year Treasury Rate',
-            'DGS2': '2-Year Treasury Rate',
-            'T10Y2Y': '10-Year Minus 2-Year Treasury Spread',
-
+            "DGS10": "10-Year Treasury Rate",
+            "DGS2": "2-Year Treasury Rate",
+            "T10Y2Y": "10-Year Minus 2-Year Treasury Spread",
             # 商品価格
-            'DCOILWTICO': 'WTI Crude Oil Price',
-            'GOLDAMGBD228NLBM': 'Gold Fixing Price',
-            'DHHNGSP': 'Henry Hub Natural Gas Spot Price'
+            "DCOILWTICO": "WTI Crude Oil Price",
+            "GOLDAMGBD228NLBM": "Gold Fixing Price",
+            "DHHNGSP": "Henry Hub Natural Gas Spot Price",
         }
+
 
 class PublicDatasetLoader:
     """
@@ -315,15 +315,15 @@ class PublicDatasetLoader:
         """
         # サンプルデータ生成（実際には公開データセットを使用）
         sample_data = {
-            'text': [
+            "text": [
                 "Company reports strong quarterly earnings",
                 "Market shows signs of recovery",
                 "Economic indicators point to slowdown",
                 "Stock prices surge on positive news",
-                "Investors remain cautious amid uncertainty"
+                "Investors remain cautious amid uncertainty",
             ],
-            'sentiment': ['positive', 'positive', 'negative', 'positive', 'neutral'],
-            'date': pd.date_range('2025-01-01', periods=5, freq='D')
+            "sentiment": ["positive", "positive", "negative", "positive", "neutral"],
+            "date": pd.date_range("2025-01-01", periods=5, freq="D"),
         }
 
         df = pd.DataFrame(sample_data)
@@ -337,18 +337,19 @@ class PublicDatasetLoader:
             経済指標データフレーム
         """
         # FREDなどの公開データを模擬
-        dates = pd.date_range('2020-01-01', '2025-01-01', freq='M')
+        dates = pd.date_range("2020-01-01", "2025-01-01", freq="M")
 
         np.random.seed(42)
         data = {
-            'GDP_growth': np.random.normal(2.0, 1.0, len(dates)),
-            'unemployment_rate': np.random.normal(4.0, 0.5, len(dates)),
-            'inflation_rate': np.random.normal(2.5, 0.8, len(dates)),
-            'interest_rate': np.random.normal(2.0, 0.3, len(dates))
+            "GDP_growth": np.random.normal(2.0, 1.0, len(dates)),
+            "unemployment_rate": np.random.normal(4.0, 0.5, len(dates)),
+            "inflation_rate": np.random.normal(2.5, 0.8, len(dates)),
+            "interest_rate": np.random.normal(2.0, 0.3, len(dates)),
         }
 
         df = pd.DataFrame(data, index=dates)
         return df
+
 
 # 使用例
 if __name__ == "__main__":
@@ -376,7 +377,8 @@ if __name__ == "__main__":
     print(f"\nサンプル経済指標データ: {economic_data.shape}")
     print(economic_data.head())
 
-    print("""
+    print(
+        """
     📋 無料データソース利用ガイド:
 
     1. FRED (Federal Reserve Economic Data)
@@ -403,4 +405,5 @@ if __name__ == "__main__":
     - APIキーは無料で取得可能
     - レート制限を遵守すること
     - 商用利用の場合は有料プランを検討
-    """)
+    """
+    )

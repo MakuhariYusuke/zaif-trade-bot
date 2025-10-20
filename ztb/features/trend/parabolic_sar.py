@@ -13,9 +13,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from ztb.utils.talib_wrapper import TaLibWrapper
+
 from ..base import BaseFeature
 from ..registry import FeatureRegistry
-from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("PSAR")
@@ -55,7 +56,12 @@ class ParabolicSAR(BaseFeature):
         max_acceleration = params.get("max_acceleration", self.max_acceleration)
 
         # Use Ta-Lib wrapper for Parabolic SAR calculation
-        psar = TaLibWrapper.sar(df["high"].values.astype(np.float64), df["low"].values.astype(np.float64), acceleration, max_acceleration)
+        psar = TaLibWrapper.sar(
+            df["high"].values.astype(np.float64),
+            df["low"].values.astype(np.float64),
+            acceleration,
+            max_acceleration,
+        )
 
         # Calculate trend: 1 if PSAR < close (uptrend), -1 if PSAR > close (downtrend)
         trend = np.where(psar < df["close"], 1, -1)

@@ -13,7 +13,7 @@ import logging
 import threading
 import time
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 import numpy as np
 import psutil
@@ -63,8 +63,12 @@ class SystemOptimizer:
 
         # Initialize components
         self.memory_tracker = MemoryTracker() if enable_memory_tracking else None
-        self.performance_profiler = PerformanceProfiler() if enable_performance_profiling else None
-        self.io_cache = TTLCache(ttl_seconds=cache_ttl_seconds) if enable_io_caching else None
+        self.performance_profiler = (
+            PerformanceProfiler() if enable_performance_profiling else None
+        )
+        self.io_cache = (
+            TTLCache(ttl_seconds=cache_ttl_seconds) if enable_io_caching else None
+        )
 
         # Tracking state
         self.step_counter = 0
@@ -104,10 +108,10 @@ class SystemOptimizer:
                 perf_time = time.time() - perf_start
                 # Record performance data manually since PerformanceProfiler doesn't have context manager
                 perf_stats = {
-                    'step_time': perf_time,
-                    'cpu_percent': psutil.cpu_percent(interval=None),
-                    'step_name': step_name,
-                    'timestamp': time.time()
+                    "step_time": perf_time,
+                    "cpu_percent": psutil.cpu_percent(interval=None),
+                    "step_name": step_name,
+                    "timestamp": time.time(),
                 }
                 with self._lock:
                     self.performance_history.append(perf_stats)
@@ -135,10 +139,10 @@ class SystemOptimizer:
                 # Performance metrics
                 if self.performance_profiler:
                     perf_stats = {
-                        'step_time': step_time,
-                        'cpu_percent': psutil.cpu_percent(interval=None),
-                        'step_name': step_name,
-                        'timestamp': time.time()
+                        "step_time": step_time,
+                        "cpu_percent": psutil.cpu_percent(interval=None),
+                        "step_name": step_name,
+                        "timestamp": time.time(),
                     }
                     self.performance_history.append(perf_stats)
 
@@ -160,7 +164,7 @@ class SystemOptimizer:
             return model
 
         # Enable gradient checkpointing for memory efficiency
-        if hasattr(model, 'gradient_checkpointing_enable'):
+        if hasattr(model, "gradient_checkpointing_enable"):
             model.gradient_checkpointing_enable()
 
         # Use mixed precision if available
@@ -170,7 +174,9 @@ class SystemOptimizer:
         # Pin memory for faster GPU transfers
         if torch.cuda.is_available():
             for param in model.parameters():
-                param.data = param.data.pin_memory() if param.data.is_cuda else param.data
+                param.data = (
+                    param.data.pin_memory() if param.data.is_cuda else param.data
+                )
 
         logger.info("Applied model memory optimizations")
         return model
@@ -186,7 +192,7 @@ class SystemOptimizer:
             Optimized dataloader
         """
         # Configure optimal settings for memory efficiency (only if not already initialized)
-        if hasattr(dataloader, 'pin_memory') and not hasattr(dataloader, '_iterator'):
+        if hasattr(dataloader, "pin_memory") and not hasattr(dataloader, "_iterator"):
             dataloader.pin_memory = torch.cuda.is_available()
 
         # Note: persistent_workers and prefetch_factor can only be set during DataLoader creation
@@ -232,33 +238,50 @@ class SystemOptimizer:
         """
         with self._lock:
             stats = {
-                'step_counter': self.step_counter,
-                'memory_tracking_enabled': self.enable_memory_tracking,
-                'performance_profiling_enabled': self.enable_performance_profiling,
-                'io_caching_enabled': self.enable_io_caching,
+                "step_counter": self.step_counter,
+                "memory_tracking_enabled": self.enable_memory_tracking,
+                "performance_profiling_enabled": self.enable_performance_profiling,
+                "io_caching_enabled": self.enable_io_caching,
             }
 
             if self.memory_history:
-                stats.update({
-                    'current_memory_mb': self.memory_history[-1] if self.memory_history else 0,
-                    'peak_memory_mb': max(self.memory_history) if self.memory_history else 0,
-                    'avg_memory_mb': np.mean(self.memory_history) if self.memory_history else 0,
-                })
+                stats.update(
+                    {
+                        "current_memory_mb": self.memory_history[-1]
+                        if self.memory_history
+                        else 0,
+                        "peak_memory_mb": max(self.memory_history)
+                        if self.memory_history
+                        else 0,
+                        "avg_memory_mb": np.mean(self.memory_history)
+                        if self.memory_history
+                        else 0,
+                    }
+                )
 
             if self.performance_history:
                 recent_perf = self.performance_history[-10:]  # Last 10 steps
-                stats.update({
-                    'avg_step_time': np.mean([p['step_time'] for p in recent_perf]),
-                    'avg_cpu_percent': np.mean([p['cpu_percent'] for p in recent_perf]),
-                })
+                stats.update(
+                    {
+                        "avg_step_time": np.mean([p["step_time"] for p in recent_perf]),
+                        "avg_cpu_percent": np.mean(
+                            [p["cpu_percent"] for p in recent_perf]
+                        ),
+                    }
+                )
 
             if self.io_cache:
-                stats.update({
-                    'cache_size': len(self.io_cache.cache),
-                    'cache_hits': self.cache_hits,
-                    'cache_misses': self.cache_misses,
-                    'cache_hit_rate': self.cache_hits / (self.cache_hits + self.cache_misses) if (self.cache_hits + self.cache_misses) > 0 else 0,
-                })
+                stats.update(
+                    {
+                        "cache_size": len(self.io_cache.cache),
+                        "cache_hits": self.cache_hits,
+                        "cache_misses": self.cache_misses,
+                        "cache_hit_rate": self.cache_hits
+                        / (self.cache_hits + self.cache_misses)
+                        if (self.cache_hits + self.cache_misses) > 0
+                        else 0,
+                    }
+                )
 
             return stats
 
@@ -333,13 +356,13 @@ class MemoryOptimizer:
         memory_info = process.memory_info()
 
         stats = {
-            'rss_mb': memory_info.rss / 1024 / 1024,
-            'vms_mb': memory_info.vms / 1024 / 1024,
+            "rss_mb": memory_info.rss / 1024 / 1024,
+            "vms_mb": memory_info.vms / 1024 / 1024,
         }
 
         if torch.cuda.is_available():
-            stats['gpu_allocated_mb'] = torch.cuda.memory_allocated() / 1024 / 1024
-            stats['gpu_reserved_mb'] = torch.cuda.memory_reserved() / 1024 / 1024
+            stats["gpu_allocated_mb"] = torch.cuda.memory_allocated() / 1024 / 1024
+            stats["gpu_reserved_mb"] = torch.cuda.memory_reserved() / 1024 / 1024
 
         return stats
 
@@ -354,8 +377,9 @@ class PerformanceOptimizer:
         """Optimize NumPy operations for performance."""
         # Set optimal thread count for NumPy
         import os
-        os.environ['OMP_NUM_THREADS'] = str(max(1, psutil.cpu_count() // 2))
-        os.environ['MKL_NUM_THREADS'] = str(max(1, psutil.cpu_count() // 2))
+
+        os.environ["OMP_NUM_THREADS"] = str(max(1, psutil.cpu_count() // 2))
+        os.environ["MKL_NUM_THREADS"] = str(max(1, psutil.cpu_count() // 2))
 
     @staticmethod
     def enable_torch_optimizations() -> None:
@@ -376,7 +400,7 @@ class PerformanceOptimizer:
             Dictionary with CPU statistics
         """
         return {
-            'cpu_percent': psutil.cpu_percent(interval=1),
-            'cpu_count': psutil.cpu_count(),
-            'cpu_freq_current': psutil.cpu_freq().current if psutil.cpu_freq() else 0,
+            "cpu_percent": psutil.cpu_percent(interval=1),
+            "cpu_count": psutil.cpu_count(),
+            "cpu_freq_current": psutil.cpu_freq().current if psutil.cpu_freq() else 0,
         }

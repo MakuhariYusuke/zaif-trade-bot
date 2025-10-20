@@ -2,18 +2,17 @@
 Unit tests for advanced neural network architectures.
 """
 
-import pytest
-import torch
-import numpy as np
 from unittest.mock import Mock
+
+import torch
 
 from ztb.training.models.advanced_networks import (
     LSTMFeatureExtractor,
-    TransformerFeatureExtractor,
     LSTMPolicy,
-    TransformerPolicy,
     PositionalEncoding,
     TransformerBlock,
+    TransformerFeatureExtractor,
+    TransformerPolicy,
 )
 
 
@@ -158,7 +157,7 @@ class TestLSTMPolicy:
                 sequence_length=10,
             )
             # If initialization succeeds, check basic attributes
-            assert hasattr(policy, 'features_extractor')
+            assert hasattr(policy, "features_extractor")
             assert isinstance(policy.features_extractor, LSTMFeatureExtractor)
         except Exception:
             # If full initialization fails, just check that the class exists
@@ -187,7 +186,7 @@ class TestTransformerPolicy:
                 sequence_length=10,
             )
             # If initialization succeeds, check basic attributes
-            assert hasattr(policy, 'features_extractor')
+            assert hasattr(policy, "features_extractor")
             assert isinstance(policy.features_extractor, TransformerFeatureExtractor)
         except Exception:
             # If full initialization fails, just check that the class exists

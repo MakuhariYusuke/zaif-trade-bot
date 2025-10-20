@@ -9,20 +9,16 @@ Features:
 - EDDM (Early Drift Detection Method) for early warning
 """
 
+from .config import ConceptDriftConfig
 from .detector import (
-    DriftDetector,
-    KolmogorovSmirnovDetector,
     ADWINDetector,
     DDMDetector,
-    EDDMDetector
+    DriftDetector,
+    EDDMDetector,
+    KolmogorovSmirnovDetector,
 )
+from .drift_types import DriftDetectionResult, DriftSeverity, DriftType
 from .manager import ConceptDriftManager
-from .config import ConceptDriftConfig
-from .drift_types import (
-    DriftType,
-    DriftSeverity,
-    DriftDetectionResult
-)
 
 __all__ = [
     "DriftDetector",

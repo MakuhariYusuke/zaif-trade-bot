@@ -25,6 +25,7 @@ class CoincheckConfig(BaseExchangeConfig):
 # Create a singleton instance for backward compatibility
 _config = CoincheckConfig()
 
+
 # Backward compatibility functions
 def get_coincheck_credentials():
     """Get Coincheck API credentials (backward compatibility)."""

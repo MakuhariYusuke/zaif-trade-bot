@@ -5,9 +5,11 @@
 
 __version__ = "1.0.0"
 
+from typing import Optional, Tuple
+
 import torch  # type: ignore
 import torch.nn as nn  # type: ignore
-from typing import Optional, Tuple
+
 
 class CrossModalAttention(nn.Module):
     """クロスモーダル・アテンション機構
@@ -16,49 +18,59 @@ class CrossModalAttention(nn.Module):
     マルチヘッド・アテンションに基づくTransformerアーキテクチャを使用。
     """
 
-    def __init__(self,
-                 hidden_dim: int = 256,
-                 num_heads: int = 8,
-                 dropout: float = 0.1,
-                 num_layers: int = 2):
+    def __init__(
+        self,
+        hidden_dim: int = 256,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+        num_layers: int = 2,
+    ):
         super().__init__()
 
         self.hidden_dim = hidden_dim
         self.num_heads = num_heads
 
         # マルチヘッド・アテンション層
-        self.attention_layers = nn.ModuleList([
-            nn.MultiheadAttention(
-                embed_dim=hidden_dim,
-                num_heads=num_heads,
-                dropout=dropout,
-                batch_first=True
-            ) for _ in range(num_layers)
-        ])
+        self.attention_layers = nn.ModuleList(
+            [
+                nn.MultiheadAttention(
+                    embed_dim=hidden_dim,
+                    num_heads=num_heads,
+                    dropout=dropout,
+                    batch_first=True,
+                )
+                for _ in range(num_layers)
+            ]
+        )
 
         # 層正規化とFFN
-        self.norm_layers = nn.ModuleList([
-            nn.LayerNorm(hidden_dim) for _ in range(num_layers * 2)
-        ])
+        self.norm_layers = nn.ModuleList(
+            [nn.LayerNorm(hidden_dim) for _ in range(num_layers * 2)]
+        )
 
         # Feed Forward Network
-        self.ffn_layers = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(hidden_dim, hidden_dim * 4),
-                nn.ReLU(),
-                nn.Dropout(dropout),
-                nn.Linear(hidden_dim * 4, hidden_dim)
-            ) for _ in range(num_layers)
-        ])
+        self.ffn_layers = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden_dim, hidden_dim * 4),
+                    nn.ReLU(),
+                    nn.Dropout(dropout),
+                    nn.Linear(hidden_dim * 4, hidden_dim),
+                )
+                for _ in range(num_layers)
+            ]
+        )
 
         # モダリティ間フュージョン用の投影層
         self.modality_projection = nn.Linear(hidden_dim * 3, hidden_dim)
 
-    def forward(self,
-                price_features: torch.Tensor,
-                text_features: torch.Tensor,
-                economic_features: torch.Tensor,
-                attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(
+        self,
+        price_features: torch.Tensor,
+        text_features: torch.Tensor,
+        economic_features: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """
         クロスモーダル・アテンションの順伝播
 
@@ -74,27 +86,30 @@ class CrossModalAttention(nn.Module):
         batch_size, seq_len, _ = price_features.shape
 
         # モダリティ特徴量を統合
-        combined_features = torch.cat([
-            price_features,      # 価格情報
-            text_features,       # テキスト情報
-            economic_features    # 経済情報
-        ], dim=-1)  # (batch_size, seq_len, hidden_dim * 3)
+        combined_features = torch.cat(
+            [price_features, text_features, economic_features],
+            dim=-1,  # 価格情報  # テキスト情報  # 経済情報
+        )  # (batch_size, seq_len, hidden_dim * 3)
 
         # モダリティ間フュージョン
         fused_features = self.modality_projection(combined_features)
         # (batch_size, seq_len, hidden_dim)
 
         # マルチヘッド・アテンション層の適用
-        for i, (attn, norm1, norm2, ffn) in enumerate(zip(
-            self.attention_layers,
-            self.norm_layers[::2],
-            self.norm_layers[1::2],
-            self.ffn_layers
-        )):
+        for i, (attn, norm1, norm2, ffn) in enumerate(
+            zip(
+                self.attention_layers,
+                self.norm_layers[::2],
+                self.norm_layers[1::2],
+                self.ffn_layers,
+            )
+        ):
             # Self-attention with residual connection
             attn_output, _ = attn(
-                fused_features, fused_features, fused_features,
-                key_padding_mask=attention_mask
+                fused_features,
+                fused_features,
+                fused_features,
+                key_padding_mask=attention_mask,
             )
 
             # Add & Norm
@@ -105,6 +120,7 @@ class CrossModalAttention(nn.Module):
             fused_features = norm2(fused_features + ffn_output)
 
         return fused_features
+
 
 class MultiHeadCrossAttention(nn.Module):
     """マルチヘッド・クロス・アテンション
@@ -134,10 +150,12 @@ class MultiHeadCrossAttention(nn.Module):
         self.output_projection = nn.Linear(hidden_dim * 3, hidden_dim)
         self.layer_norm = nn.LayerNorm(hidden_dim)
 
-    def forward(self,
-                price_features: torch.Tensor,
-                text_features: torch.Tensor,
-                economic_features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self,
+        price_features: torch.Tensor,
+        text_features: torch.Tensor,
+        economic_features: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         マルチヘッド・クロス・アテンションの順伝播
 
@@ -166,11 +184,9 @@ class MultiHeadCrossAttention(nn.Module):
         )
 
         # 特徴量の統合
-        combined_features = torch.cat([
-            price_text_output,
-            price_economic_output,
-            text_economic_output
-        ], dim=-1)  # (batch_size, seq_len, hidden_dim * 3)
+        combined_features = torch.cat(
+            [price_text_output, price_economic_output, text_economic_output], dim=-1
+        )  # (batch_size, seq_len, hidden_dim * 3)
 
         # 出力投影
         integrated_features = self.output_projection(combined_features)
@@ -178,12 +194,13 @@ class MultiHeadCrossAttention(nn.Module):
 
         # アテンション重みの統合（可視化用）
         attention_weights = {
-            'price_text': price_text_weights,
-            'price_economic': price_economic_weights,
-            'text_economic': text_economic_weights
+            "price_text": price_text_weights,
+            "price_economic": price_economic_weights,
+            "text_economic": text_economic_weights,
         }
 
         return integrated_features, attention_weights
+
 
 class AttentionFusion(nn.Module):
     """アテンションベースの特徴量フュージョン
@@ -203,9 +220,9 @@ class AttentionFusion(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
         # モダリティ別特徴量調整層
-        self.modality_adapters = nn.ModuleList([
-            nn.Linear(hidden_dim, hidden_dim) for _ in range(num_modalities)
-        ])
+        self.modality_adapters = nn.ModuleList(
+            [nn.Linear(hidden_dim, hidden_dim) for _ in range(num_modalities)]
+        )
 
     def forward(self, modality_features: torch.Tensor) -> torch.Tensor:
         """

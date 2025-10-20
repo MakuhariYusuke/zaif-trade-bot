@@ -11,20 +11,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from ztb.utils.path_utils import get_project_root
+
 project_root = get_project_root()
 sys.path.insert(0, str(project_root))
 
 from ztb.trading.live_trader.config import (
+    HealthServerHandle,
     LiveTradingOptions,
+    MetricsServerHandle,
     _build_argument_parser,
     _start_health_server,
     _start_metrics_server,
-    MetricsServerHandle,
-    HealthServerHandle,
 )
 from ztb.trading.live_trader.live_trader import LiveTrader
 from ztb.trading.live_trader.utils import _configure_live_logging
-from ztb.utils.errors import safe_operation
 
 
 def main() -> None:
@@ -48,11 +48,13 @@ def _main_impl() -> None:
 
     print("After configure logging")
     # Start servers if enabled
-    metrics_handle: MetricsServerHandle | None = _start_metrics_server(options, runtime_logger)
+    metrics_handle: MetricsServerHandle | None = _start_metrics_server(
+        options, runtime_logger
+    )
     health_handle: HealthServerHandle | None = _start_health_server(
         options,
-        lambda: {"status": "initializing"},  # Placeholder
-        runtime_logger
+        lambda: {"status": "initializing"},
+        runtime_logger,  # Placeholder
     )
 
     # Initialize trader

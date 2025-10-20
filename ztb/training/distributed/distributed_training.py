@@ -5,16 +5,17 @@ This module provides distributed training capabilities for SAC using PyTorch's
 DDP (DistributedDataParallel) and DataParallel for multi-GPU/multi-node training.
 """
 
-import os
-import torch
-import torch.nn as nn
-import torch.distributed as dist
-import torch.multiprocessing as mp
-from typing import Dict, List, Optional, Callable, Any, Union
 import logging
-from contextlib import contextmanager
+import os
 import socket
 import time
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, List, Optional
+
+import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
+import torch.nn as nn
 
 logger = logging.getLogger(__name__)
 
@@ -55,25 +56,25 @@ class DistributedTrainingConfig:
         self.timeout = timeout
 
     @classmethod
-    def from_env(cls) -> 'DistributedTrainingConfig':
+    def from_env(cls) -> "DistributedTrainingConfig":
         """Create config from environment variables."""
         return cls(
-            world_size=int(os.environ.get('WORLD_SIZE', 1)),
-            rank=int(os.environ.get('RANK', 0)),
-            master_addr=os.environ.get('MASTER_ADDR', '127.0.0.1'),
-            master_port=os.environ.get('MASTER_PORT', '12345'),
-            backend=os.environ.get('DIST_BACKEND', 'gloo'),
-            init_method=os.environ.get('INIT_METHOD', None),
+            world_size=int(os.environ.get("WORLD_SIZE", 1)),
+            rank=int(os.environ.get("RANK", 0)),
+            master_addr=os.environ.get("MASTER_ADDR", "127.0.0.1"),
+            master_port=os.environ.get("MASTER_PORT", "12345"),
+            backend=os.environ.get("DIST_BACKEND", "gloo"),
+            init_method=os.environ.get("INIT_METHOD", None),
         )
 
     def to_env(self) -> Dict[str, str]:
         """Convert config to environment variables."""
         return {
-            'WORLD_SIZE': str(self.world_size),
-            'RANK': str(self.rank),
-            'MASTER_ADDR': self.master_addr,
-            'MASTER_PORT': self.master_port,
-            'DIST_BACKEND': self.backend,
+            "WORLD_SIZE": str(self.world_size),
+            "RANK": str(self.rank),
+            "MASTER_ADDR": self.master_addr,
+            "MASTER_PORT": self.master_port,
+            "DIST_BACKEND": self.backend,
         }
 
 
@@ -104,10 +105,12 @@ class DistributedTrainer:
 
         # Setup device
         if device is None:
-            if torch.cuda.is_available() and config.backend == 'nccl':
-                self.device = torch.device(f'cuda:{config.rank % torch.cuda.device_count()}')
+            if torch.cuda.is_available() and config.backend == "nccl":
+                self.device = torch.device(
+                    f"cuda:{config.rank % torch.cuda.device_count()}"
+                )
             else:
-                self.device = torch.device('cpu')
+                self.device = torch.device("cpu")
         else:
             self.device = device
 
@@ -116,27 +119,39 @@ class DistributedTrainer:
 
         # Setup distributed training
         if self.is_distributed:
-            if config.backend == 'nccl' and not torch.cuda.is_available():
-                logger.warning("NCCL backend requested but CUDA not available. Falling back to Gloo.")
-                config.backend = 'gloo'
+            if config.backend == "nccl" and not torch.cuda.is_available():
+                logger.warning(
+                    "NCCL backend requested but CUDA not available. Falling back to Gloo."
+                )
+                config.backend = "gloo"
 
             # Only setup DDP if distributed training is initialized
             if dist.is_initialized():
                 self.model = nn.parallel.DistributedDataParallel(
                     self.model,
-                    device_ids=[self.device.index] if self.device.type == 'cuda' else None,
-                    output_device=self.device.index if self.device.type == 'cuda' else None,
+                    device_ids=[self.device.index]
+                    if self.device.type == "cuda"
+                    else None,
+                    output_device=self.device.index
+                    if self.device.type == "cuda"
+                    else None,
                     find_unused_parameters=find_unused_parameters,
                 )
-                logger.info(f"Initialized DDP with rank {config.rank}/{config.world_size} on {self.device}")
+                logger.info(
+                    f"Initialized DDP with rank {config.rank}/{config.world_size} on {self.device}"
+                )
             else:
-                logger.warning("Distributed training not initialized, using single device training")
+                logger.warning(
+                    "Distributed training not initialized, using single device training"
+                )
                 self.is_distributed = False
         else:
             # Single GPU/CPU training
-            if torch.cuda.device_count() > 1 and config.backend == 'nccl':
+            if torch.cuda.device_count() > 1 and config.backend == "nccl":
                 self.model = nn.DataParallel(self.model)
-                logger.info(f"Initialized DataParallel with {torch.cuda.device_count()} GPUs")
+                logger.info(
+                    f"Initialized DataParallel with {torch.cuda.device_count()} GPUs"
+                )
             else:
                 logger.info(f"Initialized single device training on {self.device}")
 
@@ -144,7 +159,9 @@ class DistributedTrainer:
 
     def get_model(self) -> nn.Module:
         """Get the underlying model (unwrap DDP if needed)."""
-        if isinstance(self.model, (nn.DataParallel, nn.parallel.DistributedDataParallel)):
+        if isinstance(
+            self.model, (nn.DataParallel, nn.parallel.DistributedDataParallel)
+        ):
             return self.model.module
         return self.model
 
@@ -154,27 +171,27 @@ class DistributedTrainer:
         optimizer: Optional[torch.optim.Optimizer] = None,
         scheduler: Optional[Any] = None,
         epoch: int = 0,
-        **kwargs
+        **kwargs,
     ):
         """Save distributed checkpoint (only master process)."""
         if not self.is_master:
             return
 
         checkpoint = {
-            'model_state_dict': self.get_model().state_dict(),
-            'epoch': epoch,
-            'distributed_config': {
-                'world_size': self.config.world_size,
-                'rank': self.config.rank,
-                'backend': self.config.backend,
+            "model_state_dict": self.get_model().state_dict(),
+            "epoch": epoch,
+            "distributed_config": {
+                "world_size": self.config.world_size,
+                "rank": self.config.rank,
+                "backend": self.config.backend,
             },
-            **kwargs
+            **kwargs,
         }
 
         if optimizer is not None:
-            checkpoint['optimizer_state_dict'] = optimizer.state_dict()
+            checkpoint["optimizer_state_dict"] = optimizer.state_dict()
         if scheduler is not None:
-            checkpoint['scheduler_state_dict'] = scheduler.state_dict()
+            checkpoint["scheduler_state_dict"] = scheduler.state_dict()
 
         torch.save(checkpoint, checkpoint_path)
         logger.info(f"Saved checkpoint to {checkpoint_path}")
@@ -184,7 +201,7 @@ class DistributedTrainer:
         checkpoint = torch.load(checkpoint_path, map_location=self.device)
 
         # Load model state
-        self.get_model().load_state_dict(checkpoint['model_state_dict'])
+        self.get_model().load_state_dict(checkpoint["model_state_dict"])
 
         logger.info(f"Loaded checkpoint from {checkpoint_path}")
         return checkpoint
@@ -253,17 +270,23 @@ def setup_distributed_training(config: DistributedTrainingConfig):
                 init_method=config.init_method,
                 world_size=config.world_size,
                 rank=config.rank,
-                timeout=torch.distributed.Timeout(seconds=config.timeout) if hasattr(torch.distributed, 'Timeout') else config.timeout
+                timeout=torch.distributed.Timeout(seconds=config.timeout)
+                if hasattr(torch.distributed, "Timeout")
+                else config.timeout,
             )
         else:
             dist.init_process_group(
                 backend=config.backend,
                 world_size=config.world_size,
                 rank=config.rank,
-                timeout=torch.distributed.Timeout(seconds=config.timeout) if hasattr(torch.distributed, 'Timeout') else config.timeout
+                timeout=torch.distributed.Timeout(seconds=config.timeout)
+                if hasattr(torch.distributed, "Timeout")
+                else config.timeout,
             )
 
-        logger.info(f"Initialized distributed training: rank {config.rank}/{config.world_size}")
+        logger.info(
+            f"Initialized distributed training: rank {config.rank}/{config.world_size}"
+        )
         return True
 
     except Exception as e:
@@ -302,7 +325,7 @@ def distributed_context(config: DistributedTrainingConfig):
 def find_free_port() -> str:
     """Find a free port for distributed training."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         s.listen(1)
         port = s.getsockname()[1]
         return str(port)
@@ -348,11 +371,7 @@ def launch_distributed_training(
         env = os.environ.copy()
         env.update(config.to_env())
 
-        p = mp.Process(
-            target=train_fn,
-            args=(config, *(args or ())),
-            env=env
-        )
+        p = mp.Process(target=train_fn, args=(config, *(args or ())), env=env)
         p.start()
         processes.append(p)
 
@@ -395,7 +414,9 @@ def reduce_loss(loss: torch.Tensor, config: DistributedTrainingConfig) -> torch.
     return reduced_loss
 
 
-def gather_tensor(tensor: torch.Tensor, config: DistributedTrainingConfig) -> List[torch.Tensor]:
+def gather_tensor(
+    tensor: torch.Tensor, config: DistributedTrainingConfig
+) -> List[torch.Tensor]:
     """
     Gather tensor from all processes.
 
@@ -416,7 +437,9 @@ def gather_tensor(tensor: torch.Tensor, config: DistributedTrainingConfig) -> Li
     return gathered_list
 
 
-def broadcast_tensor(tensor: torch.Tensor, src_rank: int, config: DistributedTrainingConfig):
+def broadcast_tensor(
+    tensor: torch.Tensor, src_rank: int, config: DistributedTrainingConfig
+):
     """
     Broadcast tensor from source rank to all processes.
 
@@ -435,15 +458,15 @@ def get_distributed_info() -> Dict[str, Any]:
     """Get information about distributed training setup."""
     if not dist.is_initialized():
         return {
-            'is_distributed': False,
-            'world_size': 1,
-            'rank': 0,
-            'backend': None,
+            "is_distributed": False,
+            "world_size": 1,
+            "rank": 0,
+            "backend": None,
         }
 
     return {
-        'is_distributed': True,
-        'world_size': dist.get_world_size(),
-        'rank': dist.get_rank(),
-        'backend': dist.get_backend(),
+        "is_distributed": True,
+        "world_size": dist.get_world_size(),
+        "rank": dist.get_rank(),
+        "backend": dist.get_backend(),
     }

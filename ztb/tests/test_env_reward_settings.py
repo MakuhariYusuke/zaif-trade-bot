@@ -3,7 +3,6 @@
 Unit tests for HeavyTradingEnv reward settings configuration.
 """
 
-import copy
 import unittest
 from typing import Any, Dict, List, Optional
 
@@ -14,21 +13,26 @@ from ztb.trading.environment.environment import HeavyTradingEnv
 
 class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
     """Test reward settings configuration in HeavyTradingEnv."""
+
     df: pd.DataFrame | None = None
 
     def setUp(self):
         """Set up test fixtures."""
         # Create a minimal DataFrame for testing
-        self.df = pd.DataFrame({
-            'close': [100.0, 101.0, 102.0],
-            'open': [99.0, 100.0, 101.0],
-            'high': [101.0, 102.0, 103.0],
-            'low': [98.0, 99.0, 100.0],
-            'volume': [1000, 1100, 1200],
-            'timestamp': pd.date_range('2023-01-01', periods=3, freq='1min')
-        })
+        self.df = pd.DataFrame(
+            {
+                "close": [100.0, 101.0, 102.0],
+                "open": [99.0, 100.0, 101.0],
+                "high": [101.0, 102.0, 103.0],
+                "low": [98.0, 99.0, 100.0],
+                "volume": [1000, 1100, 1200],
+                "timestamp": pd.date_range("2023-01-01", periods=3, freq="1min"),
+            }
+        )
 
-    def _build_env(self, reward_overrides: Optional[Dict[str, Any]] = None) -> HeavyTradingEnv:
+    def _build_env(
+        self, reward_overrides: Optional[Dict[str, Any]] = None
+    ) -> HeavyTradingEnv:
         """Create an environment with simplified reward settings for deterministic tests."""
         base_reward_settings = {
             "enable_forced_diversity": False,
@@ -59,7 +63,9 @@ class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
         env.config["curriculum_stage"] = "full"
         return env
 
-    def _prepare_reward_state(self, env: HeavyTradingEnv, action_history: List[int]) -> None:
+    def _prepare_reward_state(
+        self, env: HeavyTradingEnv, action_history: List[int]
+    ) -> None:
         """Reset mutable reward-related state for deterministic reward calculations."""
         max_history = getattr(env, "_max_action_history", len(action_history))
         env.action_history = list(action_history[-max_history:])
@@ -122,7 +128,9 @@ class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
         env = HeavyTradingEnv(df=self.df, config=config)
 
         # Check that profit_bonus_multipliers are correctly set
-        self.assertEqual(env.reward_settings["profit_bonus_multipliers"], [0.5, 1.0, 1.5])
+        self.assertEqual(
+            env.reward_settings["profit_bonus_multipliers"], [0.5, 1.0, 1.5]
+        )
 
         # Check that enable_forced_diversity is correctly set
         self.assertTrue(env.reward_settings["enable_forced_diversity"])
@@ -132,7 +140,9 @@ class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
         env = HeavyTradingEnv(df=self.df)
 
         # Check default profit_bonus_multipliers
-        self.assertEqual(env.reward_settings["profit_bonus_multipliers"], [1.0, 1.0, 0.8])
+        self.assertEqual(
+            env.reward_settings["profit_bonus_multipliers"], [1.0, 1.0, 0.8]
+        )
 
         # Check default enable_forced_diversity
         self.assertFalse(env.reward_settings["enable_forced_diversity"])
@@ -244,7 +254,9 @@ class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
         env.reset()
         position_before = env.position
         env.step(0)
-        self.assertEqual(env.position, position_before, "HOLD action should not change position")
+        self.assertEqual(
+            env.position, position_before, "HOLD action should not change position"
+        )
 
         env.reset()
         env.step(1)
@@ -349,36 +361,45 @@ class TestHeavyTradingEnvRewardSettings(unittest.TestCase):
 
         # Create environment with bearish trend data
         env = self._build_env(reward_overrides)
-        env.df = pd.DataFrame({
-            'close': [100.0, 99.0, 98.0],
-            'open': [101.0, 100.0, 99.0],
-            'high': [102.0, 101.0, 100.0],
-            'low': [99.0, 98.0, 97.0],
-            'volume': [1000, 1100, 1200],
-            'sma_short': [97.0, 97.0, 97.0],  # SMA_20 (downtrend)
-            'sma_long': [102.0, 102.0, 102.0],  # SMA_50 (above short)
-            'rsi': [25.0, 28.0, 30.0],  # Oversold
-        })
+        env.df = pd.DataFrame(
+            {
+                "close": [100.0, 99.0, 98.0],
+                "open": [101.0, 100.0, 99.0],
+                "high": [102.0, 101.0, 100.0],
+                "low": [99.0, 98.0, 97.0],
+                "volume": [1000, 1100, 1200],
+                "sma_short": [97.0, 97.0, 97.0],  # SMA_20 (downtrend)
+                "sma_long": [102.0, 102.0, 102.0],  # SMA_50 (above short)
+                "rsi": [25.0, 28.0, 30.0],  # Oversold
+            }
+        )
         env.current_step = 0
 
         # Test that the trend detection strengthening is in place
         # The code now uses stricter thresholds (>1.02 for strong bullish, <0.98 for strong bearish)
         # and enhanced multipliers (1.5 bonus, 0.5 penalty)
         step_data = env.df.iloc[env.current_step]
-        sma_20 = step_data.get('sma_short', 0.0)
-        sma_50 = step_data.get('sma_long', 0.0)
-        rsi = step_data.get('rsi', 50.0)
+        sma_20 = step_data.get("sma_short", 0.0)
+        sma_50 = step_data.get("sma_long", 0.0)
+        rsi = step_data.get("rsi", 50.0)
 
         self.assertLess(sma_20, sma_50, "Should be bearish trend")
         self.assertLess(rsi, 30.0, "Should be oversold")
 
         # Verify trend ratio is in strong bearish range (<0.98)
         trend_ratio = sma_20 / sma_50 if sma_50 > 0 else 1.0
-        self.assertLess(trend_ratio, 0.98, f"Trend ratio ({trend_ratio:.4f}) should indicate strong bearish")
+        self.assertLess(
+            trend_ratio,
+            0.98,
+            f"Trend ratio ({trend_ratio:.4f}) should indicate strong bearish",
+        )
 
         # Additionally verify RSI oversold enhancement would trigger
-        self.assertTrue(rsi < 30.0 and trend_ratio < 1.0, "Should meet RSI oversold + bearish trend conditions")
+        self.assertTrue(
+            rsi < 30.0 and trend_ratio < 1.0,
+            "Should meet RSI oversold + bearish trend conditions",
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

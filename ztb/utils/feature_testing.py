@@ -10,6 +10,8 @@ from typing import Any, Dict
 import numpy as np
 import pandas as pd
 
+TRADING_DAYS_PER_YEAR = 252
+
 
 def calculate_trading_metrics(
     signals: pd.Series, returns: pd.Series
@@ -48,20 +50,30 @@ def calculate_trading_metrics(
 
     # Sharpe ratio
     if strategy_returns.std() > 0:
-        sharpe_ratio = strategy_returns.mean() / strategy_returns.std() * np.sqrt(252)
+        sharpe_ratio = (
+            strategy_returns.mean()
+            / strategy_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
     else:
         sharpe_ratio = 0.0
 
     # Sortino ratio
     downside_returns = strategy_returns[strategy_returns < 0]
     if len(downside_returns) > 0 and downside_returns.std() > 0:
-        sortino_ratio = strategy_returns.mean() / downside_returns.std() * np.sqrt(252)
+        sortino_ratio = (
+            strategy_returns.mean()
+            / downside_returns.std()
+            * np.sqrt(TRADING_DAYS_PER_YEAR)
+        )
     else:
         sortino_ratio = 0.0
 
     # Calmar ratio
     if abs(max_drawdown) > 0:
-        calmar_ratio = strategy_returns.mean() * 252 / abs(max_drawdown)
+        calmar_ratio = (
+            strategy_returns.mean() * TRADING_DAYS_PER_YEAR / abs(max_drawdown)
+        )
     else:
         calmar_ratio = 0.0
 

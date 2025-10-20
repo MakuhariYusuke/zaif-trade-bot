@@ -3,22 +3,24 @@ Type definitions for Automatic Retraining Triggers
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, Optional
 
 
 class TriggerType(Enum):
     """トリガータイプ"""
-    PERFORMANCE = "performance"      # パフォーマンスベース
+
+    PERFORMANCE = "performance"  # パフォーマンスベース
     DATA_DISTRIBUTION = "data_distribution"  # データ分布変化
-    TIME_BASED = "time_based"       # 時間ベース
-    VOLUME_BASED = "volume_based"   # 出来高ベース
-    MANUAL = "manual"              # 手動トリガー
+    TIME_BASED = "time_based"  # 時間ベース
+    VOLUME_BASED = "volume_based"  # 出来高ベース
+    MANUAL = "manual"  # 手動トリガー
 
 
 class TriggerPriority(Enum):
     """トリガー優先度"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -27,17 +29,19 @@ class TriggerPriority(Enum):
 
 class TriggerStatus(Enum):
     """トリガーステータス"""
-    INACTIVE = "inactive"          # 非アクティブ
-    MONITORING = "monitoring"      # 監視中
-    TRIGGERED = "triggered"        # トリガー発動
-    EXECUTING = "executing"        # 実行中
-    COMPLETED = "completed"        # 完了
-    FAILED = "failed"             # 失敗
+
+    INACTIVE = "inactive"  # 非アクティブ
+    MONITORING = "monitoring"  # 監視中
+    TRIGGERED = "triggered"  # トリガー発動
+    EXECUTING = "executing"  # 実行中
+    COMPLETED = "completed"  # 完了
+    FAILED = "failed"  # 失敗
 
 
 @dataclass
 class TriggerCondition:
     """トリガー条件"""
+
     trigger_type: TriggerType
     metric_name: str
     operator: str  # "gt", "lt", "gte", "lte", "eq", "ne"
@@ -50,6 +54,7 @@ class TriggerCondition:
 @dataclass
 class PerformanceMetrics:
     """パフォーマンス指標"""
+
     accuracy: float
     precision: float
     recall: float
@@ -63,6 +68,7 @@ class PerformanceMetrics:
 @dataclass
 class DataDistributionMetrics:
     """データ分布指標"""
+
     feature_means: Dict[str, float]
     feature_stds: Dict[str, float]
     feature_skewness: Dict[str, float]
@@ -74,6 +80,7 @@ class DataDistributionMetrics:
 @dataclass
 class RetrainingRequest:
     """再訓練リクエスト"""
+
     request_id: str
     trigger_type: TriggerType
     trigger_reason: str
@@ -87,6 +94,7 @@ class RetrainingRequest:
 @dataclass
 class RetrainingResult:
     """再訓練結果"""
+
     request_id: str
     success: bool
     new_model_path: Optional[str]
@@ -101,6 +109,7 @@ class RetrainingResult:
 @dataclass
 class TriggerState:
     """トリガー状態"""
+
     trigger_id: str
     condition: TriggerCondition
     status: TriggerStatus
@@ -114,6 +123,7 @@ class TriggerState:
 @dataclass
 class RetrainingSchedule:
     """再訓練スケジュール"""
+
     schedule_id: str
     trigger_type: TriggerType
     cron_expression: Optional[str]  # cron形式のスケジュール
@@ -127,6 +137,7 @@ class RetrainingSchedule:
 @dataclass
 class ResourceUsage:
     """リソース使用量"""
+
     cpu_percent: float
     memory_mb: float
     gpu_memory_mb: Optional[float]
@@ -137,6 +148,7 @@ class ResourceUsage:
 @dataclass
 class RetrainingHistory:
     """再訓練履歴"""
+
     request_id: str
     trigger_type: TriggerType
     start_time: datetime

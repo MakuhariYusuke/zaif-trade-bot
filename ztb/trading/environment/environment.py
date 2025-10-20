@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import gymnasium as gym
 
-from ztb.trading.environment.heavy_env.core import (  # noqa: F401
-    FlipHeavyTradingEnv,
-    HeavyTradingEnv,
-)
+from ztb.trading.environment.heavy_env.core import FlipHeavyTradingEnv, HeavyTradingEnv  # noqa: F401
 from ztb.trading.environment.utils.config import EnvironmentConfig, RewardSettings
 
 __all__ = [

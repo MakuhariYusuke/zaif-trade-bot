@@ -1,0 +1,2345 @@
+{
+  "stage": "ultra_profit",
+  "best_parameters": {
+    "profit_weight": 5.975964532420846,
+    "risk_weight": 0.006350546258973568,
+    "consistency_weight": 0.00295532025658724,
+    "ultra_profit_multiplier": 1.814108493037583,
+    "ultra_risk_multiplier": 0.9545141524929364
+  },
+  "best_scores": {
+    "profit": 0.023150117583295687,
+    "sharpe": -0.790962037350243,
+    "win_rate": 0.39015,
+    "consistency": 0.9996366132962452,
+    "max_drawdown": -0.14699367315482492,
+    "volatility": -0.042286781891842436,
+    "profit_factor": 0.8416869488611085,
+    "calmar_ratio": 0.21158851968980674,
+    "sortino_ratio": 0.02546445672555186,
+    "recovery_factor": 0.21158851968980674
+  },
+  "objectives": [
+    "profit",
+    "sharpe",
+    "win_rate",
+    "consistency"
+  ],
+  "constraints": {},
+  "optimization_time": 178.23548221588135,
+  "convergence_info": {
+    "n_trials": 100,
+    "best_trial_number": 76,
+    "study_best_value": -0.0013454168343146333,
+    "study_best_params": {
+      "profit_weight": 5.975964532420846,
+      "risk_weight": 0.006350546258973568,
+      "consistency_weight": 0.00295532025658724,
+      "ultra_profit_multiplier": 1.814108493037583,
+      "ultra_risk_multiplier": 0.9545141524929364
+    }
+  },
+  "optimization_history": [
+    {
+      "trial_number": 0,
+      "parameters": {
+        "profit_weight": 4.370861069626263,
+        "risk_weight": 0.07969454818643935,
+        "consistency_weight": 0.029106359131330698,
+        "ultra_profit_multiplier": 3.3946339367881464,
+        "ultra_risk_multiplier": 0.39643541684062933
+      },
+      "scores": {
+        "profit": -0.010118210453221477,
+        "sharpe": -0.8143958135799491,
+        "win_rate": 0.39585,
+        "consistency": 0.9996507898053233,
+        "max_drawdown": -0.14301275797787066,
+        "volatility": -0.03947139689920544,
+        "profit_factor": 0.853762313498515,
+        "calmar_ratio": -0.02828646256748214,
+        "sortino_ratio": -0.012770704028876714,
+        "recovery_factor": -0.02828646256748214
+      },
+      "timestamp": "2025-10-19T04:39:31.322543"
+    },
+    {
+      "trial_number": 1,
+      "parameters": {
+        "profit_weight": 2.403950683025824,
+        "risk_weight": 0.0013066739238053278,
+        "consistency_weight": 0.05399484409787434,
+        "ultra_profit_multiplier": 3.404460046972835,
+        "ultra_risk_multiplier": 1.4453378978124864
+      },
+      "scores": {
+        "profit": -0.033950794705112725,
+        "sharpe": -0.7645659201500057,
+        "win_rate": 0.39115,
+        "consistency": 0.9996207625238724,
+        "max_drawdown": -0.14874634375191412,
+        "volatility": -0.042671144052860384,
+        "profit_factor": 0.8373462840567331,
+        "calmar_ratio": -0.17030612750987378,
+        "sortino_ratio": -0.028602941528790407,
+        "recovery_factor": -0.17030612750987378
+      },
+      "timestamp": "2025-10-19T04:39:32.999553"
+    },
+    {
+      "trial_number": 2,
+      "parameters": {
+        "profit_weight": 1.185260448662222,
+        "risk_weight": 0.08706020878304858,
+        "consistency_weight": 0.04622589001020832,
+        "ultra_profit_multiplier": 1.8493564427131046,
+        "ultra_risk_multiplier": 0.4454674376934912
+      },
+      "scores": {
+        "profit": 0.018472560117403752,
+        "sharpe": -0.7080063526400966,
+        "win_rate": 0.39287500000000003,
+        "consistency": 0.9996448891740026,
+        "max_drawdown": -0.15387943841556118,
+        "volatility": -0.0393808425426249,
+        "profit_factor": 0.842297045377829,
+        "calmar_ratio": 0.10143830650942556,
+        "sortino_ratio": 0.0048248782466463296,
+        "recovery_factor": 0.10143830650942556
+      },
+      "timestamp": "2025-10-19T04:39:34.824818"
+    },
+    {
+      "trial_number": 3,
+      "parameters": {
+        "profit_weight": 2.650640588680904,
+        "risk_weight": 0.0040596116104843075,
+        "consistency_weight": 0.01120760621186057,
+        "ultra_profit_multiplier": 2.727780074568463,
+        "ultra_risk_multiplier": 0.6533353663762795
+      },
+      "scores": {
+        "profit": -0.012492262486765743,
+        "sharpe": -0.7569110253391796,
+        "win_rate": 0.392375,
+        "consistency": 0.9996490120111525,
+        "max_drawdown": -0.14471243846873283,
+        "volatility": -0.04019848267360632,
+        "profit_factor": 0.8392462455776001,
+        "calmar_ratio": 0.07126039116013226,
+        "sortino_ratio": 0.005507800482546113,
+        "recovery_factor": 0.07126039116013226
+      },
+      "timestamp": "2025-10-19T04:39:36.491665"
+    },
+    {
+      "trial_number": 4,
+      "parameters": {
+        "profit_weight": 6.506676052501415,
+        "risk_weight": 0.0019010245319870357,
+        "consistency_weight": 0.00383962929980417,
+        "ultra_profit_multiplier": 2.465447373174767,
+        "ultra_risk_multiplier": 0.9665329700123682
+      },
+      "scores": {
+        "profit": -0.0031564975986834443,
+        "sharpe": -0.7949280227410672,
+        "win_rate": 0.39274999999999993,
+        "consistency": 0.9996805117567613,
+        "max_drawdown": -0.13459579294438556,
+        "volatility": -0.03644216925671827,
+        "profit_factor": 0.8324793165090141,
+        "calmar_ratio": -0.07471979244529701,
+        "sortino_ratio": -0.04070770584607105,
+        "recovery_factor": -0.07471979244529701
+      },
+      "timestamp": "2025-10-19T04:39:38.286230"
+    },
+    {
+      "trial_number": 5,
+      "parameters": {
+        "profit_weight": 8.066583652537123,
+        "risk_weight": 0.002508115686045232,
+        "consistency_weight": 0.01067748270948136,
+        "ultra_profit_multiplier": 3.36965827544817,
+        "ultra_risk_multiplier": 0.18825578416799568
+      },
+      "scores": {
+        "profit": 0.013378385300882895,
+        "sharpe": -0.769672709865793,
+        "win_rate": 0.39475,
+        "consistency": 0.9996396720613088,
+        "max_drawdown": -0.14077855495432537,
+        "volatility": -0.04081584771615223,
+        "profit_factor": 0.8500602423599987,
+        "calmar_ratio": 0.18236727604844577,
+        "sortino_ratio": 0.022920592482425006,
+        "recovery_factor": 0.18236727604844577
+      },
+      "timestamp": "2025-10-19T04:39:39.957748"
+    },
+    {
+      "trial_number": 6,
+      "parameters": {
+        "profit_weight": 6.467903667112945,
+        "risk_weight": 0.002193048555664369,
+        "consistency_weight": 0.0013492834268013251,
+        "ultra_profit_multiplier": 4.7955421490133325,
+        "ultra_risk_multiplier": 1.9347008628416629
+      },
+      "scores": {
+        "profit": -0.0036985426112205455,
+        "sharpe": -0.6741800199807407,
+        "win_rate": 0.393125,
+        "consistency": 0.9996415860940744,
+        "max_drawdown": -0.14760026824342573,
+        "volatility": -0.04071554961990432,
+        "profit_factor": 0.8254823068232032,
+        "calmar_ratio": 0.13885971668890695,
+        "sortino_ratio": 0.03600341561232935,
+        "recovery_factor": 0.13885971668890695
+      },
+      "timestamp": "2025-10-19T04:39:41.753390"
+    },
+    {
+      "trial_number": 7,
+      "parameters": {
+        "profit_weight": 8.275576133048151,
+        "risk_weight": 0.0040665633135147945,
+        "consistency_weight": 0.0015679933916723015,
+        "ultra_profit_multiplier": 3.7369321060486276,
+        "ultra_risk_multiplier": 0.9362897381052424
+      },
+      "scores": {
+        "profit": 0.03504574788102338,
+        "sharpe": -0.7825989034882846,
+        "win_rate": 0.39315,
+        "consistency": 0.999688861189226,
+        "max_drawdown": -0.12116765097984103,
+        "volatility": -0.03643140424363473,
+        "profit_factor": 0.8595834894501129,
+        "calmar_ratio": 0.22135414887498622,
+        "sortino_ratio": 0.025586368218769636,
+        "recovery_factor": 0.22135414887498622
+      },
+      "timestamp": "2025-10-19T04:39:43.402539"
+    },
+    {
+      "trial_number": 8,
+      "parameters": {
+        "profit_weight": 2.0983441136030097,
+        "risk_weight": 0.009780337016659405,
+        "consistency_weight": 0.001171593739230706,
+        "ultra_profit_multiplier": 4.637281608315128,
+        "ultra_risk_multiplier": 0.5916819650400321
+      },
+      "scores": {
+        "profit": 0.023387929197995316,
+        "sharpe": -0.6934175424313549,
+        "win_rate": 0.38980000000000004,
+        "consistency": 0.9996262709692965,
+        "max_drawdown": -0.14866635486002683,
+        "volatility": -0.04311597263718477,
+        "profit_factor": 0.8517933913404159,
+        "calmar_ratio": 0.1918860824161015,
+        "sortino_ratio": 0.034766218550770285,
+        "recovery_factor": 0.1918860824161015
+      },
+      "timestamp": "2025-10-19T04:39:45.198972"
+    },
+    {
+      "trial_number": 9,
+      "parameters": {
+        "profit_weight": 6.962700559185838,
+        "risk_weight": 0.004201672054372531,
+        "consistency_weight": 0.010968217207529524,
+        "ultra_profit_multiplier": 3.1868411173731186,
+        "ultra_risk_multiplier": 0.45122346549850134
+      },
+      "scores": {
+        "profit": -0.02004974067708923,
+        "sharpe": -0.790905324584097,
+        "win_rate": 0.391175,
+        "consistency": 0.9996449258844938,
+        "max_drawdown": -0.12673799451630244,
+        "volatility": -0.041622276597429037,
+        "profit_factor": 0.8403501841982046,
+        "calmar_ratio": -0.016524284069235243,
+        "sortino_ratio": 0.0017034584263576139,
+        "recovery_factor": -0.016524284069235243
+      },
+      "timestamp": "2025-10-19T04:39:46.825427"
+    },
+    {
+      "trial_number": 10,
+      "parameters": {
+        "profit_weight": 4.370854561904277,
+        "risk_weight": 0.024801439284476565,
+        "consistency_weight": 0.0032637683158059875,
+        "ultra_profit_multiplier": 4.819874935199754,
+        "ultra_risk_multiplier": 1.3385464464785386
+      },
+      "scores": {
+        "profit": 0.009400406588745969,
+        "sharpe": -0.7252205674772446,
+        "win_rate": 0.39345,
+        "consistency": 0.9996636391457864,
+        "max_drawdown": -0.1277400231418326,
+        "volatility": -0.039390025190960236,
+        "profit_factor": 0.837534434121504,
+        "calmar_ratio": 0.10936770295171763,
+        "sortino_ratio": 0.025432201484332576,
+        "recovery_factor": 0.10936770295171763
+      },
+      "timestamp": "2025-10-19T04:39:48.513215"
+    },
+    {
+      "trial_number": 11,
+      "parameters": {
+        "profit_weight": 5.04081791076959,
+        "risk_weight": 0.012771618166838463,
+        "consistency_weight": 0.001051489790090593,
+        "ultra_profit_multiplier": 4.926237162646117,
+        "ultra_risk_multiplier": 1.9652032355892266
+      },
+      "scores": {
+        "profit": -0.03260511672687727,
+        "sharpe": -0.7209075284221357,
+        "win_rate": 0.389775,
+        "consistency": 0.9996424054111994,
+        "max_drawdown": -0.1534502604992997,
+        "volatility": -0.04109364938679727,
+        "profit_factor": 0.8222716647988741,
+        "calmar_ratio": -0.12361160795846524,
+        "sortino_ratio": -0.06145948660155043,
+        "recovery_factor": -0.12361160795846524
+      },
+      "timestamp": "2025-10-19T04:39:50.286352"
+    },
+    {
+      "trial_number": 12,
+      "parameters": {
+        "profit_weight": 9.70782790938596,
+        "risk_weight": 0.013093310334961418,
+        "consistency_weight": 0.002745681403687874,
+        "ultra_profit_multiplier": 4.385769530699708,
+        "ultra_risk_multiplier": 1.988611037279992
+      },
+      "scores": {
+        "profit": 0.019450668818856237,
+        "sharpe": -0.7170005118862361,
+        "win_rate": 0.39160000000000006,
+        "consistency": 0.9996399351527783,
+        "max_drawdown": -0.14025698360959446,
+        "volatility": -0.041409043305353055,
+        "profit_factor": 0.8320748637990039,
+        "calmar_ratio": 0.180013419493941,
+        "sortino_ratio": 0.017853066988710715,
+        "recovery_factor": 0.180013419493941
+      },
+      "timestamp": "2025-10-19T04:39:51.947704"
+    },
+    {
+      "trial_number": 13,
+      "parameters": {
+        "profit_weight": 3.1605992482478826,
+        "risk_weight": 0.03420675954653768,
+        "consistency_weight": 0.0010213580644466722,
+        "ultra_profit_multiplier": 4.209652366033922,
+        "ultra_risk_multiplier": 1.5345705983957982
+      },
+      "scores": {
+        "profit": 0.006008057963252711,
+        "sharpe": -0.7931425972126719,
+        "win_rate": 0.394525,
+        "consistency": 0.9996586082718044,
+        "max_drawdown": -0.1271927265154908,
+        "volatility": -0.038830819929760355,
+        "profit_factor": 0.8464834278955824,
+        "calmar_ratio": 0.0468501966994243,
+        "sortino_ratio": 0.0035609260557677635,
+        "recovery_factor": 0.0468501966994243
+      },
+      "timestamp": "2025-10-19T04:39:53.734263"
+    },
+    {
+      "trial_number": 14,
+      "parameters": {
+        "profit_weight": 6.067843511634355,
+        "risk_weight": 0.007860679301706693,
+        "consistency_weight": 0.00198751278686704,
+        "ultra_profit_multiplier": 4.157908265277859,
+        "ultra_risk_multiplier": 0.7605035179435069
+      },
+      "scores": {
+        "profit": 0.03349858556086227,
+        "sharpe": -0.7052935752246733,
+        "win_rate": 0.39295,
+        "consistency": 0.9996429796852118,
+        "max_drawdown": -0.13959094328005728,
+        "volatility": -0.04044737796528645,
+        "profit_factor": 0.8409933573475357,
+        "calmar_ratio": 0.26374250368600644,
+        "sortino_ratio": 0.06424341646219799,
+        "recovery_factor": 0.26374250368600644
+      },
+      "timestamp": "2025-10-19T04:39:55.399165"
+    },
+    {
+      "trial_number": 15,
+      "parameters": {
+        "profit_weight": 1.3022729644102498,
+        "risk_weight": 0.008102035588329939,
+        "consistency_weight": 0.0048484014956722745,
+        "ultra_profit_multiplier": 4.087466671535526,
+        "ultra_risk_multiplier": 0.7547511660414326
+      },
+      "scores": {
+        "profit": -0.027958485655564913,
+        "sharpe": -0.8180596555335509,
+        "win_rate": 0.39330000000000004,
+        "consistency": 0.9996553083313207,
+        "max_drawdown": -0.15019855238836127,
+        "volatility": -0.039852207435381135,
+        "profit_factor": 0.833860303234778,
+        "calmar_ratio": -0.18177733937882098,
+        "sortino_ratio": -0.04504126399693145,
+        "recovery_factor": -0.18177733937882098
+      },
+      "timestamp": "2025-10-19T04:39:57.189298"
+    },
+    {
+      "trial_number": 16,
+      "parameters": {
+        "profit_weight": 5.484580560877882,
+        "risk_weight": 0.007818051989097883,
+        "consistency_weight": 0.0021198491189977934,
+        "ultra_profit_multiplier": 3.900906429524201,
+        "ultra_risk_multiplier": 0.7010761476592019
+      },
+      "scores": {
+        "profit": -0.0005314388368180545,
+        "sharpe": -0.8648132800496294,
+        "win_rate": 0.39315,
+        "consistency": 0.9996952128972276,
+        "max_drawdown": -0.12787708657374755,
+        "volatility": -0.035294624451563374,
+        "profit_factor": 0.8346212473076865,
+        "calmar_ratio": -0.16486527158883954,
+        "sortino_ratio": -0.0447804702155372,
+        "recovery_factor": -0.16486527158883954
+      },
+      "timestamp": "2025-10-19T04:39:58.854824"
+    },
+    {
+      "trial_number": 17,
+      "parameters": {
+        "profit_weight": 3.760590902555858,
+        "risk_weight": 0.023166782255983207,
+        "consistency_weight": 0.006529002291893031,
+        "ultra_profit_multiplier": 1.5552513502103507,
+        "ultra_risk_multiplier": 1.1841687845953934
+      },
+      "scores": {
+        "profit": -0.014236681959454656,
+        "sharpe": -0.7925552920782214,
+        "win_rate": 0.39355,
+        "consistency": 0.9996128377852621,
+        "max_drawdown": -0.16877401561126146,
+        "volatility": -0.042764214845949514,
+        "profit_factor": 0.8442970184052309,
+        "calmar_ratio": -0.06303167344007846,
+        "sortino_ratio": -0.03721030769197736,
+        "recovery_factor": -0.06303167344007846
+      },
+      "timestamp": "2025-10-19T04:40:00.672184"
+    },
+    {
+      "trial_number": 18,
+      "parameters": {
+        "profit_weight": 7.999404431562467,
+        "risk_weight": 0.007079889292884152,
+        "consistency_weight": 0.0021428683429035975,
+        "ultra_profit_multiplier": 4.476375961772817,
+        "ultra_risk_multiplier": 0.22112072280469453
+      },
+      "scores": {
+        "profit": 0.03678343458205546,
+        "sharpe": -0.7743599522649498,
+        "win_rate": 0.3947,
+        "consistency": 0.9996749756976133,
+        "max_drawdown": -0.12804357083856677,
+        "volatility": -0.03813588238665988,
+        "profit_factor": 0.8391272834540721,
+        "calmar_ratio": 0.3094041239854093,
+        "sortino_ratio": 0.02094009324403453,
+        "recovery_factor": 0.3094041239854093
+      },
+      "timestamp": "2025-10-19T04:40:02.337576"
+    },
+    {
+      "trial_number": 19,
+      "parameters": {
+        "profit_weight": 2.057327867933378,
+        "risk_weight": 0.048940575921707835,
+        "consistency_weight": 0.005527054547769401,
+        "ultra_profit_multiplier": 1.043956756975085,
+        "ultra_risk_multiplier": 0.8279031370205508
+      },
+      "scores": {
+        "profit": 0.008588681368404988,
+        "sharpe": -0.7304101775131255,
+        "win_rate": 0.389675,
+        "consistency": 0.9996523859409285,
+        "max_drawdown": -0.13864170747136642,
+        "volatility": -0.040007438919796655,
+        "profit_factor": 0.8276169068590405,
+        "calmar_ratio": 0.003990103657973372,
+        "sortino_ratio": -0.00323422558976727,
+        "recovery_factor": 0.003990103657973372
+      },
+      "timestamp": "2025-10-19T04:40:04.103189"
+    },
+    {
+      "trial_number": 20,
+      "parameters": {
+        "profit_weight": 9.84417541100024,
+        "risk_weight": 0.01773786984625312,
+        "consistency_weight": 0.0219326084359244,
+        "ultra_profit_multiplier": 3.6997419468994566,
+        "ultra_risk_multiplier": 1.1158061503696226
+      },
+      "scores": {
+        "profit": 0.017057108342254906,
+        "sharpe": -0.7172958602838784,
+        "win_rate": 0.3922,
+        "consistency": 0.9996689652141078,
+        "max_drawdown": -0.13416508728555226,
+        "volatility": -0.038943523016217514,
+        "profit_factor": 0.8277653441366183,
+        "calmar_ratio": 0.18279010188124512,
+        "sortino_ratio": 0.027637431733554436,
+        "recovery_factor": 0.18279010188124512
+      },
+      "timestamp": "2025-10-19T04:40:05.934218"
+    },
+    {
+      "trial_number": 21,
+      "parameters": {
+        "profit_weight": 6.7278348266793415,
+        "risk_weight": 0.0010147165320592698,
+        "consistency_weight": 0.0014968853562871756,
+        "ultra_profit_multiplier": 4.657733752128965,
+        "ultra_risk_multiplier": 1.7333347628715479
+      },
+      "scores": {
+        "profit": 0.04482395792315766,
+        "sharpe": -0.6991633230864452,
+        "win_rate": 0.3909,
+        "consistency": 0.9996219154009007,
+        "max_drawdown": -0.1501098931670459,
+        "volatility": -0.043370894379936686,
+        "profit_factor": 0.827689669773788,
+        "calmar_ratio": 0.16165063093654644,
+        "sortino_ratio": 0.009451098758523204,
+        "recovery_factor": 0.16165063093654644
+      },
+      "timestamp": "2025-10-19T04:40:07.642927"
+    },
+    {
+      "trial_number": 22,
+      "parameters": {
+        "profit_weight": 7.027411627406964,
+        "risk_weight": 0.0010654564793251082,
+        "consistency_weight": 0.001626898820027436,
+        "ultra_profit_multiplier": 4.523043866246683,
+        "ultra_risk_multiplier": 1.678192155515405
+      },
+      "scores": {
+        "profit": -0.01719322333466672,
+        "sharpe": -0.7341680127893433,
+        "win_rate": 0.396125,
+        "consistency": 0.9996486403425144,
+        "max_drawdown": -0.14084181348800562,
+        "volatility": -0.04046083855927467,
+        "profit_factor": 0.848767028138278,
+        "calmar_ratio": -0.08387135718516076,
+        "sortino_ratio": -0.0053158350060356595,
+        "recovery_factor": -0.08387135718516076
+      },
+      "timestamp": "2025-10-19T04:40:09.407297"
+    },
+    {
+      "trial_number": 23,
+      "parameters": {
+        "profit_weight": 5.737827307084787,
+        "risk_weight": 0.005542985335392657,
+        "consistency_weight": 0.0023558336625198917,
+        "ultra_profit_multiplier": 4.991888995888736,
+        "ultra_risk_multiplier": 0.5736263463878168
+      },
+      "scores": {
+        "profit": 0.03306000955621263,
+        "sharpe": -0.7214217224825036,
+        "win_rate": 0.39762499999999995,
+        "consistency": 0.9996544968569046,
+        "max_drawdown": -0.12489479299580997,
+        "volatility": -0.03944078668302005,
+        "profit_factor": 0.8566617906384614,
+        "calmar_ratio": 0.22073039198350478,
+        "sortino_ratio": 0.04901570597941744,
+        "recovery_factor": 0.22073039198350478
+      },
+      "timestamp": "2025-10-19T04:40:11.113939"
+    },
+    {
+      "trial_number": 24,
+      "parameters": {
+        "profit_weight": 5.8650243055450115,
+        "risk_weight": 0.012942612685016326,
+        "consistency_weight": 0.08812135915023411,
+        "ultra_profit_multiplier": 4.513749111782238,
+        "ultra_risk_multiplier": 1.1947870564705405
+      },
+      "scores": {
+        "profit": 0.055481773527612105,
+        "sharpe": -0.8154512182737166,
+        "win_rate": 0.39235000000000003,
+        "consistency": 0.999655722983418,
+        "max_drawdown": -0.14371276988906911,
+        "volatility": -0.03885919591850182,
+        "profit_factor": 0.8398171166599241,
+        "calmar_ratio": 0.22064811376066976,
+        "sortino_ratio": 0.061617734178998566,
+        "recovery_factor": 0.22064811376066976
+      },
+      "timestamp": "2025-10-19T04:40:12.866611"
+    },
+    {
+      "trial_number": 25,
+      "parameters": {
+        "profit_weight": 4.894710500624423,
+        "risk_weight": 0.003086747235670684,
+        "consistency_weight": 0.0015715949669096244,
+        "ultra_profit_multiplier": 4.146122234665107,
+        "ultra_risk_multiplier": 1.799028221085362
+      },
+      "scores": {
+        "profit": 0.010344802550084964,
+        "sharpe": -0.7384542894513818,
+        "win_rate": 0.39675000000000005,
+        "consistency": 0.9996729244515257,
+        "max_drawdown": -0.1222909294550838,
+        "volatility": -0.0372864663286058,
+        "profit_factor": 0.8625838410882876,
+        "calmar_ratio": 0.2320208853873285,
+        "sortino_ratio": 0.012887553406290001,
+        "recovery_factor": 0.2320208853873285
+      },
+      "timestamp": "2025-10-19T04:40:14.582038"
+    },
+    {
+      "trial_number": 26,
+      "parameters": {
+        "profit_weight": 8.852869949362377,
+        "risk_weight": 0.04147241575469819,
+        "consistency_weight": 0.007212001405714605,
+        "ultra_profit_multiplier": 4.633312826275355,
+        "ultra_risk_multiplier": 0.9205297933993861
+      },
+      "scores": {
+        "profit": 0.024733877851305264,
+        "sharpe": -0.6990994446199372,
+        "win_rate": 0.39532500000000004,
+        "consistency": 0.9996450332137418,
+        "max_drawdown": -0.13249543532293104,
+        "volatility": -0.04077078516788384,
+        "profit_factor": 0.8556257995648751,
+        "calmar_ratio": 0.19012892523142072,
+        "sortino_ratio": 0.0674998856528818,
+        "recovery_factor": 0.19012892523142072
+      },
+      "timestamp": "2025-10-19T04:40:16.333141"
+    },
+    {
+      "trial_number": 27,
+      "parameters": {
+        "profit_weight": 7.452576985952977,
+        "risk_weight": 0.0015913234390542933,
+        "consistency_weight": 0.0042760520684853595,
+        "ultra_profit_multiplier": 2.814642143001149,
+        "ultra_risk_multiplier": 0.31085679012175155
+      },
+      "scores": {
+        "profit": -0.0049728479225917,
+        "sharpe": -0.7252333065313927,
+        "win_rate": 0.394725,
+        "consistency": 0.9996165020444214,
+        "max_drawdown": -0.14219198909588382,
+        "volatility": -0.04383537223296977,
+        "profit_factor": 0.8364487913250274,
+        "calmar_ratio": 0.02341377815976356,
+        "sortino_ratio": 0.005365621361784914,
+        "recovery_factor": 0.02341377815976356
+      },
+      "timestamp": "2025-10-19T04:40:18.021011"
+    },
+    {
+      "trial_number": 28,
+      "parameters": {
+        "profit_weight": 6.283804448631452,
+        "risk_weight": 0.005932780282744927,
+        "consistency_weight": 0.0011950335455942547,
+        "ultra_profit_multiplier": 3.8934882500810373,
+        "ultra_risk_multiplier": 0.575076053237934
+      },
+      "scores": {
+        "profit": -0.0066417283368485625,
+        "sharpe": -0.81803163340871,
+        "win_rate": 0.39325,
+        "consistency": 0.9996790942678065,
+        "max_drawdown": -0.1427949811276796,
+        "volatility": -0.03730832341505078,
+        "profit_factor": 0.8468119474400372,
+        "calmar_ratio": -0.14444786728419637,
+        "sortino_ratio": -0.03412561370980433,
+        "recovery_factor": -0.14444786728419637
+      },
+      "timestamp": "2025-10-19T04:40:19.801210"
+    },
+    {
+      "trial_number": 29,
+      "parameters": {
+        "profit_weight": 3.8686833639654106,
+        "risk_weight": 0.053971081207127014,
+        "consistency_weight": 0.0018626834705686823,
+        "ultra_profit_multiplier": 3.6543061282153415,
+        "ultra_risk_multiplier": 1.2967230388531832
+      },
+      "scores": {
+        "profit": -0.02305774887744866,
+        "sharpe": -0.7662194179663346,
+        "win_rate": 0.39305,
+        "consistency": 0.9996598615565827,
+        "max_drawdown": -0.12810660185542178,
+        "volatility": -0.03990339777911608,
+        "profit_factor": 0.8269965301253617,
+        "calmar_ratio": -0.18847330247750554,
+        "sortino_ratio": -0.026383720315490265,
+        "recovery_factor": -0.18847330247750554
+      },
+      "timestamp": "2025-10-19T04:40:22.225937"
+    },
+    {
+      "trial_number": 30,
+      "parameters": {
+        "profit_weight": 4.627059692466142,
+        "risk_weight": 0.018315849213574167,
+        "consistency_weight": 0.003233937096498569,
+        "ultra_profit_multiplier": 4.2751300742398355,
+        "ultra_risk_multiplier": 0.8050956096426256
+      },
+      "scores": {
+        "profit": -0.006584777032874745,
+        "sharpe": -0.7940675273005409,
+        "win_rate": 0.3947,
+        "consistency": 0.9996457315765224,
+        "max_drawdown": -0.12019543591922631,
+        "volatility": -0.03963684712733391,
+        "profit_factor": 0.8543244457633195,
+        "calmar_ratio": -0.06377882723659109,
+        "sortino_ratio": -0.02299537694750417,
+        "recovery_factor": -0.06377882723659109
+      },
+      "timestamp": "2025-10-19T04:40:23.929881"
+    },
+    {
+      "trial_number": 31,
+      "parameters": {
+        "profit_weight": 8.959216779248685,
+        "risk_weight": 0.058946234305545575,
+        "consistency_weight": 0.017315615482767978,
+        "ultra_profit_multiplier": 4.51764947577651,
+        "ultra_risk_multiplier": 0.9719770242913802
+      },
+      "scores": {
+        "profit": -0.0184494303231445,
+        "sharpe": -0.827211059277386,
+        "win_rate": 0.392625,
+        "consistency": 0.9996077989833492,
+        "max_drawdown": -0.143363268009305,
+        "volatility": -0.043895499415821784,
+        "profit_factor": 0.8439955952578223,
+        "calmar_ratio": 0.01289959796549213,
+        "sortino_ratio": 0.01907214523024638,
+        "recovery_factor": 0.01289959796549213
+      },
+      "timestamp": "2025-10-19T04:40:25.681804"
+    },
+    {
+      "trial_number": 32,
+      "parameters": {
+        "profit_weight": 8.78059583798386,
+        "risk_weight": 0.033770586827607335,
+        "consistency_weight": 0.007515474011042487,
+        "ultra_profit_multiplier": 4.720555155910291,
+        "ultra_risk_multiplier": 0.8829200485608526
+      },
+      "scores": {
+        "profit": 0.01607829426879151,
+        "sharpe": -0.7624386681410121,
+        "win_rate": 0.39235,
+        "consistency": 0.9996751186429661,
+        "max_drawdown": -0.12363441374531832,
+        "volatility": -0.03773224959764284,
+        "profit_factor": 0.8433469387070733,
+        "calmar_ratio": 0.08766362842821424,
+        "sortino_ratio": 0.010636904552944186,
+        "recovery_factor": 0.08766362842821424
+      },
+      "timestamp": "2025-10-19T04:40:27.382616"
+    },
+    {
+      "trial_number": 33,
+      "parameters": {
+        "profit_weight": 7.461945627619094,
+        "risk_weight": 0.00937581878445177,
+        "consistency_weight": 0.016306081266282926,
+        "ultra_profit_multiplier": 4.6089515110946575,
+        "ultra_risk_multiplier": 1.0647769322902105
+      },
+      "scores": {
+        "profit": 0.0049200316876530925,
+        "sharpe": -0.7321598125065175,
+        "win_rate": 0.39769999999999994,
+        "consistency": 0.9996506539374892,
+        "max_drawdown": -0.14454584347853114,
+        "volatility": -0.03940787946658879,
+        "profit_factor": 0.8579463316577404,
+        "calmar_ratio": -0.0004655372573707031,
+        "sortino_ratio": -0.005097022259675581,
+        "recovery_factor": -0.0004655372573707031
+      },
+      "timestamp": "2025-10-19T04:40:29.135960"
+    },
+    {
+      "trial_number": 34,
+      "parameters": {
+        "profit_weight": 9.134501664964754,
+        "risk_weight": 0.03704079464415503,
+        "consistency_weight": 0.03797173968410715,
+        "ultra_profit_multiplier": 4.01202498567071,
+        "ultra_risk_multiplier": 0.5976125357558695
+      },
+      "scores": {
+        "profit": 0.03370378718948583,
+        "sharpe": -0.7371742954541736,
+        "win_rate": 0.394075,
+        "consistency": 0.9996822563304757,
+        "max_drawdown": -0.12230249473886934,
+        "volatility": -0.036119163377133286,
+        "profit_factor": 0.848513662328062,
+        "calmar_ratio": 0.17402925892857446,
+        "sortino_ratio": 0.009256864986707159,
+        "recovery_factor": 0.17402925892857446
+      },
+      "timestamp": "2025-10-19T04:40:30.852835"
+    },
+    {
+      "trial_number": 35,
+      "parameters": {
+        "profit_weight": 7.358869419839723,
+        "risk_weight": 0.0030145841076327238,
+        "consistency_weight": 0.002668424337379734,
+        "ultra_profit_multiplier": 4.315036931038343,
+        "ultra_risk_multiplier": 0.49999347720910037
+      },
+      "scores": {
+        "profit": -0.011947170400111617,
+        "sharpe": -0.8694821446589341,
+        "win_rate": 0.3941,
+        "consistency": 0.9996835581449721,
+        "max_drawdown": -0.12028946494315912,
+        "volatility": -0.03663894511646534,
+        "profit_factor": 0.846272430733967,
+        "calmar_ratio": -0.09892187077404033,
+        "sortino_ratio": -0.015022466265855218,
+        "recovery_factor": -0.09892187077404033
+      },
+      "timestamp": "2025-10-19T04:40:32.638854"
+    },
+    {
+      "trial_number": 36,
+      "parameters": {
+        "profit_weight": 5.280898237807171,
+        "risk_weight": 0.01039233361541311,
+        "consistency_weight": 0.001407045971583817,
+        "ultra_profit_multiplier": 3.434497962089992,
+        "ultra_risk_multiplier": 0.3858304161239179
+      },
+      "scores": {
+        "profit": -0.032259870546371,
+        "sharpe": -0.7466235646404927,
+        "win_rate": 0.38985000000000003,
+        "consistency": 0.999608405170352,
+        "max_drawdown": -0.1301371216135243,
+        "volatility": -0.04400461642725143,
+        "profit_factor": 0.8274992119928852,
+        "calmar_ratio": -0.1573818514460276,
+        "sortino_ratio": -0.02856403634040717,
+        "recovery_factor": -0.1573818514460276
+      },
+      "timestamp": "2025-10-19T04:40:34.338897"
+    },
+    {
+      "trial_number": 37,
+      "parameters": {
+        "profit_weight": 6.240569608859311,
+        "risk_weight": 0.0717407603640817,
+        "consistency_weight": 0.007757214335283766,
+        "ultra_profit_multiplier": 2.4051144808812563,
+        "ultra_risk_multiplier": 0.7013495196225871
+      },
+      "scores": {
+        "profit": -0.0007361621990974176,
+        "sharpe": -0.6919301133990937,
+        "win_rate": 0.39232500000000003,
+        "consistency": 0.9996470805957625,
+        "max_drawdown": -0.13238697650023729,
+        "volatility": -0.04125985264903466,
+        "profit_factor": 0.8233717914744085,
+        "calmar_ratio": -0.0022450201438684765,
+        "sortino_ratio": -0.010108654452174744,
+        "recovery_factor": -0.0022450201438684765
+      },
+      "timestamp": "2025-10-19T04:40:36.119608"
+    },
+    {
+      "trial_number": 38,
+      "parameters": {
+        "profit_weight": 1.858368391223398,
+        "risk_weight": 0.0888989862995869,
+        "consistency_weight": 0.0036730563834552416,
+        "ultra_profit_multiplier": 4.754012308271145,
+        "ultra_risk_multiplier": 1.4817059423481125
+      },
+      "scores": {
+        "profit": 0.05114227087426179,
+        "sharpe": -0.7385156424583881,
+        "win_rate": 0.39144999999999996,
+        "consistency": 0.9996752670945594,
+        "max_drawdown": -0.12103226087775679,
+        "volatility": -0.03695571672333645,
+        "profit_factor": 0.8287701460285373,
+        "calmar_ratio": 0.35573029116386934,
+        "sortino_ratio": 0.03610945917376579,
+        "recovery_factor": 0.35573029116386934
+      },
+      "timestamp": "2025-10-19T04:40:37.850202"
+    },
+    {
+      "trial_number": 39,
+      "parameters": {
+        "profit_weight": 2.868594381341402,
+        "risk_weight": 0.005957093209689813,
+        "consistency_weight": 0.0018054698351578084,
+        "ultra_profit_multiplier": 4.699166533353167,
+        "ultra_risk_multiplier": 0.9961121523698242
+      },
+      "scores": {
+        "profit": -0.011724391198782158,
+        "sharpe": -0.6807857600286945,
+        "win_rate": 0.394125,
+        "consistency": 0.9996577992125585,
+        "max_drawdown": -0.13435828513460418,
+        "volatility": -0.03936430797845017,
+        "profit_factor": 0.8385156124322259,
+        "calmar_ratio": -0.06195799475457499,
+        "sortino_ratio": -0.03277808280181789,
+        "recovery_factor": -0.06195799475457499
+      },
+      "timestamp": "2025-10-19T04:40:39.573913"
+    },
+    {
+      "trial_number": 40,
+      "parameters": {
+        "profit_weight": 8.293853525869844,
+        "risk_weight": 0.0015551138838668167,
+        "consistency_weight": 0.001237195057829833,
+        "ultra_profit_multiplier": 4.982457020125007,
+        "ultra_risk_multiplier": 0.8997434408078082
+      },
+      "scores": {
+        "profit": -0.03824467552938343,
+        "sharpe": -0.6817174253551687,
+        "win_rate": 0.39507499999999995,
+        "consistency": 0.9996267757276265,
+        "max_drawdown": -0.14669580915614178,
+        "volatility": -0.04287172688982392,
+        "profit_factor": 0.8404423297361496,
+        "calmar_ratio": -0.22055559317482681,
+        "sortino_ratio": -0.03821206057356567,
+        "recovery_factor": -0.22055559317482681
+      },
+      "timestamp": "2025-10-19T04:40:41.388641"
+    },
+    {
+      "trial_number": 41,
+      "parameters": {
+        "profit_weight": 1.8650211152272576,
+        "risk_weight": 0.07459104473417907,
+        "consistency_weight": 0.0038999221708796005,
+        "ultra_profit_multiplier": 4.735460557366302,
+        "ultra_risk_multiplier": 1.5904198666672884
+      },
+      "scores": {
+        "profit": 0.022030424427618545,
+        "sharpe": -0.759883721994778,
+        "win_rate": 0.388525,
+        "consistency": 0.9996758043640535,
+        "max_drawdown": -0.12989210580408944,
+        "volatility": -0.03707953781501939,
+        "profit_factor": 0.8205626482524704,
+        "calmar_ratio": 0.2597047171987668,
+        "sortino_ratio": 0.029897518653546673,
+        "recovery_factor": 0.2597047171987668
+      },
+      "timestamp": "2025-10-19T04:40:43.049902"
+    },
+    {
+      "trial_number": 42,
+      "parameters": {
+        "profit_weight": 1.0982221911984364,
+        "risk_weight": 0.08804150256099816,
+        "consistency_weight": 0.0032173085268551588,
+        "ultra_profit_multiplier": 4.347701283117697,
+        "ultra_risk_multiplier": 1.4121280629545279
+      },
+      "scores": {
+        "profit": 0.005410533460669414,
+        "sharpe": -0.7706129374097115,
+        "win_rate": 0.39235000000000003,
+        "consistency": 0.9996335684458875,
+        "max_drawdown": -0.14798196320214385,
+        "volatility": -0.04097009550596363,
+        "profit_factor": 0.8511807760816811,
+        "calmar_ratio": 0.044596301801497144,
+        "sortino_ratio": 0.009817143388602274,
+        "recovery_factor": 0.044596301801497144
+      },
+      "timestamp": "2025-10-19T04:40:44.847815"
+    },
+    {
+      "trial_number": 43,
+      "parameters": {
+        "profit_weight": 1.6093173099689588,
+        "risk_weight": 0.04103353232490291,
+        "consistency_weight": 0.005392905140431689,
+        "ultra_profit_multiplier": 4.840998938306036,
+        "ultra_risk_multiplier": 1.7128407603173892
+      },
+      "scores": {
+        "profit": 0.01727157005997998,
+        "sharpe": -0.7256706195801769,
+        "win_rate": 0.387725,
+        "consistency": 0.9996413728801716,
+        "max_drawdown": -0.14024215056836134,
+        "volatility": -0.04105206361223322,
+        "profit_factor": 0.821099580298257,
+        "calmar_ratio": 0.07669593405504324,
+        "sortino_ratio": -0.005740326864575819,
+        "recovery_factor": 0.07669593405504324
+      },
+      "timestamp": "2025-10-19T04:40:46.492915"
+    },
+    {
+      "trial_number": 44,
+      "parameters": {
+        "profit_weight": 2.3600005241224493,
+        "risk_weight": 0.026733719612384254,
+        "consistency_weight": 0.009268691798124833,
+        "ultra_profit_multiplier": 4.654713910112051,
+        "ultra_risk_multiplier": 1.794663025823201
+      },
+      "scores": {
+        "profit": 0.021559015542661597,
+        "sharpe": -0.7617885715121999,
+        "win_rate": 0.38852499999999995,
+        "consistency": 0.9996556613347619,
+        "max_drawdown": -0.1407181343783339,
+        "volatility": -0.03927562194645354,
+        "profit_factor": 0.8240272234602863,
+        "calmar_ratio": 0.1400564897357196,
+        "sortino_ratio": 0.012483623203028761,
+        "recovery_factor": 0.1400564897357196
+      },
+      "timestamp": "2025-10-19T04:40:48.307001"
+    },
+    {
+      "trial_number": 45,
+      "parameters": {
+        "profit_weight": 3.2902354527893722,
+        "risk_weight": 0.019772068028355447,
+        "consistency_weight": 0.0023856634133110877,
+        "ultra_profit_multiplier": 4.001400776359186,
+        "ultra_risk_multiplier": 1.5199212894714367
+      },
+      "scores": {
+        "profit": -0.012360984207434145,
+        "sharpe": -0.7476141475159666,
+        "win_rate": 0.395,
+        "consistency": 0.9996327734014894,
+        "max_drawdown": -0.15333412358039022,
+        "volatility": -0.041741577155877944,
+        "profit_factor": 0.8525868445448584,
+        "calmar_ratio": -0.0691923547308742,
+        "sortino_ratio": -0.011890375718447999,
+        "recovery_factor": -0.0691923547308742
+      },
+      "timestamp": "2025-10-19T04:40:49.990315"
+    },
+    {
+      "trial_number": 46,
+      "parameters": {
+        "profit_weight": 6.765318415088321,
+        "risk_weight": 0.06388903207492348,
+        "consistency_weight": 0.001028530419048885,
+        "ultra_profit_multiplier": 2.340508610504258,
+        "ultra_risk_multiplier": 1.8472313449101991
+      },
+      "scores": {
+        "profit": 0.01603870680695138,
+        "sharpe": -0.8281580518423841,
+        "win_rate": 0.39344999999999997,
+        "consistency": 0.9996697485090106,
+        "max_drawdown": -0.12087561444365925,
+        "volatility": -0.03788467602920351,
+        "profit_factor": 0.853865351381341,
+        "calmar_ratio": 0.02752530104339266,
+        "sortino_ratio": -0.012209854308126463,
+        "recovery_factor": 0.02752530104339266
+      },
+      "timestamp": "2025-10-19T04:40:51.794580"
+    },
+    {
+      "trial_number": 47,
+      "parameters": {
+        "profit_weight": 4.135096511595804,
+        "risk_weight": 0.004670134024845182,
+        "consistency_weight": 0.003078034737356668,
+        "ultra_profit_multiplier": 3.5081527272856645,
+        "ultra_risk_multiplier": 1.2979081065275466
+      },
+      "scores": {
+        "profit": -0.008797615149599702,
+        "sharpe": -0.8398918707611258,
+        "win_rate": 0.3922,
+        "consistency": 0.9996548631638429,
+        "max_drawdown": -0.1307665911042981,
+        "volatility": -0.038506986463298365,
+        "profit_factor": 0.8419750579825747,
+        "calmar_ratio": 0.09325729399426644,
+        "sortino_ratio": -0.008073905478835859,
+        "recovery_factor": 0.09325729399426644
+      },
+      "timestamp": "2025-10-19T04:40:53.471392"
+    },
+    {
+      "trial_number": 48,
+      "parameters": {
+        "profit_weight": 9.461151961688428,
+        "risk_weight": 0.09064872880979762,
+        "consistency_weight": 0.0013811979454595054,
+        "ultra_profit_multiplier": 3.2061715463197826,
+        "ultra_risk_multiplier": 0.6578300080621274
+      },
+      "scores": {
+        "profit": 0.006736319212855224,
+        "sharpe": -0.6822927403514373,
+        "win_rate": 0.39217500000000005,
+        "consistency": 0.9996393093484364,
+        "max_drawdown": -0.1401580715881353,
+        "volatility": -0.04115496266913391,
+        "profit_factor": 0.8469445297245903,
+        "calmar_ratio": 0.08744028535421611,
+        "sortino_ratio": -0.006543569476746177,
+        "recovery_factor": 0.08744028535421611
+      },
+      "timestamp": "2025-10-19T04:40:55.186618"
+    },
+    {
+      "trial_number": 49,
+      "parameters": {
+        "profit_weight": 5.944051245048615,
+        "risk_weight": 0.014216527797479818,
+        "consistency_weight": 0.0019304126905004962,
+        "ultra_profit_multiplier": 4.815936450178945,
+        "ultra_risk_multiplier": 1.631384998222538
+      },
+      "scores": {
+        "profit": 0.0029674412575601272,
+        "sharpe": -0.7020168011386954,
+        "win_rate": 0.38765,
+        "consistency": 0.9996340141098431,
+        "max_drawdown": -0.14027094903149037,
+        "volatility": -0.04265033279039638,
+        "profit_factor": 0.8164667586626564,
+        "calmar_ratio": 0.14891250044756651,
+        "sortino_ratio": 0.007977382099331553,
+        "recovery_factor": 0.14891250044756651
+      },
+      "timestamp": "2025-10-19T04:40:56.941331"
+    },
+    {
+      "trial_number": 50,
+      "parameters": {
+        "profit_weight": 2.350622233881311,
+        "risk_weight": 0.0023067403248977036,
+        "consistency_weight": 0.004220642407886832,
+        "ultra_profit_multiplier": 4.405777767886294,
+        "ultra_risk_multiplier": 1.4138444894260782
+      },
+      "scores": {
+        "profit": 0.0067579251653889505,
+        "sharpe": -0.6396246953797271,
+        "win_rate": 0.39297499999999996,
+        "consistency": 0.9996362789813933,
+        "max_drawdown": -0.1509676915419246,
+        "volatility": -0.04202846117764085,
+        "profit_factor": 0.8394243588653822,
+        "calmar_ratio": 0.12050382522633644,
+        "sortino_ratio": 0.03381272371063382,
+        "recovery_factor": 0.12050382522633644
+      },
+      "timestamp": "2025-10-19T04:40:58.658870"
+    },
+    {
+      "trial_number": 51,
+      "parameters": {
+        "profit_weight": 2.4110823398978236,
+        "risk_weight": 0.0010877562802760424,
+        "consistency_weight": 0.004555530160796117,
+        "ultra_profit_multiplier": 4.134366903955274,
+        "ultra_risk_multiplier": 1.401150300049655
+      },
+      "scores": {
+        "profit": 0.04275523262435421,
+        "sharpe": -0.7484496999546798,
+        "win_rate": 0.39115,
+        "consistency": 0.999678268805433,
+        "max_drawdown": -0.12348368995778067,
+        "volatility": -0.0365215515759545,
+        "profit_factor": 0.8315526737885973,
+        "calmar_ratio": 0.3106481813530623,
+        "sortino_ratio": 0.013142365589194831,
+        "recovery_factor": 0.3106481813530623
+      },
+      "timestamp": "2025-10-19T04:41:00.425823"
+    },
+    {
+      "trial_number": 52,
+      "parameters": {
+        "profit_weight": 1.5204462100689171,
+        "risk_weight": 0.002423416710009879,
+        "consistency_weight": 0.006288298480983289,
+        "ultra_profit_multiplier": 4.395145842497731,
+        "ultra_risk_multiplier": 1.5400348459036795
+      },
+      "scores": {
+        "profit": 0.011078230291619418,
+        "sharpe": -0.7489196984243546,
+        "win_rate": 0.396825,
+        "consistency": 0.9996299227726564,
+        "max_drawdown": -0.14705277031290942,
+        "volatility": -0.04264707833002634,
+        "profit_factor": 0.8549314485213797,
+        "calmar_ratio": 0.02937574436271951,
+        "sortino_ratio": 0.010227247058607029,
+        "recovery_factor": 0.02937574436271951
+      },
+      "timestamp": "2025-10-19T04:41:02.139276"
+    },
+    {
+      "trial_number": 53,
+      "parameters": {
+        "profit_weight": 3.256564255438261,
+        "risk_weight": 0.0030921699663215467,
+        "consistency_weight": 0.003650063151649485,
+        "ultra_profit_multiplier": 3.84852756621421,
+        "ultra_risk_multiplier": 1.1882122930187358
+      },
+      "scores": {
+        "profit": -0.029538979876108512,
+        "sharpe": -0.7671115817346953,
+        "win_rate": 0.39047499999999996,
+        "consistency": 0.999673091046702,
+        "max_drawdown": -0.12696826987114296,
+        "volatility": -0.03788107391613795,
+        "profit_factor": 0.8210735726705513,
+        "calmar_ratio": -0.20575319615133458,
+        "sortino_ratio": -0.03652223753717482,
+        "recovery_factor": -0.20575319615133458
+      },
+      "timestamp": "2025-10-19T04:41:03.933744"
+    },
+    {
+      "trial_number": 54,
+      "parameters": {
+        "profit_weight": 2.8146656752327335,
+        "risk_weight": 0.0017611334929205995,
+        "consistency_weight": 0.0024238310721636193,
+        "ultra_profit_multiplier": 4.590346112157779,
+        "ultra_risk_multiplier": 0.7967690692814192
+      },
+      "scores": {
+        "profit": 0.006676184816800768,
+        "sharpe": -0.7614564672291878,
+        "win_rate": 0.396775,
+        "consistency": 0.9996664838432929,
+        "max_drawdown": -0.12851752138675765,
+        "volatility": -0.03771389614448663,
+        "profit_factor": 0.8563006549653662,
+        "calmar_ratio": 0.004156020238793055,
+        "sortino_ratio": -0.0011174721404918972,
+        "recovery_factor": 0.004156020238793055
+      },
+      "timestamp": "2025-10-19T04:41:05.665468"
+    },
+    {
+      "trial_number": 55,
+      "parameters": {
+        "profit_weight": 2.1117876910926956,
+        "risk_weight": 0.0012855857959071027,
+        "consistency_weight": 0.01356081093973102,
+        "ultra_profit_multiplier": 4.860380156684057,
+        "ultra_risk_multiplier": 0.10506912642683452
+      },
+      "scores": {
+        "profit": -0.0022918297920356823,
+        "sharpe": -0.7721029825800778,
+        "win_rate": 0.39195,
+        "consistency": 0.9996296392869963,
+        "max_drawdown": -0.13658532611267188,
+        "volatility": -0.042602433312874485,
+        "profit_factor": 0.8381112980162083,
+        "calmar_ratio": -0.040780255982644883,
+        "sortino_ratio": -0.013190548051532011,
+        "recovery_factor": -0.040780255982644883
+      },
+      "timestamp": "2025-10-19T04:41:07.354683"
+    },
+    {
+      "trial_number": 56,
+      "parameters": {
+        "profit_weight": 1.7785460895228418,
+        "risk_weight": 0.00947396901345599,
+        "consistency_weight": 0.005222768896270987,
+        "ultra_profit_multiplier": 4.422536492790202,
+        "ultra_risk_multiplier": 1.8642922711285657
+      },
+      "scores": {
+        "profit": 0.020714178456097077,
+        "sharpe": -0.8434315784794753,
+        "win_rate": 0.392275,
+        "consistency": 0.9996592652980574,
+        "max_drawdown": -0.13423808221944114,
+        "volatility": -0.038366546236186,
+        "profit_factor": 0.8371020825596422,
+        "calmar_ratio": 0.09824807500118579,
+        "sortino_ratio": 0.023744062921844666,
+        "recovery_factor": 0.09824807500118579
+      },
+      "timestamp": "2025-10-19T04:41:09.181409"
+    },
+    {
+      "trial_number": 57,
+      "parameters": {
+        "profit_weight": 7.905995124915806,
+        "risk_weight": 0.001998588046237244,
+        "consistency_weight": 0.008962479998219438,
+        "ultra_profit_multiplier": 4.180623216262162,
+        "ultra_risk_multiplier": 1.4917039526388434
+      },
+      "scores": {
+        "profit": 0.0019355672224759257,
+        "sharpe": -0.7650862988333984,
+        "win_rate": 0.392575,
+        "consistency": 0.9996606430001616,
+        "max_drawdown": -0.1332577150804229,
+        "volatility": -0.038588039625604476,
+        "profit_factor": 0.8246974922238879,
+        "calmar_ratio": 0.002807608142413147,
+        "sortino_ratio": -0.022281252206410824,
+        "recovery_factor": 0.002807608142413147
+      },
+      "timestamp": "2025-10-19T04:41:10.899430"
+    },
+    {
+      "trial_number": 58,
+      "parameters": {
+        "profit_weight": 1.0223567678609773,
+        "risk_weight": 0.04545548063755923,
+        "consistency_weight": 0.0015489899184116156,
+        "ultra_profit_multiplier": 4.990601460723135,
+        "ultra_risk_multiplier": 1.7360032309353262
+      },
+      "scores": {
+        "profit": -0.00408898625771581,
+        "sharpe": -0.7382661832341189,
+        "win_rate": 0.390475,
+        "consistency": 0.9996636347175043,
+        "max_drawdown": -0.12459456528073058,
+        "volatility": -0.03881949446938958,
+        "profit_factor": 0.8189443597185428,
+        "calmar_ratio": -0.049799936844497,
+        "sortino_ratio": 0.007570604881944635,
+        "recovery_factor": -0.049799936844497
+      },
+      "timestamp": "2025-10-19T04:41:12.700977"
+    },
+    {
+      "trial_number": 59,
+      "parameters": {
+        "profit_weight": 3.4967752132157015,
+        "risk_weight": 0.015011759633488402,
+        "consistency_weight": 0.002854865535286387,
+        "ultra_profit_multiplier": 2.1192654646093163,
+        "ultra_risk_multiplier": 1.099767889794099
+      },
+      "scores": {
+        "profit": 0.00333671099773461,
+        "sharpe": -0.652874731413555,
+        "win_rate": 0.395025,
+        "consistency": 0.9996108656526038,
+        "max_drawdown": -0.1463359176756946,
+        "volatility": -0.04374318566521686,
+        "profit_factor": 0.8624768760269195,
+        "calmar_ratio": -0.031753613624881355,
+        "sortino_ratio": -0.010250273701448898,
+        "recovery_factor": -0.031753613624881355
+      },
+      "timestamp": "2025-10-19T04:41:14.449451"
+    },
+    {
+      "trial_number": 60,
+      "parameters": {
+        "profit_weight": 3.84302650513911,
+        "risk_weight": 0.015750251936100485,
+        "consistency_weight": 0.002781085248018521,
+        "ultra_profit_multiplier": 1.6860019657487122,
+        "ultra_risk_multiplier": 1.0878476077175203
+      },
+      "scores": {
+        "profit": 0.003682211457908313,
+        "sharpe": -0.8205702041253035,
+        "win_rate": 0.386175,
+        "consistency": 0.99966344469984,
+        "max_drawdown": -0.1370483670031001,
+        "volatility": -0.0377176290761152,
+        "profit_factor": 0.8336599765302906,
+        "calmar_ratio": 0.0009666398690467842,
+        "sortino_ratio": -0.017109788935315833,
+        "recovery_factor": 0.0009666398690467842
+      },
+      "timestamp": "2025-10-19T04:41:16.255751"
+    },
+    {
+      "trial_number": 61,
+      "parameters": {
+        "profit_weight": 2.520668581063461,
+        "risk_weight": 0.027909604014638746,
+        "consistency_weight": 0.003816788680865096,
+        "ultra_profit_multiplier": 2.139244164062136,
+        "ultra_risk_multiplier": 1.25256464387093
+      },
+      "scores": {
+        "profit": -0.033087643779795534,
+        "sharpe": -0.7807895312525225,
+        "win_rate": 0.396725,
+        "consistency": 0.9996648668255097,
+        "max_drawdown": -0.1393711907767759,
+        "volatility": -0.039121686710518515,
+        "profit_factor": 0.8662363173240231,
+        "calmar_ratio": -0.32786163815359776,
+        "sortino_ratio": -0.06883473880030809,
+        "recovery_factor": -0.32786163815359776
+      },
+      "timestamp": "2025-10-19T04:41:17.933211"
+    },
+    {
+      "trial_number": 62,
+      "parameters": {
+        "profit_weight": 2.1070718831622472,
+        "risk_weight": 0.011408920751717845,
+        "consistency_weight": 0.001710733894778767,
+        "ultra_profit_multiplier": 3.0404176285662237,
+        "ultra_risk_multiplier": 0.735385627219163
+      },
+      "scores": {
+        "profit": 0.04579745380862399,
+        "sharpe": -0.7262336299026464,
+        "win_rate": 0.39605,
+        "consistency": 0.9996762475883493,
+        "max_drawdown": -0.1257621509348165,
+        "volatility": -0.037675454638717874,
+        "profit_factor": 0.8398473847170081,
+        "calmar_ratio": 0.41041571584034,
+        "sortino_ratio": 0.0460607409996954,
+        "recovery_factor": 0.41041571584034
+      },
+      "timestamp": "2025-10-19T04:41:19.640894"
+    },
+    {
+      "trial_number": 63,
+      "parameters": {
+        "profit_weight": 2.227437475238139,
+        "risk_weight": 0.01169836175450978,
+        "consistency_weight": 0.0019852338203488703,
+        "ultra_profit_multiplier": 1.9829945127385447,
+        "ultra_risk_multiplier": 0.850413323096699
+      },
+      "scores": {
+        "profit": 0.008854723986815666,
+        "sharpe": -0.781039628395171,
+        "win_rate": 0.392775,
+        "consistency": 0.9996769253473263,
+        "max_drawdown": -0.12953702099775108,
+        "volatility": -0.03696415243870214,
+        "profit_factor": 0.8283425772915106,
+        "calmar_ratio": 0.14093590828515365,
+        "sortino_ratio": 0.02517173332588265,
+        "recovery_factor": 0.14093590828515365
+      },
+      "timestamp": "2025-10-19T04:41:22.195894"
+    },
+    {
+      "trial_number": 64,
+      "parameters": {
+        "profit_weight": 3.5076564863140396,
+        "risk_weight": 0.006980899310365535,
+        "consistency_weight": 0.0011476729741239273,
+        "ultra_profit_multiplier": 2.66751808683236,
+        "ultra_risk_multiplier": 0.7400429534804528
+      },
+      "scores": {
+        "profit": -0.021984990496586726,
+        "sharpe": -0.8225700382755029,
+        "win_rate": 0.39347499999999996,
+        "consistency": 0.9996326128050832,
+        "max_drawdown": -0.14250965115466566,
+        "volatility": -0.0418228471953947,
+        "profit_factor": 0.8408696680349237,
+        "calmar_ratio": -0.18348898725652904,
+        "sortino_ratio": -0.02331611189214119,
+        "recovery_factor": -0.18348898725652904
+      },
+      "timestamp": "2025-10-19T04:41:23.942190"
+    },
+    {
+      "trial_number": 65,
+      "parameters": {
+        "profit_weight": 2.794752112484358,
+        "risk_weight": 0.02129242088329603,
+        "consistency_weight": 0.001580359302053043,
+        "ultra_profit_multiplier": 2.8383533165291324,
+        "ultra_risk_multiplier": 0.5055570484609468
+      },
+      "scores": {
+        "profit": 0.01360484752113622,
+        "sharpe": -0.7473500957262105,
+        "win_rate": 0.390775,
+        "consistency": 0.999662717694711,
+        "max_drawdown": -0.12936239559948015,
+        "volatility": -0.038866228625408436,
+        "profit_factor": 0.8414369444911537,
+        "calmar_ratio": 0.1479389836211969,
+        "sortino_ratio": 0.004255321073744371,
+        "recovery_factor": 0.1479389836211969
+      },
+      "timestamp": "2025-10-19T04:41:25.702108"
+    },
+    {
+      "trial_number": 66,
+      "parameters": {
+        "profit_weight": 5.002773417123498,
+        "risk_weight": 0.004826423861298864,
+        "consistency_weight": 0.0017394728304917781,
+        "ultra_profit_multiplier": 1.408858407589775,
+        "ultra_risk_multiplier": 1.0151108196024334
+      },
+      "scores": {
+        "profit": -0.0051992583330877085,
+        "sharpe": -0.7531990392572687,
+        "win_rate": 0.393325,
+        "consistency": 0.9996385628466263,
+        "max_drawdown": -0.1366200723814762,
+        "volatility": -0.04067195781360582,
+        "profit_factor": 0.8407451646243536,
+        "calmar_ratio": -0.11694917960242249,
+        "sortino_ratio": -0.01238990184764287,
+        "recovery_factor": -0.11694917960242249
+      },
+      "timestamp": "2025-10-19T04:41:27.411908"
+    },
+    {
+      "trial_number": 67,
+      "parameters": {
+        "profit_weight": 1.4001707076374204,
+        "risk_weight": 0.0036469850580338496,
+        "consistency_weight": 0.0022677674270594147,
+        "ultra_profit_multiplier": 3.2208794373499576,
+        "ultra_risk_multiplier": 0.9288721701597674
+      },
+      "scores": {
+        "profit": -0.02815923407460874,
+        "sharpe": -0.7711408841035197,
+        "win_rate": 0.3948,
+        "consistency": 0.9996659193567133,
+        "max_drawdown": -0.13101854760789808,
+        "volatility": -0.03903167390521012,
+        "profit_factor": 0.8447981414569419,
+        "calmar_ratio": -0.19598064450226757,
+        "sortino_ratio": -0.02919336350415766,
+        "recovery_factor": -0.19598064450226757
+      },
+      "timestamp": "2025-10-19T04:41:29.177114"
+    },
+    {
+      "trial_number": 68,
+      "parameters": {
+        "profit_weight": 4.649920258198997,
+        "risk_weight": 0.007895504260741605,
+        "consistency_weight": 0.0013251092528246376,
+        "ultra_profit_multiplier": 3.018523496636381,
+        "ultra_risk_multiplier": 0.6593292522108509
+      },
+      "scores": {
+        "profit": -0.012989319868466076,
+        "sharpe": -0.7708342144720183,
+        "win_rate": 0.393725,
+        "consistency": 0.9996428537377886,
+        "max_drawdown": -0.1367675924533148,
+        "volatility": -0.04055089164713289,
+        "profit_factor": 0.8284826201390499,
+        "calmar_ratio": -0.08113302485650897,
+        "sortino_ratio": 0.002934723077587679,
+        "recovery_factor": -0.08113302485650897
+      },
+      "timestamp": "2025-10-19T04:41:30.928261"
+    },
+    {
+      "trial_number": 69,
+      "parameters": {
+        "profit_weight": 3.0873247582767203,
+        "risk_weight": 0.0158452788056837,
+        "consistency_weight": 0.0027250876718849025,
+        "ultra_profit_multiplier": 4.276005460575404,
+        "ultra_risk_multiplier": 1.1202044328498952
+      },
+      "scores": {
+        "profit": 0.004180506646748461,
+        "sharpe": -0.7075032504286476,
+        "win_rate": 0.394975,
+        "consistency": 0.9996571982223921,
+        "max_drawdown": -0.14709369652847865,
+        "volatility": -0.039110770785604196,
+        "profit_factor": 0.8513386185854351,
+        "calmar_ratio": 0.011180180384344148,
+        "sortino_ratio": -0.017563819103773443,
+        "recovery_factor": 0.011180180384344148
+      },
+      "timestamp": "2025-10-19T04:41:32.701217"
+    },
+    {
+      "trial_number": 70,
+      "parameters": {
+        "profit_weight": 7.026380648234732,
+        "risk_weight": 0.010590487986654013,
+        "consistency_weight": 0.006762551626884836,
+        "ultra_profit_multiplier": 2.522032239245587,
+        "ultra_risk_multiplier": 0.7688533856650932
+      },
+      "scores": {
+        "profit": 0.007213405738793033,
+        "sharpe": -0.7634081145546133,
+        "win_rate": 0.394875,
+        "consistency": 0.9996458621839664,
+        "max_drawdown": -0.13205220531980483,
+        "volatility": -0.03955590502742169,
+        "profit_factor": 0.8463435916870033,
+        "calmar_ratio": 0.009531187867568987,
+        "sortino_ratio": -0.02212794211417207,
+        "recovery_factor": 0.009531187867568987
+      },
+      "timestamp": "2025-10-19T04:41:34.427614"
+    },
+    {
+      "trial_number": 71,
+      "parameters": {
+        "profit_weight": 1.8726227841489789,
+        "risk_weight": 0.01186069029756301,
+        "consistency_weight": 0.003460641553051312,
+        "ultra_profit_multiplier": 4.5461460227159005,
+        "ultra_risk_multiplier": 0.5939983389051577
+      },
+      "scores": {
+        "profit": -0.024533355097594217,
+        "sharpe": -0.7010644067408691,
+        "win_rate": 0.394775,
+        "consistency": 0.999645816913155,
+        "max_drawdown": -0.14403943430308813,
+        "volatility": -0.03973823006650527,
+        "profit_factor": 0.8565542176504525,
+        "calmar_ratio": -0.11563232991159422,
+        "sortino_ratio": -0.04191645228904346,
+        "recovery_factor": -0.11563232991159422
+      },
+      "timestamp": "2025-10-19T04:41:36.163522"
+    },
+    {
+      "trial_number": 72,
+      "parameters": {
+        "profit_weight": 5.504496595422438,
+        "risk_weight": 0.031874089534260415,
+        "consistency_weight": 0.002078648127757217,
+        "ultra_profit_multiplier": 4.641964371182725,
+        "ultra_risk_multiplier": 1.3604936932825507
+      },
+      "scores": {
+        "profit": -0.005546439863316821,
+        "sharpe": -0.7353002213344553,
+        "win_rate": 0.390725,
+        "consistency": 0.9996573251329129,
+        "max_drawdown": -0.11968678087350618,
+        "volatility": -0.03910389349617599,
+        "profit_factor": 0.8262066774133761,
+        "calmar_ratio": 0.060802145781165405,
+        "sortino_ratio": 0.00015484647327767415,
+        "recovery_factor": 0.060802145781165405
+      },
+      "timestamp": "2025-10-19T04:41:38.000727"
+    },
+    {
+      "trial_number": 73,
+      "parameters": {
+        "profit_weight": 6.5920652169445395,
+        "risk_weight": 0.006549770800650493,
+        "consistency_weight": 0.004346125471074247,
+        "ultra_profit_multiplier": 1.2529027811685958,
+        "ultra_risk_multiplier": 0.84609500041654
+      },
+      "scores": {
+        "profit": 0.035663724244706096,
+        "sharpe": -0.6707262579880336,
+        "win_rate": 0.394425,
+        "consistency": 0.9996324256893319,
+        "max_drawdown": -0.1421531716526962,
+        "volatility": -0.042419084564996115,
+        "profit_factor": 0.8265140937994359,
+        "calmar_ratio": 0.2714911450120613,
+        "sortino_ratio": 0.03242145492340051,
+        "recovery_factor": 0.2714911450120613
+      },
+      "timestamp": "2025-10-19T04:41:39.684882"
+    },
+    {
+      "trial_number": 74,
+      "parameters": {
+        "profit_weight": 6.516530932558352,
+        "risk_weight": 0.007042953107813056,
+        "consistency_weight": 0.004111513335221707,
+        "ultra_profit_multiplier": 1.3290467108754322,
+        "ultra_risk_multiplier": 0.8641526735975031
+      },
+      "scores": {
+        "profit": 0.022344179370685863,
+        "sharpe": -0.7215552891491492,
+        "win_rate": 0.38535,
+        "consistency": 0.9996378186517969,
+        "max_drawdown": -0.1553319494152829,
+        "volatility": -0.04112575135835758,
+        "profit_factor": 0.8188055343156088,
+        "calmar_ratio": 0.1780666209899014,
+        "sortino_ratio": 0.01571621670263494,
+        "recovery_factor": 0.1780666209899014
+      },
+      "timestamp": "2025-10-19T04:41:41.499459"
+    },
+    {
+      "trial_number": 75,
+      "parameters": {
+        "profit_weight": 7.632451841477201,
+        "risk_weight": 0.00902177568791427,
+        "consistency_weight": 0.004854836411238684,
+        "ultra_profit_multiplier": 1.1431672801792216,
+        "ultra_risk_multiplier": 0.7333280421799143
+      },
+      "scores": {
+        "profit": 0.03291565570150298,
+        "sharpe": -0.7421108768663869,
+        "win_rate": 0.39,
+        "consistency": 0.9996409986724013,
+        "max_drawdown": -0.13321231839308353,
+        "volatility": -0.040496704337843206,
+        "profit_factor": 0.8474752464545552,
+        "calmar_ratio": 0.22449118374685192,
+        "sortino_ratio": 0.04041665784019958,
+        "recovery_factor": 0.22449118374685192
+      },
+      "timestamp": "2025-10-19T04:41:43.154829"
+    },
+    {
+      "trial_number": 76,
+      "parameters": {
+        "profit_weight": 5.975964532420846,
+        "risk_weight": 0.006350546258973568,
+        "consistency_weight": 0.00295532025658724,
+        "ultra_profit_multiplier": 1.814108493037583,
+        "ultra_risk_multiplier": 0.9545141524929364
+      },
+      "scores": {
+        "profit": 0.028004256111356762,
+        "sharpe": -0.6379534398086228,
+        "win_rate": 0.39437500000000003,
+        "consistency": 0.9996391266372948,
+        "max_drawdown": -0.1460347515392924,
+        "volatility": -0.04162429094019239,
+        "profit_factor": 0.837239636082951,
+        "calmar_ratio": 0.1834984651968681,
+        "sortino_ratio": 0.025915652442104566,
+        "recovery_factor": 0.1834984651968681
+      },
+      "timestamp": "2025-10-19T04:41:44.974243"
+    },
+    {
+      "trial_number": 77,
+      "parameters": {
+        "profit_weight": 6.064445010941339,
+        "risk_weight": 0.005784466211542251,
+        "consistency_weight": 0.0014498625800297928,
+        "ultra_profit_multiplier": 1.7719212645651714,
+        "ultra_risk_multiplier": 0.9557767422856105
+      },
+      "scores": {
+        "profit": 0.007163097521875134,
+        "sharpe": -0.7184421991657236,
+        "win_rate": 0.391125,
+        "consistency": 0.99965886002181,
+        "max_drawdown": -0.13500130863689427,
+        "volatility": -0.039712893253632704,
+        "profit_factor": 0.8538203524041924,
+        "calmar_ratio": 0.05732111122139972,
+        "sortino_ratio": 0.02438670939471865,
+        "recovery_factor": 0.05732111122139972
+      },
+      "timestamp": "2025-10-19T04:41:46.666137"
+    },
+    {
+      "trial_number": 78,
+      "parameters": {
+        "profit_weight": 5.617042203334645,
+        "risk_weight": 0.008646318909675509,
+        "consistency_weight": 0.0025678618585325227,
+        "ultra_profit_multiplier": 2.0868474337111156,
+        "ultra_risk_multiplier": 0.4024367909209128
+      },
+      "scores": {
+        "profit": -0.0009038685864306562,
+        "sharpe": -0.7814380526925506,
+        "win_rate": 0.390775,
+        "consistency": 0.9996578059192192,
+        "max_drawdown": -0.13124531277874907,
+        "volatility": -0.038417386041768906,
+        "profit_factor": 0.8308307170675171,
+        "calmar_ratio": 0.012871205499014767,
+        "sortino_ratio": -0.003021468705805613,
+        "recovery_factor": 0.012871205499014767
+      },
+      "timestamp": "2025-10-19T04:41:48.558074"
+    },
+    {
+      "trial_number": 79,
+      "parameters": {
+        "profit_weight": 6.584340925349251,
+        "risk_weight": 0.005058188395014785,
+        "consistency_weight": 0.0011184423733918711,
+        "ultra_profit_multiplier": 1.4230812918446307,
+        "ultra_risk_multiplier": 0.5333160068605616
+      },
+      "scores": {
+        "profit": -0.030635649451637298,
+        "sharpe": -0.7927563191709593,
+        "win_rate": 0.390325,
+        "consistency": 0.9996563529456892,
+        "max_drawdown": -0.15785685332445262,
+        "volatility": -0.039427874273164625,
+        "profit_factor": 0.822909739372753,
+        "calmar_ratio": 0.020403068342614628,
+        "sortino_ratio": 0.0008720715480767041,
+        "recovery_factor": 0.020403068342614628
+      },
+      "timestamp": "2025-10-19T04:41:50.405594"
+    },
+    {
+      "trial_number": 80,
+      "parameters": {
+        "profit_weight": 5.322288945560178,
+        "risk_weight": 0.00658089097220877,
+        "consistency_weight": 0.002923760714468278,
+        "ultra_profit_multiplier": 1.5926764692523756,
+        "ultra_risk_multiplier": 1.0415101380121183
+      },
+      "scores": {
+        "profit": 0.023641151113091924,
+        "sharpe": -0.7018478699899382,
+        "win_rate": 0.39475000000000005,
+        "consistency": 0.9996723758381415,
+        "max_drawdown": -0.1284160536861742,
+        "volatility": -0.0369517438685691,
+        "profit_factor": 0.8455620618281234,
+        "calmar_ratio": 0.24318426260621265,
+        "sortino_ratio": 0.017925747298299065,
+        "recovery_factor": 0.24318426260621265
+      },
+      "timestamp": "2025-10-19T04:41:52.181838"
+    },
+    {
+      "trial_number": 81,
+      "parameters": {
+        "profit_weight": 6.802088170168391,
+        "risk_weight": 0.003680464013779433,
+        "consistency_weight": 0.001738404511840033,
+        "ultra_profit_multiplier": 1.1368339071845075,
+        "ultra_risk_multiplier": 0.8261278029913076
+      },
+      "scores": {
+        "profit": -0.006664602528584279,
+        "sharpe": -0.7922201610411138,
+        "win_rate": 0.39037499999999997,
+        "consistency": 0.999671983087218,
+        "max_drawdown": -0.1391147733165082,
+        "volatility": -0.037855598151953655,
+        "profit_factor": 0.8381809954578566,
+        "calmar_ratio": -0.005739007279583222,
+        "sortino_ratio": -0.004357309089286395,
+        "recovery_factor": -0.005739007279583222
+      },
+      "timestamp": "2025-10-19T04:41:53.976451"
+    },
+    {
+      "trial_number": 82,
+      "parameters": {
+        "profit_weight": 6.2012817789703885,
+        "risk_weight": 0.010479197048341654,
+        "consistency_weight": 0.0021390407224688643,
+        "ultra_profit_multiplier": 1.8828509470269856,
+        "ultra_risk_multiplier": 0.9116270580236252
+      },
+      "scores": {
+        "profit": -0.0004162846100027595,
+        "sharpe": -0.8453585550665053,
+        "win_rate": 0.39225,
+        "consistency": 0.999683047876553,
+        "max_drawdown": -0.11515642692185513,
+        "volatility": -0.035784355243431286,
+        "profit_factor": 0.847000572613376,
+        "calmar_ratio": 0.005341000112987035,
+        "sortino_ratio": -0.018970540222273607,
+        "recovery_factor": 0.005341000112987035
+      },
+      "timestamp": "2025-10-19T04:41:55.646019"
+    },
+    {
+      "trial_number": 83,
+      "parameters": {
+        "profit_weight": 7.1569012101382095,
+        "risk_weight": 0.008109430503913596,
+        "consistency_weight": 0.0044503291616621084,
+        "ultra_profit_multiplier": 2.199714860860844,
+        "ultra_risk_multiplier": 0.6985792421643879
+      },
+      "scores": {
+        "profit": 0.0001929771737338437,
+        "sharpe": -0.7973487183297732,
+        "win_rate": 0.392875,
+        "consistency": 0.9996556958876938,
+        "max_drawdown": -0.1354307760074931,
+        "volatility": -0.039343915962765263,
+        "profit_factor": 0.8434010852062603,
+        "calmar_ratio": 0.0744266989049732,
+        "sortino_ratio": -0.014805101142697487,
+        "recovery_factor": 0.0744266989049732
+      },
+      "timestamp": "2025-10-19T04:41:57.460083"
+    },
+    {
+      "trial_number": 84,
+      "parameters": {
+        "profit_weight": 5.852632402295843,
+        "risk_weight": 0.0013068875233611024,
+        "consistency_weight": 0.0012775670387751958,
+        "ultra_profit_multiplier": 4.4787701731669,
+        "ultra_risk_multiplier": 0.7890132722228005
+      },
+      "scores": {
+        "profit": -0.010933084790598568,
+        "sharpe": -0.705259673620267,
+        "win_rate": 0.39217499999999994,
+        "consistency": 0.9996393655579375,
+        "max_drawdown": -0.1490165254616762,
+        "volatility": -0.04087131367177225,
+        "profit_factor": 0.831811110970597,
+        "calmar_ratio": -0.19982611989614774,
+        "sortino_ratio": -0.048106791017844694,
+        "recovery_factor": -0.19982611989614774
+      },
+      "timestamp": "2025-10-19T04:41:59.141184"
+    },
+    {
+      "trial_number": 85,
+      "parameters": {
+        "profit_weight": 6.318458807122657,
+        "risk_weight": 0.014473966317646518,
+        "consistency_weight": 0.005903060824244452,
+        "ultra_profit_multiplier": 3.5513998948817957,
+        "ultra_risk_multiplier": 0.885405187955807
+      },
+      "scores": {
+        "profit": -0.006450768642680044,
+        "sharpe": -0.76703824372186,
+        "win_rate": 0.39592499999999997,
+        "consistency": 0.9996727408362912,
+        "max_drawdown": -0.13314441096313567,
+        "volatility": -0.03794699734138451,
+        "profit_factor": 0.8584459240190088,
+        "calmar_ratio": 0.021150828534601346,
+        "sortino_ratio": 0.022396065745071615,
+        "recovery_factor": 0.021150828534601346
+      },
+      "timestamp": "2025-10-19T04:42:01.045223"
+    },
+    {
+      "trial_number": 86,
+      "parameters": {
+        "profit_weight": 8.255860086523093,
+        "risk_weight": 0.0027021249339989214,
+        "consistency_weight": 0.0077199660773844,
+        "ultra_profit_multiplier": 2.2791955848125767,
+        "ultra_risk_multiplier": 0.6400257779819133
+      },
+      "scores": {
+        "profit": 0.013409409506049602,
+        "sharpe": -0.7186331559385191,
+        "win_rate": 0.3939,
+        "consistency": 0.9996225657288852,
+        "max_drawdown": -0.13579366481854085,
+        "volatility": -0.04380669067907263,
+        "profit_factor": 0.854079301655163,
+        "calmar_ratio": 0.13719788183064682,
+        "sortino_ratio": 0.02937113668963255,
+        "recovery_factor": 0.13719788183064682
+      },
+      "timestamp": "2025-10-19T04:42:02.732414"
+    },
+    {
+      "trial_number": 87,
+      "parameters": {
+        "profit_weight": 8.546680527929428,
+        "risk_weight": 0.0041577466356095966,
+        "consistency_weight": 0.0030262586957464153,
+        "ultra_profit_multiplier": 1.9461053801911157,
+        "ultra_risk_multiplier": 1.0074153038973164
+      },
+      "scores": {
+        "profit": 0.01495197750697641,
+        "sharpe": -0.7453749867126789,
+        "win_rate": 0.393975,
+        "consistency": 0.9996474646460447,
+        "max_drawdown": -0.1391786543763076,
+        "volatility": -0.039081825366934456,
+        "profit_factor": 0.8741535078562905,
+        "calmar_ratio": 0.17020990115897777,
+        "sortino_ratio": 0.0013632567863087267,
+        "recovery_factor": 0.17020990115897777
+      },
+      "timestamp": "2025-10-19T04:42:04.521174"
+    },
+    {
+      "trial_number": 88,
+      "parameters": {
+        "profit_weight": 4.163440318157102,
+        "risk_weight": 0.01149932863449098,
+        "consistency_weight": 0.011781662979399017,
+        "ultra_profit_multiplier": 2.543186004627345,
+        "ultra_risk_multiplier": 0.9608346777311023
+      },
+      "scores": {
+        "profit": 0.040549654281403585,
+        "sharpe": -0.7171869706038441,
+        "win_rate": 0.3919,
+        "consistency": 0.9996521378912211,
+        "max_drawdown": -0.13386139373626404,
+        "volatility": -0.03929250669497286,
+        "profit_factor": 0.8223363077177648,
+        "calmar_ratio": 0.30691569268279023,
+        "sortino_ratio": 0.01076224936101837,
+        "recovery_factor": 0.30691569268279023
+      },
+      "timestamp": "2025-10-19T04:42:06.206837"
+    },
+    {
+      "trial_number": 89,
+      "parameters": {
+        "profit_weight": 3.594548834465336,
+        "risk_weight": 0.01230303805600914,
+        "consistency_weight": 0.013620414910595036,
+        "ultra_profit_multiplier": 2.53111251288085,
+        "ultra_risk_multiplier": 1.1020661097018691
+      },
+      "scores": {
+        "profit": -0.028714602823718932,
+        "sharpe": -0.7412850848320766,
+        "win_rate": 0.39195,
+        "consistency": 0.9996421573911445,
+        "max_drawdown": -0.12932611086738577,
+        "volatility": -0.039971038446914284,
+        "profit_factor": 0.8325830668367704,
+        "calmar_ratio": -0.16700424241899775,
+        "sortino_ratio": -0.02887725002973442,
+        "recovery_factor": -0.16700424241899775
+      },
+      "timestamp": "2025-10-19T04:42:07.944262"
+    },
+    {
+      "trial_number": 90,
+      "parameters": {
+        "profit_weight": 4.188645076981648,
+        "risk_weight": 0.01684303242099115,
+        "consistency_weight": 0.01898195454422084,
+        "ultra_profit_multiplier": 3.0863365120921946,
+        "ultra_risk_multiplier": 0.9712831968028723
+      },
+      "scores": {
+        "profit": -0.007912366375101565,
+        "sharpe": -0.7926288045414546,
+        "win_rate": 0.39249999999999996,
+        "consistency": 0.9996794363732422,
+        "max_drawdown": -0.12157686227071707,
+        "volatility": -0.03708715653026309,
+        "profit_factor": 0.8403657352487781,
+        "calmar_ratio": -0.07988285266419981,
+        "sortino_ratio": -0.04027187255886187,
+        "recovery_factor": -0.07988285266419981
+      },
+      "timestamp": "2025-10-19T04:42:09.711445"
+    },
+    {
+      "trial_number": 91,
+      "parameters": {
+        "profit_weight": 4.707869967507776,
+        "risk_weight": 0.010282275331778116,
+        "consistency_weight": 0.01251283774402936,
+        "ultra_profit_multiplier": 1.806143455657029,
+        "ultra_risk_multiplier": 0.9372954274113524
+      },
+      "scores": {
+        "profit": -0.004197034423978924,
+        "sharpe": -0.8137221600473783,
+        "win_rate": 0.39055,
+        "consistency": 0.9996725761450997,
+        "max_drawdown": -0.13109711387732081,
+        "volatility": -0.03765288018557485,
+        "profit_factor": 0.825905428104657,
+        "calmar_ratio": -0.03156903611452726,
+        "sortino_ratio": 0.0019081363388832717,
+        "recovery_factor": -0.03156903611452726
+      },
+      "timestamp": "2025-10-19T04:42:11.433413"
+    },
+    {
+      "trial_number": 92,
+      "parameters": {
+        "profit_weight": 5.191253588782052,
+        "risk_weight": 0.013906376003369825,
+        "consistency_weight": 0.008496742920639538,
+        "ultra_profit_multiplier": 2.5959106849315456,
+        "ultra_risk_multiplier": 1.1593668531041577
+      },
+      "scores": {
+        "profit": -0.02200135741876244,
+        "sharpe": -0.6650467263856269,
+        "win_rate": 0.398525,
+        "consistency": 0.9996245823275127,
+        "max_drawdown": -0.15186467139819498,
+        "volatility": -0.0432301269674158,
+        "profit_factor": 0.8605199501128253,
+        "calmar_ratio": -0.09549033914182382,
+        "sortino_ratio": -0.005692324162697495,
+        "recovery_factor": -0.09549033914182382
+      },
+      "timestamp": "2025-10-19T04:42:13.207596"
+    },
+    {
+      "trial_number": 93,
+      "parameters": {
+        "profit_weight": 9.381043331445886,
+        "risk_weight": 0.006503712825257123,
+        "consistency_weight": 0.030808731716810436,
+        "ultra_profit_multiplier": 2.7956526842992626,
+        "ultra_risk_multiplier": 1.2347218963254323
+      },
+      "scores": {
+        "profit": 0.00143031427641796,
+        "sharpe": -0.787362564610385,
+        "win_rate": 0.38992499999999997,
+        "consistency": 0.9996713333061806,
+        "max_drawdown": -0.14072844119824157,
+        "volatility": -0.03781658545677279,
+        "profit_factor": 0.8252763209039528,
+        "calmar_ratio": 0.09362414100919512,
+        "sortino_ratio": 0.004540297679519016,
+        "recovery_factor": 0.09362414100919512
+      },
+      "timestamp": "2025-10-19T04:42:14.925448"
+    },
+    {
+      "trial_number": 94,
+      "parameters": {
+        "profit_weight": 3.039665903617263,
+        "risk_weight": 0.008712530279279847,
+        "consistency_weight": 0.01133323821224706,
+        "ultra_profit_multiplier": 2.4275150622523873,
+        "ultra_risk_multiplier": 0.6985000175544849
+      },
+      "scores": {
+        "profit": -0.0001332329768172491,
+        "sharpe": -0.6983653787688455,
+        "win_rate": 0.394525,
+        "consistency": 0.9996683590318333,
+        "max_drawdown": -0.1334701988871433,
+        "volatility": -0.0380600865431643,
+        "profit_factor": 0.8497802005052127,
+        "calmar_ratio": 0.00644633045399351,
+        "sortino_ratio": 0.014154956889308613,
+        "recovery_factor": 0.00644633045399351
+      },
+      "timestamp": "2025-10-19T04:42:16.679140"
+    },
+    {
+      "trial_number": 95,
+      "parameters": {
+        "profit_weight": 6.800577122832265,
+        "risk_weight": 0.011610025617068425,
+        "consistency_weight": 0.08394627276462742,
+        "ultra_profit_multiplier": 4.875611837524177,
+        "ultra_risk_multiplier": 0.8365990648930481
+      },
+      "scores": {
+        "profit": -0.023073536117348498,
+        "sharpe": -0.8007106824321969,
+        "win_rate": 0.39425,
+        "consistency": 0.999699685193802,
+        "max_drawdown": -0.12194235539557619,
+        "volatility": -0.034528013045540276,
+        "profit_factor": 0.8617567205699348,
+        "calmar_ratio": -0.20361007337491357,
+        "sortino_ratio": -0.052276200852222655,
+        "recovery_factor": -0.20361007337491357
+      },
+      "timestamp": "2025-10-19T04:42:18.388766"
+    },
+    {
+      "trial_number": 96,
+      "parameters": {
+        "profit_weight": 2.1852644444956253,
+        "risk_weight": 0.005465252916826887,
+        "consistency_weight": 0.010270353340787332,
+        "ultra_profit_multiplier": 2.069378496900161,
+        "ultra_risk_multiplier": 0.6362127658793487
+      },
+      "scores": {
+        "profit": 0.009805709207559937,
+        "sharpe": -0.7616850662614348,
+        "win_rate": 0.39099999999999996,
+        "consistency": 0.9996656785599386,
+        "max_drawdown": -0.14033213903953182,
+        "volatility": -0.03860422624241748,
+        "profit_factor": 0.8382518782327895,
+        "calmar_ratio": 0.11104020945418265,
+        "sortino_ratio": 0.004406484655100309,
+        "recovery_factor": 0.11104020945418265
+      },
+      "timestamp": "2025-10-19T04:42:20.204288"
+    },
+    {
+      "trial_number": 97,
+      "parameters": {
+        "profit_weight": 4.1660381517864815,
+        "risk_weight": 0.02356373393986176,
+        "consistency_weight": 0.003348592651639085,
+        "ultra_profit_multiplier": 4.026991651192298,
+        "ultra_risk_multiplier": 0.764259595220885
+      },
+      "scores": {
+        "profit": 0.0410523124773724,
+        "sharpe": -0.7013374443071592,
+        "win_rate": 0.395925,
+        "consistency": 0.9996214766472435,
+        "max_drawdown": -0.1484062953769169,
+        "volatility": -0.04328362769980311,
+        "profit_factor": 0.8544135363520409,
+        "calmar_ratio": 0.27516446028321867,
+        "sortino_ratio": 0.040490835765810654,
+        "recovery_factor": 0.27516446028321867
+      },
+      "timestamp": "2025-10-19T04:42:22.558905"
+    },
+    {
+      "trial_number": 98,
+      "parameters": {
+        "profit_weight": 4.397394509510746,
+        "risk_weight": 0.022851045795527124,
+        "consistency_weight": 0.00335528793884622,
+        "ultra_profit_multiplier": 3.9735127005640085,
+        "ultra_risk_multiplier": 0.7582908039426658
+      },
+      "scores": {
+        "profit": -0.002879692423380681,
+        "sharpe": -0.8186029491264761,
+        "win_rate": 0.39127500000000004,
+        "consistency": 0.9996390901643429,
+        "max_drawdown": -0.1259167734334985,
+        "volatility": -0.041069298700746514,
+        "profit_factor": 0.8395871404041059,
+        "calmar_ratio": 0.04237058281919129,
+        "sortino_ratio": 0.035515325081748844,
+        "recovery_factor": 0.04237058281919129
+      },
+      "timestamp": "2025-10-19T04:42:24.275993"
+    },
+    {
+      "trial_number": 99,
+      "parameters": {
+        "profit_weight": 3.5755840432837935,
+        "risk_weight": 0.019211193836066044,
+        "consistency_weight": 0.0023426737524654176,
+        "ultra_profit_multiplier": 4.201038515474895,
+        "ultra_risk_multiplier": 1.9512102727270815
+      },
+      "scores": {
+        "profit": -0.007373161070528517,
+        "sharpe": -0.7158792632475958,
+        "win_rate": 0.39105,
+        "consistency": 0.9996422057853429,
+        "max_drawdown": -0.15016943371699135,
+        "volatility": -0.04077313938401289,
+        "profit_factor": 0.8314596741674117,
+        "calmar_ratio": -0.02519056293993713,
+        "sortino_ratio": -0.011333598253710029,
+        "recovery_factor": -0.02519056293993713
+      },
+      "timestamp": "2025-10-19T04:42:26.045442"
+    }
+  ],
+  "timestamp": "2025-10-19T04:42:27.737884"
+}

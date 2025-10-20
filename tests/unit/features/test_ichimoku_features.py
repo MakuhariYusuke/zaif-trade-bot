@@ -6,25 +6,29 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from ztb.features.trend.ichimoku_cloud_expansion import compute_ichimoku_cloud_expansion
+from ztb.features.trend.ichimoku_cloud_slope import compute_ichimoku_cloud_slope
 from ztb.features.trend.ichimoku_ext import (
     calculate_ichimoku_extended,
-    compute_ichimoku_tenkan,
-    compute_ichimoku_kijun,
-    compute_ichimoku_senkou_a,
-    compute_ichimoku_senkou_b,
     compute_ichimoku_chikou,
     compute_ichimoku_cloud_thickness,
-    compute_ichimoku_price_cloud_distance,
     compute_ichimoku_composite_signal,
+    compute_ichimoku_kijun,
+    compute_ichimoku_price_cloud_distance,
+    compute_ichimoku_senkou_a,
+    compute_ichimoku_senkou_b,
+    compute_ichimoku_tenkan,
     compute_ichimoku_trend,
 )
-from ztb.features.trend.ichimoku_time_theory import compute_ichimoku_time_theory
-from ztb.features.trend.ichimoku_wave_theory import compute_ichimoku_wave_theory
-from ztb.features.trend.ichimoku_value_measurement import compute_ichimoku_value_measurement
-from ztb.features.trend.ichimoku_momentum_confirmation import compute_ichimoku_momentum_confirmation
-from ztb.features.trend.ichimoku_cloud_slope import compute_ichimoku_cloud_slope
-from ztb.features.trend.ichimoku_cloud_expansion import compute_ichimoku_cloud_expansion
+from ztb.features.trend.ichimoku_momentum_confirmation import (
+    compute_ichimoku_momentum_confirmation,
+)
 from ztb.features.trend.ichimoku_sanyaku_kouten import compute_ichimoku_sanyaku_kouten
+from ztb.features.trend.ichimoku_time_theory import compute_ichimoku_time_theory
+from ztb.features.trend.ichimoku_value_measurement import (
+    compute_ichimoku_value_measurement,
+)
+from ztb.features.trend.ichimoku_wave_theory import compute_ichimoku_wave_theory
 
 
 class TestIchimokuFeatures:
@@ -42,12 +46,7 @@ class TestIchimokuFeatures:
         low = close - np.random.uniform(0, 10, n)
         volume = np.random.uniform(1000, 5000, n)
 
-        df = pd.DataFrame({
-            'high': high,
-            'low': low,
-            'close': close,
-            'volume': volume
-        })
+        df = pd.DataFrame({"high": high, "low": low, "close": close, "volume": volume})
 
         return df
 
@@ -134,11 +133,22 @@ class TestIchimokuFeatures:
 
         # Check that all expected columns are present
         expected_columns = [
-            'ichimoku_tenkan', 'ichimoku_kijun', 'ichimoku_senkou_a', 'ichimoku_senkou_b',
-            'ichimoku_chikou', 'ichimoku_cloud_thickness', 'ichimoku_price_cloud_distance',
-            'ichimoku_price_cloud_normalized', 'ichimoku_price_position', 'ichimoku_tk_cross',
-            'ichimoku_chikou_confirmation', 'ichimoku_cloud_color', 'ichimoku_tenkan_ratio',
-            'ichimoku_kijun_ratio', 'ichimoku_composite_signal', 'ichimoku_trend'
+            "ichimoku_tenkan",
+            "ichimoku_kijun",
+            "ichimoku_senkou_a",
+            "ichimoku_senkou_b",
+            "ichimoku_chikou",
+            "ichimoku_cloud_thickness",
+            "ichimoku_price_cloud_distance",
+            "ichimoku_price_cloud_normalized",
+            "ichimoku_price_position",
+            "ichimoku_tk_cross",
+            "ichimoku_chikou_confirmation",
+            "ichimoku_cloud_color",
+            "ichimoku_tenkan_ratio",
+            "ichimoku_kijun_ratio",
+            "ichimoku_composite_signal",
+            "ichimoku_trend",
         ]
 
         for col in expected_columns:
@@ -154,22 +164,24 @@ class TestIchimokuFeatures:
         assert len(result) == len(small_data)
 
         # Test with constant prices
-        constant_data = pd.DataFrame({
-            'high': [100] * 50,
-            'low': [100] * 50,
-            'close': [100] * 50,
-            'volume': [1000] * 50
-        })
+        constant_data = pd.DataFrame(
+            {
+                "high": [100] * 50,
+                "low": [100] * 50,
+                "close": [100] * 50,
+                "volume": [1000] * 50,
+            }
+        )
         result = calculate_ichimoku_extended(constant_data)
         assert len(result) == len(constant_data)
         # With constant prices, Tenkan and Kijun should equal the price
-        assert result['ichimoku_tenkan'].dropna().iloc[0] == 100.0
+        assert result["ichimoku_tenkan"].dropna().iloc[0] == 100.0
 
     def test_ichimoku_nan_handling(self, sample_data):
         """Test NaN handling in Ichimoku calculations"""
         # Add some NaN values
         data_with_nan = sample_data.copy()
-        data_with_nan.loc[10:15, 'close'] = np.nan
+        data_with_nan.loc[10:15, "close"] = np.nan
 
         result = calculate_ichimoku_extended(data_with_nan)
 

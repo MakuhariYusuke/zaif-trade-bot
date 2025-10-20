@@ -2,16 +2,16 @@
   "session_id": "ppo_full_features_v370",
   "algorithm": "ppo",
   "description": "Full feature set (110) + Active trading settings - Comparison experiment C",
-  
+
   "comment_experiment": "Comparison experiment C: Full feature set baseline",
   "comment_features": "max_features=null uses all 110 features without reduction",
   "comment_active_trading": "Same active trading settings as intelligent_active for fair comparison",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0005,
@@ -44,7 +44,7 @@
       "action_diversity_bonus": 0.001
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -53,7 +53,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -66,9 +66,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_comparison": "Compare with: ppo_v367_mem_optimized (40 features), ppo_intelligent_active_v370 (60 features)",
   "expected_behavior": {
     "hold_rate_target": "<50%",

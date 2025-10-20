@@ -4,10 +4,11 @@ Run all three reward configurations with full 30k timesteps
 """
 import json
 import sys
-from pathlib import Path
+
+from ztb.utils.path_utils import get_file_dir
 
 # Add project root to path
-project_root = Path(__file__).parent
+project_root = get_file_dir(__file__)
 sys.path.insert(0, str(project_root))
 
 CONFIGS = [
@@ -32,12 +33,12 @@ CONFIGS = [
 def run_training(config_info):
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
-    
-    with open(config_path, 'r', encoding='utf-8') as f:
+
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
-    
-    session_id = config['session_id']
-    
+
+    session_id = config["session_id"]
+
     print("=" * 80)
     print(f"Training: {config_info['name']}")
     print("=" * 80)
@@ -47,25 +48,25 @@ def run_training(config_info):
     print(f"Features: {config.get('curated_features_list', 'default')}")
     print(f"Random start: {config['environment']['random_start']}")
     print("\nReward settings:")
-    for key, value in config['environment']['reward_settings'].items():
+    for key, value in config["environment"]["reward_settings"].items():
         print(f"  {key}: {value}")
     print("=" * 80 + "\n")
-    
+
     # Import trainer
     from ztb.training.ppo_trainer import PPOTrainer
-    
+
     # Create trainer
     print("Creating trainer...")
     trainer = PPOTrainer(
-        data_path=str(config['data_path']),
+        data_path=str(config["data_path"]),
         config=config,
-        checkpoint_dir=f'checkpoints/{session_id}',
+        checkpoint_dir=f"checkpoints/{session_id}",
     )
-    
+
     # Train
     print("Starting training...")
     trainer.train(session_id=session_id)
-    
+
     print("\n" + "=" * 80)
     print(f"✅ Training completed: {config_info['name']}")
     print("=" * 80 + "\n")
@@ -79,31 +80,32 @@ def main():
     for i, cfg in enumerate(CONFIGS, 1):
         print(f"{i}. {cfg['name']}: {cfg['description']}")
     print("=" * 80 + "\n")
-    
+
     for i, config_info in enumerate(CONFIGS, 1):
         print(f"\n{'#' * 80}")
         print(f"# Training {i}/{len(CONFIGS)}: {config_info['name']}")
         print(f"{'#' * 80}\n")
-        
+
         try:
             run_training(config_info)
         except KeyboardInterrupt:
             print(f"\n⚠️ Training interrupted by user for: {config_info['name']}")
             response = input("Continue with next config? (y/n): ").strip().lower()
-            if response != 'y':
+            if response != "y":
                 print("Training sequence cancelled.")
                 sys.exit(1)
         except Exception as e:
             print(f"\n❌ Training failed for: {config_info['name']}")
             print(f"Error: {e}")
             import traceback
+
             traceback.print_exc()
-            
+
             response = input("Continue with next config? (y/n): ").strip().lower()
-            if response != 'y':
+            if response != "y":
                 print("Training sequence cancelled.")
                 sys.exit(1)
-    
+
     print("\n" + "=" * 80)
     print("ALL TRAINING COMPLETED!")
     print("=" * 80)
@@ -124,5 +126,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Training sequence failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

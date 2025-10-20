@@ -2,8 +2,9 @@
 Configuration for Concept Drift Detection
 """
 
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
 from .drift_types import DriftThresholds
 
 
@@ -36,11 +37,13 @@ class ConceptDriftConfig:
     thresholds: DriftThresholds = field(default_factory=DriftThresholds)
 
     # ウィンドウサイズ設定
-    window_sizes: Dict[str, int] = field(default_factory=lambda: {
-        "short": 100,    # 短期ウィンドウ
-        "medium": 1000,  # 中期ウィンドウ
-        "long": 5000     # 長期ウィンドウ
-    })
+    window_sizes: Dict[str, int] = field(
+        default_factory=lambda: {
+            "short": 100,
+            "medium": 1000,
+            "long": 5000,
+        }  # 短期ウィンドウ  # 中期ウィンドウ  # 長期ウィンドウ
+    )
 
     # 特徴量設定
     feature_columns: List[str] = field(default_factory=list)

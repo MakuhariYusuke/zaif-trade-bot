@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Tests for feature schema validation."""
 
-import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -37,7 +35,9 @@ class TestFeaturesSchema:
         """Feature column names."""
         return ["price", "volume", "rsi", "macd"]
 
-    def test_from_dataframe(self, sample_df: pd.DataFrame, feature_columns: list[str]) -> None:
+    def test_from_dataframe(
+        self, sample_df: pd.DataFrame, feature_columns: list[str]
+    ) -> None:
         """Test schema creation from DataFrame."""
         schema = FeaturesSchema.from_dataframe(sample_df, feature_columns)
 
@@ -60,7 +60,9 @@ class TestFeaturesSchema:
         assert "ts" not in schema.columns  # excluded
         assert "pair" not in schema.columns  # non-numeric
 
-    def test_compute_hash(self, sample_df: pd.DataFrame, feature_columns: list[str]) -> None:
+    def test_compute_hash(
+        self, sample_df: pd.DataFrame, feature_columns: list[str]
+    ) -> None:
         """Test schema hash computation."""
         schema1 = FeaturesSchema.from_dataframe(sample_df, feature_columns)
         schema2 = FeaturesSchema.from_dataframe(sample_df, feature_columns)
@@ -81,7 +83,9 @@ class TestFeaturesSchema:
         schema = FeaturesSchema.from_dataframe(sample_df, feature_columns)
 
         # Should validate successfully
-        is_valid, errors = schema.validate_dataframe(sample_df, feature_columns, strict=False)
+        is_valid, errors = schema.validate_dataframe(
+            sample_df, feature_columns, strict=False
+        )
         assert is_valid
         assert len(errors) == 0
 
@@ -94,7 +98,9 @@ class TestFeaturesSchema:
         # Drop a column
         df_missing = sample_df.drop(columns=["rsi"])
 
-        is_valid, errors = schema.validate_dataframe(df_missing, feature_columns, strict=False)
+        is_valid, errors = schema.validate_dataframe(
+            df_missing, feature_columns, strict=False
+        )
         assert not is_valid
         assert any("Missing columns" in err for err in errors)
 
@@ -200,7 +206,9 @@ class TestFeaturesSchema:
         assert (tmp_path / "features_schema.json").exists()
 
         # Load and validate
-        loaded = load_and_validate_schema(tmp_path, sample_df, feature_columns, strict=True)
+        loaded = load_and_validate_schema(
+            tmp_path, sample_df, feature_columns, strict=True
+        )
         assert loaded.compute_hash() == schema.compute_hash()
 
     def test_column_order_mismatch_detection(
@@ -208,7 +216,9 @@ class TestFeaturesSchema:
     ) -> None:
         """Test detection of column order changes."""
         # Create schema with specific order
-        schema1 = FeaturesSchema.from_dataframe(sample_df, ["price", "volume", "rsi", "macd"])
+        schema1 = FeaturesSchema.from_dataframe(
+            sample_df, ["price", "volume", "rsi", "macd"]
+        )
         schema_path = tmp_path / "features_schema.json"
         schema1.save(schema_path)
 
@@ -229,12 +239,14 @@ class TestFeaturesSchema:
         self, sample_df: pd.DataFrame, feature_columns: list[str]
     ) -> None:
         """Test statistics computation."""
-        schema = FeaturesSchema.from_dataframe(sample_df, feature_columns, compute_stats=True)
+        schema = FeaturesSchema.from_dataframe(
+            sample_df, feature_columns, compute_stats=True
+        )
 
         # Check statistics exist
         assert len(schema.statistics) == 4
         assert "price" in schema.statistics
-        
+
         # Check statistics values
         price_stats = schema.statistics["price"]
         assert "mean" in price_stats

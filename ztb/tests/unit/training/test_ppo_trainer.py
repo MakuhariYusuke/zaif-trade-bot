@@ -1,7 +1,5 @@
 """Unit tests for PPO Trainer with auto-halt functionality."""
 
-from ztb.training.core.ppo_trainer import PPOConfig
-
 
 class TestPPOConfig:
     """Test cases for PPOConfig dataclass."""
@@ -9,7 +7,7 @@ class TestPPOConfig:
     def test_default_config(self):
         """Test default PPOConfig values."""
         from ztb.training.config.ppo_config import DEFAULT_PPO_CONFIG
-        
+
         config = DEFAULT_PPO_CONFIG
 
         assert config["total_timesteps"] == 1000000

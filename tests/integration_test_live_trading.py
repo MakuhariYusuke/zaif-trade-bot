@@ -68,12 +68,13 @@ class TestLiveTradingIntegration:
         adapter.get_current_price = AsyncMock(return_value=5000000.0)
         return adapter
 
-    def test_initialization_with_mocks(self, mock_config: dict[str, Any], mock_model: Mock, mock_adapter: Mock) -> None:
+    def test_initialization_with_mocks(
+        self, mock_config: dict[str, Any], mock_model: Mock, mock_adapter: Mock
+    ) -> None:
         """Test LiveTrader initialization with mocked dependencies."""
         with patch("live_trade.PPO.load", return_value=mock_model), patch(
             "live_trade.CoincheckAdapter", return_value=mock_adapter
         ), patch("live_trade.create_production_auto_stop", return_value=Mock()):
-
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=mock_config, dry_run=True
             )
@@ -82,10 +83,11 @@ class TestLiveTradingIntegration:
             assert trader.dry_run is True
             assert trader.coincheck_adapter == mock_adapter
 
-    def test_price_fetch_integration(self, mock_config: dict[str, Any], mock_adapter: Mock) -> None:
+    def test_price_fetch_integration(
+        self, mock_config: dict[str, Any], mock_adapter: Mock
+    ) -> None:
         """Test price fetching integration."""
         with patch("live_trade.CoincheckAdapter", return_value=mock_adapter):
-
             # Test successful price fetch
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=mock_config, dry_run=True
@@ -123,7 +125,6 @@ class TestLiveTradingIntegration:
             "live_trade.compute_features_batch",
             return_value=pd.DataFrame({"rsi": [55.0]}),
         ), patch("live_trade.CoincheckAdapter"):
-
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=mock_config, dry_run=True
             )
@@ -140,7 +141,6 @@ class TestLiveTradingIntegration:
         with patch("live_trade.compute_rsi", return_value=pd.Series([65.0])), patch(
             "live_trade.CoincheckAdapter"
         ):
-
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=mock_config, dry_run=True
             )
@@ -149,10 +149,11 @@ class TestLiveTradingIntegration:
             rsi = trader._calculate_rsi(prices, period=14)
             assert rsi == 65.0
 
-    def test_health_status_integration(self, mock_config: dict[str, Any], mock_adapter: Mock) -> None:
+    def test_health_status_integration(
+        self, mock_config: dict[str, Any], mock_adapter: Mock
+    ) -> None:
         """Test health status reporting integration."""
         with patch("live_trade.CoincheckAdapter", return_value=mock_adapter):
-
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=mock_config, dry_run=True
             )
@@ -168,7 +169,6 @@ class TestLiveTradingIntegration:
     def test_risk_limits_integration(self, mock_config: dict[str, Any]) -> None:
         """Test risk limits integration."""
         with patch("live_trade.CoincheckAdapter"):
-
             # Test with risk limits enabled
             trader = LiveTrader(
                 model_path="/fake/path/model.zip",
@@ -218,7 +218,6 @@ class TestLiveTradingIntegration:
         }
 
         with patch("live_trade.CoincheckAdapter"):
-
             trader = LiveTrader(
                 model_path="/fake/path/model.zip", config=custom_config, dry_run=True
             )

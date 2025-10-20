@@ -14,8 +14,8 @@ from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import pandas as pd
-from ztb.utils.config_loader import ConfigLoader
 
+from ztb.utils.config_loader import ConfigLoader
 from ztb.utils.data_utils import load_csv_data
 
 # 年間取引日数（一般的に252日）

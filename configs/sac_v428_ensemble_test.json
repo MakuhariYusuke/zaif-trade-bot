@@ -1,0 +1,51 @@
+{
+  "model_name": "sac_v428_ensemble_test",
+  "algorithm": "sac",
+  "total_timesteps": 5000,
+  "data_source": "csv",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "sac_hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 50000,
+    "learning_starts": 1000,
+    "batch_size": 256,
+    "tau": 0.005,
+    "gamma": 0.99,
+    "ent_coef": 0.01,
+    "target_update_interval": 1,
+    "target_entropy": -2.0
+  },
+  "environment": {
+    "initial_balance": 200000.0,
+    "transaction_cost": 1e-05,
+    "max_position_size": 1.0,
+    "enable_action_masking": true,
+    "use_continuous_actions": true,
+    "use_standardized_observations": true,
+    "random_start": true,
+    "feature_set": "v427_adaptive"
+  },
+  "ensemble": {
+    "enabled": true,
+    "num_members": 3,
+    "voting_method": "majority",
+    "specialization_enabled": true,
+    "adaptation_enabled": true,
+    "confidence_threshold": 0.6,
+    "stability_weight": 0.3
+  },
+  "reward_settings": {
+    "reward_scale": 500.0,
+    "reward_clip_min": -200.0,
+    "reward_clip_max": 200.0,
+    "use_simple_reward": false
+  },
+  "logging": {
+    "log_interval": 500,
+    "eval_interval": 2500,
+    "save_interval": 2500,
+    "tensorboard_log": "./tensorboard/sac_v428_ensemble",
+    "advanced_metrics": true
+  },
+  "notes": "SAC v428 Phase 3: Enhanced ensemble system with comprehensive reporting and horizontal expansion"
+}

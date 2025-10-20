@@ -1,0 +1,14 @@
+{
+  "best_params": {
+    "learning_rate": 0.0007513927703714522,
+    "batch_size": 512,
+    "buffer_size": 200000,
+    "gamma": 0.9164228138858596,
+    "tau": 0.007608546510929837,
+    "ent_coef": 0.013044470626021735,
+    "reward_scale": 245.02857432264682
+  },
+  "best_score": 1.0,
+  "optimization_time": 192.5516164302826,
+  "n_trials": 20
+}

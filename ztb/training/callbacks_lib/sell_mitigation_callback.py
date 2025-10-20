@@ -15,11 +15,11 @@ from typing import Any, Dict, Optional
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
 
-from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.experiments.entropy_temperature import TargetEntropyController
-from ztb.training.utils.grad_probes import SELLGradientProbe
+from ztb.training.optimization.adv_norm import PerActionAdvantageNormalizer
 from ztb.training.optimization.lagrange_constraint import LagrangeConstraint
 from ztb.training.optimization.stratified_sampler import StratifiedSampler
+from ztb.training.utils.grad_probes import SELLGradientProbe
 from ztb.training.utils.weights import ActionWeightCalculator
 
 
@@ -38,7 +38,7 @@ class SELLBiasMitigationCallback(BaseCallback):
     ):
         """
         Initialize SELL bias mitigation callback.
-        
+
         Args:
             lagrange: Lagrange constraint for minimum action rate
             probe: Gradient probe for monitoring and failsafe
@@ -60,7 +60,7 @@ class SELLBiasMitigationCallback(BaseCallback):
     def _on_step(self) -> bool:
         """
         Called at each step. Returns False to stop training.
-        
+
         Returns:
             bool: True to continue training, False to stop
         """
@@ -77,19 +77,19 @@ class SELLBiasMitigationCallback(BaseCallback):
             stats = self.probe.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"probe/{key}", value)
-        
+
         # Log PAN statistics
         if self.pan_normalizer is not None:
             stats = self.pan_normalizer.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"pan/{key}", value)
-        
+
         # Log Target Entropy statistics
         if self.entropy_controller is not None:
             stats = self.entropy_controller.get_statistics()
             for key, value in stats.items():
                 self.logger.record(f"entropy/{key}", value)
-        
+
         # Log Stratified Sampler statistics
         if self.stratified_sampler is not None:
             sampler_stats: Dict[str, Any] = self.stratified_sampler.get_statistics()
@@ -101,7 +101,7 @@ class SELLBiasMitigationCallback(BaseCallback):
                         for action in range(3):
                             self.logger.record(
                                 f"stratified/bucket_r{regime}_a{action}",
-                                int(bucket_counts[regime, action])
+                                int(bucket_counts[regime, action]),
                             )
 
         return True
@@ -109,7 +109,7 @@ class SELLBiasMitigationCallback(BaseCallback):
     def _on_rollout_end(self) -> None:
         """
         Called at the end of each rollout.
-        
+
         Note: Lagrange constraint is now integrated into CustomPPO,
         so this method is primarily for future extensions.
         """

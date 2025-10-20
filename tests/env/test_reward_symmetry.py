@@ -4,11 +4,10 @@ Test reward symmetry using flipped environment and PnL-only rewards.
 
 import numpy as np
 import pandas as pd
-import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from ztb.trading.environment import HeavyTradingEnv, FlipHeavyTradingEnv
+from ztb.trading.environment import FlipHeavyTradingEnv, HeavyTradingEnv
 
 
 class TestRewardSymmetry:
@@ -72,9 +71,9 @@ class TestRewardSymmetry:
             buy = sum(1 for a in actions if a == 1)
             sell = sum(1 for a in actions if a == 2)
             return {
-                'hold_pct': hold / total * 100,
-                'buy_pct': buy / total * 100,
-                'sell_pct': sell / total * 100,
+                "hold_pct": hold / total * 100,
+                "buy_pct": buy / total * 100,
+                "sell_pct": sell / total * 100,
             }
 
         dist_normal = analyze_actions(actions_normal)
@@ -85,8 +84,12 @@ class TestRewardSymmetry:
 
         # Check if distributions are similar (within 10% points)
         # If reward is symmetric, flipped env should have similar distribution
-        assert abs(dist_normal['buy_pct'] - dist_flipped['sell_pct']) < 10, "BUY/SELL asymmetry detected"
-        assert abs(dist_normal['sell_pct'] - dist_flipped['buy_pct']) < 10, "SELL/BUY asymmetry detected"
+        assert (
+            abs(dist_normal["buy_pct"] - dist_flipped["sell_pct"]) < 10
+        ), "BUY/SELL asymmetry detected"
+        assert (
+            abs(dist_normal["sell_pct"] - dist_flipped["buy_pct"]) < 10
+        ), "SELL/BUY asymmetry detected"
 
     def test_pnl_only_reward(self):
         """Test action distribution with PnL-only reward (no penalties)."""
@@ -106,7 +109,7 @@ class TestRewardSymmetry:
         # Custom environment with PnL-only reward
         class PnLOnlyEnv(HeavyTradingEnv):
             def _calculate_reward(self, *args, **kwargs) -> float:
-                pnl = kwargs.get('pnl', 0.0)
+                pnl = kwargs.get("pnl", 0.0)
                 return float(pnl)  # Just return PnL
 
         config = {

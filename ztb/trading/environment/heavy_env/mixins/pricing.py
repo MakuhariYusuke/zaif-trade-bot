@@ -39,7 +39,9 @@ def _resolve_price(self: Any, step: Optional[int] = None) -> float:
             if pd.notna(value):
                 return float(value)
 
-    numeric_candidates = [v for v in row.values if isinstance(v, (int, float, np.floating))]
+    numeric_candidates = [
+        v for v in row.values if isinstance(v, (int, float, np.floating))
+    ]
     if numeric_candidates:
         return float(numeric_candidates[0])
     return 0.0

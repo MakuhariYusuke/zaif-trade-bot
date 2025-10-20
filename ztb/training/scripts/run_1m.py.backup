@@ -19,8 +19,8 @@ from typing import Any, Dict, Optional
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from ztb.training.ppo_trainer import PPOTrainer
 from ztb.training.ppo_config import get_ppo_config
+from ztb.training.ppo_trainer import PPOTrainer
 from ztb.utils import DiscordNotifier
 
 
@@ -97,10 +97,12 @@ def create_streaming_pipeline(stream_batch_size: int) -> Optional[Any]:
     )
 
 
-def validate_training_setup(data_path: str, checkpoint_dir: str, correlation_id: str) -> bool:
+def validate_training_setup(
+    data_path: str, checkpoint_dir: str, correlation_id: str
+) -> bool:
     """Validate training setup before starting."""
     logger = logging.getLogger(__name__)
-    
+
     # Validate data path
     data_path_obj = Path(data_path)
     if not data_path_obj.exists():
@@ -113,7 +115,7 @@ def validate_training_setup(data_path: str, checkpoint_dir: str, correlation_id:
         logger.warning(f"Session {correlation_id} already exists at {session_dir}")
         logger.warning("Use resume functionality or choose a different correlation-id")
         return False
-    
+
     return True
 
 
@@ -180,7 +182,9 @@ def setup_logging(verbose: bool) -> logging.Logger:
     return logging.getLogger(__name__)
 
 
-def create_streaming_pipeline(enable_streaming: bool, stream_batch_size: int, logger: logging.Logger):
+def create_streaming_pipeline(
+    enable_streaming: bool, stream_batch_size: int, logger: logging.Logger
+):
     """Create streaming pipeline if enabled."""
     if not enable_streaming:
         return None
@@ -343,7 +347,9 @@ def main() -> int:
         notifier = DiscordNotifier()
 
     # Validate training setup
-    if not validate_training_setup(args.data_path, args.checkpoint_dir, args.correlation_id):
+    if not validate_training_setup(
+        args.data_path, args.checkpoint_dir, args.correlation_id
+    ):
         return 1
 
     if args.dry_run:
@@ -393,7 +399,9 @@ def main() -> int:
         logger.info(f"Timesteps: {args.total_timesteps}")
 
         # Create streaming pipeline if enabled
-        streaming_pipeline = create_streaming_pipeline(args.enable_streaming, args.stream_batch_size, logger)
+        streaming_pipeline = create_streaming_pipeline(
+            args.enable_streaming, args.stream_batch_size, logger
+        )
 
         # Create trainer
         trainer = PPOTrainer(

@@ -3,7 +3,8 @@ Price data management for live trading bot.
 """
 import logging
 from collections import deque
-from typing import Any, Dict, List, Optional, Protocol, cast
+from typing import Any, Dict, List, Protocol, cast
+
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -26,7 +27,9 @@ class PriceDataProvider(Protocol):
 class PriceDataManager:
     """Manages price data and feature calculation."""
 
-    def __init__(self, config: Dict[str, Any], price_provider: PriceDataProvider) -> None:
+    def __init__(
+        self, config: Dict[str, Any], price_provider: PriceDataProvider
+    ) -> None:
         self.config = cast(Dict[str, Any], config)
         self.price_provider = price_provider
         self._price_history_max_size = config.get("price_history_length", 30)
@@ -41,13 +44,17 @@ class PriceDataManager:
             # Convert list to deque
             self.price_history.clear()
             self.price_history.extend(prices)
-            logger.info(f"Updated price history with {len(self.price_history)} data points")
+            logger.info(
+                f"Updated price history with {len(self.price_history)} data points"
+            )
         except Exception as e:
             logger.warning(f"Failed to update price history: {e}")
             # Fallback to current price
             current_price = self.price_provider.get_current_price()
             self.price_history.clear()
-            self.price_history.extend([current_price] * self.config["price_history_length"])
+            self.price_history.extend(
+                [current_price] * self.config["price_history_length"]
+            )
 
     def get_current_price(self) -> float:
         """Get current price."""
@@ -62,8 +69,13 @@ class PriceDataManager:
             # Create DataFrame for compute_rsi
             df = pd.DataFrame({"close": prices})
             from ztb.utils.ta import compute_rsi  # type: ignore[import-untyped]
+
             rsi_series = compute_rsi(df, period=period)
-            return float(rsi_series.iloc[-1]) if not rsi_series.empty else cast(float, self.config["rsi_neutral_value"])
+            return (
+                float(rsi_series.iloc[-1])
+                if not rsi_series.empty
+                else cast(float, self.config["rsi_neutral_value"])
+            )
         except Exception as e:
             logger.warning(f"Failed to calculate RSI: {e}")
             return self.config["rsi_neutral_value"]
@@ -122,7 +134,9 @@ class PriceDataManager:
             # Initialize deque with current price
             current_price = self.get_current_price()
             self.price_history.clear()
-            self.price_history.extend([current_price] * self.config["price_history_length"])
+            self.price_history.extend(
+                [current_price] * self.config["price_history_length"]
+            )
 
         # Convert deque to list for calculation functions
         price_list = list(self.price_history)

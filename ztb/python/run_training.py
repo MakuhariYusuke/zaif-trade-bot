@@ -17,16 +17,16 @@ Usage:
 Examples:
     # Quick 100k training with optimized parameters
     python run_training.py --config configs/training/ppo_100k_optimized.json
-    
+
     # Full 1M training
     python run_training.py --config configs/training/ppo_1m_optimized.json
-    
+
     # Quick validation run (override timesteps)
     python run_training.py --config configs/training/ppo_balanced_mem_optimized.json --timesteps 10000
-    
+
     # Curriculum learning for extreme bias scenarios
     python run_training.py --config configs/training/curriculum.json --algorithm curriculum
-    
+
     # Dry run to validate configuration
     python run_training.py --config configs/training/ppo_100k_optimized.json --dry-run
 """
@@ -37,7 +37,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from ztb.utils.logging_utils import setup_logging
 
@@ -57,33 +57,39 @@ def load_config(config_path: str) -> Dict[str, Any]:
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
-    
-    with open(path, 'r') as f:
+
+    with open(path, "r") as f:
         config = json.load(f)
-    
+
     logger.info(f"Loaded configuration from {config_path}")
     logger.info(f"  Algorithm: {config.get('algorithm', 'ppo')}")
     logger.info(f"  Session ID: {config.get('session_id', 'N/A')}")
-    
+
     # Format timesteps with proper handling of None/N/A
-    total_timesteps = config.get('total_timesteps')
+    total_timesteps = config.get("total_timesteps")
     if total_timesteps is not None:
         logger.info(f"  Total timesteps: {total_timesteps:,}")
     else:
         logger.info("  Total timesteps: N/A")
-    
+
     # Log key optimizations if present
-    if config.get('enable_sell_mitigation'):
+    if config.get("enable_sell_mitigation"):
         logger.info("  SELL bias mitigation: ENABLED")
-        if config.get('enable_lagrange'):
-            logger.info(f"    Lagrange r_target: {config.get('lagrange_r_target', 'N/A')}")
-            logger.info(f"    Lagrange tolerance: {config.get('lagrange_tolerance', 'N/A')}")
+        if config.get("enable_lagrange"):
+            logger.info(
+                f"    Lagrange r_target: {config.get('lagrange_r_target', 'N/A')}"
+            )
+            logger.info(
+                f"    Lagrange tolerance: {config.get('lagrange_tolerance', 'N/A')}"
+            )
             logger.info(f"    Lagrange eta: {config.get('lagrange_eta', 'N/A')}")
-    
+
     return config
 
 
-def setup_progress_bar(config: Dict[str, Any], cli_override: Optional[bool] = None) -> bool:
+def setup_progress_bar(
+    config: Dict[str, Any], cli_override: Optional[bool] = None
+) -> bool:
     """
     Configure progress bar usage based on Stable-Baselines3 availability.
 
@@ -157,126 +163,120 @@ def main():
     parser = argparse.ArgumentParser(
         description="Unified Training Runner for Zaif Trade Bot",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__
+        epilog=__doc__,
     )
-    
+
     parser.add_argument(
-        "--config",
-        required=True,
-        help="Path to configuration JSON file"
+        "--config", required=True, help="Path to configuration JSON file"
     )
-    
+
     parser.add_argument(
         "--algorithm",
         choices=["ppo", "base_ml", "iterative", "ensemble", "curriculum"],
-        help="Override algorithm from config file"
+        help="Override algorithm from config file",
     )
-    
+
     parser.add_argument(
         "--timesteps",
         type=int,
-        help="Override total_timesteps from config (useful for quick validation runs)"
+        help="Override total_timesteps from config (useful for quick validation runs)",
     )
-    
+
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Validate configuration without running training"
+        help="Validate configuration without running training",
     )
-    
+
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force execution without confirmation prompts"
+        help="Force execution without confirmation prompts",
     )
-    
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
 
     parser.add_argument(
         "--progress-bar",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="Enable or disable the training progress bar (defaults to config or PPO verbose setting)"
+        help="Enable or disable the training progress bar (defaults to config or PPO verbose setting)",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Setup logging with rotation (Bug #40 fix)
     log_level = logging.DEBUG if args.verbose else logging.INFO
     log_dir = Path(args.log_dir) if hasattr(args, "log_dir") else Path("logs")
     log_dir.mkdir(exist_ok=True)
-    
+
     setup_logging(
         level=log_level,
         log_file=str(log_dir / "training_log.txt"),
         max_bytes=10 * 1024 * 1024,  # 10MB
         backup_count=5,
     )
-    
+
     try:
         # Load configuration
         config = load_config(args.config)
-        
+
         # Override algorithm if specified
         if args.algorithm:
             config["algorithm"] = args.algorithm
             logger.info(f"Algorithm overridden to: {args.algorithm}")
-        
+
         # Normalize progress bar configuration before trainer initialization
         cli_progress = getattr(args, "progress_bar", None)
         setup_progress_bar(config, cli_override=cli_progress)
-        
+
         # Dry run mode - delegate to UnifiedTrainer
         if args.dry_run:
             trainer = UnifiedTrainer(
                 config=config,
                 force=args.force,
                 dry_run=True,
-                total_timesteps=args.timesteps
+                total_timesteps=args.timesteps,
             )
             logger.info("=" * 80)
             logger.info("DRY RUN MODE - Configuration validated successfully")
             logger.info("=" * 80)
             return 0
-        
+
         # Initialize trainer (all validation logic is in UnifiedTrainer)
         logger.info("Initializing Unified Trainer...")
         trainer = UnifiedTrainer(
             config=config,
             force=args.force,
             dry_run=False,
-            total_timesteps=args.timesteps
+            total_timesteps=args.timesteps,
         )
-        
+
         # Execute training
         logger.info("=" * 80)
         logger.info("STARTING TRAINING")
         logger.info("=" * 80)
-        
+
         model = trainer.train()
-        
+
         logger.info("=" * 80)
         logger.info("TRAINING COMPLETED SUCCESSFULLY")
         logger.info("=" * 80)
-        
+
         if model is not None:
-            session_id = config.get('session_id', 'model')
-            model_dir = config.get('model_dir', 'models')
-            checkpoint_dir = config.get('checkpoint_dir', 'checkpoints')
+            session_id = config.get("session_id", "model")
+            model_dir = config.get("model_dir", "models")
+            checkpoint_dir = config.get("checkpoint_dir", "checkpoints")
             logger.info(f"Model saved to: {model_dir}/{session_id}.zip")
             logger.info(f"Checkpoints saved to: {checkpoint_dir}")
             logger.info(f"TensorBoard logs: {checkpoint_dir}")
-        
+
         return 0
-    
+
     except KeyboardInterrupt:
         logger.warning("\nTraining interrupted by user (Ctrl+C)")
         return 130
-    
+
     except Exception as e:
         logger.error(f"Training failed with error: {e}", exc_info=True)
         return 1

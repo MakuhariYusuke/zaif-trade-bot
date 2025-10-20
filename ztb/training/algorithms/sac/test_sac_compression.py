@@ -6,15 +6,13 @@ Tests the integration of model compression techniques with the SAC algorithm,
 including configuration validation, model creation, and compression application.
 """
 
-import pytest
-import torch
-import torch.nn as nn
-from unittest.mock import Mock, patch, MagicMock
 import tempfile
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from ztb.training.algorithms.sac.sac_algorithm import SACAlgorithm, DEFAULT_SAC_CONFIG
-from ztb.optimization.model_compression import ModelCompressionManager
+import pytest
+
+from ztb.training.algorithms.sac.sac_algorithm import DEFAULT_SAC_CONFIG, SACAlgorithm
 
 
 class MockEnv:
@@ -37,7 +35,7 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["quantization"],
-            "quantization_type": "dynamic"
+            "quantization_type": "dynamic",
         }
 
         assert sac.validate_config(valid_config)
@@ -46,7 +44,7 @@ class TestSACCompressionIntegration:
         invalid_config = {
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
-            "compression_techniques": ["invalid_technique"]
+            "compression_techniques": ["invalid_technique"],
         }
 
         with pytest.raises(ValueError, match="Unsupported compression technique"):
@@ -61,7 +59,7 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["quantization"],
-            "quantization_type": "dynamic"
+            "quantization_type": "dynamic",
         }
 
         assert sac.validate_config(valid_config)
@@ -71,7 +69,7 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["quantization"],
-            "quantization_type": "invalid_type"
+            "quantization_type": "invalid_type",
         }
 
         with pytest.raises(ValueError, match="Unsupported quantization_type"):
@@ -87,7 +85,7 @@ class TestSACCompressionIntegration:
             "compression_enabled": True,
             "compression_techniques": ["pruning"],
             "pruning_type": "l1_unstructured",
-            "pruning_amount": 0.3
+            "pruning_amount": 0.3,
         }
 
         assert sac.validate_config(valid_config)
@@ -97,7 +95,7 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["pruning"],
-            "pruning_type": "invalid_type"
+            "pruning_type": "invalid_type",
         }
 
         with pytest.raises(ValueError, match="Unsupported pruning_type"):
@@ -108,10 +106,12 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["pruning"],
-            "pruning_amount": 1.5  # > 1.0
+            "pruning_amount": 1.5,  # > 1.0
         }
 
-        with pytest.raises(ValueError, match="pruning_amount must be between 0.0 and 1.0"):
+        with pytest.raises(
+            ValueError, match="pruning_amount must be between 0.0 and 1.0"
+        ):
             sac.validate_config(invalid_config_amount)
 
     def test_compression_config_validation_distillation(self):
@@ -125,7 +125,7 @@ class TestSACCompressionIntegration:
             "compression_techniques": ["distillation"],
             "teacher_model_path": "/path/to/teacher/model.zip",
             "distillation_temperature": 2.0,
-            "distillation_alpha": 0.5
+            "distillation_alpha": 0.5,
         }
 
         assert sac.validate_config(valid_config)
@@ -134,7 +134,7 @@ class TestSACCompressionIntegration:
         invalid_config = {
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
-            "compression_techniques": ["distillation"]
+            "compression_techniques": ["distillation"],
             # teacher_model_path missing
         }
 
@@ -147,10 +147,12 @@ class TestSACCompressionIntegration:
             "compression_enabled": True,
             "compression_techniques": ["distillation"],
             "teacher_model_path": "/path/to/teacher/model.zip",
-            "distillation_temperature": -1.0  # Invalid negative temperature
+            "distillation_temperature": -1.0,  # Invalid negative temperature
         }
 
-        with pytest.raises(ValueError, match="distillation_temperature must be positive"):
+        with pytest.raises(
+            ValueError, match="distillation_temperature must be positive"
+        ):
             sac.validate_config(invalid_temp_config)
 
         # Invalid distillation alpha
@@ -159,19 +161,21 @@ class TestSACCompressionIntegration:
             "compression_enabled": True,
             "compression_techniques": ["distillation"],
             "teacher_model_path": "/path/to/teacher/model.zip",
-            "distillation_alpha": 1.5  # > 1.0
+            "distillation_alpha": 1.5,  # > 1.0
         }
 
-        with pytest.raises(ValueError, match="distillation_alpha must be between 0.0 and 1.0"):
+        with pytest.raises(
+            ValueError, match="distillation_alpha must be between 0.0 and 1.0"
+        ):
             sac.validate_config(invalid_alpha_config)
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_with_compression(self, mock_sac_class):
         """Test creating SAC model with compression enabled."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -182,11 +186,13 @@ class TestSACCompressionIntegration:
             "compression_enabled": True,
             "compression_techniques": ["quantization"],
             "quantization_type": "dynamic",
-            "compressed_model_path": None
+            "compressed_model_path": None,
         }
 
         # Mock the compression manager
-        with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
             mock_manager = Mock()
             mock_manager.compress_model.return_value = Mock()  # Compressed policy
             mock_create_pipeline.return_value = mock_manager
@@ -204,35 +210,32 @@ class TestSACCompressionIntegration:
             # Check that compression manager was stored
             assert sac.compression_manager is mock_manager
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_compression_disabled(self, mock_sac_class):
         """Test creating SAC model with compression disabled."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
         env = MockEnv()
 
-        config = {
-            **DEFAULT_SAC_CONFIG,
-            "compression_enabled": False
-        }
+        config = {**DEFAULT_SAC_CONFIG, "compression_enabled": False}
 
         model = sac.create_model(env, config)
 
         # Check that compression manager was not created
         assert sac.compression_manager is None
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_create_model_compression_save_path(self, mock_sac_class):
         """Test saving compressed model when path is specified."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -246,10 +249,12 @@ class TestSACCompressionIntegration:
                 "compression_enabled": True,
                 "compression_techniques": ["quantization"],
                 "quantization_type": "dynamic",
-                "compressed_model_path": str(save_path)
+                "compressed_model_path": str(save_path),
             }
 
-            with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+            with patch(
+                "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+            ) as mock_create_pipeline:
                 mock_manager = Mock()
                 mock_manager.compress_model.return_value = Mock()
                 mock_create_pipeline.return_value = mock_manager
@@ -257,15 +262,17 @@ class TestSACCompressionIntegration:
                 model = sac.create_model(env, config)
 
                 # Check that save_compressed_model was called
-                mock_manager.save_compressed_model.assert_called_once_with(mock_sac_instance, str(save_path))
+                mock_manager.save_compressed_model.assert_called_once_with(
+                    mock_sac_instance, str(save_path)
+                )
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_quantization_only(self, mock_sac_class):
         """Test applying quantization compression."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -275,10 +282,12 @@ class TestSACCompressionIntegration:
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
             "compression_techniques": ["quantization"],
-            "quantization_type": "dynamic"
+            "quantization_type": "dynamic",
         }
 
-        with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
             mock_manager = Mock()
             compressed_policy = Mock()
             mock_manager.compress_model.return_value = compressed_policy
@@ -293,13 +302,13 @@ class TestSACCompressionIntegration:
             assert call_args["quantization"]["type"] == "quantization"
             assert call_args["quantization"]["quantization_type"] == "dynamic"
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_pruning_only(self, mock_sac_class):
         """Test applying pruning compression."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -310,10 +319,12 @@ class TestSACCompressionIntegration:
             "compression_enabled": True,
             "compression_techniques": ["pruning"],
             "pruning_type": "l1_unstructured",
-            "pruning_amount": 0.25
+            "pruning_amount": 0.25,
         }
 
-        with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
             mock_manager = Mock()
             compressed_policy = Mock()
             mock_manager.compress_model.return_value = compressed_policy
@@ -329,19 +340,21 @@ class TestSACCompressionIntegration:
             assert call_args["pruning"]["pruning_type"] == "l1_unstructured"
             assert call_args["pruning"]["amount"] == 0.25
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC.load')
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
-    def test_apply_model_compression_distillation_only(self, mock_sac_class, mock_sac_load):
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC.load")
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
+    def test_apply_model_compression_distillation_only(
+        self, mock_sac_class, mock_sac_load
+    ):
         """Test applying distillation compression."""
         # Mock teacher model
         mock_teacher = Mock()
-        mock_teacher.device = 'cpu'
+        mock_teacher.device = "cpu"
         mock_sac_load.return_value = mock_teacher
 
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -356,10 +369,12 @@ class TestSACCompressionIntegration:
                 "compression_techniques": ["distillation"],
                 "teacher_model_path": str(teacher_path),
                 "distillation_temperature": 2.5,
-                "distillation_alpha": 0.7
+                "distillation_alpha": 0.7,
             }
 
-            with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+            with patch(
+                "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+            ) as mock_create_pipeline:
                 mock_manager = Mock()
                 compressed_policy = Mock()
                 mock_manager.compress_model.return_value = compressed_policy
@@ -369,7 +384,7 @@ class TestSACCompressionIntegration:
                 model = sac.create_model(env, config)
 
                 # Check that teacher model was loaded
-                mock_sac_load.assert_called_once_with(str(teacher_path), device='cpu')
+                mock_sac_load.assert_called_once_with(str(teacher_path), device="cpu")
 
                 # Check that distillation config was passed correctly
                 call_args = mock_create_pipeline.call_args[0][0]
@@ -378,13 +393,13 @@ class TestSACCompressionIntegration:
                 assert call_args["distillation"]["temperature"] == 2.5
                 assert call_args["distillation"]["alpha"] == 0.7
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_multiple_techniques(self, mock_sac_class):
         """Test applying multiple compression techniques."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -396,10 +411,12 @@ class TestSACCompressionIntegration:
             "compression_techniques": ["quantization", "pruning"],
             "quantization_type": "dynamic",
             "pruning_type": "l1_unstructured",
-            "pruning_amount": 0.2
+            "pruning_amount": 0.2,
         }
 
-        with patch('ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline') as mock_create_pipeline:
+        with patch(
+            "ztb.training.algorithms.sac.sac_algorithm.create_compression_pipeline"
+        ) as mock_create_pipeline:
             mock_manager = Mock()
             compressed_policy = Mock()
             mock_manager.compress_model.return_value = compressed_policy
@@ -419,13 +436,13 @@ class TestSACCompressionIntegration:
             assert "quantization" in techniques_arg
             assert "pruning" in techniques_arg
 
-    @patch('ztb.training.algorithms.sac.sac_algorithm.SAC')
+    @patch("ztb.training.algorithms.sac.sac_algorithm.SAC")
     def test_apply_model_compression_no_techniques(self, mock_sac_class):
         """Test compression with no techniques specified."""
         # Mock SAC model
         mock_sac_instance = Mock()
         mock_sac_instance.policy = Mock()
-        mock_sac_instance.device = 'cpu'
+        mock_sac_instance.device = "cpu"
         mock_sac_class.return_value = mock_sac_instance
 
         sac = SACAlgorithm()
@@ -434,8 +451,8 @@ class TestSACCompressionIntegration:
         config = {
             **DEFAULT_SAC_CONFIG,
             "compression_enabled": True,
-            "compression_techniques": []  # Empty techniques
-        }
+            "compression_techniques": [],
+        }  # Empty techniques
 
         # Should not apply compression but also not fail
         model = sac.create_model(env, config)

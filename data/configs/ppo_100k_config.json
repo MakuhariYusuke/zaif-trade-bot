@@ -16,14 +16,14 @@
   "target_kl": 0.1,
   "normalize_advantage": true,
   "seed": 42,
-  
+
   "environment": {
     "transaction_cost": 0.001,
     "max_position_size": 1.0,
     "curriculum_stage": "full",
     "allow_reverse": false
   },
-  
+
   "mitigation": {
     "enable_lagrange": true,
   "lagrange_warmup_steps": 3874,
@@ -37,14 +37,14 @@
     "enable_target_entropy": false,
     "enable_stratified_sampling": false
   },
-  
+
   "validation": {
     "target_sell_rate_min": 0.12,
     "target_sell_rate_optimal": 0.175,
     "grad_norm_threshold": 1e-6,
     "moving_window": 5000
   },
-  
+
   "output": {
     "checkpoint_dir": "./checkpoints/ppo_100k_optimized",
     "tensorboard_log": "./logs/ppo_100k_optimized",

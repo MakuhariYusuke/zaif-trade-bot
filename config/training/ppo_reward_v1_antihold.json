@@ -2,16 +2,16 @@
   "session_id": "ppo_reward_v1_antihold",
   "algorithm": "ppo",
   "description": "Reward v1: HOLD超ペナルティ + 連続HOLD追加ペナルティ + 取引頻度ボーナス",
-  
+
   "comment_experiment": "Experiment 1: Extreme anti-HOLD reward structure",
   "comment_strategy": "25x hold_penalty + consecutive_hold_penalty + trading_frequency_bonus",
   "comment_target": "HOLD <40%, Reward >100, Active trading",
-  
+
   "max_features": 60,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": 500,
-  
+
   "ppo": {
     "learning_rate": 0.0003,
     "n_steps": 512,
@@ -32,7 +32,7 @@
       ]
     }
   },
-  
+
   "environment": {
     "initial_balance": 10000,
     "transaction_cost": 0.0001,
@@ -46,7 +46,7 @@
       "action_diversity_bonus": 0.01
     }
   },
-  
+
   "training": {
     "total_timesteps": 5000,
     "checkpoint_interval": 5000,
@@ -55,7 +55,7 @@
     "n_eval_episodes": 5,
     "reward_scaling": 1.0
   },
-  
+
   "custom_ppo": {
     "enabled": true,
     "use_pan": true,
@@ -68,9 +68,9 @@
       "distribution_check_enabled": true
     }
   },
-  
+
   "data_path": "ml-dataset-enhanced-balanced.csv",
-  
+
   "comment_changes": "Key changes from v371:",
   "changes": [
     "hold_penalty_weight: 0.002 → 0.005 (2.5x, 25x from baseline)",
@@ -78,7 +78,7 @@
     "trading_frequency_bonus: NEW 0.05 (encourage active trading)",
     "Other settings: Same as v371"
   ],
-  
+
   "expected_behavior": {
     "hold_rate_target": "<40%",
     "buy_sell_rate_target": ">60%",

@@ -39,8 +39,9 @@ class EnsembleAlgorithmTrainer:
         Returns:
             Ensemble system
         """
-        from ztb.training.models.ensemble import EnsembleTradingSystem
         from datetime import datetime
+
+        from ztb.training.models.ensemble import EnsembleTradingSystem
 
         # Get model configurations from config
         model_configs = unified_config.get("ensemble_models", [])

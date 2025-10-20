@@ -85,10 +85,8 @@ class RegimeClustering:
 
         return pd.DataFrame(
             {
-                "regime_cluster": clusters.astype(
-                    np.int8
-                )  # Use int8 for cluster labels (0-2)
-            },
+                "regime_cluster": clusters.astype(np.int8)
+            },  # Use int8 for cluster labels (0-2)
             index=df.index,
         )
 

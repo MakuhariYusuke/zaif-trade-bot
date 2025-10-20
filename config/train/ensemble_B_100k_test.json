@@ -4,7 +4,7 @@
   "data_path": "ml-dataset-enhanced.csv",
   "session_id": "ensemble_B_100k_test",
   "total_timesteps": 100000,
-  
+
   "training": {
     "learning_rate": 3.0e-4,
     "n_steps": 2048,
@@ -20,7 +20,7 @@
     "max_grad_norm": 0.5,
     "seed": 202
   },
-  
+
   "custom_ppo": {
     "enable_pan": true,
     "enable_target_entropy": true,
@@ -30,24 +30,24 @@
     "initial_temperature": 0.01,
     "pan_epsilon": 1.0e-8
   },
-  
+
   "environment": {
     "transaction_cost": 0.001,
     "max_position_size": 1.0,
     "curriculum_stage": "full",
     "allow_reverse": false
   },
-  
+
   "reward_profit_bonus_multipliers": [1.0, 1.0, 0.9],
   "reward_settings": {
     "enable_forced_diversity": false
   },
-  
+
   "checkpoint_interval": 10000,
   "checkpoint_dir": "checkpoints/ensemble_B_100k_test",
   "log_dir": "logs/ensemble_B_100k_test",
   "model_dir": "models/ensemble_B_100k_test",
-  
+
   "verbose": 1,
   "enable_progress_bar": true,
   "staging": null,

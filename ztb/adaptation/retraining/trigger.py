@@ -3,22 +3,29 @@ Automatic Retraining Trigger System
 パフォーマンス監視と自動再訓練トリガー
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime, timedelta
+import gc
 import logging
 import threading
 import weakref
 from collections import deque
-import gc
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import numpy as np
 
 from .config import RetrainingConfig
 from .types import (
-    TriggerType, TriggerPriority, TriggerStatus, TriggerCondition,
-    PerformanceMetrics, DataDistributionMetrics, RetrainingRequest,
-    RetrainingResult, TriggerState, RetrainingSchedule, ResourceUsage,
-    RetrainingHistory
+    DataDistributionMetrics,
+    PerformanceMetrics,
+    RetrainingHistory,
+    RetrainingRequest,
+    RetrainingResult,
+    RetrainingSchedule,
+    TriggerCondition,
+    TriggerPriority,
+    TriggerState,
+    TriggerStatus,
+    TriggerType,
 )
 
 logger = logging.getLogger(__name__)
@@ -63,7 +70,7 @@ class RetrainingTrigger:
                 last_check=datetime.now(),
                 last_triggered=None,
                 consecutive_violations=0,
-                cooldown_until=None
+                cooldown_until=None,
             )
 
         # スケジュールされたトリガーの初期化
@@ -76,12 +83,15 @@ class RetrainingTrigger:
                 schedule_id=f"time_based_{schedule_config['interval_hours']}h",
                 trigger_type=TriggerType.TIME_BASED,
                 cron_expression=None,
-                interval_minutes=schedule_config['interval_hours'] * 60,
-                next_run=datetime.now() + timedelta(minutes=schedule_config['interval_hours'] * 60)
+                interval_minutes=schedule_config["interval_hours"] * 60,
+                next_run=datetime.now()
+                + timedelta(minutes=schedule_config["interval_hours"] * 60),
             )
             self.schedules.append(schedule)
 
-    def update_performance_metrics(self, metrics: PerformanceMetrics) -> List[RetrainingRequest]:
+    def update_performance_metrics(
+        self, metrics: PerformanceMetrics
+    ) -> List[RetrainingRequest]:
         """パフォーマンス指標を更新"""
         self.performance_history.append(metrics)
 
@@ -93,7 +103,9 @@ class RetrainingTrigger:
 
         return triggered_requests
 
-    def update_distribution_metrics(self, metrics: DataDistributionMetrics) -> List[RetrainingRequest]:
+    def update_distribution_metrics(
+        self, metrics: DataDistributionMetrics
+    ) -> List[RetrainingRequest]:
         """データ分布指標を更新"""
         self.distribution_history.append(metrics)
 
@@ -122,20 +134,24 @@ class RetrainingTrigger:
                     priority=TriggerPriority.MEDIUM,
                     requested_at=now,
                     estimated_duration=timedelta(hours=2),
-                    required_resources={"cpu": 2, "memory_gb": 4}
+                    required_resources={"cpu": 2, "memory_gb": 4},
                 )
 
                 triggered_requests.append(request)
 
                 # 次回の実行時間を設定
                 if schedule.interval_minutes:
-                    schedule.next_run = now + timedelta(minutes=schedule.interval_minutes)
+                    schedule.next_run = now + timedelta(
+                        minutes=schedule.interval_minutes
+                    )
                 schedule.last_run = now
                 schedule.run_count += 1
 
         return triggered_requests
 
-    def check_volume_based_triggers(self, new_samples_count: int) -> List[RetrainingRequest]:
+    def check_volume_based_triggers(
+        self, new_samples_count: int
+    ) -> List[RetrainingRequest]:
         """出来高ベースのトリガーをチェック"""
         min_samples = self.config.volume_based_thresholds["min_new_samples"]
 
@@ -148,13 +164,15 @@ class RetrainingTrigger:
                 priority=TriggerPriority.MEDIUM,
                 requested_at=now,
                 estimated_duration=timedelta(hours=1),
-                required_resources={"cpu": 1, "memory_gb": 2}
+                required_resources={"cpu": 1, "memory_gb": 2},
             )
             return [request]
 
         return []
 
-    def _check_performance_triggers(self, metrics: PerformanceMetrics) -> List[RetrainingRequest]:
+    def _check_performance_triggers(
+        self, metrics: PerformanceMetrics
+    ) -> List[RetrainingRequest]:
         """パフォーマンストリガーをチェック"""
         triggered_requests = []
 
@@ -189,7 +207,9 @@ class RetrainingTrigger:
 
         return triggered_requests
 
-    def _check_distribution_triggers(self, metrics: DataDistributionMetrics) -> List[RetrainingRequest]:
+    def _check_distribution_triggers(
+        self, metrics: DataDistributionMetrics
+    ) -> List[RetrainingRequest]:
         """データ分布トリガーをチェック"""
         triggered_requests = []
 
@@ -208,8 +228,11 @@ class RetrainingTrigger:
                 state.consecutive_violations += 1
 
                 if self._check_duration_condition(state, metrics.timestamp):
-                    request = self._create_retraining_request(state, metrics.timestamp,
-                                                            f"Distribution drift: {drift_score:.3f}")
+                    request = self._create_retraining_request(
+                        state,
+                        metrics.timestamp,
+                        f"Distribution drift: {drift_score:.3f}",
+                    )
                     triggered_requests.append(request)
 
                     state.status = TriggerStatus.TRIGGERED
@@ -225,7 +248,9 @@ class RetrainingTrigger:
 
         return triggered_requests
 
-    def _check_performance_condition(self, condition: TriggerCondition, metrics: PerformanceMetrics) -> bool:
+    def _check_performance_condition(
+        self, condition: TriggerCondition, metrics: PerformanceMetrics
+    ) -> bool:
         """パフォーマンス条件をチェック"""
         value = getattr(metrics, condition.metric_name, None)
         if value is None:
@@ -233,7 +258,9 @@ class RetrainingTrigger:
 
         return self._evaluate_condition(value, condition.operator, condition.threshold)
 
-    def _calculate_distribution_drift(self, current_metrics: DataDistributionMetrics) -> float:
+    def _calculate_distribution_drift(
+        self, current_metrics: DataDistributionMetrics
+    ) -> float:
         """データ分布の変化を計算"""
         if len(self.distribution_history) < 2:
             return 0.0
@@ -247,7 +274,10 @@ class RetrainingTrigger:
         for feature in current_metrics.feature_means.keys():
             if feature in baseline.feature_means:
                 # 平均の変化
-                mean_diff = abs(current_metrics.feature_means[feature] - baseline.feature_means[feature])
+                mean_diff = abs(
+                    current_metrics.feature_means[feature]
+                    - baseline.feature_means[feature]
+                )
 
                 # 標準偏差で正規化
                 if baseline.feature_stds.get(feature, 1.0) > 0:
@@ -256,15 +286,22 @@ class RetrainingTrigger:
 
         return np.mean(drift_scores) if drift_scores else 0.0
 
-    def _check_duration_condition(self, state: TriggerState, current_time: datetime) -> bool:
+    def _check_duration_condition(
+        self, state: TriggerState, current_time: datetime
+    ) -> bool:
         """期間条件をチェック"""
         if state.consecutive_violations == 0:
             return False
 
         # 簡易的な期間チェック（実際の実装ではより詳細なチェックが必要）
-        return state.consecutive_violations >= (state.condition.duration_minutes // self.config.performance_check_interval_minutes)
+        return state.consecutive_violations >= (
+            state.condition.duration_minutes
+            // self.config.performance_check_interval_minutes
+        )
 
-    def _evaluate_condition(self, value: float, operator: str, threshold: float) -> bool:
+    def _evaluate_condition(
+        self, value: float, operator: str, threshold: float
+    ) -> bool:
         """条件を評価"""
         if operator == "gt":
             return value > threshold
@@ -280,8 +317,9 @@ class RetrainingTrigger:
             return abs(value - threshold) >= 1e-6
         return False
 
-    def _create_retraining_request(self, state: TriggerState, timestamp: datetime,
-                                 additional_reason: str = "") -> RetrainingRequest:
+    def _create_retraining_request(
+        self, state: TriggerState, timestamp: datetime, additional_reason: str = ""
+    ) -> RetrainingRequest:
         """再訓練リクエストを作成"""
         reason = f"{state.condition.metric_name} {state.condition.operator} {state.condition.threshold}"
         if additional_reason:
@@ -294,20 +332,22 @@ class RetrainingTrigger:
             priority=state.condition.priority,
             requested_at=timestamp,
             estimated_duration=timedelta(hours=2),
-            required_resources={"cpu": 1, "memory_gb": 2}
+            required_resources={"cpu": 1, "memory_gb": 2},
         )
 
     def record_retraining_result(self, result: RetrainingResult) -> None:
         """再訓練結果を記録"""
         history = RetrainingHistory(
             request_id=result.request_id,
-            trigger_type=result.trigger_type if hasattr(result, 'trigger_type') else TriggerType.MANUAL,
+            trigger_type=result.trigger_type
+            if hasattr(result, "trigger_type")
+            else TriggerType.MANUAL,
             start_time=result.completed_at - result.training_duration,
             end_time=result.completed_at,
             success=result.success,
             performance_change=result.performance_improvement,
             resource_usage=None,  # 必要に応じて追加
-            error_details=result.error_message
+            error_details=result.error_message,
         )
 
         self.retraining_history.append(history)
@@ -362,8 +402,7 @@ class RetrainingTrigger:
 
         # 定期的なクリーンアップを実行
         self._cleanup_timer = threading.Timer(
-            self.config.cleanup_interval_hours * 3600,
-            self._periodic_cleanup
+            self.config.cleanup_interval_hours * 3600, self._periodic_cleanup
         )
         self._cleanup_timer.daemon = True
         self._cleanup_timer.start()

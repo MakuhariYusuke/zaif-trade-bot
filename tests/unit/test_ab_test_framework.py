@@ -3,25 +3,28 @@ A/Bテストフレームワークの包括的なテストスイート
 パフォーマンスベンチマークを含む全コンポーネントのテスト
 """
 
-import unittest
-import tempfile
 import shutil
+import tempfile
 import time
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+import unittest
+from unittest.mock import Mock, patch
+
 import numpy as np
-import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
+
+from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
+from ztb.adaptation.ab_test.config import ABTestConfig
+from ztb.adaptation.ab_test.executor import ABTestExecutor
+from ztb.adaptation.ab_test.selector import ModelSelector
 
 # テスト対象のモジュールをインポート
 from ztb.adaptation.ab_test.types import (
-    StatisticalTest, ABTestVariant, ABTestConfiguration,
-    StatisticalResult, ABTestResult, ABTestStatus
+    ABTestConfiguration,
+    ABTestResult,
+    ABTestStatus,
+    ABTestVariant,
+    StatisticalResult,
+    StatisticalTest,
 )
-from ztb.adaptation.ab_test.config import ABTestConfig
-from ztb.adaptation.ab_test.analyzer import ABTestAnalyzer
-from ztb.adaptation.ab_test.executor import ABTestExecutor
-from ztb.adaptation.ab_test.selector import ModelSelector
 
 
 class TestABTestTypes(unittest.TestCase):
@@ -40,7 +43,7 @@ class TestABTestTypes(unittest.TestCase):
             variant_id="test_variant",
             model_path="/path/to/model",
             model_version="v1.0",
-            description="Test variant"
+            description="Test variant",
         )
 
         self.assertEqual(variant.variant_id, "test_variant")
@@ -57,13 +60,13 @@ class TestABTestTypes(unittest.TestCase):
             description="Test configuration",
             variants=[
                 ABTestVariant("A", "/model/a", "v1.0", "Variant A"),
-                ABTestVariant("B", "/model/b", "v1.1", "Variant B")
+                ABTestVariant("B", "/model/b", "v1.1", "Variant B"),
             ],
             statistical_tests=[StatisticalTest.T_TEST, StatisticalTest.MANN_WHITNEY],
             confidence_level=0.95,
             minimum_sample_size=1000,
             maximum_test_duration=3600,
-            traffic_split=0.5
+            traffic_split=0.5,
         )
 
         self.assertEqual(config.test_id, "test_001")
@@ -124,7 +127,9 @@ class TestABTestAnalyzer(unittest.TestCase):
 
     def test_mann_whitney_calculation(self):
         """Mann-Whitney U検定の計算テスト"""
-        result = self.analyzer._perform_mann_whitney(self.sample_data_a, self.sample_data_b)
+        result = self.analyzer._perform_mann_whitney(
+            self.sample_data_a, self.sample_data_b
+        )
 
         self.assertIsInstance(result, StatisticalResult)
         self.assertIsInstance(result.p_value, float)
@@ -132,10 +137,7 @@ class TestABTestAnalyzer(unittest.TestCase):
 
     def test_parallel_analysis(self):
         """並列分析のテスト"""
-        test_data = {
-            'variant_a': self.sample_data_a,
-            'variant_b': self.sample_data_b
-        }
+        test_data = {"variant_a": self.sample_data_a, "variant_b": self.sample_data_b}
 
         results = self.analyzer.analyze_parallel(test_data, [StatisticalTest.T_TEST])
 
@@ -144,7 +146,9 @@ class TestABTestAnalyzer(unittest.TestCase):
 
     def test_bootstrap_confidence_interval(self):
         """ブートストラップ信頼区間のテスト"""
-        ci = self.analyzer._calculate_bootstrap_ci(self.sample_data_a, self.sample_data_b, n_bootstrap=100)
+        ci = self.analyzer._calculate_bootstrap_ci(
+            self.sample_data_a, self.sample_data_b, n_bootstrap=100
+        )
 
         self.assertIsInstance(ci, tuple)
         self.assertEqual(len(ci), 2)
@@ -166,20 +170,20 @@ class TestABTestExecutor(unittest.TestCase):
             description="Test executor functionality",
             variants=[
                 ABTestVariant("A", "/fake/model/a", "v1.0", "Variant A"),
-                ABTestVariant("B", "/fake/model/b", "v1.1", "Variant B")
+                ABTestVariant("B", "/fake/model/b", "v1.1", "Variant B"),
             ],
             statistical_tests=[StatisticalTest.T_TEST],
             confidence_level=0.95,
             minimum_sample_size=100,
             maximum_test_duration=60,
-            traffic_split=0.5
+            traffic_split=0.5,
         )
 
     def tearDown(self):
         """テストクリーンアップ"""
         shutil.rmtree(self.temp_dir)
 
-    @patch('ztb.adaptation.ab_test.executor.ABTestAnalyzer')
+    @patch("ztb.adaptation.ab_test.executor.ABTestAnalyzer")
     def test_execution_initialization(self, mock_analyzer):
         """実行初期化のテスト"""
         mock_analyzer_instance = Mock()
@@ -201,10 +205,7 @@ class TestABTestExecutor(unittest.TestCase):
     def test_data_streaming(self):
         """データストリーミングのテスト"""
         # テストデータを追加
-        test_data = {
-            'variant_a': [1.0, 2.0, 3.0],
-            'variant_b': [1.1, 2.1, 3.1]
-        }
+        test_data = {"variant_a": [1.0, 2.0, 3.0], "variant_b": [1.1, 2.1, 3.1]}
 
         self.executor._stream_data(test_data)
 
@@ -232,12 +233,12 @@ class TestModelSelector(unittest.TestCase):
 
         results = {
             StatisticalTest.T_TEST: mock_result_a,
-            StatisticalTest.MANN_WHITNEY: mock_result_b
+            StatisticalTest.MANN_WHITNEY: mock_result_b,
         }
 
         winner = self.selector.select_winner(results)
 
-        self.assertIn(winner, ['variant_a', 'variant_b', 'tie'])
+        self.assertIn(winner, ["variant_a", "variant_b", "tie"])
 
     def test_risk_assessment(self):
         """リスク評価のテスト"""
@@ -252,14 +253,14 @@ class TestModelSelector(unittest.TestCase):
     def test_rollback_decision(self):
         """ロールバック決定のテスト"""
         # 高いリスクスコア
-        high_risk_results = {'risk_score': 0.8}
+        high_risk_results = {"risk_score": 0.8}
 
         should_rollback = self.selector.should_rollback(high_risk_results)
 
         self.assertTrue(should_rollback)
 
         # 低いリスクスコア
-        low_risk_results = {'risk_score': 0.2}
+        low_risk_results = {"risk_score": 0.2}
 
         should_rollback = self.selector.should_rollback(low_risk_results)
 
@@ -277,10 +278,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
     def test_parallel_vs_sequential_performance(self):
         """並列 vs 順次処理のパフォーマンス比較"""
-        test_data = {
-            'variant_a': self.large_data_a,
-            'variant_b': self.large_data_b
-        }
+        test_data = {"variant_a": self.large_data_a, "variant_b": self.large_data_b}
 
         # 順次処理
         start_time = time.time()
@@ -309,18 +307,22 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
     def test_memory_efficiency(self):
         """メモリ効率のテスト"""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # 大規模データ処理
         for _ in range(10):
-            self.analyzer.analyze_parallel({
-                'variant_a': np.random.normal(100, 10, 5000),
-                'variant_b': np.random.normal(105, 10, 5000)
-            }, [StatisticalTest.T_TEST])
+            self.analyzer.analyze_parallel(
+                {
+                    "variant_a": np.random.normal(100, 10, 5000),
+                    "variant_b": np.random.normal(105, 10, 5000),
+                },
+                [StatisticalTest.T_TEST],
+            )
 
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
         memory_increase = final_memory - initial_memory
@@ -350,6 +352,6 @@ class TestPerformanceBenchmarks(unittest.TestCase):
                 self.assertIsInstance(result.p_value, float)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # 詳細なテスト出力
     unittest.main(verbosity=2)

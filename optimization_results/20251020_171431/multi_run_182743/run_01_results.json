@@ -1,0 +1,33 @@
+{
+  "best_params": {
+    "learning_rate": 0.0034549185847968576,
+    "batch_size": 512,
+    "buffer_size": 50000,
+    "gamma": 0.99473984426417,
+    "tau": 0.006171842793183525,
+    "ent_coef": 0.03128537429124299,
+    "reward_scale": 475.35094387737234,
+    "reward_clip_min": -133.23208015974967,
+    "reward_clip_max": 310.51577253678914,
+    "use_simple_reward": false,
+    "balance_penalty_tolerance": 0.1614694142104083,
+    "balance_penalty": 11.499058434628608,
+    "hold_penalty_rate": 0.015101281297431013,
+    "trading_bonus_multiplier": 2.2184225901386174,
+    "trading_bonus": 0.017619845674639704,
+    "profit_weight": 1.5969014663477696,
+    "risk_weight": 0.49854656440860634,
+    "consistency_weight": 1.5088396087226228,
+    "position_penalty_weight": 0.003172089926262344,
+    "drawdown_penalty_weight": 0.0036945337811560806,
+    "stagnation_penalty_weight": 0.004525488378652222,
+    "growth_bonus_weight": 0.04850466542605,
+    "win_streak_bonus_weight": 0.08402911886352539,
+    "ultra_profit_multiplier": 1.0089372132075756,
+    "ultra_risk_multiplier": 0.8623011044715071
+  },
+  "best_score": -999.0,
+  "optimization_time": 196.55887722969055,
+  "run_index": 1,
+  "timestamp": "2025-10-20T18:34:24.782370"
+}

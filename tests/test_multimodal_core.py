@@ -3,16 +3,16 @@
 コアエンコーダーと設定管理クラスのテストを含む。
 """
 
-import unittest
-import torch
-import numpy as np
-from pathlib import Path
 import tempfile
-import yaml
+import unittest
+from pathlib import Path
+
+import torch
+
+from ztb.multimodal.config import MultimodalConfig
 
 # テスト対象のインポート
-from ztb.multimodal.core.encoders import PriceEncoder, TextEncoder, EconomicEncoder
-from ztb.multimodal.config import MultimodalConfig
+from ztb.multimodal.core.encoders import EconomicEncoder, PriceEncoder, TextEncoder
 from ztb.multimodal.training.trainers.multimodal_trainer import MultimodalSACTrainer
 
 
@@ -65,9 +65,7 @@ class TestTextEncoder(unittest.TestCase):
     def setUp(self):
         """テスト前の準備"""
         self.encoder = TextEncoder(
-            model_name="bert-base-uncased",
-            output_dim=768,
-            fine_tune=True
+            model_name="bert-base-uncased", output_dim=768, fine_tune=True
         )
         self.batch_size = 2
         self.seq_len = 8
@@ -111,7 +109,9 @@ class TestEconomicEncoder(unittest.TestCase):
 
     def setUp(self):
         """テスト前の準備"""
-        self.encoder = EconomicEncoder(input_dim=20, hidden_dims=[64, 32], output_dim=32)
+        self.encoder = EconomicEncoder(
+            input_dim=20, hidden_dims=[64, 32], output_dim=32
+        )
         self.batch_size = 3
 
     def test_initialization(self):
@@ -162,36 +162,36 @@ class TestMultimodalConfig(unittest.TestCase):
         """辞書変換テスト"""
         config_dict = self.config.to_dict()
 
-        self.assertIn('version', config_dict)
-        self.assertIn('data', config_dict)
-        self.assertIn('features', config_dict)
-        self.assertIn('model', config_dict)
-        self.assertIn('training', config_dict)
-        self.assertIn('evaluation', config_dict)
-        self.assertIn('hardware', config_dict)
-        self.assertIn('api', config_dict)
+        self.assertIn("version", config_dict)
+        self.assertIn("data", config_dict)
+        self.assertIn("features", config_dict)
+        self.assertIn("model", config_dict)
+        self.assertIn("training", config_dict)
+        self.assertIn("evaluation", config_dict)
+        self.assertIn("hardware", config_dict)
+        self.assertIn("api", config_dict)
 
     def test_from_dict(self):
         """辞書からの設定作成テスト"""
         config_dict = {
-            'version': '2.0.0',
-            'data': {
-                'symbols': ['EURUSD', 'GBPUSD'],
-                'timeframe': '5m',
-                'lookback_days': 15
-            }
+            "version": "2.0.0",
+            "data": {
+                "symbols": ["EURUSD", "GBPUSD"],
+                "timeframe": "5m",
+                "lookback_days": 15,
+            },
         }
 
         config = MultimodalConfig.from_dict(config_dict)
 
-        self.assertEqual(config.version, '2.0.0')
-        self.assertEqual(config.data.symbols, ['EURUSD', 'GBPUSD'])
-        self.assertEqual(config.data.timeframe, '5m')
+        self.assertEqual(config.version, "2.0.0")
+        self.assertEqual(config.data.symbols, ["EURUSD", "GBPUSD"])
+        self.assertEqual(config.data.timeframe, "5m")
         self.assertEqual(config.data.lookback_days, 15)
 
     def test_yaml_save_load(self):
         """YAML保存・読み込みテスト"""
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w+", suffix=".yaml", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -213,24 +213,24 @@ class TestMultimodalConfig(unittest.TestCase):
         import os
 
         # テスト環境変数を設定
-        os.environ['TEST_NEWSAPI_KEY'] = 'test_key_123'
-        os.environ['TEST_FRED_KEY'] = 'fred_key_456'
+        os.environ["TEST_NEWSAPI_KEY"] = "test_key_123"
+        os.environ["TEST_FRED_KEY"] = "fred_key_456"
 
         config_dict = {
-            'api': {
-                'newsapi_key': '${TEST_NEWSAPI_KEY}',
-                'fred_key': '${TEST_FRED_KEY}'
+            "api": {
+                "newsapi_key": "${TEST_NEWSAPI_KEY}",
+                "fred_key": "${TEST_FRED_KEY}",
             }
         }
 
         config = MultimodalConfig.from_dict(config_dict)
 
-        self.assertEqual(config.api.newsapi_key, 'test_key_123')
-        self.assertEqual(config.api.fred_key, 'fred_key_456')
+        self.assertEqual(config.api.newsapi_key, "test_key_123")
+        self.assertEqual(config.api.fred_key, "fred_key_456")
 
         # クリーンアップ
-        del os.environ['TEST_NEWSAPI_KEY']
-        del os.environ['TEST_FRED_KEY']
+        del os.environ["TEST_NEWSAPI_KEY"]
+        del os.environ["TEST_FRED_KEY"]
 
 
 class TestMultimodalSACTrainer(unittest.TestCase):
@@ -248,23 +248,23 @@ class TestMultimodalSACTrainer(unittest.TestCase):
 
         # SAC設定
         self.sac_config = {
-            'learning_rate': 0.001,
-            'batch_size': 64,
-            'gamma': 0.99,
-            'tau': 0.005,
-            'alpha': 0.2
+            "learning_rate": 0.001,
+            "batch_size": 64,
+            "gamma": 0.99,
+            "tau": 0.005,
+            "alpha": 0.2,
         }
 
         # 環境設定
         self.env_config = {
-            'observation_space': {'shape': (156,)},
-            'action_space': {'n': 3}
+            "observation_space": {"shape": (156,)},
+            "action_space": {"n": 3},
         }
 
         self.trainer = MultimodalSACTrainer(
             multimodal_config=self.multimodal_config,
             sac_config=self.sac_config,
-            env_config=self.env_config
+            env_config=self.env_config,
         )
 
     def test_initialization(self):
@@ -285,5 +285,5 @@ class TestMultimodalSACTrainer(unittest.TestCase):
         self.assertEqual(agent.feature_encoder.economic_feature_dim, 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

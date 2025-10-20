@@ -4,15 +4,16 @@ Type definitions for Continuous Evaluation and Monitoring
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 from .types import AlertLevel
 
 
 class AlertType(Enum):
     """アラートタイプ"""
+
     PERFORMANCE = "performance"
     SAFETY = "safety"
     DRIFT = "drift"

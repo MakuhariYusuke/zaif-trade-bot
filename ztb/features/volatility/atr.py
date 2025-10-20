@@ -3,9 +3,9 @@ ATR (Average True Range) implementation with multi-timeframe support.
 平均真の範囲 - ボラティリティ指標 - 複数時間軸対応
 """
 
-import numpy as np
-import pandas as pd
 from typing import Optional
+
+import pandas as pd
 
 from ztb.features.registry import FeatureRegistry
 from ztb.features.timeframe import Timeframe
@@ -13,13 +13,20 @@ from ztb.utils.talib_wrapper import TaLibWrapper
 
 
 @FeatureRegistry.register("ATR")
-def compute_atr(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> "pd.Series":
+def compute_atr(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> "pd.Series":
     """Compute Average True Range (ATR) with Ta-Lib support"""
     # Determine period based on timeframe
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
-        period = period or (tf_params["short_period"] // 2)  # ATR typically uses moderate periods
+        period = period or (
+            tf_params["short_period"] // 2
+        )  # ATR typically uses moderate periods
     else:
         period = period or 14
 
@@ -33,11 +40,16 @@ def compute_atr(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optio
 
 
 @FeatureRegistry.register("ATR_simplified")
-def compute_atr_simplified(df: pd.DataFrame, period: Optional[int] = None, timeframe: Optional[Timeframe] = None) -> "pd.Series":
+def compute_atr_simplified(
+    df: pd.DataFrame,
+    period: Optional[int] = None,
+    timeframe: Optional[Timeframe] = None,
+) -> "pd.Series":
     """Compute Simplified ATR with timeframe support"""
     # For simplified ATR, use shorter period
     if timeframe is not None:
         from ztb.features.timeframe import get_timeframe_params
+
         tf_params = get_timeframe_params(timeframe)
         period = period or (tf_params["short_period"] // 4)
     else:
@@ -47,6 +59,7 @@ def compute_atr_simplified(df: pd.DataFrame, period: Optional[int] = None, timef
 
 
 # === Multi-Timeframe ATR Features ===
+
 
 @FeatureRegistry.register("ATR_M1")
 def compute_atr_m1(df: pd.DataFrame) -> pd.Series:

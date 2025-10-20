@@ -2,7 +2,7 @@
   "session_id": "ppo_profitable_v391_optimized",
   "algorithm": "ppo",
   "description": "Profitable Model Hunt v2: 二分探索最適化値 + v378/v379知見 + Bitcoin 18M円対応",
-  
+
   "_comment_strategy": "ppo_100k_optimized.jsonの全最適化値をベースに、v378/v379の報酬設定を統合",
   "_comment_improvements": [
     "✅ 二分探索最適化: learning_rate 0.007503 (v390の25倍), max_grad_norm 5.05 (10倍)",
@@ -11,16 +11,16 @@
     "✅ Bitcoin 18M円対応: initial_balance 200k, max_position_size 0.01 BTC",
     "✅ 累積改善期待: +117pt (ppo_100k_optimized.jsonの実績)"
   ],
-  
+
   "curated_features_list": "curated_features.py::CURATED_FEATURES",
   "enable_feature_filtering": true,
   "feature_filter_mode": "whitelist",
-  
+
   "max_features": null,
   "enable_correlation_reduction": false,
-  
+
   "data_rows_limit": null,
-  
+
   "_comment_ppo": "ppo_100k_optimized.jsonの最適化値を全て適用",
   "ppo": {
     "learning_rate": 0.007503,
@@ -44,7 +44,7 @@
       ]
     }
   },
-  
+
   "_comment_environment": "v378/v379報酬設定 + Bitcoin 18M円対応 + 二分探索最適化",
   "environment": {
     "initial_balance": 200000,
@@ -67,7 +67,7 @@
       "range_market_hold_tolerance": 0.5
     }
   },
-  
+
   "_comment_training": "100k timesteps, 二分探索最適化値適用",
   "training": {
     "total_timesteps": 100000,
@@ -78,7 +78,7 @@
     "reward_scaling": 0.1,
     "risk_free_rate": 0.0
   },
-  
+
   "_comment_custom_ppo": "PAN, Target Entropy, Lagrange制約を統合",
   "custom_ppo": {
     "enabled": true,
@@ -100,9 +100,9 @@
     "lagrange_lambda_max": 3.875,
     "lagrange_warmup_steps": 3874
   },
-  
+
   "data_path": "ml-dataset-enhanced.csv",
-  
+
   "_comment_optimization_summary": {
     "source": "ppo_100k_optimized.json (2025-10-10)",
     "cumulative_improvement": "+117pt (推定)",
@@ -130,7 +130,7 @@
       "docs/LAGRANGE_OPTIMIZATION_RESULTS.md"
     ]
   },
-  
+
   "_comment_comparison": "v390 vs v391の主要な違い",
   "comparison": {
     "v390_hybrid": {

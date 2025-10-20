@@ -5,21 +5,20 @@ Unit tests for adaptive feature selection
 """
 
 import unittest
-from unittest.mock import MagicMock
 
-import numpy as np
 import pandas as pd
 
 try:
     import torch
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
 
 from ztb.features.adaptive_selection import (
     AdaptiveFeatureSelector,
+    FeatureAttentionLayer,
     MarketRegimeClassifier,
-    FeatureAttentionLayer
 )
 
 
@@ -31,19 +30,13 @@ class TestMarketRegimeClassifier(unittest.TestCase):
 
     def test_classify_trending(self):
         """トレンド相場判定テスト"""
-        df = pd.DataFrame({
-            'ADX': [30.0],  # 高ADX = トレンド
-            'ATR': [1.0]
-        })
+        df = pd.DataFrame({"ADX": [30.0], "ATR": [1.0]})  # 高ADX = トレンド
         regime = self.classifier.classify_market_regime(df)
         self.assertEqual(regime, "trending")
 
     def test_classify_ranging(self):
         """レンジ相場判定テスト"""
-        df = pd.DataFrame({
-            'ADX': [15.0],  # 低ADX = レンジ
-            'ATR': [1.0]
-        })
+        df = pd.DataFrame({"ADX": [15.0], "ATR": [1.0]})  # 低ADX = レンジ
         regime = self.classifier.classify_market_regime(df)
         self.assertEqual(regime, "ranging")
 
@@ -51,14 +44,11 @@ class TestMarketRegimeClassifier(unittest.TestCase):
         """高ボラティリティ判定テスト"""
         # まず履歴を蓄積
         for i in range(25):
-            df = pd.DataFrame({'ATR': [1.0]})
+            df = pd.DataFrame({"ATR": [1.0]})
             self.classifier.classify_market_regime(df)
 
         # 高ボラティリティ
-        df = pd.DataFrame({
-            'ADX': [20.0],
-            'ATR': [3.0]  # 高いATR
-        })
+        df = pd.DataFrame({"ADX": [20.0], "ATR": [3.0]})  # 高いATR
         regime = self.classifier.classify_market_regime(df)
         self.assertEqual(regime, "high_volatility")
 
@@ -66,14 +56,11 @@ class TestMarketRegimeClassifier(unittest.TestCase):
         """低ボラティリティ判定テスト"""
         # まず履歴を蓄積
         for i in range(25):
-            df = pd.DataFrame({'ATR': [2.0]})
+            df = pd.DataFrame({"ATR": [2.0]})
             self.classifier.classify_market_regime(df)
 
         # 低ボラティリティ
-        df = pd.DataFrame({
-            'ADX': [20.0],
-            'ATR': [0.5]  # 低いATR
-        })
+        df = pd.DataFrame({"ADX": [20.0], "ATR": [0.5]})  # 低いATR
         regime = self.classifier.classify_market_regime(df)
         self.assertEqual(regime, "low_volatility")
 
@@ -109,17 +96,21 @@ class TestAdaptiveFeatureSelector(unittest.TestCase):
     def test_select_features_adaptive(self):
         """適応型特徴量選択テスト"""
         # サンプルデータ
-        df = pd.DataFrame({
-            'ADX': [30.0],
-            'ATR': [1.0],
-            'RSI': [50.0],
-            'MACD': [0.1],
-            'VOLUME_RATIO': [1.2]
-        })
+        df = pd.DataFrame(
+            {
+                "ADX": [30.0],
+                "ATR": [1.0],
+                "RSI": [50.0],
+                "MACD": [0.1],
+                "VOLUME_RATIO": [1.2],
+            }
+        )
 
-        all_features = ['ADX', 'ATR', 'RSI', 'MACD', 'VOLUME_RATIO']
+        all_features = ["ADX", "ATR", "RSI", "MACD", "VOLUME_RATIO"]
 
-        selected_features, weights = self.selector.select_features_adaptive(df, all_features)
+        selected_features, weights = self.selector.select_features_adaptive(
+            df, all_features
+        )
 
         # 特徴量が選択されていることを確認
         self.assertGreater(len(selected_features), 0)

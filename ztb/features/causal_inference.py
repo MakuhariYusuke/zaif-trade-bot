@@ -11,10 +11,8 @@ Causal Inference Feature Selection for SAC v422
 """
 
 import gc
-import logging
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
@@ -56,14 +54,16 @@ class CausalFeatureSelector:
         self.causal_effects: Dict[str, float] = {}
         self.selected_features: List[str] = []
 
-        logger.info(f"Initialized CausalFeatureSelector with treatment_threshold={treatment_threshold}")
+        logger.info(
+            f"Initialized CausalFeatureSelector with treatment_threshold={treatment_threshold}"
+        )
 
     def estimate_causal_effect(
         self,
         df: pd.DataFrame,
         treatment_feature: str,
         outcome_feature: str,
-        confounders: List[str]
+        confounders: List[str],
     ) -> Dict[str, float]:
         """
         因果効果を推定
@@ -79,8 +79,11 @@ class CausalFeatureSelector:
         """
         try:
             # データ準備
-            available_features = [f for f in [treatment_feature] + confounders + [outcome_feature]
-                                if f in df.columns]
+            available_features = [
+                f
+                for f in [treatment_feature] + confounders + [outcome_feature]
+                if f in df.columns
+            ]
 
             if len(available_features) < 2:
                 return {"effect": 0.0, "p_value": 1.0, "confidence": 0.0}
@@ -114,11 +117,13 @@ class CausalFeatureSelector:
                 "effect": float(effect),
                 "p_value": float(p_value),
                 "confidence": float(confidence),
-                "n_samples": len(data)
+                "n_samples": len(data),
             }
 
         except Exception as e:
-            logger.warning(f"Failed to estimate causal effect for {treatment_feature}: {e}")
+            logger.warning(
+                f"Failed to estimate causal effect for {treatment_feature}: {e}"
+            )
             return {"effect": 0.0, "p_value": 1.0, "confidence": 0.0}
 
     def select_features_causal(
@@ -126,7 +131,7 @@ class CausalFeatureSelector:
         df: pd.DataFrame,
         features: List[str],
         outcome_feature: str = "reward",
-        confounders: Optional[List[str]] = None
+        confounders: Optional[List[str]] = None,
     ) -> Tuple[List[str], Dict[str, Dict[str, float]]]:
         """
         因果推論による特徴量選択
@@ -144,20 +149,29 @@ class CausalFeatureSelector:
             # デフォルトの交絡因子（価格、出来高関連）
             confounders = []
             for col in df.columns:
-                if any(keyword in col.lower() for keyword in ['price', 'volume', 'close', 'high', 'low']):
+                if any(
+                    keyword in col.lower()
+                    for keyword in ["price", "volume", "close", "high", "low"]
+                ):
                     confounders.append(col)
             confounders = confounders[:5]  # 最大5個に制限
 
-        logger.info(f"Selecting features using causal inference with {len(features)} candidates")
+        logger.info(
+            f"Selecting features using causal inference with {len(features)} candidates"
+        )
 
         # メモリ最適化：大規模データの場合はdtype最適化
         if len(df) > 5000 and self.memory_manager:
             try:
                 optimized_df, _ = optimize_dtypes(df)
                 work_df = optimized_df
-                self.memory_manager.log_memory_usage("causal_feature_selection_optimization")
+                self.memory_manager.log_memory_usage(
+                    "causal_feature_selection_optimization"
+                )
             except Exception as e:
-                logger.warning(f"Failed to optimize dtypes: {e}, using original dataframe")
+                logger.warning(
+                    f"Failed to optimize dtypes: {e}, using original dataframe"
+                )
                 work_df = df
         else:
             work_df = df
@@ -173,7 +187,9 @@ class CausalFeatureSelector:
 
                 # 定期的なメモリログとGC
                 if self.memory_manager and (i + 1) % 10 == 0:
-                    self.memory_manager.log_memory_usage("causal_feature_selection_progress")
+                    self.memory_manager.log_memory_usage(
+                        "causal_feature_selection_progress"
+                    )
                     gc.collect()
 
         # 因果効果に基づいて特徴量をランク付け
@@ -224,7 +240,9 @@ class CausalFeatureSelector:
 
         return importance
 
-    def update_causal_model(self, new_data: pd.DataFrame, outcome_feature: str = "reward"):
+    def update_causal_model(
+        self, new_data: pd.DataFrame, outcome_feature: str = "reward"
+    ):
         """
         因果モデルを新しいデータで更新
 
@@ -270,10 +288,10 @@ class CausalInferenceEngine:
             config = {}
 
         self.selector = CausalFeatureSelector(
-            treatment_threshold=config.get('treatment_threshold', 0.1),
-            min_samples=config.get('min_samples', 1000),
-            max_features=config.get('max_features'),
-            memory_manager=memory_manager
+            treatment_threshold=config.get("treatment_threshold", 0.1),
+            min_samples=config.get("min_samples", 1000),
+            max_features=config.get("max_features"),
+            memory_manager=memory_manager,
         )
 
         self.config = config
@@ -282,10 +300,7 @@ class CausalInferenceEngine:
         logger.info("Initialized CausalInferenceEngine")
 
     def analyze_causal_relationships(
-        self,
-        df: pd.DataFrame,
-        features: List[str],
-        outcome_feature: str = "reward"
+        self, df: pd.DataFrame, features: List[str], outcome_feature: str = "reward"
     ) -> Dict[str, any]:
         """
         因果関係を分析
@@ -312,10 +327,12 @@ class CausalInferenceEngine:
                 "causal_effects": causal_results,
                 "feature_importance": importance,
                 "n_candidates": len(features),
-                "n_selected": len(selected_features)
+                "n_selected": len(selected_features),
             }
 
-            logger.info(f"Causal analysis completed: {len(selected_features)} features selected")
+            logger.info(
+                f"Causal analysis completed: {len(selected_features)} features selected"
+            )
             return result
 
         except Exception as e:
@@ -324,7 +341,7 @@ class CausalInferenceEngine:
                 "selected_features": [],
                 "causal_effects": {},
                 "feature_importance": {},
-                "error": str(e)
+                "error": str(e),
             }
 
     def update_model(self, new_data: pd.DataFrame, outcome_feature: str = "reward"):
@@ -338,7 +355,9 @@ class CausalInferenceEngine:
         self.selector.update_causal_model(new_data, outcome_feature)
 
 
-def create_causal_engine(config: Optional[Dict[str, any]] = None, memory_manager=None) -> CausalInferenceEngine:
+def create_causal_engine(
+    config: Optional[Dict[str, any]] = None, memory_manager=None
+) -> CausalInferenceEngine:
     """
     因果推論エンジンを作成
 

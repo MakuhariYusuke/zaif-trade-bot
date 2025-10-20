@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Union
 
-from ztb.training.evaluation.eval_gates import EvalGates
 from ztb.training.config.ppo_config import PPOConfig
+from ztb.training.evaluation.eval_gates import EvalGates
 
 
 @dataclass

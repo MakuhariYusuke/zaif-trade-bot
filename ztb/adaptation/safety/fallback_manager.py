@@ -6,21 +6,20 @@ Fallback Manager
 import logging
 import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from dataclasses import dataclass, field
-import numpy as np
+from typing import Any, Callable, Dict, List, Optional
 
 from ..monitoring.safety import SafetyManager
-from .types import FallbackStrategy, FallbackAction, FallbackStatus, SafetyLevel
-
+from .types import FallbackAction, SafetyLevel
 
 logger = logging.getLogger(__name__)
 
 
 class FallbackMode(Enum):
     """フォールバックモード"""
+
     CONSERVATIVE = "conservative"  # 保守的な取引（低リスク）
     CIRCUIT_BREAKER = "circuit_breaker"  # 取引停止
     GRADUAL_DEGRADATION = "gradual_degradation"  # 段階的機能低下
@@ -72,9 +71,9 @@ class FallbackState:
 class FallbackManager:
     """フォールバックマネージャー"""
 
-    def __init__(self,
-                 safety_manager: SafetyManager,
-                 config: Optional[FallbackConfig] = None):
+    def __init__(
+        self, safety_manager: SafetyManager, config: Optional[FallbackConfig] = None
+    ):
         self.safety_manager = safety_manager
         self.config = config or FallbackConfig()
 
@@ -102,8 +101,7 @@ class FallbackManager:
 
             self.monitoring_active = True
             self.monitor_thread = threading.Thread(
-                target=self._monitoring_worker,
-                daemon=True
+                target=self._monitoring_worker, daemon=True
             )
             self.monitor_thread.start()
 
@@ -121,22 +119,23 @@ class FallbackManager:
             self.monitor_thread.join(timeout=5.0)
         logger.info("Fallback monitoring stopped")
 
-    def activate_fallback(self,
-                         mode: FallbackMode,
-                         reason: str,
-                         severity: SafetyLevel = SafetyLevel.WARNING) -> bool:
+    def activate_fallback(
+        self,
+        mode: FallbackMode,
+        reason: str,
+        severity: SafetyLevel = SafetyLevel.WARNING,
+    ) -> bool:
         """フォールバックをアクティベート"""
         try:
             if self.current_fallback:
-                logger.warning(f"Fallback already active: {self.current_fallback.mode.value}")
+                logger.warning(
+                    f"Fallback already active: {self.current_fallback.mode.value}"
+                )
                 return False
 
             # フォールバック状態を作成
             fallback_state = FallbackState(
-                mode=mode,
-                activated_at=datetime.now(),
-                reason=reason,
-                severity=severity
+                mode=mode, activated_at=datetime.now(), reason=reason, severity=severity
             )
 
             # フォールバックアクションを実行
@@ -144,7 +143,9 @@ class FallbackManager:
             fallback_state.active_actions = actions
 
             # 期待回復時間を設定
-            fallback_state.expected_recovery_time = self._calculate_expected_recovery_time(mode)
+            fallback_state.expected_recovery_time = (
+                self._calculate_expected_recovery_time(mode)
+            )
 
             self.current_fallback = fallback_state
             self.fallback_history.append(fallback_state)
@@ -219,7 +220,7 @@ class FallbackManager:
                 "mode": None,
                 "activated_at": None,
                 "reason": None,
-                "severity": None
+                "severity": None,
             }
 
         return {
@@ -229,11 +230,15 @@ class FallbackManager:
             "reason": self.current_fallback.reason,
             "severity": self.current_fallback.severity.value,
             "recovery_attempts": self.current_fallback.recovery_attempts,
-            "expected_recovery_time": self.current_fallback.expected_recovery_time.isoformat() if self.current_fallback.expected_recovery_time else None,
-            "active_actions_count": len(self.current_fallback.active_actions)
+            "expected_recovery_time": self.current_fallback.expected_recovery_time.isoformat()
+            if self.current_fallback.expected_recovery_time
+            else None,
+            "active_actions_count": len(self.current_fallback.active_actions),
         }
 
-    def _execute_fallback_actions(self, mode: FallbackMode, severity: SafetyLevel) -> List[FallbackAction]:
+    def _execute_fallback_actions(
+        self, mode: FallbackMode, severity: SafetyLevel
+    ) -> List[FallbackAction]:
         """フォールバックアクションを実行"""
         actions = []
 
@@ -247,7 +252,9 @@ class FallbackManager:
             elif mode == FallbackMode.EMERGENCY_SHUTDOWN:
                 actions.extend(self._activate_emergency_shutdown())
 
-            logger.info(f"Executed {len(actions)} fallback actions for mode: {mode.value}")
+            logger.info(
+                f"Executed {len(actions)} fallback actions for mode: {mode.value}"
+            )
             return actions
 
         except Exception as e:
@@ -265,7 +272,7 @@ class FallbackManager:
                 action_type="limit_position_size",
                 parameters={"max_size": self.config.conservative_max_position_size},
                 description="Limit position size to conservative levels",
-                rollback_action="restore_position_size"
+                rollback_action="restore_position_size",
             )
             actions.append(action)
 
@@ -275,7 +282,7 @@ class FallbackManager:
                 action_type="limit_leverage",
                 parameters={"max_leverage": self.config.conservative_max_leverage},
                 description="Limit leverage to conservative levels",
-                rollback_action="restore_leverage"
+                rollback_action="restore_leverage",
             )
             actions.append(action)
 
@@ -283,9 +290,11 @@ class FallbackManager:
             action = FallbackAction(
                 action_id=f"conservative_frequency_{datetime.now().timestamp()}",
                 action_type="limit_trade_frequency",
-                parameters={"max_trades_per_hour": self.config.conservative_trade_frequency_limit},
+                parameters={
+                    "max_trades_per_hour": self.config.conservative_trade_frequency_limit
+                },
                 description="Limit trade frequency to conservative levels",
-                rollback_action="restore_trade_frequency"
+                rollback_action="restore_trade_frequency",
             )
             actions.append(action)
 
@@ -308,9 +317,11 @@ class FallbackManager:
             action = FallbackAction(
                 action_id=f"circuit_breaker_stop_{datetime.now().timestamp()}",
                 action_type="stop_trading",
-                parameters={"duration_minutes": self.config.circuit_breaker_cooldown_minutes},
+                parameters={
+                    "duration_minutes": self.config.circuit_breaker_cooldown_minutes
+                },
                 description="Stop all trading activities",
-                rollback_action="resume_trading"
+                rollback_action="resume_trading",
             )
             actions.append(action)
 
@@ -324,17 +335,23 @@ class FallbackManager:
             logger.error(f"Failed to activate circuit breaker: {e}")
             return []
 
-    def _activate_gradual_degradation(self, severity: SafetyLevel) -> List[FallbackAction]:
+    def _activate_gradual_degradation(
+        self, severity: SafetyLevel
+    ) -> List[FallbackAction]:
         """段階的劣化をアクティベート"""
         actions = []
 
         try:
             # 劣化ステップ数を決定
-            steps = min(self.config.degradation_steps,
-                       max(1, int(severity.value * self.config.degradation_steps)))
+            steps = min(
+                self.config.degradation_steps,
+                max(1, int(severity.value * self.config.degradation_steps)),
+            )
 
             for step in range(steps):
-                reduction_factor = self.config.degradation_reduction_factor ** (step + 1)
+                reduction_factor = self.config.degradation_reduction_factor ** (
+                    step + 1
+                )
 
                 action = FallbackAction(
                     action_id=f"degradation_step_{step}_{datetime.now().timestamp()}",
@@ -342,10 +359,10 @@ class FallbackManager:
                     parameters={
                         "reduction_factor": reduction_factor,
                         "step": step + 1,
-                        "total_steps": steps
+                        "total_steps": steps,
                     },
                     description=f"Reduce system capacity by factor {reduction_factor} (step {step + 1}/{steps})",
-                    rollback_action="restore_capacity"
+                    rollback_action="restore_capacity",
                 )
                 actions.append(action)
 
@@ -370,7 +387,7 @@ class FallbackManager:
                 action_type="emergency_shutdown",
                 parameters={},
                 description="Complete system shutdown",
-                rollback_action="emergency_startup"
+                rollback_action="emergency_startup",
             )
             actions.append(action)
 
@@ -389,7 +406,9 @@ class FallbackManager:
         try:
             # 実際の取引システムとの統合ポイント
             # ここではログ出力のみ（実際の実装では取引システムのAPIを呼び出す）
-            logger.info(f"Executing fallback action: {action.action_type} - {action.description}")
+            logger.info(
+                f"Executing fallback action: {action.action_type} - {action.description}"
+            )
 
             # アクションタイプに応じた処理
             if action.action_type == "limit_position_size":
@@ -432,7 +451,9 @@ class FallbackManager:
     def _execute_rollback_action(self, action: FallbackAction) -> bool:
         """ロールバックアクションを実行"""
         try:
-            logger.info(f"Executing rollback for action: {action.action_id} - {action.rollback_action}")
+            logger.info(
+                f"Executing rollback for action: {action.action_id} - {action.rollback_action}"
+            )
 
             # ロールバックアクションタイプに応じた処理
             if action.rollback_action == "restore_position_size":
@@ -457,18 +478,26 @@ class FallbackManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to execute rollback for action {action.action_id}: {e}")
+            logger.error(
+                f"Failed to execute rollback for action {action.action_id}: {e}"
+            )
             return False
 
-    def _calculate_expected_recovery_time(self, mode: FallbackMode) -> Optional[datetime]:
+    def _calculate_expected_recovery_time(
+        self, mode: FallbackMode
+    ) -> Optional[datetime]:
         """期待回復時間を計算"""
         try:
             now = datetime.now()
 
             if mode == FallbackMode.CONSERVATIVE:
-                return now + timedelta(hours=self.config.conservative_mode_duration_hours)
+                return now + timedelta(
+                    hours=self.config.conservative_mode_duration_hours
+                )
             elif mode == FallbackMode.CIRCUIT_BREAKER:
-                return now + timedelta(minutes=self.config.circuit_breaker_cooldown_minutes)
+                return now + timedelta(
+                    minutes=self.config.circuit_breaker_cooldown_minutes
+                )
             elif mode == FallbackMode.GRADUAL_DEGRADATION:
                 return now + timedelta(minutes=30)  # 30分後
             elif mode == FallbackMode.EMERGENCY_SHUTDOWN:
@@ -496,7 +525,9 @@ class FallbackManager:
             if len(recent_checks) < 3:
                 return False
 
-            success_rate = sum(1 for check in recent_checks if check.passed) / len(recent_checks)
+            success_rate = sum(1 for check in recent_checks if check.passed) / len(
+                recent_checks
+            )
             if success_rate < 0.8:
                 return False
 
@@ -528,7 +559,10 @@ class FallbackManager:
 
     def _check_fallback_timeout(self) -> bool:
         """フォールバックタイムアウトをチェック"""
-        if not self.current_fallback or not self.current_fallback.expected_recovery_time:
+        if (
+            not self.current_fallback
+            or not self.current_fallback.expected_recovery_time
+        ):
             return False
 
         return datetime.now() >= self.current_fallback.expected_recovery_time
@@ -538,22 +572,35 @@ class FallbackManager:
         if not self.current_fallback or not self.current_fallback.last_recovery_check:
             return True
 
-        time_since_last_check = datetime.now() - self.current_fallback.last_recovery_check
-        return time_since_last_check.total_seconds() >= self.config.recovery_check_interval_seconds
+        time_since_last_check = (
+            datetime.now() - self.current_fallback.last_recovery_check
+        )
+        return (
+            time_since_last_check.total_seconds()
+            >= self.config.recovery_check_interval_seconds
+        )
 
-    def add_fallback_activated_callback(self, callback: Callable[[FallbackState], None]) -> None:
+    def add_fallback_activated_callback(
+        self, callback: Callable[[FallbackState], None]
+    ) -> None:
         """フォールバックアクティベートコールバックを追加"""
         self.fallback_activated_callbacks.append(callback)
 
-    def add_fallback_deactivated_callback(self, callback: Callable[[FallbackState], None]) -> None:
+    def add_fallback_deactivated_callback(
+        self, callback: Callable[[FallbackState], None]
+    ) -> None:
         """フォールバック非アクティベートコールバックを追加"""
         self.fallback_deactivated_callbacks.append(callback)
 
-    def add_recovery_attempt_callback(self, callback: Callable[[FallbackState], None]) -> None:
+    def add_recovery_attempt_callback(
+        self, callback: Callable[[FallbackState], None]
+    ) -> None:
         """回復試行コールバックを追加"""
         self.recovery_attempt_callbacks.append(callback)
 
-    def _trigger_fallback_activated_callbacks(self, fallback_state: FallbackState) -> None:
+    def _trigger_fallback_activated_callbacks(
+        self, fallback_state: FallbackState
+    ) -> None:
         """フォールバックアクティベートコールバックを実行"""
         for callback in self.fallback_activated_callbacks:
             try:
@@ -561,7 +608,9 @@ class FallbackManager:
             except Exception as e:
                 logger.error(f"Fallback activated callback failed: {e}")
 
-    def _trigger_fallback_deactivated_callbacks(self, fallback_state: FallbackState) -> None:
+    def _trigger_fallback_deactivated_callbacks(
+        self, fallback_state: FallbackState
+    ) -> None:
         """フォールバック非アクティベートコールバックを実行"""
         for callback in self.fallback_deactivated_callbacks:
             try:
@@ -569,7 +618,9 @@ class FallbackManager:
             except Exception as e:
                 logger.error(f"Fallback deactivated callback failed: {e}")
 
-    def _trigger_recovery_attempt_callbacks(self, fallback_state: FallbackState) -> None:
+    def _trigger_recovery_attempt_callbacks(
+        self, fallback_state: FallbackState
+    ) -> None:
         """回復試行コールバックを実行"""
         for callback in self.recovery_attempt_callbacks:
             try:
@@ -582,8 +633,7 @@ class FallbackManager:
         try:
             cutoff_time = datetime.now() - timedelta(hours=hours)
             recent_fallbacks = [
-                f for f in self.fallback_history
-                if f.activated_at > cutoff_time
+                f for f in self.fallback_history if f.activated_at > cutoff_time
             ]
 
             return [
@@ -593,7 +643,7 @@ class FallbackManager:
                     "reason": f.reason,
                     "severity": f.severity.value,
                     "recovery_attempts": f.recovery_attempts,
-                    "active_actions_count": len(f.active_actions)
+                    "active_actions_count": len(f.active_actions),
                 }
                 for f in recent_fallbacks
             ]

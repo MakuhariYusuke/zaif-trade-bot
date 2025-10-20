@@ -29,10 +29,14 @@ class TrainingCheckpointConfig:
 
     interval_steps: int = 10_000
     keep_last: int = 5
-    compress: str = "lz4"  # Changed from zstd for faster compression and memory optimization
+    compress: str = (
+        "lz4"  # Changed from zstd for faster compression and memory optimization
+    )
     async_save: bool = True
     include_optimizer: bool = True
-    include_replay_buffer: bool = False  # Disabled for memory optimization in iterative learning
+    include_replay_buffer: bool = (
+        False  # Disabled for memory optimization in iterative learning
+    )
     include_rng_state: bool = True
 
 
@@ -143,8 +147,8 @@ class TrainingCheckpointManager:
             return None
 
         snapshot = TrainingCheckpointSnapshot(
-            step=step, payload=payload, metadata=metadata  # type: ignore[arg-type]
-        )
+            step=step, payload=payload, metadata=metadata
+        )  # type: ignore[arg-type]
         if self.observability:
             self.observability.log_event(
                 "checkpoint_load",

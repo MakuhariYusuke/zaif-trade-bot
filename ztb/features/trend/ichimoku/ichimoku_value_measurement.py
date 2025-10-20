@@ -60,16 +60,19 @@ class IchimokuValueMeasurement(BaseFeature):
 
         # 4. Price fluctuation ratios
         # How much price movement vs Ichimoku ranges
-        price_tenkan_ratio = price_range / (tenkan_range + 0.001)  # Avoid division by zero
+        price_tenkan_ratio = price_range / (
+            tenkan_range + 0.001
+        )  # Avoid division by zero
         price_kijun_ratio = price_range / (kijun_range + 0.001)
         price_cloud_ratio = price_range / (cloud_value_range + 0.001)
 
         # 5. Value measurement efficiency
         # How well Ichimoku captures price movements
         price_in_cloud = np.where(
-            (df["close"] >= np.minimum(senkou_a, senkou_b)) &
-            (df["close"] <= np.maximum(senkou_a, senkou_b)),
-            1, 0
+            (df["close"] >= np.minimum(senkou_a, senkou_b))
+            & (df["close"] <= np.maximum(senkou_a, senkou_b)),
+            1,
+            0,
         )
 
         # 6. Value zone utilization
@@ -85,20 +88,24 @@ class IchimokuValueMeasurement(BaseFeature):
         ratio_score = (price_tenkan_ratio + price_kijun_ratio + price_cloud_ratio) / 3
         ratio_norm = np.clip(ratio_score / 2, 0, 1)  # Normalize to 0-1
 
-        utilization_score = np.where(cloud_utilization > 1, 1, cloud_utilization)  # 0-1 scale
+        utilization_score = np.where(
+            cloud_utilization > 1, 1, cloud_utilization
+        )  # 0-1 scale
 
         consistency_score = np.clip(range_consistency, 0, 1)
 
         # Final value measurement score
         value_measurement_score = (
-            0.4 * ratio_norm +           # Range ratios
-            0.3 * utilization_score +   # Cloud utilization
-            0.3 * consistency_score     # Measurement consistency
+            0.4 * ratio_norm
+            + 0.3 * utilization_score  # Range ratios
+            + 0.3 * consistency_score  # Cloud utilization  # Measurement consistency
         )
 
         # Adjust based on price position in cloud
         position_adjustment = np.where(price_in_cloud == 1, 0.1, -0.1)
         value_measurement_score += position_adjustment
 
-        result_df = pd.DataFrame({"ichimoku_value_measurement": value_measurement_score}, index=df.index)
+        result_df = pd.DataFrame(
+            {"ichimoku_value_measurement": value_measurement_score}, index=df.index
+        )
         return result_df

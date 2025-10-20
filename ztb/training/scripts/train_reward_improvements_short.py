@@ -33,10 +33,10 @@ def run_training(config_info):
     """Run training for a single config."""
     config_path = project_root / config_info["path"]
 
-    with open(config_path, 'r', encoding='utf-8') as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         config = json.load(f)
 
-    session_id = config['session_id']
+    session_id = config["session_id"]
 
     print("=" * 80)
     print(f"Training: {config_info['name']} (SHORT RUN)")
@@ -47,7 +47,7 @@ def run_training(config_info):
     print(f"Features: {config.get('curated_features_list', 'default')}")
     print(f"Random start: {config['environment']['random_start']}")
     print("\nReward settings:")
-    for key, value in config['environment']['reward_settings'].items():
+    for key, value in config["environment"]["reward_settings"].items():
         print(f"  {key}: {value}")
     print("=" * 80 + "\n")
 
@@ -57,9 +57,9 @@ def run_training(config_info):
     # Create trainer
     print("Creating trainer...")
     trainer = PPOTrainer(
-        data_path=str(config['data_path']),
+        data_path=str(config["data_path"]),
         config=config,
-        checkpoint_dir=f'checkpoints/{session_id}',
+        checkpoint_dir=f"checkpoints/{session_id}",
     )
 
     # Train
@@ -91,17 +91,18 @@ def main():
         except KeyboardInterrupt:
             print(f"\n⚠️ Training interrupted by user for: {config_info['name']}")
             response = input("Continue with next config? (y/n): ").strip().lower()
-            if response != 'y':
+            if response != "y":
                 print("Training sequence cancelled.")
                 sys.exit(1)
         except Exception as e:
             print(f"\n❌ Training failed for: {config_info['name']}")
             print(f"Error: {e}")
             import traceback
+
             traceback.print_exc()
 
             response = input("Continue with next config? (y/n): ").strip().lower()
-            if response != 'y':
+            if response != "y":
                 print("Training sequence cancelled.")
                 sys.exit(1)
 
@@ -122,5 +123,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ Training sequence failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

@@ -20,8 +20,11 @@ if TYPE_CHECKING:
     else:  # pragma: no cover - fallback for type checkers
 
         class PPOTrainer:  # type: ignore
-            def __init__(self, *args, **kwargs) -> None: ...
-            def train(self, *args, **kwargs) -> object: ...
+            def __init__(self, *args, **kwargs) -> None:
+                ...
+
+            def train(self, *args, **kwargs) -> object:
+                ...
 
 else:
     # At runtime prefer importing the real implementation where present. If

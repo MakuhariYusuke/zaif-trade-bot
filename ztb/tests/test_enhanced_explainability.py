@@ -3,14 +3,14 @@ Test Enhanced Explainability Features
 説明可能性機能の拡張テスト
 """
 
+import os
+import tempfile
 import unittest
-import numpy as np
+from unittest.mock import patch
+
 import pandas as pd
 import torch
 import torch.nn as nn
-from unittest.mock import Mock, patch
-import tempfile
-import os
 
 from ztb.adaptation.explainability.analyzer import ExplainabilityAnalyzer
 from ztb.adaptation.explainability.config import ExplainabilityConfig
@@ -25,7 +25,7 @@ class SimpleTestModel(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
+            nn.Linear(hidden_size, output_size),
         )
 
     def forward(self, x):
@@ -43,7 +43,7 @@ class TestEnhancedExplainability(unittest.TestCase):
             enable_visualization=True,
             max_features_to_explain=5,
             feature_names={f"feature_{i}": f"Feature {i}" for i in range(10)},
-            feature_categories={f"feature_{i}": "test" for i in range(10)}
+            feature_categories={f"feature_{i}": "test" for i in range(10)},
         )
         self.analyzer = ExplainabilityAnalyzer(self.config)
         self.test_model = SimpleTestModel()
@@ -59,8 +59,12 @@ class TestEnhancedExplainability(unittest.TestCase):
 
             primary_factors = [
                 FeatureImportance("feature_0", 0.8, "trend", "Trend indicator"),
-                FeatureImportance("feature_1", 0.6, "oscillator", "Oscillator indicator"),
-                FeatureImportance("feature_2", 0.4, "volatility", "Volatility indicator")
+                FeatureImportance(
+                    "feature_1", 0.6, "oscillator", "Oscillator indicator"
+                ),
+                FeatureImportance(
+                    "feature_2", 0.4, "volatility", "Volatility indicator"
+                ),
             ]
 
             contributing_factors = [
@@ -88,7 +92,7 @@ class TestEnhancedExplainability(unittest.TestCase):
             # トレンド主体の要因
             trend_factors = [
                 FeatureImportance("feature_0", 0.8, "trend"),
-                FeatureImportance("feature_1", 0.6, "trend")
+                FeatureImportance("feature_1", 0.6, "trend"),
             ]
 
             context = self.analyzer._analyze_market_context(trend_factors)
@@ -98,7 +102,7 @@ class TestEnhancedExplainability(unittest.TestCase):
             # オシレーター主体の要因
             oscillator_factors = [
                 FeatureImportance("feature_0", 0.8, "oscillator"),
-                FeatureImportance("feature_1", 0.6, "oscillator")
+                FeatureImportance("feature_1", 0.6, "oscillator"),
             ]
 
             context = self.analyzer._analyze_market_context(oscillator_factors)
@@ -116,35 +120,42 @@ class TestEnhancedExplainability(unittest.TestCase):
             # 高重要度の要因
             high_importance_factors = [
                 FeatureImportance("feature_0", 0.9),
-                FeatureImportance("feature_1", 0.8)
+                FeatureImportance("feature_1", 0.8),
             ]
 
-            warning = self.analyzer._generate_risk_warning("BUY", high_importance_factors)
+            warning = self.analyzer._generate_risk_warning(
+                "BUY", high_importance_factors
+            )
             self.assertIsInstance(warning, str)
 
             # 低重要度の要因
             low_importance_factors = [
                 FeatureImportance("feature_0", 0.2),
-                FeatureImportance("feature_1", 0.1)
+                FeatureImportance("feature_1", 0.1),
             ]
 
-            warning = self.analyzer._generate_risk_warning("BUY", low_importance_factors)
+            warning = self.analyzer._generate_risk_warning(
+                "BUY", low_importance_factors
+            )
             self.assertIsInstance(warning, str)
 
         except Exception as e:
             self.skipTest(f"Risk warning generation test failed: {e}")
 
-    @patch('ztb.adaptation.explainability.analyzer.MATPLOTLIB_AVAILABLE', True)
+    @patch("ztb.adaptation.explainability.analyzer.MATPLOTLIB_AVAILABLE", True)
     def test_visualization_generation(self):
         """可視化生成テスト"""
         try:
-            from ztb.adaptation.explainability.types import FeatureImportance, DecisionExplanation
+            from ztb.adaptation.explainability.types import (
+                DecisionExplanation,
+                FeatureImportance,
+            )
 
             # 特徴量重要度データ
             feature_importance = [
                 FeatureImportance("feature_0", 0.8, "trend"),
                 FeatureImportance("feature_1", 0.6, "oscillator"),
-                FeatureImportance("feature_2", 0.4, "volatility")
+                FeatureImportance("feature_2", 0.4, "volatility"),
             ]
 
             # 決定説明データ
@@ -153,7 +164,7 @@ class TestEnhancedExplainability(unittest.TestCase):
                 confidence_score=0.85,
                 primary_factors=feature_importance,
                 contributing_factors=[],
-                natural_language_explanation="Test explanation"
+                natural_language_explanation="Test explanation",
             )
 
             # 可視化生成
@@ -180,22 +191,24 @@ class TestEnhancedExplainability(unittest.TestCase):
                 explanation_type=self.analyzer.config.explanation_method,
                 target_prediction="BUY",
                 feature_importance=[],
-                processing_time_seconds=0.1
+                processing_time_seconds=0.1,
             )
 
             explanations = [mock_explanation]
 
             # 一時ファイルにレポート生成
-            with tempfile.NamedTemporaryFile(suffix='.html', delete=False) as tmp_file:
+            with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as tmp_file:
                 tmp_path = tmp_file.name
 
             try:
-                result = self.analyzer.generate_explanation_report(explanations, tmp_path)
+                result = self.analyzer.generate_explanation_report(
+                    explanations, tmp_path
+                )
                 self.assertIn("Report saved to", result)
                 self.assertTrue(os.path.exists(tmp_path))
 
                 # HTMLファイルの内容確認
-                with open(tmp_path, 'r', encoding='utf-8') as f:
+                with open(tmp_path, "r", encoding="utf-8") as f:
                     content = f.read()
                     self.assertIn("SAC v421", content)
                     self.assertIn("説明可能性レポート", content)
@@ -215,12 +228,14 @@ class TestEnhancedExplainability(unittest.TestCase):
             feature_importance = [
                 FeatureImportance("feature_0", 0.8, "trend"),
                 FeatureImportance("feature_1", 0.6, "oscillator"),
-                FeatureImportance("feature_2", 0.4, "volatility")
+                FeatureImportance("feature_2", 0.4, "volatility"),
             ]
 
             # matplotlibが利用可能な場合のみテスト
-            if hasattr(self.analyzer, '_create_feature_importance_plot'):
-                plot_data = self.analyzer._create_feature_importance_plot(feature_importance)
+            if hasattr(self.analyzer, "_create_feature_importance_plot"):
+                plot_data = self.analyzer._create_feature_importance_plot(
+                    feature_importance
+                )
 
                 # プロットデータが辞書形式であることを確認
                 self.assertIsInstance(plot_data, dict)
@@ -230,5 +245,5 @@ class TestEnhancedExplainability(unittest.TestCase):
             self.skipTest(f"Feature importance plot test failed: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

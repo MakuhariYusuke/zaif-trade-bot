@@ -13,11 +13,11 @@ import logging
 import random
 import time
 import urllib.parse
-from typing import Any, Dict, List, Optional, Union, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import requests
 
-from ztb.utils.errors import NetworkError, InsufficientFundsError, MinimumSizeError, OrderNotFoundError
+from ztb.utils.errors import InsufficientFundsError, MinimumSizeError, NetworkError
 from ztb.utils.rate_limiter import RateLimitConfig, RateLimiter
 
 from ..base.broker_interfaces import Balance, IBroker, Order, Position
@@ -108,17 +108,20 @@ class CoincheckAdapter(IBroker):
             raise ValueError("API secret is required for authentication")
 
         return hmac.new(
-            self.api_secret.encode('utf-8'),
-            message.encode('utf-8'),
-            hashlib.sha256
+            self.api_secret.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
         ).hexdigest()
 
     def _make_api_request(
         self,
         method: Literal["GET", "POST", "DELETE"],
         url: str,
-        data: Optional[Dict[str, Any]] = None
-    ) -> Union[CoincheckOrderResponse, CoincheckBalanceResponse, CoincheckErrorResponse, Dict[str, Any]]:
+        data: Optional[Dict[str, Any]] = None,
+    ) -> Union[
+        CoincheckOrderResponse,
+        CoincheckBalanceResponse,
+        CoincheckErrorResponse,
+        Dict[str, Any],
+    ]:
         """Make authenticated API request to Coincheck.
 
         Args:
@@ -135,7 +138,7 @@ class CoincheckAdapter(IBroker):
         nonce = str(int(time.time() * 1000000))
 
         if data:
-            message = nonce + url + json.dumps(data, separators=(',', ':'))
+            message = nonce + url + json.dumps(data, separators=(",", ":"))
         else:
             message = nonce + url
 
@@ -145,26 +148,37 @@ class CoincheckAdapter(IBroker):
             "ACCESS-KEY": self.api_key,
             "ACCESS-NONCE": nonce,
             "ACCESS-SIGNATURE": signature,
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded",
         }
 
         try:
             if method.upper() == "GET":
-                response = requests.get(url, headers=headers, timeout=self.request_timeout)
+                response = requests.get(
+                    url, headers=headers, timeout=self.request_timeout
+                )
             elif method.upper() == "POST":
                 # Use URL-encoded data for POST requests
                 request_data = None
                 if data:
                     request_data = urllib.parse.urlencode(data)
-                response = requests.post(url, headers=headers, data=request_data, timeout=self.request_timeout)
+                response = requests.post(
+                    url,
+                    headers=headers,
+                    data=request_data,
+                    timeout=self.request_timeout,
+                )
             elif method.upper() == "DELETE":
-                response = requests.delete(url, headers=headers, timeout=self.request_timeout)
+                response = requests.delete(
+                    url, headers=headers, timeout=self.request_timeout
+                )
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
             response.raise_for_status()
             logger.info(f"API Response status: {response.status_code}")
-            logger.info(f"API Response content: {response.text[:500]}")  # Log first 500 chars
+            logger.info(
+                f"API Response content: {response.text[:500]}"
+            )  # Log first 500 chars
             return response.json()
 
         except requests.exceptions.RequestException as e:
@@ -237,14 +251,25 @@ class CoincheckAdapter(IBroker):
             except Exception as e:
                 error_msg = str(e)
                 logger.error(f"Failed to place order: {error_msg}")
-                
+
                 # Check for specific API errors and raise appropriate exceptions
-                if "insufficient" in error_msg.lower() or "balance" in error_msg.lower():
-                    logger.warning(f"Order failed due to insufficient balance: {error_msg}")
-                    raise InsufficientFundsError(f"Insufficient balance for {side} order of {quantity} {symbol}")
+                if (
+                    "insufficient" in error_msg.lower()
+                    or "balance" in error_msg.lower()
+                ):
+                    logger.warning(
+                        f"Order failed due to insufficient balance: {error_msg}"
+                    )
+                    raise InsufficientFundsError(
+                        f"Insufficient balance for {side} order of {quantity} {symbol}"
+                    )
                 elif "minimum" in error_msg.lower() or "size" in error_msg.lower():
-                    logger.warning(f"Order failed due to minimum size requirements: {error_msg}")
-                    raise MinimumSizeError(f"Order size {quantity} below minimum requirements")
+                    logger.warning(
+                        f"Order failed due to minimum size requirements: {error_msg}"
+                    )
+                    raise MinimumSizeError(
+                        f"Order size {quantity} below minimum requirements"
+                    )
                 else:
                     # Re-raise network/API errors
                     raise
@@ -333,14 +358,23 @@ class CoincheckAdapter(IBroker):
                 result = self._make_api_request("DELETE", url)
                 logger.info(f"Cancelled order {order_id}: {result}")
                 success_value = result.get("success", False)
-                return bool(success_value) if isinstance(success_value, (bool, int)) else False
+                return (
+                    bool(success_value)
+                    if isinstance(success_value, (bool, int))
+                    else False
+                )
             except Exception as e:
                 error_msg = str(e)
                 logger.error(f"Failed to cancel order {order_id}: {error_msg}")
-                
+
                 # Check for specific API errors
-                if "not found" in error_msg.lower() or "already cancelled" in error_msg.lower():
-                    logger.warning(f"Order cancellation failed (order may have already executed or been cancelled): {error_msg}")
+                if (
+                    "not found" in error_msg.lower()
+                    or "already cancelled" in error_msg.lower()
+                ):
+                    logger.warning(
+                        f"Order cancellation failed (order may have already executed or been cancelled): {error_msg}"
+                    )
                     # Don't raise exception for order not found, just return False
                     return False
                 else:
@@ -402,7 +436,9 @@ class CoincheckAdapter(IBroker):
 
                 # Check if result is a dict
                 if not isinstance(result, dict):
-                    raise ValueError(f"Unexpected API response type: {type(result)}, content: {result}")
+                    raise ValueError(
+                        f"Unexpected API response type: {type(result)}, content: {result}"
+                    )
 
                 # Check for API errors
                 if not result.get("success", False):
@@ -412,17 +448,24 @@ class CoincheckAdapter(IBroker):
                 # Convert API response to Balance objects
                 balances = []
                 for currency_code, balance_str in result.items():
-                    if currency_code not in ["success", "error"]:  # Skip metadata fields
+                    if currency_code not in [
+                        "success",
+                        "error",
+                    ]:  # Skip metadata fields
                         try:
                             balance_value = float(balance_str)
-                            balances.append(Balance(
-                                currency=currency_code.upper(),
-                                free=balance_value,
-                                locked=0.0,  # Coincheck doesn't separate free/locked in balance
-                                total=balance_value
-                            ))
+                            balances.append(
+                                Balance(
+                                    currency=currency_code.upper(),
+                                    free=balance_value,
+                                    locked=0.0,  # Coincheck doesn't separate free/locked in balance
+                                    total=balance_value,
+                                )
+                            )
                         except (ValueError, TypeError) as e:
-                            logger.warning(f"Failed to parse balance for {currency_code}: {balance_str}, error: {e}")
+                            logger.warning(
+                                f"Failed to parse balance for {currency_code}: {balance_str}, error: {e}"
+                            )
 
                 # Filter by currency if specified
                 if currency:
@@ -454,7 +497,7 @@ class CoincheckAdapter(IBroker):
             response = requests.get(
                 f"{self.api_base_url}/api/ticker",
                 timeout=self.request_timeout,
-                headers={"User-Agent": "ZaifTradeBot/1.0"}
+                headers={"User-Agent": "ZaifTradeBot/1.0"},
             )
             response.raise_for_status()
             data = response.json()
@@ -468,7 +511,11 @@ class CoincheckAdapter(IBroker):
             logger.warning("Coincheck API request timed out, using simulated price")
             raise NetworkError(
                 "Coincheck API request timed out",
-                details={"symbol": symbol, "timeout": self.request_timeout, "url": f"{self.api_base_url}/api/ticker"}
+                details={
+                    "symbol": symbol,
+                    "timeout": self.request_timeout,
+                    "url": f"{self.api_base_url}/api/ticker",
+                },
             )
         except requests.exceptions.RequestException as e:
             logger.warning(
@@ -476,7 +523,11 @@ class CoincheckAdapter(IBroker):
             )
             raise NetworkError(
                 f"Coincheck API request failed: {str(e)}",
-                details={"symbol": symbol, "error": str(e), "url": f"{self.api_base_url}/api/ticker"}
+                details={
+                    "symbol": symbol,
+                    "error": str(e),
+                    "url": f"{self.api_base_url}/api/ticker",
+                },
             )
         except (ValueError, KeyError) as e:
             logger.warning(
@@ -484,7 +535,11 @@ class CoincheckAdapter(IBroker):
             )
             raise NetworkError(
                 f"Invalid Coincheck API response: {str(e)}",
-                details={"symbol": symbol, "error": str(e), "url": f"{self.api_base_url}/api/ticker"}
+                details={
+                    "symbol": symbol,
+                    "error": str(e),
+                    "url": f"{self.api_base_url}/api/ticker",
+                },
             )
 
         # Fallback to simulated price
