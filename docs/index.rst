@@ -57,6 +57,8 @@ Contents
    :caption: User Guide:
 
    quickstart/index
+   tutorials/index
+   examples/index
    configuration
    evaluation
    deployment
@@ -65,7 +67,8 @@ Contents
    :maxdepth: 2
    :caption: API Reference:
 
-   api/modules
+   api/index
+   reference/index
 
 .. toctree::
    :maxdepth: 2
@@ -73,6 +76,16 @@ Contents
 
    contributing/index
    changelog/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Architecture & Design:
+
+   architecture/index
+   design/index
+   algorithms/index
+   features/index
+   implementation/index
 
 Indices and Tables
 ==================
