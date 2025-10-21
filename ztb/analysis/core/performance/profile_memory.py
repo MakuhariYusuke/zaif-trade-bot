@@ -39,7 +39,7 @@ def log_memory(step_name: str) -> float:
     return mem
 
 
-def main() -> None:
+def main() -> bool:
     logger.info("=" * 80)
     logger.info("Bug #52 Memory Profiling")
     logger.info("=" * 80)

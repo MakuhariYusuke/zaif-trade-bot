@@ -6,18 +6,17 @@ This module provides evaluation functions for reward function parameter optimiza
 including multi-objective scoring and cross-validation across market conditions.
 """
 
+from typing import Dict, List, Any, Optional, Callable, Tuple
 import json
+from pathlib import Path
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
 import numpy as np
 import pandas as pd
 
-from ztb.trading.environment.utils.config import RewardSettings
 from ztb.utils.logging_utils import get_logger
+from ztb.trading.environment.utils.config import RewardSettings
 
 logger = get_logger(__name__)
 
@@ -25,7 +24,6 @@ logger = get_logger(__name__)
 @dataclass
 class EvaluationMetrics:
     """Metrics for reward function evaluation."""
-
     total_return: float = 0.0
     sharpe_ratio: float = 0.0
     win_rate: float = 0.0
@@ -41,7 +39,6 @@ class EvaluationMetrics:
 @dataclass
 class EvaluationResult:
     """Result of reward function parameter evaluation."""
-
     metrics: EvaluationMetrics
     trade_history: List[Dict[str, Any]] = field(default_factory=list)
     portfolio_history: List[Dict[str, Any]] = field(default_factory=list)
@@ -86,7 +83,7 @@ class RewardFunctionEvaluator:
         }
 
         if self.config_path and Path(self.config_path).exists():
-            with open(self.config_path, "r", encoding="utf-8") as f:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
                 loaded_settings = json.load(f)
                 default_settings.update(loaded_settings)
 
@@ -130,15 +127,10 @@ class RewardFunctionEvaluator:
         market_conditions = self.evaluation_settings["market_conditions"]
 
         for condition in market_conditions:
-            self.logger.info(
-                f"Evaluating parameters under {condition} market conditions"
-            )
+            self.logger.info(f"Evaluating parameters under {condition} market conditions")
 
             # Run evaluation episodes for this condition
-            (
-                condition_trade_history,
-                condition_portfolio_history,
-            ) = self._run_evaluation_episodes(
+            condition_trade_history, condition_portfolio_history = self._run_evaluation_episodes(
                 reward_settings, condition, n_episodes, max_steps, market_data
             )
 
@@ -166,16 +158,12 @@ class RewardFunctionEvaluator:
             },
         )
 
-        self.logger.info(
-            f"Parameter evaluation completed in {result.evaluation_time:.2f} seconds"
-        )
+        self.logger.info(f"Parameter evaluation completed in {result.evaluation_time:.2f} seconds")
         self.logger.info(f"Aggregated metrics: {aggregated_metrics}")
 
         return result
 
-    def _create_reward_settings(
-        self, parameters: Dict[str, Any], stage: str
-    ) -> RewardSettings:
+    def _create_reward_settings(self, parameters: Dict[str, Any], stage: str) -> RewardSettings:
         """Create reward settings from parameters."""
         # Create default settings and update with optimized parameters
         settings: RewardSettings = {
@@ -203,89 +191,57 @@ class RewardFunctionEvaluator:
 
         # Map parameters to settings based on stage
         if stage == "balanced_transition":
-            settings.update(
-                {
-                    "balance_penalty_tolerance": parameters.get(
-                        "balance_penalty_tolerance", 0.05
-                    ),
-                    "balance_penalty": parameters.get("balance_penalty", 5.0),
-                    "custom_reward_params": {
-                        "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.01),
-                        "trading_bonus_multiplier": parameters.get(
-                            "trading_bonus_multiplier", 2.0
-                        ),
-                        "trading_bonus": parameters.get("trading_bonus", 0.01),
-                        "profit_weight": parameters.get("profit_weight", 1.0),
-                        "risk_weight": parameters.get("risk_weight", 1.0),
-                        "consistency_weight": parameters.get("consistency_weight", 1.0),
-                    },
+            settings.update({
+                "balance_penalty_tolerance": parameters.get("balance_penalty_tolerance", 0.05),
+                "balance_penalty": parameters.get("balance_penalty", 5.0),
+                "custom_reward_params": {
+                    "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.01),
+                    "trading_bonus_multiplier": parameters.get("trading_bonus_multiplier", 2.0),
+                    "trading_bonus": parameters.get("trading_bonus", 0.01),
+                    "profit_weight": parameters.get("profit_weight", 1.0),
+                    "risk_weight": parameters.get("risk_weight", 1.0),
+                    "consistency_weight": parameters.get("consistency_weight", 1.0),
                 }
-            )
+            })
 
         elif stage == "trading_focused":
-            settings.update(
-                {
-                    "balance_penalty_tolerance": parameters.get(
-                        "balance_penalty_tolerance", 0.05
-                    ),
-                    "balance_penalty": parameters.get("balance_penalty", 10.0),
-                    "custom_reward_params": {
-                        "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.05),
-                        "trading_bonus_multiplier": parameters.get(
-                            "trading_bonus_multiplier", 3.0
-                        ),
-                        "trading_bonus": parameters.get("trading_bonus", 0.05),
-                        "profit_weight": parameters.get("profit_weight", 1.0),
-                        "risk_weight": parameters.get("risk_weight", 1.0),
-                        "consistency_weight": parameters.get("consistency_weight", 1.0),
-                    },
+            settings.update({
+                "balance_penalty_tolerance": parameters.get("balance_penalty_tolerance", 0.05),
+                "balance_penalty": parameters.get("balance_penalty", 10.0),
+                "custom_reward_params": {
+                    "hold_penalty_rate": parameters.get("hold_penalty_rate", 0.05),
+                    "trading_bonus_multiplier": parameters.get("trading_bonus_multiplier", 3.0),
+                    "trading_bonus": parameters.get("trading_bonus", 0.05),
+                    "profit_weight": parameters.get("profit_weight", 1.0),
+                    "risk_weight": parameters.get("risk_weight", 1.0),
+                    "consistency_weight": parameters.get("consistency_weight", 1.0),
                 }
-            )
+            })
 
         elif stage == "profit_optimized":
-            settings.update(
-                {
-                    "custom_reward_params": {
-                        "profit_weight": parameters.get("profit_weight", 2.0),
-                        "risk_weight": parameters.get("risk_weight", 0.1),
-                        "consistency_weight": parameters.get("consistency_weight", 0.1),
-                        "position_penalty_weight": parameters.get(
-                            "position_penalty_weight", 0.01
-                        ),
-                        "drawdown_penalty_weight": parameters.get(
-                            "drawdown_penalty_weight", 0.01
-                        ),
-                        "stagnation_penalty_weight": parameters.get(
-                            "stagnation_penalty_weight", 0.01
-                        ),
-                        "growth_bonus_weight": parameters.get(
-                            "growth_bonus_weight", 0.01
-                        ),
-                        "win_streak_bonus_weight": parameters.get(
-                            "win_streak_bonus_weight", 0.01
-                        ),
-                    }
+            settings.update({
+                "custom_reward_params": {
+                    "profit_weight": parameters.get("profit_weight", 2.0),
+                    "risk_weight": parameters.get("risk_weight", 0.1),
+                    "consistency_weight": parameters.get("consistency_weight", 0.1),
+                    "position_penalty_weight": parameters.get("position_penalty_weight", 0.01),
+                    "drawdown_penalty_weight": parameters.get("drawdown_penalty_weight", 0.01),
+                    "stagnation_penalty_weight": parameters.get("stagnation_penalty_weight", 0.01),
+                    "growth_bonus_weight": parameters.get("growth_bonus_weight", 0.01),
+                    "win_streak_bonus_weight": parameters.get("win_streak_bonus_weight", 0.01),
                 }
-            )
+            })
 
         elif stage == "ultra_profit":
-            settings.update(
-                {
-                    "custom_reward_params": {
-                        "profit_weight": parameters.get("profit_weight", 5.0),
-                        "risk_weight": parameters.get("risk_weight", 0.01),
-                        "consistency_weight": parameters.get(
-                            "consistency_weight", 0.01
-                        ),
-                        "ultra_profit_multiplier": parameters.get(
-                            "ultra_profit_multiplier", 2.0
-                        ),
-                        "ultra_risk_multiplier": parameters.get(
-                            "ultra_risk_multiplier", 0.5
-                        ),
-                    }
+            settings.update({
+                "custom_reward_params": {
+                    "profit_weight": parameters.get("profit_weight", 5.0),
+                    "risk_weight": parameters.get("risk_weight", 0.01),
+                    "consistency_weight": parameters.get("consistency_weight", 0.01),
+                    "ultra_profit_multiplier": parameters.get("ultra_profit_multiplier", 2.0),
+                    "ultra_risk_multiplier": parameters.get("ultra_risk_multiplier", 0.5),
                 }
-            )
+            })
 
         return settings
 
@@ -334,9 +290,7 @@ class RewardFunctionEvaluator:
 
                 # Calculate reward using the reward settings
                 # Note: This is simplified - actual integration would require proper state management
-                reward = self._calculate_synthetic_reward(
-                    action, synthetic_data[step], reward_settings
-                )
+                reward = self._calculate_synthetic_reward(action, synthetic_data[step], reward_settings)
 
                 # Record trade and portfolio state
                 trade_record = {
@@ -352,9 +306,7 @@ class RewardFunctionEvaluator:
                 portfolio_record = {
                     "episode": episode,
                     "step": step,
-                    "portfolio_value": synthetic_data[step].get(
-                        "portfolio_value", 10000
-                    ),
+                    "portfolio_value": synthetic_data[step].get("portfolio_value", 10000),
                     "cash": synthetic_data[step].get("cash", 5000),
                     "position": synthetic_data[step].get("position", 0),
                     "market_condition": market_condition,
@@ -366,9 +318,7 @@ class RewardFunctionEvaluator:
 
         return trade_history, portfolio_history
 
-    def _generate_synthetic_episode_data(
-        self, market_condition: str, max_steps: int
-    ) -> List[Dict[str, Any]]:
+    def _generate_synthetic_episode_data(self, market_condition: str, max_steps: int) -> List[Dict[str, Any]]:
         """Generate synthetic episode data for evaluation."""
         # Simplified synthetic data generation
         data = []
@@ -391,21 +341,19 @@ class RewardFunctionEvaluator:
             else:
                 price_change = np.random.normal(0.0, 0.01)
 
-            base_price *= 1 + price_change
+            base_price *= (1 + price_change)
 
             # Simulate portfolio changes
-            portfolio_value *= 1 + price_change * 0.1  # Simplified P&L
+            portfolio_value *= (1 + price_change * 0.1)  # Simplified P&L
 
-            data.append(
-                {
-                    "step": step,
-                    "price": base_price,
-                    "portfolio_value": portfolio_value,
-                    "cash": cash,
-                    "position": position,
-                    "market_condition": market_condition,
-                }
-            )
+            data.append({
+                "step": step,
+                "price": base_price,
+                "portfolio_value": portfolio_value,
+                "cash": cash,
+                "position": position,
+                "market_condition": market_condition,
+            })
 
         return data
 
@@ -423,12 +371,7 @@ class RewardFunctionEvaluator:
             "price": market_data["price"],
         }
 
-    def _calculate_synthetic_reward(
-        self,
-        action: Dict[str, Any],
-        market_data: Dict[str, Any],
-        reward_settings: RewardSettings,
-    ) -> float:
+    def _calculate_synthetic_reward(self, action: Dict[str, Any], market_data: Dict[str, Any], reward_settings: RewardSettings) -> float:
         """Calculate synthetic reward for evaluation (simplified implementation)."""
         # This is a simplified reward calculation for testing
         # In practice, this would use the actual RewardCalculator with proper state management
@@ -437,21 +380,15 @@ class RewardFunctionEvaluator:
 
         if action["action"] == "buy":
             # Reward for buying (simplified)
-            trading_bonus = reward_settings.get("custom_reward_params", {}).get(
-                "trading_bonus", 0.01
-            )
+            trading_bonus = reward_settings.get("custom_reward_params", {}).get("trading_bonus", 0.01)
             base_reward = np.random.normal(trading_bonus, 0.05)
         elif action["action"] == "sell":
             # Reward for selling (simplified)
-            trading_bonus_multiplier = reward_settings.get(
-                "custom_reward_params", {}
-            ).get("trading_bonus_multiplier", 2.0)
+            trading_bonus_multiplier = reward_settings.get("custom_reward_params", {}).get("trading_bonus_multiplier", 2.0)
             base_reward = np.random.normal(trading_bonus_multiplier * 0.01, 0.08)
         else:  # hold
             # Small penalty for holding
-            hold_penalty_rate = reward_settings.get("custom_reward_params", {}).get(
-                "hold_penalty_rate", 0.01
-            )
+            hold_penalty_rate = reward_settings.get("custom_reward_params", {}).get("hold_penalty_rate", 0.01)
             base_reward = np.random.normal(-hold_penalty_rate, 0.02)
 
         return base_reward
@@ -478,9 +415,7 @@ class RewardFunctionEvaluator:
         risk_free_rate = self.evaluation_settings["risk_free_rate"]
         if len(returns) > 1:
             excess_returns = returns - risk_free_rate / 252  # Daily risk-free rate
-            sharpe_ratio = (
-                np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
-            )
+            sharpe_ratio = np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
         else:
             sharpe_ratio = 0.0
 
@@ -502,38 +437,30 @@ class RewardFunctionEvaluator:
 
         # Consistency score (based on return stability)
         if len(returns) > self.evaluation_settings["consistency_window"]:
-            rolling_returns = (
-                pd.Series(returns)
-                .rolling(self.evaluation_settings["consistency_window"])
-                .mean()
-            )
+            rolling_returns = pd.Series(returns).rolling(
+                self.evaluation_settings["consistency_window"]
+            ).mean()
             consistency_score = 1.0 / (1.0 + np.std(rolling_returns.dropna()))
         else:
             consistency_score = 0.5  # Neutral score for short histories
 
         # Profit factor
-        gross_profit = sum(
-            t.get("reward", 0) for t in trade_history if t.get("reward", 0) > 0
-        )
-        gross_loss = abs(
-            sum(t.get("reward", 0) for t in trade_history if t.get("reward", 0) < 0)
-        )
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
+        gross_profit = sum(t.get("reward", 0) for t in trade_history if t.get("reward", 0) > 0)
+        gross_loss = abs(sum(t.get("reward", 0) for t in trade_history if t.get("reward", 0) < 0))
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
 
         # Calmar ratio
-        calmar_ratio = total_return / max_drawdown if max_drawdown > 0 else float("inf")
+        calmar_ratio = total_return / max_drawdown if max_drawdown > 0 else float('inf')
 
         # Sortino ratio (downside deviation)
         downside_returns = [r for r in returns if r < 0]
         if downside_returns:
             sortino_ratio = np.mean(returns) / np.std(downside_returns) * np.sqrt(252)
         else:
-            sortino_ratio = float("inf")
+            sortino_ratio = float('inf')
 
         # Recovery factor
-        recovery_factor = (
-            total_return / max_drawdown if max_drawdown > 0 else float("inf")
-        )
+        recovery_factor = total_return / max_drawdown if max_drawdown > 0 else float('inf')
 
         return EvaluationMetrics(
             total_return=total_return,
@@ -548,9 +475,7 @@ class RewardFunctionEvaluator:
             recovery_factor=recovery_factor,
         )
 
-    def _aggregate_metrics(
-        self, metrics_list: List[EvaluationMetrics]
-    ) -> EvaluationMetrics:
+    def _aggregate_metrics(self, metrics_list: List[EvaluationMetrics]) -> EvaluationMetrics:
         """Aggregate metrics across different market conditions."""
 
         if not metrics_list:
@@ -586,9 +511,7 @@ class RewardFunctionEvaluator:
 
         return aggregated
 
-    def create_evaluation_function(
-        self, stage: str
-    ) -> Callable[[Dict[str, Any]], Dict[str, float]]:
+    def create_evaluation_function(self, stage: str) -> Callable[[Dict[str, Any]], Dict[str, float]]:
         """
         Create evaluation function for optimization.
 

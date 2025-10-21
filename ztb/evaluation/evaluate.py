@@ -8,6 +8,7 @@ import sys
 import warnings
 from datetime import datetime
 from typing import Any, Dict, Generator, List, Optional, cast
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +23,6 @@ from ztb.config.manager import ConfigManager
 from ztb.evaluation.evaluator import (
     EvaluationResult,
     SingleEpisodeResultDict,
-    TradingEvaluator,
 )
 from ztb.utils.data_utils import load_csv_data
 from ztb.utils.errors import safe_operation
@@ -50,6 +50,10 @@ class TradingEvaluator:
     writer: Any  # TensorBoard SummaryWriter
     model: Optional[PPO]
     df: Optional[pd.DataFrame]
+    # Added low-risk annotations to reduce mypy noise
+    env: Any
+    results_dir: Path
+    tensorboard_log_dir: Path
 
     def __init__(
         self, model_path: str, data_path: str, config: Optional[dict[str, Any]] = None
@@ -313,12 +317,20 @@ class TradingEvaluator:
             obs = next_obs
             step_count += 1
 
+        # ensure return shape matches SingleEpisodeResultDict TypedDict
+        portfolio_values: List[float] = []
+        price_history: List[float] = []
+        timestamps: List[Any] = []
+
         return {
             "rewards": rewards,
             "positions": positions,
             "pnls": pnls,
             "actions": actions,
             "states": states if states is not None else [],
+            "portfolio_history": portfolio_values,
+            "price_history": price_history,
+            "timestamps": timestamps,
         }
 
     def _calculate_statistics(

@@ -1,0 +1,167 @@
+{
+  "version": "1.0",
+  "description": "SAC v433: Production Migration System with Balanced HOLD Behavior",
+  "algorithm": "sac",
+  "data_path": "data/btc_jpy_real_dataset.csv",
+  "training": {
+    "model_name": "sac_v433_production_migration",
+    "algorithm": "sac",
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "batch_size": 256,
+    "buffer_size": 1000000,
+    "gamma": 0.99,
+    "tau": 0.005,
+    "ent_coef": "auto",
+    "target_update_interval": 1,
+    "gradient_steps": 1,
+    "learning_starts": 1000,
+    "use_sde": true,
+    "use_sde_at_warmup": true,
+    "sde_sample_freq": 4,
+    "policy_kwargs": {
+      "net_arch": [400, 300]
+    }
+  },
+  "reward_function": {
+    "sell_bonus": 0.4,
+    "hold_bonus": -0.002,
+    "buy_bonus": 0.4,
+    "market_adaptive": {
+      "sideways_multiplier": 2.5,
+      "high_vol_multiplier": 1.1,
+      "low_vol_multiplier": 1.0,
+      "bull_multiplier": 1.6,
+      "bear_multiplier": 1.6
+    },
+    "risk_penalty": 0.02,
+    "time_penalty": 0.0003,
+    "success_bonus": 0.4,
+    "failure_penalty": 0.2
+  },
+  "action_thresholds": {
+    "sell_threshold": -0.04,
+    "buy_threshold": 0.04,
+    "hold_range": [-0.04, 0.04],
+    "adaptive_thresholds": true,
+    "volatility_adjustment": true
+  },
+  "advanced_position_management": {
+    "enabled": true,
+    "dynamic_sizing": {
+      "enabled": true,
+      "min_position_size": 0.1,
+      "max_position_size": 1.0,
+      "volatility_scaling": true,
+      "profit_taking": {
+        "enabled": true,
+        "take_profit_levels": [0.02, 0.05, 0.10],
+        "partial_exits": [0.3, 0.3, 0.4]
+      },
+      "stop_loss": {
+        "enabled": true,
+        "stop_loss_levels": [-0.05, -0.10, -0.15],
+        "trailing_stop": true
+      }
+    },
+    "scalping_optimization": {
+      "enabled": true,
+      "min_hold_time": 5,
+      "max_hold_time": 300,
+      "profit_target_scaling": true,
+      "quick_profit_bonus": 0.1
+    },
+    "market_regime_detection": {
+      "enabled": true,
+      "regime_window": 50,
+      "trend_strength_threshold": 0.001,
+      "volatility_threshold": 0.02,
+      "regime_adaptation": {
+        "bull_market": {
+          "hold_penalty_reduction": 0.5,
+          "profit_bonus_multiplier": 1.2
+        },
+        "bear_market": {
+          "hold_penalty_reduction": 0.3,
+          "profit_bonus_multiplier": 1.1
+        },
+        "sideways_market": {
+          "hold_penalty_reduction": 0.8,
+          "profit_bonus_multiplier": 0.9
+        }
+      }
+    }
+  },
+  "entry_exit_strategy": {
+    "enhanced_entry_conditions": {
+      "volume_confirmation": true,
+      "price_momentum": true,
+      "support_resistance": true,
+      "entry_filters": {
+        "min_volume_ratio": 1.2,
+        "momentum_threshold": 0.001,
+        "distance_from_support": 0.005
+      }
+    },
+    "exit_optimization": {
+      "profit_targets": [0.015, 0.03, 0.06],
+      "stop_losses": [-0.03, -0.06, -0.09],
+      "trailing_stops": true,
+      "time_based_exits": {
+        "max_hold_period": 480,
+        "profit_lock_in": true
+      }
+    },
+    "win_rate_focus": {
+      "success_bonus_scaling": true,
+      "failure_penalty_scaling": true,
+      "consecutive_win_bonus": 0.05,
+      "consecutive_loss_penalty": 0.1
+    }
+  },
+  "risk_management": {
+    "max_drawdown_limit": 0.15,
+    "daily_loss_limit": 0.05,
+    "position_sizing": {
+      "fixed_percentage": 0.02,
+      "volatility_adjusted": true,
+      "kelly_criterion": false
+    },
+    "portfolio_heat_management": {
+      "max_open_positions": 5,
+      "correlation_limits": true,
+      "sector_diversification": true
+    }
+  },
+  "performance_monitoring": {
+    "metrics_tracking": {
+      "win_rate": true,
+      "profit_factor": true,
+      "sharpe_ratio": true,
+      "max_drawdown": true,
+      "total_return": true
+    },
+    "logging": {
+      "trade_log": true,
+      "performance_log": true,
+      "error_log": true
+    }
+  },
+  "production_migration": {
+    "paper_trading_enabled": true,
+    "parallel_running": true,
+    "gradual_rollout": {
+      "initial_traffic_percentage": 10,
+      "incremental_steps": 10,
+      "performance_gates": {
+        "min_win_rate": 0.55,
+        "max_drawdown_threshold": 0.10
+      }
+    },
+    "emergency_controls": {
+      "circuit_breaker": true,
+      "emergency_stop": true,
+      "rollback_mechanism": true
+    }
+  }
+}

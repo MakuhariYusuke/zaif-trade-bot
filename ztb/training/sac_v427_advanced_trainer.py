@@ -38,7 +38,7 @@ class SACv427AdvancedTrainer:
         self.market_system = SACv427MarketAdaptiveSystem()
         self.feature_engineer = SACv427FeatureEngineer(self.market_system)
 
-        # Initialize advanced learning components
+        # Initialize advanced learning components (Optional until configured)
         self.meta_learner = None
         self.federated_aggregator = None
         self.continual_learner = None
@@ -51,7 +51,7 @@ class SACv427AdvancedTrainer:
         with open(self.config_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
-    def _initialize_advanced_components(self):
+    def _initialize_advanced_components(self) -> None:
         """Initialize advanced learning components based on config."""
         v427_features = self.config.get("v427_advanced_features", {})
 
@@ -71,7 +71,7 @@ class SACv427AdvancedTrainer:
         if v427_features.get("ensemble_system", {}).get("enabled", False):
             self._initialize_ensemble_system(v427_features["ensemble_system"])
 
-    def _initialize_meta_learning(self, meta_config: Dict[str, Any]):
+    def _initialize_meta_learning(self, meta_config: Dict[str, Any]) -> None:
         """Initialize meta-learning components."""
         logger.info("Initializing meta-learning components...")
 
@@ -95,7 +95,7 @@ class SACv427AdvancedTrainer:
             }
             logger.info("Reptile meta-learning initialized")
 
-    def _initialize_federated_learning(self, fed_config: Dict[str, Any]):
+    def _initialize_federated_learning(self, fed_config: Dict[str, Any]) -> None:
         """Initialize federated learning components."""
         logger.info("Initializing federated learning components...")
 
@@ -112,7 +112,7 @@ class SACv427AdvancedTrainer:
             f"Federated learning initialized with {fed_config['clients']} clients"
         )
 
-    def _initialize_continual_learning(self, continual_config: Dict[str, Any]):
+    def _initialize_continual_learning(self, continual_config: Dict[str, Any]) -> None:
         """Initialize continual learning components."""
         logger.info("Initializing continual learning components...")
 
@@ -128,7 +128,7 @@ class SACv427AdvancedTrainer:
         }
         logger.info("Continual learning initialized with EWC and rehearsal buffer")
 
-    def _initialize_ensemble_system(self, ensemble_config: Dict[str, Any]):
+    def _initialize_ensemble_system(self, ensemble_config: Dict[str, Any]) -> None:
         """Initialize ensemble training system."""
         logger.info("Initializing ensemble system...")
 

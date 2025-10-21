@@ -7,20 +7,27 @@ import json
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import logging
+from ztb.types.common import ConfigDict
 
 import numpy as np
 
 from ztb.utils.logging_utils import get_logger
 
+# Magic number constants for reporting
+STABILITY_WINDOWS = [10, 50, 100, 500]
+DEFAULT_PORTFOLIO_BASE = 10000
+FORECAST_PERIOD = 50
+
 
 class TrainingReporter:
     """Generate comprehensive training reports."""
 
-    def __init__(self, logger=None):
-        self.logger = logger or get_logger(__name__)
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+        self.logger: logging.Logger = logger or get_logger(__name__)
 
     def generate_report(
-        self, config: Dict[str, Any], stats: Dict[str, Any], success: bool
+        self, config: ConfigDict, stats: Dict[str, Any], success: bool
     ) -> Dict[str, Any]:
         """Generate a comprehensive training report."""
         report = {
@@ -60,7 +67,7 @@ class TrainingReporter:
             self.logger.error(f"Failed to save training report: {e}")
             return ""
 
-    def print_summary(self, report: Dict[str, Any]):
+    def print_summary(self, report: Dict[str, Any]) -> None:
         """Print a human-readable summary of the training report."""
         meta = report["metadata"]
         stats = report["training_stats"]
@@ -106,7 +113,8 @@ class TrainingReporter:
 
     def _calculate_performance_metrics(self, stats: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate additional performance metrics from training stats."""
-        metrics = {}
+        # metrics can contain floats and occasional strings (e.g. dominant_action)
+        metrics: Dict[str, Any] = {}
 
         if not stats:
             return metrics
@@ -121,7 +129,7 @@ class TrainingReporter:
             )  # steps per ms
 
         # Action distribution analysis
-        action_dist = stats.get("action_distribution", {})
+        action_dist: Dict[str, float] = stats.get("action_distribution", {})
         if action_dist:
             # Calculate action diversity (1.0 = perfectly balanced, 0.0 = single action)
             actions = list(action_dist.values())
@@ -160,13 +168,13 @@ class TrainingReporter:
 class TrainingLogger:
     """Enhanced logging for training processes."""
 
-    def __init__(self, logger=None):
-        self.logger = logger or get_logger(__name__)
-        self.events = []
+    def __init__(self, logger: Optional[logging.Logger] = None) -> None:
+        self.logger: logging.Logger = logger or get_logger(__name__)
+        self.events: List[Dict[str, Any]] = []
 
     def log_event(
         self, event_type: str, message: str, data: Optional[Dict[str, Any]] = None
-    ):
+    ) -> None:
         """Log a training event."""
         event = {
             "timestamp": datetime.now().isoformat(),
@@ -178,7 +186,7 @@ class TrainingLogger:
         self.events.append(event)
         self.logger.info(f"[{event_type}] {message}")
 
-    def log_training_start(self, algorithm: str, config: Dict[str, Any]):
+    def log_training_start(self, algorithm: str, config: ConfigDict) -> None:
         """Log training start."""
         self.log_event(
             "training_start",
@@ -192,19 +200,19 @@ class TrainingLogger:
             },
         )
 
-    def log_training_progress(self, step: int, total_steps: int, stats: Dict[str, Any]):
+    def log_training_progress(self, step: int, total_steps: int, stats: Dict[str, Any]) -> None:
         """Log training progress."""
         progress = step / total_steps if total_steps > 0 else 0
         self.log_event(
             "training_progress", f"Step {step}/{total_steps} ({progress:.1%})", stats
         )
 
-    def log_training_complete(self, success: bool, stats: Dict[str, Any]):
+    def log_training_complete(self, success: bool, stats: Dict[str, Any]) -> None:
         """Log training completion."""
         status = "success" if success else "failure"
         self.log_event("training_complete", f"Training {status}", stats)
 
-    def log_error(self, error: Exception, context: str = ""):
+    def log_error(self, error: Exception, context: str = "") -> None:
         """Log an error."""
         self.log_event(
             "error",
@@ -216,7 +224,7 @@ class TrainingLogger:
         """Get all logged events."""
         return self.events.copy()
 
-    def save_events(self, filepath: str):
+    def save_events(self, filepath: str) -> None:
         """Save events to file."""
         try:
             with open(filepath, "w", encoding="utf-8") as f:
@@ -260,8 +268,8 @@ class TrainingLogger:
 
         # 決定の統計
         total_decisions = len(decision_log)
-        action_distribution = {}
-        confidence_trends = []
+        action_distribution: Dict[int, int] = {}
+        confidence_trends: List[float] = []
 
         for decision in decision_log:
             predictions = decision.get("predictions", {})
@@ -299,8 +307,8 @@ class TrainingLogger:
         if not member_stats:
             return {"error": "no_member_data"}
 
-        specialization_performance = {}
-        member_details = {}
+        specialization_performance: Dict[str, List[float]] = {}
+        member_details: Dict[str, Dict[str, Any]] = {}
 
         for member_id, stats in member_stats.items():
             spec = stats.get("specialization", "unknown")
@@ -352,7 +360,7 @@ class TrainingLogger:
         if not decision_log:
             return {"error": "no_decision_data"}
 
-        voting_methods = {}
+        voting_methods: Dict[str, int] = {}
         consensus_rates = {"reached": 0, "failed": 0}
         action_sequences = []
         confidence_patterns = []
@@ -392,7 +400,7 @@ class TrainingLogger:
                 confidence_patterns.append(pattern)
 
         # アクション遷移分析
-        transitions = {}
+        transitions: Dict[str, int] = {}
         for i in range(1, len(action_sequences)):
             prev_action = action_sequences[i - 1]
             curr_action = action_sequences[i]
@@ -425,17 +433,23 @@ class TrainingLogger:
         specializations = [
             stats.get("specialization", "unknown") for stats in member_stats.values()
         ]
-        specialization_diversity = len(set(specializations)) / len(specializations)
+        specialization_diversity: float = (
+            len(set(specializations)) / len(specializations)
+        )
 
         # パフォーマンスの多様性
         performances = [
             stats.get("performance_score", 0) for stats in member_stats.values()
         ]
-        performance_diversity = np.std(performances) if len(performances) > 1 else 0
+        performance_diversity: float = float(
+            np.std(performances) if len(performances) > 1 else 0.0
+        )
 
         # 信頼度の多様性
         confidences = [stats.get("confidence", 0) for stats in member_stats.values()]
-        confidence_diversity = np.std(confidences) if len(confidences) > 1 else 0
+        confidence_diversity: float = float(
+            np.std(confidences) if len(confidences) > 1 else 0.0
+        )
 
         return {
             "specialization_diversity": specialization_diversity,
@@ -458,8 +472,8 @@ class TrainingLogger:
             return {"error": "no_decision_data"}
 
         # 時間経過による安定性分析
-        stability_windows = [10, 50, 100, 500]
-        stability_analysis = {}
+        stability_windows = STABILITY_WINDOWS
+        stability_analysis: Dict[str, Dict[str, Any]] = {}
 
         for window_size in stability_windows:
             if len(decision_log) < window_size:
@@ -509,13 +523,13 @@ class TrainingLogger:
             return {"error": "no_decision_data"}
 
         # 市場条件ごとのパフォーマンス分析
-        market_conditions = {}
-        adaptation_trends = []
+        market_conditions: Dict[str, Dict[str, Any]] = {}
+        adaptation_trends: List[Dict[str, Any]] = []
 
         for decision in decision_log:
             market_state = decision.get("market_state", {})
             condition = market_state.get("regime", "unknown")
-            volatility = market_state.get("volatility", 0.5)
+            volatility = float(market_state.get("volatility", 0.5))
             trend = market_state.get("trend", 0)
 
             if condition not in market_conditions:
@@ -584,13 +598,13 @@ class TrainingLogger:
             return {"error": "no_decision_data"}
 
         # リスク指標の計算
-        drawdown_analysis = []
-        volatility_analysis = []
-        risk_adjusted_returns = []
+        drawdown_analysis: List[float] = []
+        volatility_analysis: List[float] = []
+        risk_adjusted_returns: List[float] = []
 
-        current_drawdown = 0
-        peak_value = 0
-        portfolio_value = 10000  # 仮定の初期値
+        current_drawdown: float = 0.0
+        peak_value: float = 0.0
+        portfolio_value: float = float(DEFAULT_PORTFOLIO_BASE)  # 仮定の初期値
 
         for decision in decision_log:
             # 簡易的なポートフォリオ価値のシミュレーション
@@ -618,17 +632,23 @@ class TrainingLogger:
 
             # ボラティリティ分析
             if len(drawdown_analysis) > 10:
-                volatility_analysis.append(np.std(drawdown_analysis[-10:]))
+                volatility_analysis.append(float(np.std(drawdown_analysis[-10:])))
 
         # リスク調整リターン
-        total_return = (portfolio_value - 10000) / 10000
+        # Use DEFAULT_PORTFOLIO_BASE for base calculation
+        total_return = (portfolio_value - float(DEFAULT_PORTFOLIO_BASE)) / float(
+            DEFAULT_PORTFOLIO_BASE
+        )
         max_drawdown = max(drawdown_analysis) if drawdown_analysis else 0
-        avg_volatility = np.mean(volatility_analysis) if volatility_analysis else 0
+        avg_volatility: float = (
+            float(np.mean(volatility_analysis)) if volatility_analysis else 0.0
+        )
 
         sharpe_ratio = total_return / avg_volatility if avg_volatility > 0 else 0
-        sortino_ratio = total_return / (
-            np.std([d for d in drawdown_analysis if d < 0]) or 0.001
-        )
+        neg_drawdowns = [d for d in drawdown_analysis if d < 0]
+        downside_std = float(np.std(neg_drawdowns)) if neg_drawdowns else 0.0
+        # prevent division by zero
+        sortino_ratio = total_return / (downside_std if downside_std > 0 else 0.001)
 
         return {
             "total_return": total_return,
@@ -675,10 +695,10 @@ class TrainingLogger:
             else 0
         )
 
-        # 予測期間（次の50決定）
-        forecast_period = 50
-        confidence_forecast = []
-        performance_forecast = []
+        # 予測期間（次の決定数）
+        forecast_period = FORECAST_PERIOD
+        confidence_forecast: List[float] = []
+        performance_forecast: List[float] = []
 
         for i in range(forecast_period):
             conf_pred = confidence_trend[-1] + conf_slope * (i + 1)
@@ -718,7 +738,7 @@ class TrainingLogger:
 
         # 適応スコア = 決定数 × 平均信頼度 × (1 - 信頼度の標準偏差)
         adaptation_score = decisions * avg_conf * (1 - min(conf_std, 0.5))
-        return adaptation_score
+        return float(adaptation_score)
 
     def _calculate_overall_adaptation(self, condition_summary: Dict[str, Any]) -> float:
         """Calculate overall adaptation score across all conditions."""
@@ -731,7 +751,7 @@ class TrainingLogger:
         avg_score = total_score / len(condition_summary)
 
         # 正規化（0-1の範囲）
-        return min(avg_score / 1000, 1.0)  # 1000は経験的なスケーリング係数
+        return float(min(avg_score / 1000, 1.0))  # 1000は経験的なスケーリング係数
 
     def _calculate_risk_score(
         self, max_drawdown: float, avg_volatility: float

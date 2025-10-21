@@ -16,8 +16,8 @@ from ztb.utils.errors import safe_operation
 
 from .circuit_breakers import KillSwitchActivatedError, get_global_kill_switch
 
-# 年間取引日数（一般的に252日）
-TRADING_DAYS_PER_YEAR = 252
+# 年間取引日数
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR # = 252
 
 
 class SizingMethod(Enum):
@@ -226,9 +226,9 @@ class PositionSizer:
             # Assume min_order_size = 0.0001, min_price = 1, etc.
             min_order_size = 0.0001
             if quantity_rounded < min_order_size:
-                sizing_chain[
-                    "skip_reason"
-                ] = f"Quantity {quantity_rounded} below minimum {min_order_size}"
+                sizing_chain["skip_reason"] = (
+                    f"Quantity {quantity_rounded} below minimum {min_order_size}"
+                )
                 quantity_rounded = 0
 
             sizing_chain["validated"] = quantity_rounded

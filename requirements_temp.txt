@@ -150,6 +150,7 @@ datasets==2.14.0
 fredapi==0.5.2
 alpha-vantage==2.3.1
 newsapi-python==0.2.7
+yfinance==0.2.54
 # Multi-modal learning dependencies
 onnxruntime==1.19.2
 # Optional: TensorRT for GPU acceleration (uncomment if needed)

@@ -3,14 +3,13 @@
 """Compute risk metrics (Sharpe ratio, max drawdown) for reward function variants."""
 
 import json
+import pandas as pd
+import numpy as np
 from pathlib import Path
 from typing import cast
 
-import numpy as np
-import pandas as pd
-
-TRADING_DAYS_PER_YEAR = 252
-
+# 年間取引日数
+from ztb.trading.constants import TRADING_DAYS_PER_YEAR # = 252
 
 def compute_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> float:
     """Compute annualized Sharpe ratio."""
@@ -21,10 +20,7 @@ def compute_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.02) -> fl
     if excess_returns.std() == 0:
         return 0.0
 
-    sharpe = cast(
-        float,
-        excess_returns.mean() / excess_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR),
-    )
+    sharpe = cast(float, excess_returns.mean() / excess_returns.std() * np.sqrt(TRADING_DAYS_PER_YEAR))
     return sharpe
 
 
@@ -46,9 +42,7 @@ def analyze_risk_metrics() -> None:
     # Load action distribution results
     action_dist_path = Path("action_distribution_summary.md")
     if not action_dist_path.exists():
-        print(
-            "❌ Action distribution data not found. Run analyze_action_distribution.py first."
-        )
+        print("❌ Action distribution data not found. Run analyze_action_distribution.py first.")
         return
 
     # Load detailed results
@@ -57,7 +51,7 @@ def analyze_risk_metrics() -> None:
         print("❌ Detailed results not found.")
         return
 
-    with open(results_path, "r") as f:
+    with open(results_path, 'r') as f:
         results = json.load(f)
 
     print("\n📊 Risk Metrics Analysis:")
@@ -78,9 +72,7 @@ def analyze_risk_metrics() -> None:
             continue
 
         sharpe = compute_sharpe_ratio(returns)
-        max_dd = (
-            compute_max_drawdown(portfolio_values) if len(portfolio_values) > 0 else 0.0
-        )
+        max_dd = compute_max_drawdown(portfolio_values) if len(portfolio_values) > 0 else 0.0
 
         print(f"\n🔹 {config_name}:")
         print(f"   Sharpe Ratio: {sharpe:.3f}")

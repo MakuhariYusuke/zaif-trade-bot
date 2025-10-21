@@ -28,7 +28,7 @@ Examples:
 import argparse
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Any, Dict, Optional, Callable
 
 # Add project root to path
 project_root = Path(__file__).resolve().parent.parent.parent
@@ -38,15 +38,18 @@ from ztb.utils.logging_utils import get_logger
 from ztb.utils.path_utils import get_project_root
 
 # Get project root using utility
-project_root = get_project_root()
+project_root: Path = get_project_root()
 
 logger = get_logger(__name__)
 
 
 class UnifiedAnalysisSuite:
     """Unified analysis toolkit interface."""
+    # low-risk attribute annotations
+    project_root: Path
+    categories: Dict[str, Any]
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize analysis suite."""
         self.project_root = project_root
         self.categories = {
@@ -99,7 +102,12 @@ class UnifiedAnalysisSuite:
                 return 1
 
             method = getattr(analyzer, f"run_{tool}")
-            return method(args)
+            # method is expected to return int (exit code)
+            result = method(args)
+            if isinstance(result, int):
+                return result
+            # fall back to success code
+            return 0
 
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
