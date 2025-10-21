@@ -9,6 +9,7 @@ import csv
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
+from ztb.types.common import SACLikeModelProtocol
 
 import numpy as np
 from stable_baselines3.common.callbacks import (
@@ -32,6 +33,7 @@ from ztb.training.unified_trainer.reporting import TrainingReporter
 from ztb.training.unified_trainer.ui import TrainingUI
 from ztb.training.utils.training_logger import create_training_logger
 from ztb.utils.logging_utils import get_logger
+from ztb.utils.safety import ensure_dict, safe_to_float
 
 logger = get_logger(__name__)
 
@@ -79,8 +81,11 @@ class SACMetricsCallback(BaseCallback):
     def _init_csv_file(self) -> None:
         """CSVファイルを初期化してヘッダーを書き込む"""
         try:
-            self.csv_path.parent.mkdir(parents=True, exist_ok=True)
-            self.csv_file = open(self.csv_path, "w", newline="", encoding="utf-8")
+            csv_path = self.csv_path
+            if csv_path is None:
+                return
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            self.csv_file = open(csv_path, "w", newline="", encoding="utf-8")
             self.csv_writer = csv.writer(self.csv_file)
             # ヘッダー行を書き込み（拡張メトリクス追加）
             self.csv_writer.writerow(
@@ -105,10 +110,11 @@ class SACMetricsCallback(BaseCallback):
                     "total_episodes",
                 ]
             )
-            self.csv_file.flush()
-            logger.info(f"📝 Metrics CSV initialized: {self.csv_path}")
+            if self.csv_file is not None:
+                self.csv_file.flush()
+            logger.info("📝 Metrics CSV initialized: %s", self.csv_path)
         except Exception as e:
-            logger.warning(f"Failed to initialize CSV file: {e}")
+            logger.warning("Failed to initialize CSV file: %s", e)
             self.csv_writer = None
             self.csv_file = None
 
@@ -140,21 +146,21 @@ class SACMetricsCallback(BaseCallback):
                 metrics.get("total_episodes", ""),
             ]
             self.csv_writer.writerow(row)
-            self.csv_file.flush()  # 即座にディスクに書き込み
+            if self.csv_file is not None:
+                self.csv_file.flush()  # 即座にディスクに書き込み
         except Exception as e:
-            logger.warning(f"Failed to write to CSV: {e}")
+            logger.warning("Failed to write to CSV: %s", e)
 
     def _write_to_tensorboard(self, step: int, metrics: Dict[str, float]) -> None:
         """TensorBoardに直接書き込む"""
-        if not hasattr(self.model, "logger") or self.model.logger is None:
+        model = getattr(self, 'model', None)
+        if model is None or not hasattr(model, "logger") or model.logger is None:
             return
 
         try:
             # TensorBoard writerを取得
             tb_writer = (
-                self.model.logger.output_formats[0]
-                if self.model.logger.output_formats
-                else None
+                model.logger.output_formats[0] if model.logger.output_formats else None
             )
 
             if tb_writer and hasattr(tb_writer, "writer"):
@@ -166,7 +172,7 @@ class SACMetricsCallback(BaseCallback):
         except Exception as e:
             # TensorBoard書き込みエラーは警告のみ（訓練は継続）
             if self.verbose > 1:
-                logger.debug(f"TensorBoard write failed: {e}")
+                logger.debug("TensorBoard write failed: %s", e)
 
     def _on_step(self) -> bool:
         """
@@ -185,16 +191,16 @@ class SACMetricsCallback(BaseCallback):
         if self.n_calls % self.log_interval == 0:
             # メトリクスを収集
             metrics = {}
+            # Narrow model reference
+            model_local = getattr(self, 'model', None)
             total_steps = (
-                self.model._total_timesteps
-                if hasattr(self.model, "_total_timesteps")
-                else 0
+                model_local._total_timesteps if model_local is not None and hasattr(model_local, "_total_timesteps") else 0
             )
 
             # SACモデルの内部メトリクスを確認
-            if hasattr(self.model, "logger") and self.model.logger is not None:
+            if model_local is not None and hasattr(model_local, "logger") and model_local.logger is not None:
                 try:
-                    name_to_value = self.model.logger.name_to_value
+                    name_to_value = model_local.logger.name_to_value
 
                     # 基本メトリクスを抽出
                     for key in name_to_value:
@@ -219,21 +225,10 @@ class SACMetricsCallback(BaseCallback):
                     pass
 
             # エピソード報酬の統計を計算（直近のエピソード）
-            if (
-                hasattr(self.model, "ep_info_buffer")
-                and len(self.model.ep_info_buffer) > 0
-            ):
+            if model_local is not None and hasattr(model_local, "ep_info_buffer") and len(model_local.ep_info_buffer) > 0:
                 try:
-                    ep_rewards = [
-                        ep_info["r"]
-                        for ep_info in self.model.ep_info_buffer
-                        if "r" in ep_info
-                    ]
-                    ep_lengths = [
-                        ep_info["l"]
-                        for ep_info in self.model.ep_info_buffer
-                        if "l" in ep_info
-                    ]
+                    ep_rewards = [ep_info["r"] for ep_info in model_local.ep_info_buffer if "r" in ep_info]
+                    ep_lengths = [ep_info["l"] for ep_info in model_local.ep_info_buffer if "l" in ep_info]
 
                     if ep_rewards:
                         metrics["episode_reward_mean"] = np.mean(ep_rewards)
@@ -244,29 +239,22 @@ class SACMetricsCallback(BaseCallback):
                         metrics["episode_length_mean"] = np.mean(ep_lengths)
                 except Exception as e:
                     if self.verbose > 1:
-                        logger.debug(f"Failed to extract episode info: {e}")
+                        logger.debug("Failed to extract episode info: %s", e)
 
             # Q値統計を取得（可能であれば）
             try:
-                if (
-                    hasattr(self.model, "replay_buffer")
-                    and self.model.replay_buffer.size() > 128
-                ):
+                if model_local is not None and hasattr(model_local, "replay_buffer") and model_local.replay_buffer.size() > 128:
                     import torch
 
                     # リプレイバッファから最近のサンプルを取得してQ値を推定
                     sample_size = min(128, self.model.replay_buffer.size())
-                    replay_data = self.model.replay_buffer.sample(sample_size)
+                    replay_data = model_local.replay_buffer.sample(sample_size)
 
-                    if hasattr(self.model, "critic"):
+                    if model_local is not None and hasattr(model_local, "critic"):
                         with torch.no_grad():  # 勾配計算不要
                             # Observationsとactionsをtensorに変換
-                            obs_tensor = torch.as_tensor(
-                                replay_data.observations, device=self.model.device
-                            )
-                            act_tensor = torch.as_tensor(
-                                replay_data.actions, device=self.model.device
-                            )
+                            obs_tensor = torch.as_tensor(replay_data.observations, device=model_local.device)
+                            act_tensor = torch.as_tensor(replay_data.actions, device=model_local.device)
 
                             # Q値を計算（両方のCriticの平均）
                             q_values_1 = self.model.critic.q1_forward(
@@ -286,19 +274,17 @@ class SACMetricsCallback(BaseCallback):
             except Exception as e:
                 # Q値取得は失敗しても継続
                 if self.verbose > 1:
-                    logger.debug(f"Failed to extract Q-values: {e}")
+                    logger.debug("Failed to extract Q-values: %s", e)
 
             # メトリクスが取得できなかった場合、モデルの内部状態から直接取得を試みる
-            if not metrics and hasattr(self.model, "_last_obs"):
+            if not metrics and model_local is not None and hasattr(model_local, "_last_obs"):
                 try:
                     # SAC特有の属性から取得
-                    if hasattr(self.model, "ent_coef"):
-                        metrics["ent_coef"] = float(self.model.ent_coef)
-                    if hasattr(self.model, "actor") and hasattr(
-                        self.model.actor, "optimizer"
-                    ):
+                    if hasattr(model_local, "ent_coef"):
+                        metrics["ent_coef"] = float(model_local.ent_coef)
+                    if hasattr(model_local, "actor") and hasattr(model_local.actor, "optimizer"):
                         # Learning rateを取得
-                        for param_group in self.model.actor.optimizer.param_groups:
+                        for param_group in model_local.actor.optimizer.param_groups:
                             metrics["learning_rate"] = param_group["lr"]
                             break
                 except Exception:
@@ -315,10 +301,7 @@ class SACMetricsCallback(BaseCallback):
                 for key, value in metrics.items():
                     output_parts.append(f"{key}={value:.6f}")
                 message = " | ".join(output_parts)
-                print(message)
-
-                if self.verbose > 0:
-                    logger.info(message)
+                logger.info(message)
 
             # CSVファイルに書き込み
             self._write_to_csv(self.n_calls, metrics)
@@ -354,41 +337,35 @@ class SACMetricsCallback(BaseCallback):
             except (AttributeError, KeyError):
                 pass
 
-        # 最終メトリクスを出力
-        print("\n" + "=" * 80)
-        print("SAC Training Completed - Final Metrics:")
-        print("=" * 80)
+        # 最終メトリクスをログに出力
+        logger.info("\n" + "=" * 80)
+        logger.info("SAC Training Completed - Final Metrics:")
+        logger.info("=" * 80)
 
         if critic_loss is not None:
-            print(f"  Final Critic Loss: {critic_loss:.6f}")
+            logger.info(f"  Final Critic Loss: {critic_loss:.6f}")
         else:
-            print("  Final Critic Loss: Not available")
+            logger.info("  Final Critic Loss: Not available")
 
         if actor_loss is not None:
-            print(f"  Final Actor Loss: {actor_loss:.6f}")
+            logger.info(f"  Final Actor Loss: {actor_loss:.6f}")
         else:
-            print("  Final Actor Loss: Not available")
+            logger.info("  Final Actor Loss: Not available")
 
         if ent_coef is not None:
-            print(f"  Final Entropy Coef: {ent_coef:.6f}")
+            logger.info(f"  Final Entropy Coef: {ent_coef:.6f}")
         else:
-            print("  Final Entropy Coef: Not available")
+            logger.info("  Final Entropy Coef: Not available")
 
-        print("=" * 80 + "\n")
-
-        # ロガーにも出力（メトリクスがある場合のみ）
-        if critic_loss is not None or actor_loss is not None:
-            logger.info(
-                f"Training completed: critic_loss={critic_loss}, actor_loss={actor_loss}, ent_coef={ent_coef}"
-            )
+        logger.info("=" * 80 + "\n")
 
         # CSVファイルをクローズ
         if self.csv_file:
             try:
                 self.csv_file.close()
-                logger.info(f"✅ Metrics CSV saved: {self.csv_path}")
+                logger.info("✅ Metrics CSV saved: %s", self.csv_path)
             except Exception as e:
-                logger.warning(f"Failed to close CSV file: {e}")
+                logger.warning("Failed to close CSV file: %s", e)
 
 
 class SACAlgorithmTrainer(EnsembleMixin):
@@ -413,6 +390,8 @@ class SACAlgorithmTrainer(EnsembleMixin):
         self.config_manager = config_manager
         self.progress_bar_enabled = progress_bar_enabled
         self.logger = get_logger(__name__)
+        # Model instance (SAC or wrapper) - use conservative protocol
+        self.model: Optional[SACLikeModelProtocol] = None
 
     def train(self, unified_config: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -424,8 +403,9 @@ class SACAlgorithmTrainer(EnsembleMixin):
         Returns:
             訓練結果（モデルパス、ログパス等）
         """
-        # TrainingLoggerを作成
-        model_name = unified_config.get("model_name", "sac_model")
+        # Local config dict and TrainingLoggerを作成
+        cfg = ensure_dict(getattr(self, "config", unified_config if isinstance(unified_config, dict) else {}))
+        model_name = cfg.get("model_name", "sac_model")
         training_logger = create_training_logger("sac", model_name, verbose=True)
 
         self.logger.info("🚀 Starting SAC training")
@@ -435,9 +415,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
 
         # 1. SAC設定を取得
         sac_config = (
-            unified_config.get("sac_hyperparameters")
-            or unified_config.get("sac_params")
-            or {}
+            cfg.get("sac_hyperparameters") or cfg.get("sac_params") or {}
         )
         if sac_config:
             # Merge with defaults to ensure required keys are present
@@ -448,13 +426,14 @@ class SACAlgorithmTrainer(EnsembleMixin):
             )
             sac_config = SACAlgorithm.get_default_config()
 
-        # Expose resolved config for logging/debugging
-        unified_config["sac_hyperparameters"] = sac_config
-        if "sac_params" in unified_config:
-            unified_config["sac_params"] = sac_config
+        # Expose resolved config for logging/debugging (update cfg if it's the unified_config)
+        if isinstance(unified_config, dict):
+            unified_config["sac_hyperparameters"] = sac_config
+            if "sac_params" in unified_config:
+                unified_config["sac_params"] = sac_config
 
         # 2. 環境を作成
-        raw_env_config = unified_config.get("environment", {})
+        raw_env_config = cfg.get("environment", {})
         if isinstance(raw_env_config, EnvironmentConfig):
             env_config = raw_env_config.as_dict()
         elif isinstance(raw_env_config, dict):
@@ -475,7 +454,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         # ConfigManagerからデータを取得
         from ztb.utils.data_utils import load_csv_data_optimized
 
-        data_path = unified_config.get("data_path", "btc_jpy_real_dataset.csv")
+        data_path = cfg.get("data_path", "btc_jpy_real_dataset.csv")
 
         df = load_csv_data_optimized(data_path)
 
@@ -489,7 +468,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         self.logger.info(f"   Action space: {env.action_space}")
 
         # データ情報を収集
-        total_timesteps = unified_config.get("total_timesteps", 100000)
+        total_timesteps = int(safe_to_float(cfg.get("total_timesteps", 100000)))
         data_info = {
             "Data Rows": len(df),
             "Data Source": data_path,
@@ -526,7 +505,7 @@ class SACAlgorithmTrainer(EnsembleMixin):
         csv_metrics_path = log_dir / f"{model_name}_training_metrics.csv"
 
         # メトリクス出力コールバック（拡張メトリクス対応）
-        metrics_log_interval = unified_config.get("metrics_log_interval", 100)
+        metrics_log_interval = int(safe_to_float(cfg.get("metrics_log_interval", 100)))
         metrics_callback = SACMetricsCallback(
             log_interval=metrics_log_interval,
             training_logger=training_logger,  # TrainingLoggerを渡す
@@ -538,36 +517,36 @@ class SACAlgorithmTrainer(EnsembleMixin):
         self.logger.info(f"📊 Metrics will be logged to: {csv_metrics_path}")
 
         # Early Stopping機能（オプション）
-        if unified_config.get("enable_early_stopping", False):
-            early_stopping_config = unified_config.get("early_stopping", {})
+        if cfg.get("enable_early_stopping", False):
+            early_stopping_config = cfg.get("early_stopping", {})
             early_stopping_callback = EarlyStoppingCallback(
                 metric_name=early_stopping_config.get("metric", "critic_loss"),
-                min_delta=early_stopping_config.get("min_delta", 0.0001),
-                patience=early_stopping_config.get("patience", 5000),
-                check_interval=early_stopping_config.get("check_interval", 1000),
-                window_size=early_stopping_config.get("window_size", 1000),
-                cv_threshold=early_stopping_config.get("cv_threshold", 0.05),
-                verbose=1,
+                min_delta=safe_to_float(early_stopping_config.get("min_delta", 0.0001)),
+                patience=int(safe_to_float(early_stopping_config.get("patience", 5000))),
+                check_interval=int(safe_to_float(early_stopping_config.get("check_interval", 1000))),
+                window_size=int(safe_to_float(early_stopping_config.get("window_size", 1000))),
+                cv_threshold=safe_to_float(early_stopping_config.get("cv_threshold", 0.05)),
+                verbose=int(safe_to_float(early_stopping_config.get("verbose", 1))),
             )
             callbacks.append(early_stopping_callback)
             self.logger.info("🛑 Early Stopping enabled")
 
         # Best Model保存機能（オプション）
-        if unified_config.get("enable_best_model_saving", False):
-            best_model_config = unified_config.get("best_model", {})
+        if cfg.get("enable_best_model_saving", False):
+            best_model_config = cfg.get("best_model", {})
             best_model_callback = BestModelCallback(
                 save_path=log_dir / "best_models",
                 model_name=model_name,
                 metric_name=best_model_config.get("metric", "critic_loss"),
                 mode=best_model_config.get("mode", "min"),
-                check_interval=best_model_config.get("check_interval", 1000),
-                verbose=1,
+                check_interval=int(safe_to_float(best_model_config.get("check_interval", 1000))),
+                verbose=int(safe_to_float(best_model_config.get("verbose", 1))),
             )
             callbacks.append(best_model_callback)
             self.logger.info("🏆 Best Model saving enabled")
 
         # チェックポイントコールバック
-        checkpoint_interval = unified_config.get("checkpoint_interval", 10000)
+        checkpoint_interval = int(safe_to_float(cfg.get("checkpoint_interval", 10000)))
         checkpoint_callback = CheckpointCallback(
             save_freq=checkpoint_interval,
             save_path=str(log_dir / "checkpoints"),
